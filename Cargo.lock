@@ -509,6 +509,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_pancam"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ebc698de3f4e824a67f517fe9cca35f08d5fdaab99ed8e141102c582768fc62"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,6 +1263,7 @@ name = "digilogic"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_pancam",
 ]
 
 [[package]]
