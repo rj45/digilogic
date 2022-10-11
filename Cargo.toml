@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bevy_pancam = "0.6.1"
 
 [dependencies.bevy]
 version = "0.8.1"

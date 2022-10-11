@@ -1,4 +1,5 @@
 use bevy::{prelude::*, window::PresentMode};
+use bevy_pancam::{PanCam, PanCamPlugin};
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf");
@@ -9,7 +10,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     let text_alignment = TextAlignment::CENTER;
 
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands
+        .spawn_bundle(Camera2dBundle::default())
+        .insert(PanCam::default());
 
     commands.spawn_bundle(Text2dBundle {
         text: Text::from_section("Hellorld!", text_style.clone()).with_alignment(text_alignment),
@@ -29,6 +32,7 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.15)))
         .add_plugins(DefaultPlugins)
+        .add_plugin(PanCamPlugin::default())
         .add_startup_system(setup)
         .run();
 }
