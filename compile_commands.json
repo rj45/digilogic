@@ -1,0 +1,56 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
+      "-o",
+      "test",
+      "thirdparty/sokol_gfx.m"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/thirdparty/sokol_gfx.m",
+    "output": "/Users/rj45/Code/digilogic_sokol/test"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
+      "-o",
+      "test",
+      "src/main.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/main.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/test"
+  }
+]
