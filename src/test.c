@@ -17,10 +17,6 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
-#include "main.h"
-
 #include "utest.h"
-
-UTEST(foo, bar) { ASSERT_TRUE(1); }
 
 UTEST_MAIN();

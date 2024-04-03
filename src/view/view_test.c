@@ -107,3 +107,48 @@ void draw_stroked_line(
   };
   arrput(*cmds, cmd);
 }
+
+UTEST(View, view_add_component) {
+  CircuitView view = {0};
+
+  view_init(&view, circuit_component_descs());
+
+  view_add_component(&view, COMP_AND, HMM_V2(100, 100));
+  view_add_component(&view, COMP_OR, HMM_V2(200, 200));
+
+  ASSERT_EQ(arrlen(view.components), 2);
+  ASSERT_EQ(view.components[0].position.X, 100);
+  ASSERT_EQ(view.components[0].position.Y, 100);
+  ASSERT_EQ(view.components[1].position.X, 200);
+  ASSERT_EQ(view.components[1].position.Y, 200);
+
+  view_free(&view);
+}
+
+UTEST(View, view_draw_components) {
+  CircuitView view = {0};
+  DrawCmd *cmds = NULL;
+
+  view_init(&view, circuit_component_descs());
+
+  view_add_component(&view, COMP_AND, HMM_V2(100, 100));
+
+  view_draw(&view, (Context)&cmds);
+
+  ASSERT_EQ(arrlen(cmds), 8);
+  ASSERT_EQ(cmds[0].type, DRAW_FILLED_RECT);
+  ASSERT_EQ(cmds[0].position.X, 100);
+  ASSERT_EQ(cmds[0].position.Y, 100);
+  ASSERT_EQ(cmds[1].type, DRAW_STROKED_RECT);
+  ASSERT_EQ(cmds[1].position.X, 100);
+  ASSERT_EQ(cmds[1].position.Y, 100);
+  ASSERT_EQ(cmds[2].type, DRAW_FILLED_CIRCLE);
+  ASSERT_EQ(cmds[3].type, DRAW_STROKED_CIRCLE);
+  ASSERT_EQ(cmds[4].type, DRAW_FILLED_CIRCLE);
+  ASSERT_EQ(cmds[5].type, DRAW_STROKED_CIRCLE);
+  ASSERT_EQ(cmds[6].type, DRAW_FILLED_CIRCLE);
+  ASSERT_EQ(cmds[7].type, DRAW_STROKED_CIRCLE);
+
+  view_free(&view);
+  arrfree(cmds);
+}

@@ -17,16 +17,13 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "handmade_math.h"
+#include "view/view.h"
 
 /** defines an STB array */
 #define arr(type) type *
 
-typedef struct canvas_t {
-    float width;
-    float height;
-
-    HMM_Mat3 transform;
-} canvas_t;
+typedef struct {
+  CircuitView circuit;
+} my_app_t;
 
 #endif // MAIN_H

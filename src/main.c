@@ -14,17 +14,14 @@
    limitations under the License.
 */
 
-#include "core/core.h"
 #define STB_DS_IMPLEMENTATION
 
-#include "stb_ds.h"
 #include <stdlib.h>
 
-#include "main.h"
-#include "view/view.h"
+#include "handmade_math.h"
 
-// #include <assert.h>
-// #define NK_ASSERT(expr) assert(expr)
+#include "core/core.h"
+#include "main.h"
 
 #include "nuklear.h"
 #include "sokol_app.h"
@@ -32,10 +29,7 @@
 #include "sokol_glue.h"
 #include "sokol_log.h"
 #include "sokol_nuklear.h"
-
-typedef struct {
-  CircuitView circuit;
-} my_app_t;
+#include "stb_ds.h"
 
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
@@ -106,8 +100,6 @@ static void canvas_end(struct nk_context *ctx, struct nk_canvas *canvas) {
   ctx->style.window.padding = canvas->item_spacing;
   ctx->style.window.fixed_background = canvas->window_background;
 }
-
-#include <stdio.h>
 
 static void canvas(struct nk_context *ctx, my_app_t *app) {
   struct nk_canvas canvas;

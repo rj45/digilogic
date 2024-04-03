@@ -1,8 +1,8 @@
 
 HEADERS = src/main.h src/core/core.h $(THIRDPARTY)
-SRCS = src/core/circuit.c
+SRCS = src/core/circuit.c src/view/view.c
 THIRDPARTY = $(wildcard thirdparty/*.h)
-MAIN_SRCS = $(SRCS) src/main.c src/view/view.c src/apple.m
+MAIN_SRCS = $(SRCS) src/main.c  src/apple.m
 TEST_SRCS = $(SRCS) src/test.c src/view/view_test.c src/core/core_test.c
 
 CFLAGS = -I thirdparty -I src -Wall -Werror -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
