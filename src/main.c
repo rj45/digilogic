@@ -14,6 +14,8 @@
    limitations under the License.
 */
 
+#include "view/view.h"
+#include <stdio.h>
 #define STB_DS_IMPLEMENTATION
 
 #include <stdlib.h>
@@ -36,14 +38,20 @@ static void init(void *user_data) {
 
   view_init(&app->circuit, circuit_component_descs());
 
-  view_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
-  view_add_component(&app->circuit, COMP_OR, HMM_V2(200, 200));
+  ComponentID and =
+    view_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
+  ComponentID or = view_add_component(&app->circuit, COMP_OR, HMM_V2(200, 200));
+
+  PortID from = view_port_start(&app->circuit, and) + 2;
+  PortID to = view_port_start(&app->circuit, or);
+
+  view_add_net(&app->circuit, from, to);
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),
     .logger.func = slog_func,
   });
-  snk_setup(&(snk_desc_t){.logger.func = slog_func});
+  snk_setup(&(snk_desc_t){.logger.func = slog_func, .sample_count = 4});
 }
 
 void cleanup(void *user_data) {
@@ -293,5 +301,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
     .cleanup_userdata_cb = cleanup,
     .event_userdata_cb = event,
     .logger.func = slog_func,
+    .window_title = "digilogic",
+    .swap_interval = 2,
+    .sample_count = 4,
   };
 }

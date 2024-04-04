@@ -93,6 +93,8 @@ NetID circuit_add_net(Circuit *circuit, PortID portFrom, PortID portTo) {
   Net net = {
     .portFrom = portFrom,
     .portTo = portTo,
+    .next = NO_NET,
+    .prev = NO_NET,
   };
   arrput(circuit->nets, net);
 

@@ -55,5 +55,7 @@ UTEST(Circuit, add_net_with_ports) {
   ASSERT_EQ(circuit.ports[portID].net, id);
   ASSERT_EQ(circuit.nets[id].portTo, portID + 1);
   ASSERT_EQ(circuit.ports[portID + 1].net, id);
+  ASSERT_EQ(circuit.nets[id].next, NO_NET);
+  ASSERT_EQ(circuit.nets[id].prev, NO_NET);
   circuit_free(&circuit);
 }

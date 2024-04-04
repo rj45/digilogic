@@ -58,6 +58,16 @@ ComponentID view_add_component(
 NetID view_add_net(CircuitView *circuit, PortID portFrom, PortID portTo);
 void view_draw(CircuitView *view, Context ctx);
 
+static inline PortID view_port_start(CircuitView *view, ComponentID id) {
+  return view->circuit.components[id].portStart;
+}
+
+static inline PortID view_port_end(CircuitView *view, ComponentID id) {
+  return view->circuit.components[id].portStart +
+         view->circuit.componentDescs[view->circuit.components[id].desc]
+           .numPorts;
+}
+
 ////////////////////////////////////////
 // external interface for drawing the circuit
 ////////////////////////////////////////
