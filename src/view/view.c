@@ -101,7 +101,7 @@ NetID view_add_net(CircuitView *view, PortID portFrom, PortID portTo) {
 }
 
 static HMM_Vec2 panZoom(CircuitView *view, HMM_Vec2 position) {
-  return HMM_MulV2F(HMM_Add(position, view->pan), view->zoom);
+  return HMM_Add(HMM_MulV2F(position, view->zoom), view->pan);
 }
 
 static HMM_Vec2 zoom(CircuitView *view, HMM_Vec2 size) {

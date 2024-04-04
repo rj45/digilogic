@@ -33,6 +33,8 @@
 #include "sokol_nuklear.h"
 #include "stb_ds.h"
 
+#define MAX_ZOOM 20.0f
+
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
 
@@ -287,7 +289,68 @@ void event(const sapp_event *event, void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
   (void)app;
 
-  snk_handle_event(event);
+  if (snk_handle_event(event)) {
+    // return;
+  }
+
+  switch (event->type) {
+  case SAPP_EVENTTYPE_KEY_DOWN: {
+    switch (event->key_code) {
+    case SAPP_KEYCODE_W:
+      app->circuit.pan.Y += 10;
+      break;
+    case SAPP_KEYCODE_S:
+      app->circuit.pan.Y -= 10;
+      break;
+    case SAPP_KEYCODE_A:
+      app->circuit.pan.X += 10;
+      break;
+    case SAPP_KEYCODE_D:
+      app->circuit.pan.X -= 10;
+      break;
+    case SAPP_KEYCODE_ESCAPE:
+      sapp_request_quit();
+      break;
+    default:
+      // ignore
+      break;
+    }
+    break;
+  }
+  case SAPP_EVENTTYPE_MOUSE_SCROLL: {
+    // calculate the new zoom
+    app->circuit.zoomExp += event->scroll_y * 0.5f;
+    if (app->circuit.zoomExp < -MAX_ZOOM) {
+      app->circuit.zoomExp = -MAX_ZOOM;
+    } else if (app->circuit.zoomExp > MAX_ZOOM) {
+      app->circuit.zoomExp = MAX_ZOOM;
+    }
+    float newZoom = powf(1.1f, app->circuit.zoomExp);
+    float oldZoom = app->circuit.zoom;
+    app->circuit.zoom = newZoom;
+
+    // figure out where the mouse was in "world coords" with the old zoom
+    HMM_Vec2 originalMousePos = HMM_DivV2F(
+      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.pan),
+      oldZoom);
+
+    // figure out where the mouse is in "world coords" with the new zoom
+    HMM_Vec2 newMousePos = HMM_DivV2F(
+      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.pan),
+      newZoom);
+
+    // figure out the correction to the pan so that the zoom is centred on the
+    // mouse position
+    HMM_Vec2 correction =
+      HMM_MulV2F(HMM_Sub(newMousePos, originalMousePos), newZoom);
+    app->circuit.pan = HMM_Add(app->circuit.pan, correction);
+
+    break;
+  }
+  default:
+    // ignore
+    break;
+  }
 }
 
 sapp_desc sokol_main(int argc, char *argv[]) {

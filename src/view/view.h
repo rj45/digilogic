@@ -47,6 +47,7 @@ typedef struct CircuitView {
 
   HMM_Vec2 pan;
   float zoom;
+  float zoomExp;
 } CircuitView;
 
 typedef void *Context;
