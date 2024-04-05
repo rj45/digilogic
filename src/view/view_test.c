@@ -18,6 +18,8 @@
 #include "utest.h"
 
 #include "view.h"
+#include <Security/Security.h>
+#include <stdbool.h>
 
 typedef enum DrawCmdType {
   DRAW_FILLED_RECT,
@@ -108,6 +110,113 @@ void draw_stroked_line(
   arrput(*cmds, cmd);
 }
 
+////////////////////////////////////////
+
+const char *drawNames[] = {
+  [DRAW_FILLED_RECT] = "filled_rect",
+  [DRAW_STROKED_RECT] = "stroked_rect",
+  [DRAW_FILLED_CIRCLE] = "filled_circle",
+  [DRAW_STROKED_CIRCLE] = "stroked_circle",
+  [DRAW_STROKED_LINE] = "stroked_line",
+};
+
+typedef struct Vert {
+  int x, y;
+} Vert;
+
+typedef struct Color {
+  uint8_t r, g, b, a;
+} Color;
+
+// dumps the draw commands to a string naming the vertices and colors.
+// This abstracts the specifics of draw commands that don't matter too much,
+// and allows things that do matter (like relationships between vertices and
+// colors) to be tested.
+char *dumpDrawCmds(char *start, char *end, DrawCmd *cmds) {
+  Vert *verts = NULL;
+  Color *colors = NULL;
+  for (int i = 0; i < arrlen(cmds); i++) {
+    DrawCmd cmd = cmds[i];
+    int x = (int)(cmd.position.X + cmd.size.X / 2);
+    int y = (int)(cmd.position.Y + cmd.size.Y / 2);
+
+    if (cmd.type == DRAW_STROKED_LINE) {
+      x = (int)(cmd.position.X);
+      y = (int)(cmd.position.Y);
+    }
+
+    int vertid = -1;
+    for (int j = 0; j < arrlen(verts); j++) {
+      if (verts[j].x == x && verts[j].y == y) {
+        vertid = j;
+        break;
+      }
+    }
+    if (vertid < 0) {
+      Vert vertName = {x, y};
+      vertid = arrlen(verts);
+      arrput(verts, vertName);
+    }
+
+    int vertid2 = -1;
+    if (cmd.type == DRAW_STROKED_LINE) {
+      x = (int)(cmd.size.X);
+      y = (int)(cmd.size.Y);
+      for (int j = 0; j < arrlen(verts); j++) {
+        if (verts[j].x == x && verts[j].y == y) {
+          vertid2 = j;
+          break;
+        }
+      }
+      if (vertid2 < 0) {
+        Vert vertName = {x, y};
+        vertid2 = arrlen(verts);
+        arrput(verts, vertName);
+      }
+    }
+
+    uint8_t r = (uint8_t)(cmd.color.X * 255);
+    uint8_t g = (uint8_t)(cmd.color.Y * 255);
+    uint8_t b = (uint8_t)(cmd.color.Z * 255);
+    uint8_t a = (uint8_t)(cmd.color.W * 255);
+    int colorid = -1;
+    for (int j = 0; j < arrlen(colors); j++) {
+      if (
+        colors[j].r == r && colors[j].g == g && colors[j].b == b &&
+        colors[j].a == a) {
+        colorid = j;
+        break;
+      }
+    }
+    if (colorid < 0) {
+      Color colorName = {r, g, b, a};
+      colorid = arrlen(colors);
+      arrput(colors, colorName);
+    }
+
+    if (cmd.type == DRAW_STROKED_LINE) {
+      start += snprintf(
+        start, end - start, "%s v%d v%d c%d\n", drawNames[cmd.type], vertid,
+        vertid2, colorid);
+      continue;
+    }
+
+    start += snprintf(
+      start, end - start, "%s v%d c%d\n", drawNames[cmd.type], vertid, colorid);
+  }
+
+  arrfree(verts);
+  arrfree(colors);
+  return start;
+}
+
+#define ASSERT_DRAW(expected, cmds)                                            \
+  do {                                                                         \
+    char buffer[8192];                                                         \
+    dumpDrawCmds(buffer, buffer + sizeof(buffer), cmds);                       \
+    ASSERT_STREQ(expected, buffer);                                            \
+  } while (0);
+
 UTEST(View, view_add_component) {
   CircuitView view = {0};
 
@@ -135,19 +244,55 @@ UTEST(View, view_draw_components) {
 
   view_draw(&view, (Context)&cmds);
 
-  ASSERT_EQ(arrlen(cmds), 8);
-  ASSERT_EQ(cmds[0].type, DRAW_FILLED_RECT);
-  ASSERT_EQ(cmds[0].position.X, 100);
-  ASSERT_EQ(cmds[0].position.Y, 100);
-  ASSERT_EQ(cmds[1].type, DRAW_STROKED_RECT);
-  ASSERT_EQ(cmds[1].position.X, 100);
-  ASSERT_EQ(cmds[1].position.Y, 100);
-  ASSERT_EQ(cmds[2].type, DRAW_FILLED_CIRCLE);
-  ASSERT_EQ(cmds[3].type, DRAW_STROKED_CIRCLE);
-  ASSERT_EQ(cmds[4].type, DRAW_FILLED_CIRCLE);
-  ASSERT_EQ(cmds[5].type, DRAW_STROKED_CIRCLE);
-  ASSERT_EQ(cmds[6].type, DRAW_FILLED_CIRCLE);
-  ASSERT_EQ(cmds[7].type, DRAW_STROKED_CIRCLE);
+  ASSERT_DRAW(
+    "filled_rect v0 c0\n"
+    "stroked_rect v0 c1\n"
+    "filled_circle v1 c1\n"
+    "stroked_circle v1 c2\n"
+    "filled_circle v2 c1\n"
+    "stroked_circle v2 c2\n"
+    "filled_circle v3 c1\n"
+    "stroked_circle v3 c2\n",
+    cmds);
+
+  view_free(&view);
+  arrfree(cmds);
+}
+
+UTEST(View, view_draw_component_with_wires) {
+  CircuitView view = {0};
+  DrawCmd *cmds = NULL;
+
+  view_init(&view, circuit_component_descs());
+  ComponentID and = view_add_component(&view, COMP_AND, HMM_V2(100, 100));
+  ComponentID or = view_add_component(&view, COMP_OR, HMM_V2(200, 200));
+
+  PortID from = view_port_start(&view, and) + 2;
+  PortID to = view_port_start(&view, or);
+
+  view_add_net(&view, from, to);
+
+  view_draw(&view, (Context)&cmds);
+
+  ASSERT_DRAW(
+    "filled_rect v0 c0\n"
+    "stroked_rect v0 c1\n"
+    "filled_circle v1 c1\n"
+    "stroked_circle v1 c2\n"
+    "filled_circle v2 c1\n"
+    "stroked_circle v2 c2\n"
+    "filled_circle v3 c1\n"
+    "stroked_circle v3 c2\n"
+    "filled_rect v4 c0\n"
+    "stroked_rect v4 c1\n"
+    "filled_circle v5 c1\n"
+    "stroked_circle v5 c2\n"
+    "filled_circle v6 c1\n"
+    "stroked_circle v6 c2\n"
+    "filled_circle v7 c1\n"
+    "stroked_circle v7 c2\n"
+    "stroked_line v3 v5 c3\n",
+    cmds);
 
   view_free(&view);
   arrfree(cmds);

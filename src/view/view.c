@@ -125,7 +125,7 @@ void view_draw(CircuitView *view, Context ctx) {
 
     for (int j = 0; j < desc->numPorts; j++) {
       PortView *portView = &view->ports[component->portStart + j];
-      Port *port = &view->circuit.ports[component->portStart + j];
+      // Port *port = &view->circuit.ports[component->portStart + j];
 
       HMM_Vec2 portPosition =
         panZoom(view, HMM_Add(componentView->position, portView->position));
@@ -136,49 +136,45 @@ void view_draw(CircuitView *view, Context ctx) {
       draw_stroked_circle(
         ctx, portPosition, portSize, view->zoom * 1.0f,
         HMM_V4(0.3, 0.3, 0.3, 1.0f));
-
-      NetID netID = port->net;
-      while (netID != NO_NET) {
-        Net *net = &view->circuit.nets[port->net];
-        NetView *netView = &view->nets[port->net];
-        Port *portFrom = &view->circuit.ports[net->portFrom];
-        PortView *portViewFrom = &view->ports[net->portFrom];
-        ComponentView *componentViewFrom =
-          &view->components[portFrom->component];
-
-        HMM_Vec2 portFromPosition = panZoom(
-          view, HMM_Add(
-                  HMM_Add(
-                    componentViewFrom->position,
-                    HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2)),
-                  portViewFrom->position));
-
-        Port *portTo = &view->circuit.ports[net->portTo];
-        PortView *portViewTo = &view->ports[net->portTo];
-        ComponentView *componentViewTo = &view->components[portTo->component];
-
-        HMM_Vec2 portToPosition = panZoom(
-          view, HMM_Add(
-                  HMM_Add(
-                    componentViewTo->position,
-                    HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2)),
-                  portViewTo->position));
-
-        HMM_Vec2 pos = portFromPosition;
-
-        for (int i = netView->vertexStart; i < netView->vertexEnd; i++) {
-          HMM_Vec2 vertex = panZoom(view, view->vertices[i]);
-          draw_stroked_line(
-            ctx, pos, vertex, view->zoom * 2.0f, HMM_V4(0.3, 0.6, 0.3, 1.0f));
-          pos = vertex;
-        }
-
-        draw_stroked_line(
-          ctx, pos, portToPosition, view->zoom * 2.0f,
-          HMM_V4(0.3, 0.6, 0.3, 1.0f));
-
-        netID = net->next;
-      }
     }
+  }
+
+  for (int i = 0; i < arrlen(view->nets); i++) {
+    NetView *netView = &view->nets[i];
+    Net *net = &view->circuit.nets[i];
+
+    Port *portFrom = &view->circuit.ports[net->portFrom];
+    PortView *portViewFrom = &view->ports[net->portFrom];
+    ComponentView *componentViewFrom = &view->components[portFrom->component];
+
+    HMM_Vec2 portFromPosition = panZoom(
+      view,
+      HMM_Add(
+        HMM_Add(
+          componentViewFrom->position, HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2)),
+        portViewFrom->position));
+
+    Port *portTo = &view->circuit.ports[net->portTo];
+    PortView *portViewTo = &view->ports[net->portTo];
+    ComponentView *componentViewTo = &view->components[portTo->component];
+
+    HMM_Vec2 portToPosition = panZoom(
+      view,
+      HMM_Add(
+        HMM_Add(
+          componentViewTo->position, HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2)),
+        portViewTo->position));
+
+    HMM_Vec2 pos = portFromPosition;
+
+    for (int i = netView->vertexStart; i < netView->vertexEnd; i++) {
+      HMM_Vec2 vertex = panZoom(view, view->vertices[i]);
+      draw_stroked_line(
+        ctx, pos, vertex, view->zoom * 2.0f, HMM_V4(0.3, 0.6, 0.3, 1.0f));
+      pos = vertex;
+    }
+
+    draw_stroked_line(
+      ctx, pos, portToPosition, view->zoom * 2.0f, HMM_V4(0.3, 0.6, 0.3, 1.0f));
   }
 }
