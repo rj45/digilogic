@@ -2,3 +2,5 @@ test
 digilogic
 .cache
 *.dSYM
+thirdparty/adaptagrams
+*.o

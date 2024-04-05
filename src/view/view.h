@@ -19,6 +19,7 @@
 
 #include "handmade_math.h"
 
+#include "avoid/avoid.h"
 #include "core/core.h"
 
 typedef struct PortView {
@@ -40,6 +41,8 @@ typedef struct NetView {
 
 typedef struct CircuitView {
   Circuit circuit;
+  AvoidRouter *avoid;
+
   arr(ComponentView) components;
   arr(PortView) ports;
   arr(NetView) nets;
@@ -58,6 +61,7 @@ ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position);
 NetID view_add_net(CircuitView *circuit, PortID portFrom, PortID portTo);
 void view_draw(CircuitView *view, Context ctx);
+void view_route(CircuitView *view);
 
 static inline PortID view_port_start(CircuitView *view, ComponentID id) {
   return view->circuit.components[id].portStart;

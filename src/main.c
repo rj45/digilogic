@@ -44,10 +44,19 @@ static void init(void *user_data) {
     view_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
   ComponentID or = view_add_component(&app->circuit, COMP_OR, HMM_V2(200, 200));
 
-  PortID from = view_port_start(&app->circuit, and) + 2;
-  PortID to = view_port_start(&app->circuit, or);
+  view_add_net(
+    &app->circuit, view_port_start(&app->circuit, and) + 2,
+    view_port_start(&app->circuit, or));
 
-  view_add_net(&app->circuit, from, to);
+  view_add_net(
+    &app->circuit, view_port_start(&app->circuit, and),
+    view_port_start(&app->circuit, or) + 2);
+
+  view_add_net(
+    &app->circuit, view_port_start(&app->circuit, and) + 1,
+    view_port_start(&app->circuit, or) + 1);
+
+  view_route(&app->circuit);
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),
