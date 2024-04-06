@@ -24,6 +24,8 @@
 
 typedef struct {
   CircuitView circuit;
+
+  bv(uint64_t) keys;
 } my_app_t;
 
 #endif // MAIN_H

@@ -59,3 +59,37 @@ UTEST(Circuit, add_net_with_ports) {
   ASSERT_EQ(circuit.nets[id].prev, NO_NET);
   circuit_free(&circuit);
 }
+
+UTEST(bv, setlen) {
+  bv(uint64_t) bv = NULL;
+  bv_setlen(bv, 100);
+  ASSERT_EQ(arrlen(bv), 2);
+  bv_free(bv);
+}
+
+UTEST(bv, setlen_even) {
+  bv(uint64_t) bv = NULL;
+  bv_setlen(bv, 64);
+  ASSERT_EQ(arrlen(bv), 1);
+  bv_free(bv);
+}
+
+UTEST(bv, set_bit) {
+  bv(uint64_t) bv = NULL;
+  bv_setlen(bv, 100);
+  bv_clear_all(bv);
+  bv_set(bv, 10);
+  ASSERT_FALSE(bv_is_set(bv, 9));
+  ASSERT_TRUE(bv_is_set(bv, 10));
+  bv_free(bv);
+}
+
+UTEST(bv, clear_bit) {
+  bv(uint64_t) bv = NULL;
+  bv_setlen(bv, 100);
+  bv_set_all(bv);
+  bv_clear(bv, 10);
+  ASSERT_TRUE(bv_is_set(bv, 9));
+  ASSERT_FALSE(bv_is_set(bv, 10));
+  bv_free(bv);
+}

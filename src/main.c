@@ -38,6 +38,10 @@
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
 
+  // ensure the keys array is big enough to fit all the keys
+  bv_setlen(app->keys, SAPP_KEYCODE_MENU + 1);
+  bv_clear_all(app->keys);
+
   view_init(&app->circuit, circuit_component_descs());
 
   ComponentID and =
@@ -67,6 +71,8 @@ static void init(void *user_data) {
 
 void cleanup(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
+
+  bv_free(app->keys);
 
   view_free(&app->circuit);
 
@@ -126,94 +132,22 @@ static void canvas(struct nk_context *ctx, my_app_t *app) {
         ctx, &canvas, 0, 0, 0, sapp_width(), sapp_height(),
         nk_rgb(0x22, 0x29, 0x33))) {
 
+    if (nk_window_is_hovered(ctx)) {
+      float dt = (float)sapp_frame_duration();
+      if (bv_is_set(app->keys, SAPP_KEYCODE_W)) {
+        app->circuit.pan.Y -= 600.0f * dt * app->circuit.zoom;
+      }
+      if (bv_is_set(app->keys, SAPP_KEYCODE_A)) {
+        app->circuit.pan.X -= 600.0f * dt * app->circuit.zoom;
+      }
+      if (bv_is_set(app->keys, SAPP_KEYCODE_S)) {
+        app->circuit.pan.Y += 600.0f * dt * app->circuit.zoom;
+      }
+      if (bv_is_set(app->keys, SAPP_KEYCODE_D)) {
+        app->circuit.pan.X += 600.0f * dt * app->circuit.zoom;
+      }
+    }
     view_draw(&app->circuit, canvas.painter);
-
-    // nk_fill_rect(
-    //   canvas.painter, nk_rect(x + 15, y + 15, 210, 210), 5,
-    //   nk_rgb(247, 230, 154));
-    // nk_fill_rect(
-    //   canvas.painter, nk_rect(x + 20, y + 20, 200, 200), 5,
-    //   nk_rgb(188, 174, 118));
-    // /* nk_draw_text(canvas.painter, nk_rect(x + 30, y + 30, 150, 20), "Text
-    // to
-    //  * draw", 12, &font->handle, nk_rgb(188,174,118), nk_rgb(0,0,0)); */
-    // nk_fill_rect(
-    //   canvas.painter, nk_rect(x + 250, y + 20, 100, 100), 0, nk_rgb(0, 0,
-    //   255));
-    // nk_fill_circle(
-    //   canvas.painter, nk_rect(x + 20, y + 250, 100, 100), nk_rgb(255, 0, 0));
-    // nk_fill_triangle(
-    //   canvas.painter, x + 250, y + 250, x + 350, y + 250, x + 300, y + 350,
-    //   nk_rgb(0, 255, 0));
-    // nk_fill_arc(
-    //   canvas.painter, x + 300, y + 420, 50, 0, 3.141592654f * 3.0f / 4.0f,
-    //   nk_rgb(255, 255, 0));
-
-    // {
-    //   float points[12];
-    //   points[0] = x + 200;
-    //   points[1] = y + 250;
-    //   points[2] = x + 250;
-    //   points[3] = y + 350;
-    //   points[4] = x + 225;
-    //   points[5] = y + 350;
-    //   points[6] = x + 200;
-    //   points[7] = y + 300;
-    //   points[8] = x + 175;
-    //   points[9] = y + 350;
-    //   points[10] = x + 150;
-    //   points[11] = y + 350;
-    //   nk_fill_polygon(canvas.painter, points, 6, nk_rgb(0, 0, 0));
-    // }
-
-    // {
-    //   float points[12];
-    //   points[0] = x + 200;
-    //   points[1] = y + 370;
-    //   points[2] = x + 250;
-    //   points[3] = y + 470;
-    //   points[4] = x + 225;
-    //   points[5] = y + 470;
-    //   points[6] = x + 200;
-    //   points[7] = y + 420;
-    //   points[8] = x + 175;
-    //   points[9] = y + 470;
-    //   points[10] = x + 150;
-    //   points[11] = y + 470;
-    //   nk_stroke_polygon(canvas.painter, points, 6, 4, nk_rgb(0, 0, 0));
-    // }
-
-    // {
-    //   float points[8];
-    //   points[0] = x + 250;
-    //   points[1] = y + 200;
-    //   points[2] = x + 275;
-    //   points[3] = y + 220;
-    //   points[4] = x + 325;
-    //   points[5] = y + 170;
-    //   points[6] = x + 350;
-    //   points[7] = y + 200;
-    //   nk_stroke_polyline(canvas.painter, points, 4, 2, nk_rgb(255, 128, 0));
-    // }
-
-    // nk_stroke_line(
-    //   canvas.painter, x + 15, y + 10, x + 200, y + 10, 2.0f,
-    //   nk_rgb(189, 45, 75));
-    // nk_stroke_rect(
-    //   canvas.painter, nk_rect(x + 370, y + 20, 100, 100), 10, 3,
-    //   nk_rgb(0, 0, 255));
-    // nk_stroke_curve(
-    //   canvas.painter, x + 380, y + 200, x + 405, y + 270, x + 455, y + 120,
-    //   x + 480, y + 200, 2, nk_rgb(0, 150, 220));
-    // nk_stroke_circle(
-    //   canvas.painter, nk_rect(x + 20, y + 370, 100, 100), 5,
-    //   nk_rgb(0, 255, 120));
-    // nk_stroke_triangle(
-    //   canvas.painter, x + 370, y + 250, x + 470, y + 250, x + 420, y + 350,
-    //   6, nk_rgb(255, 0, 143));
-    // nk_stroke_arc(
-    //   canvas.painter, x + 420, y + 420, 50, 0, 3.141592654f * 3.0f / 4.0f, 5,
-    //   nk_rgb(0, 255, 255));
   }
   canvas_end(ctx, &canvas);
 }
@@ -226,8 +160,7 @@ void draw_filled_rect(
 
   nk_fill_rect(
     nk_ctx, nk_rect(position.X, position.Y, size.X, size.Y), radius,
-    (struct nk_color){
-      color.R * 255, color.G * 255, color.B * 255, color.A * 255});
+    nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
 void draw_stroked_rect(
@@ -236,9 +169,7 @@ void draw_stroked_rect(
   struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
   nk_stroke_rect(
     nk_ctx, nk_rect(position.X, position.Y, size.X, size.Y), radius,
-    line_thickness,
-    (struct nk_color){
-      color.R * 255, color.G * 255, color.B * 255, color.A * 255});
+    line_thickness, nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
 void draw_filled_circle(
@@ -246,8 +177,7 @@ void draw_filled_circle(
   struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
   nk_fill_circle(
     nk_ctx, nk_rect(position.X, position.Y, size.X, size.Y),
-    (struct nk_color){
-      color.R * 255, color.G * 255, color.B * 255, color.A * 255});
+    nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
 void draw_stroked_circle(
@@ -256,8 +186,7 @@ void draw_stroked_circle(
   struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
   nk_stroke_circle(
     nk_ctx, nk_rect(position.X, position.Y, size.X, size.Y), line_thickness,
-    (struct nk_color){
-      color.R * 255, color.G * 255, color.B * 255, color.A * 255});
+    nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
 void draw_stroked_line(
@@ -266,8 +195,7 @@ void draw_stroked_line(
   struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
   nk_stroke_line(
     nk_ctx, start.X, start.Y, end.X, end.Y, line_thickness,
-    (struct nk_color){
-      color.R * 255, color.G * 255, color.B * 255, color.A * 255});
+    nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
 void frame(void *user_data) {
@@ -303,29 +231,15 @@ void event(const sapp_event *event, void *user_data) {
   }
 
   switch (event->type) {
-  case SAPP_EVENTTYPE_KEY_DOWN: {
-    switch (event->key_code) {
-    case SAPP_KEYCODE_W:
-      app->circuit.pan.Y += 10;
-      break;
-    case SAPP_KEYCODE_S:
-      app->circuit.pan.Y -= 10;
-      break;
-    case SAPP_KEYCODE_A:
-      app->circuit.pan.X += 10;
-      break;
-    case SAPP_KEYCODE_D:
-      app->circuit.pan.X -= 10;
-      break;
-    case SAPP_KEYCODE_ESCAPE:
+  case SAPP_EVENTTYPE_KEY_DOWN:
+    bv_set(app->keys, event->key_code);
+    if (event->key_code == SAPP_KEYCODE_ESCAPE) {
       sapp_request_quit();
-      break;
-    default:
-      // ignore
-      break;
     }
     break;
-  }
+  case SAPP_EVENTTYPE_KEY_UP:
+    bv_clear(app->keys, event->key_code);
+    break;
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
     // calculate the new zoom
     app->circuit.zoomExp += event->scroll_y * 0.5f;
@@ -364,6 +278,8 @@ void event(const sapp_event *event, void *user_data) {
 
 sapp_desc sokol_main(int argc, char *argv[]) {
   my_app_t *app = malloc(sizeof(my_app_t));
+  *app = (my_app_t){0};
+
   return (sapp_desc){
     .width = 1024,
     .height = 768,
