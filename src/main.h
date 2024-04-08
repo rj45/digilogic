@@ -17,10 +17,10 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "view/view.h"
+#include "ux/ux.h"
 
 typedef struct {
-  CircuitView circuit;
+  CircuitUX circuit;
 
   bv(uint64_t) keys;
 } my_app_t;

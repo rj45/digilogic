@@ -42,25 +42,24 @@ static void init(void *user_data) {
   bv_setlen(app->keys, SAPP_KEYCODE_MENU + 1);
   bv_clear_all(app->keys);
 
-  view_init(&app->circuit, circuit_component_descs());
+  ux_init(&app->circuit, circuit_component_descs());
 
-  ComponentID and =
-    view_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
-  ComponentID or = view_add_component(&app->circuit, COMP_OR, HMM_V2(200, 200));
+  ComponentID and = ux_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
+  ComponentID or = ux_add_component(&app->circuit, COMP_OR, HMM_V2(200, 200));
 
-  view_add_net(
-    &app->circuit, view_port_start(&app->circuit, and) + 2,
-    view_port_start(&app->circuit, or));
+  ux_add_net(
+    &app->circuit, view_port_start(&app->circuit.view, and) + 2,
+    view_port_start(&app->circuit.view, or));
 
-  view_add_net(
-    &app->circuit, view_port_start(&app->circuit, and),
-    view_port_start(&app->circuit, or) + 2);
+  ux_add_net(
+    &app->circuit, view_port_start(&app->circuit.view, and),
+    view_port_start(&app->circuit.view, or) + 2);
 
-  view_add_net(
-    &app->circuit, view_port_start(&app->circuit, and) + 1,
-    view_port_start(&app->circuit, or) + 1);
+  ux_add_net(
+    &app->circuit, view_port_start(&app->circuit.view, and) + 1,
+    view_port_start(&app->circuit.view, or) + 1);
 
-  view_route(&app->circuit);
+  ux_route(&app->circuit);
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),
@@ -74,7 +73,7 @@ void cleanup(void *user_data) {
 
   bv_free(app->keys);
 
-  view_free(&app->circuit);
+  ux_free(&app->circuit);
 
   snk_shutdown();
   sg_shutdown();
@@ -135,19 +134,19 @@ static void canvas(struct nk_context *ctx, my_app_t *app) {
     if (nk_window_is_hovered(ctx)) {
       float dt = (float)sapp_frame_duration();
       if (bv_is_set(app->keys, SAPP_KEYCODE_W)) {
-        app->circuit.pan.Y -= 600.0f * dt * app->circuit.zoom;
+        app->circuit.view.pan.Y -= 600.0f * dt * app->circuit.view.zoom;
       }
       if (bv_is_set(app->keys, SAPP_KEYCODE_A)) {
-        app->circuit.pan.X -= 600.0f * dt * app->circuit.zoom;
+        app->circuit.view.pan.X -= 600.0f * dt * app->circuit.view.zoom;
       }
       if (bv_is_set(app->keys, SAPP_KEYCODE_S)) {
-        app->circuit.pan.Y += 600.0f * dt * app->circuit.zoom;
+        app->circuit.view.pan.Y += 600.0f * dt * app->circuit.view.zoom;
       }
       if (bv_is_set(app->keys, SAPP_KEYCODE_D)) {
-        app->circuit.pan.X += 600.0f * dt * app->circuit.zoom;
+        app->circuit.view.pan.X += 600.0f * dt * app->circuit.view.zoom;
       }
     }
-    view_draw(&app->circuit, canvas.painter);
+    ux_draw(&app->circuit, canvas.painter);
   }
   canvas_end(ctx, &canvas);
 }
@@ -240,31 +239,31 @@ void event(const sapp_event *event, void *user_data) {
     break;
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
     // calculate the new zoom
-    app->circuit.zoomExp += event->scroll_y * 0.5f;
-    if (app->circuit.zoomExp < -MAX_ZOOM) {
-      app->circuit.zoomExp = -MAX_ZOOM;
-    } else if (app->circuit.zoomExp > MAX_ZOOM) {
-      app->circuit.zoomExp = MAX_ZOOM;
+    app->circuit.view.zoomExp += event->scroll_y * 0.5f;
+    if (app->circuit.view.zoomExp < -MAX_ZOOM) {
+      app->circuit.view.zoomExp = -MAX_ZOOM;
+    } else if (app->circuit.view.zoomExp > MAX_ZOOM) {
+      app->circuit.view.zoomExp = MAX_ZOOM;
     }
-    float newZoom = powf(1.1f, app->circuit.zoomExp);
-    float oldZoom = app->circuit.zoom;
-    app->circuit.zoom = newZoom;
+    float newZoom = powf(1.1f, app->circuit.view.zoomExp);
+    float oldZoom = app->circuit.view.zoom;
+    app->circuit.view.zoom = newZoom;
 
     // figure out where the mouse was in "world coords" with the old zoom
     HMM_Vec2 originalMousePos = HMM_DivV2F(
-      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.pan),
+      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.view.pan),
       oldZoom);
 
     // figure out where the mouse is in "world coords" with the new zoom
     HMM_Vec2 newMousePos = HMM_DivV2F(
-      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.pan),
+      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.view.pan),
       newZoom);
 
     // figure out the correction to the pan so that the zoom is centred on the
     // mouse position
     HMM_Vec2 correction =
       HMM_MulV2F(HMM_Sub(newMousePos, originalMousePos), newZoom);
-    app->circuit.pan = HMM_Add(app->circuit.pan, correction);
+    app->circuit.view.pan = HMM_Add(app->circuit.view.pan, correction);
 
     break;
   }

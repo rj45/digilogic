@@ -20,7 +20,6 @@
 #include "handmade_math.h"
 #include <stdbool.h>
 
-#include "avoid/avoid.h"
 #include "core/core.h"
 
 typedef struct Box {
@@ -85,7 +84,6 @@ typedef struct NetView {
 typedef struct CircuitView {
   Circuit circuit;
   Theme theme;
-  AvoidRouter *avoid;
 
   arr(ComponentView) components;
   arr(PortView) ports;
@@ -104,8 +102,11 @@ void view_free(CircuitView *view);
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position);
 NetID view_add_net(CircuitView *circuit, PortID portFrom, PortID portTo);
+void view_add_vertex(CircuitView *view, NetID net, HMM_Vec2 vertex);
+void view_rem_vertex(CircuitView *view, NetID net);
+void view_set_vertex(
+  CircuitView *view, NetID net, VertexID index, HMM_Vec2 pos);
 void view_draw(CircuitView *view, Context ctx);
-void view_route(CircuitView *view);
 
 static inline PortID view_port_start(CircuitView *view, ComponentID id) {
   return view->circuit.components[id].portStart;

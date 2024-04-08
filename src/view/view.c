@@ -14,7 +14,6 @@
    limitations under the License.
 */
 
-#include "avoid/avoid.h"
 #include "handmade_math.h"
 #include "stb_ds.h"
 
@@ -42,7 +41,6 @@ void theme_init(Theme *theme) {
 
 void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
   *view = (CircuitView){
-    .avoid = avoid_new(),
     .pan = HMM_V2(0.0f, 0.0f),
     .zoom = 1.0f,
   };
@@ -55,7 +53,6 @@ void view_free(CircuitView *view) {
   arrfree(view->ports);
   arrfree(view->nets);
   arrfree(view->vertices);
-  avoid_free(view->avoid);
   circuit_free(&view->circuit);
 }
 
@@ -88,10 +85,6 @@ ComponentID view_add_component(
 
   componentView->box.halfSize = HMM_V2(width / 2, height / 2);
 
-  avoid_add_node(
-    view->avoid, id, position.X - width / 2.0f, position.Y - height / 2.0f,
-    width, height);
-
   // figure out the position of each port
   float leftInc = (height) / (numInputPorts + 1);
   float rightInc = (height) / (numOutputPorts + 1);
@@ -101,22 +94,14 @@ ComponentID view_add_component(
 
   for (int j = 0; j < desc->numPorts; j++) {
     PortView portView = (PortView){0};
-    PortSide side = SIDE_LEFT;
 
     if (desc->ports[j].direction == PORT_IN) {
       portView.center = HMM_V2(-width / 2 + borderWidth / 2, leftY);
       leftY += leftInc;
-      side = SIDE_LEFT;
     } else if (desc->ports[j].direction != PORT_IN) {
       portView.center = HMM_V2(width / 2 - borderWidth / 2, rightY);
       rightY += rightInc;
-      side = SIDE_RIGHT;
     }
-
-    PortID portID = arrlen(view->ports);
-    HMM_Vec2 center =
-      HMM_Add(portView.center, HMM_V2(width / 2.0f, height / 2.0f));
-    avoid_add_port(view->avoid, portID, id, side, center.X, center.Y);
 
     arrput(view->ports, portView);
   }
@@ -127,13 +112,6 @@ ComponentID view_add_component(
 NetID view_add_net(CircuitView *view, PortID portFrom, PortID portTo) {
   NetID id = circuit_add_net(&view->circuit, portFrom, portTo);
   NetView netView = {0};
-
-  Port *portFromPtr = &view->circuit.ports[portFrom];
-  Port *portToPtr = &view->circuit.ports[portTo];
-
-  avoid_add_edge(
-    view->avoid, id, portFromPtr->component, portFrom, portToPtr->component,
-    portTo);
 
   arrput(view->nets, netView);
   return id;
@@ -237,31 +215,8 @@ void view_rem_vertex(CircuitView *view, NetID net) {
   }
 }
 
-void view_route(CircuitView *view) {
-  avoid_route(view->avoid);
-
-  float coords[1024];
-
-  for (int i = 0; i < arrlen(view->nets); i++) {
-    NetView *netView = &view->nets[i];
-
-    size_t len = avoid_get_edge_path(
-      view->avoid, i, coords, sizeof(coords) / sizeof(coords[0]));
-    len /= 2;
-
-    if (len <= 2) {
-      continue;
-    }
-
-    while ((netView->vertexEnd - netView->vertexStart) < len - 2) {
-      view_add_vertex(view, i, HMM_V2(0, 0));
-    }
-    while ((netView->vertexEnd - netView->vertexStart) > len - 2) {
-      view_rem_vertex(view, i);
-    }
-    for (int j = 0; j < len - 2; j++) {
-      view->vertices[netView->vertexStart + j] =
-        HMM_V2(coords[(j + 1) * 2], coords[(j + 1) * 2 + 1]);
-    }
-  }
+void view_set_vertex(
+  CircuitView *view, NetID net, VertexID index, HMM_Vec2 pos) {
+  NetView *netView = &view->nets[net];
+  view->vertices[netView->vertexStart + index] = pos;
 }
