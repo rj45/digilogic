@@ -226,10 +226,10 @@ UTEST(View, view_add_component) {
   view_add_component(&view, COMP_OR, HMM_V2(200, 200));
 
   ASSERT_EQ(arrlen(view.components), 2);
-  ASSERT_EQ(view.components[0].position.X, 100);
-  ASSERT_EQ(view.components[0].position.Y, 100);
-  ASSERT_EQ(view.components[1].position.X, 200);
-  ASSERT_EQ(view.components[1].position.Y, 200);
+  ASSERT_EQ(view.components[0].box.center.X, 100);
+  ASSERT_EQ(view.components[0].box.center.Y, 100);
+  ASSERT_EQ(view.components[1].box.center.X, 200);
+  ASSERT_EQ(view.components[1].box.center.Y, 200);
 
   view_free(&view);
 }

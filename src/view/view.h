@@ -18,20 +18,45 @@
 #define VIEW_H
 
 #include "handmade_math.h"
+#include <stdbool.h>
 
 #include "avoid/avoid.h"
 #include "core/core.h"
 
+typedef struct Box {
+  HMM_Vec2 center;
+  HMM_Vec2 halfSize;
+} Box;
+
+#define box_top_left(box)                                                      \
+  ((HMM_Vec2){                                                                 \
+    (box).center.X - (box).halfSize.X, (box).center.Y - (box).halfSize.Y})
+#define box_bottom_right(box)                                                  \
+  ((HMM_Vec2){                                                                 \
+    (box).center.X + (box).halfSize.X, (box).center.Y + (box).halfSize.Y})
+#define box_size(box) ((HMM_Vec2){(box).halfSize.X * 2, (box).halfSize.Y * 2})
+
+static inline bool box_intersect_box(Box a, Box b) {
+  HMM_Vec2 delta = HMM_SubV2(a.center, b.center);
+  float ex = HMM_ABS(delta.X) - (a.halfSize.X + b.halfSize.X);
+  float ey = HMM_ABS(delta.Y) - (a.halfSize.Y + b.halfSize.Y);
+  return ex < 0 && ey < 0;
+}
+
+static inline bool box_intersect_point(Box a, HMM_Vec2 b) {
+  HMM_Vec2 delta = HMM_SubV2(a.center, b);
+  float ex = HMM_ABS(delta.X) - a.halfSize.X;
+  float ey = HMM_ABS(delta.Y) - a.halfSize.Y;
+  return ex < 0 && ey < 0;
+}
+
 typedef struct PortView {
-  // postion of port relative to the component
-  HMM_Vec2 position;
+  // postion of center of port relative to the component
+  HMM_Vec2 center;
 } PortView;
 
 typedef struct ComponentView {
-  // position of the component relative to the circuit
-  HMM_Vec2 position;
-  // size of the component
-  HMM_Vec2 size;
+  Box box;
 } ComponentView;
 
 typedef struct NetView {

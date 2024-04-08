@@ -156,8 +156,6 @@ void draw_filled_rect(
   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius, HMM_Vec4 color) {
   struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
 
-  // printf("draw_filled_rect %f %f %f %f\n", );
-
   nk_fill_rect(
     nk_ctx, nk_rect(position.X, position.Y, size.X, size.Y), radius,
     nk_rgba_f(color.R, color.G, color.B, color.A));

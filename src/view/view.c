@@ -25,6 +25,7 @@
 #define COMPONENT_WIDTH PORT_SPACING * 3
 #define PORT_WIDTH 15.0f
 #define BORDER_WIDTH 1.0f
+#define COMPONENT_RADIUS 5.0f
 
 void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
   *view = (CircuitView){
@@ -51,7 +52,7 @@ ComponentID view_add_component(
   Component *component = &view->circuit.components[id];
   const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
 
-  ComponentView componentViewTmp = {.position = position};
+  ComponentView componentViewTmp = {.box.center = position};
   arrput(view->components, componentViewTmp);
   ComponentView *componentView = &view->components[id];
 
@@ -69,35 +70,36 @@ ComponentID view_add_component(
   float height =
     fmaxf(numInputPorts, numOutputPorts) * PORT_SPACING + PORT_SPACING;
   float width = COMPONENT_WIDTH;
-  componentView->size = HMM_V2(width, height);
 
-  avoid_add_node(view->avoid, id, position.X, position.Y, width, height);
+  componentView->box.halfSize = HMM_V2(width / 2, height / 2);
+
+  avoid_add_node(
+    view->avoid, id, position.X - width / 2.0f, position.Y - height / 2.0f,
+    width, height);
 
   // figure out the position of each port
   float leftInc = (height) / (numInputPorts + 1);
   float rightInc = (height) / (numOutputPorts + 1);
-  float leftY = leftInc;
-  float rightY = rightInc;
+  float leftY = leftInc - height / 2;
+  float rightY = rightInc - height / 2;
 
   for (int j = 0; j < desc->numPorts; j++) {
     PortView portView = (PortView){0};
     PortSide side = SIDE_LEFT;
 
     if (desc->ports[j].direction == PORT_IN) {
-      portView.position =
-        HMM_V2(-PORT_WIDTH / 2 + BORDER_WIDTH / 2, leftY - PORT_WIDTH / 2);
+      portView.center = HMM_V2(-width / 2 + BORDER_WIDTH / 2, leftY);
       leftY += leftInc;
       side = SIDE_LEFT;
     } else if (desc->ports[j].direction != PORT_IN) {
-      portView.position = HMM_V2(
-        width - PORT_WIDTH / 2 - BORDER_WIDTH / 2, rightY - PORT_WIDTH / 2);
+      portView.center = HMM_V2(width / 2 - BORDER_WIDTH / 2, rightY);
       rightY += rightInc;
       side = SIDE_RIGHT;
     }
 
     PortID portID = arrlen(view->ports);
     HMM_Vec2 center =
-      HMM_Add(portView.position, HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2));
+      HMM_Add(portView.center, HMM_V2(width / 2.0f, height / 2.0f));
     avoid_add_port(view->avoid, portID, id, side, center.X, center.Y);
 
     arrput(view->ports, portView);
@@ -135,21 +137,25 @@ void view_draw(CircuitView *view, Context ctx) {
     Component *component = &view->circuit.components[i];
     const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
 
-    HMM_Vec2 pos = panZoom(view, componentView->position);
-    HMM_Vec2 size = zoom(view, componentView->size);
+    HMM_Vec2 pos = panZoom(
+      view, HMM_SubV2(componentView->box.center, componentView->box.halfSize));
+    HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
 
     draw_filled_rect(
-      ctx, pos, size, view->zoom * 5.0f, HMM_V4(0.5f, 0.5f, 0.5f, 1.0f));
+      ctx, pos, size, view->zoom * COMPONENT_RADIUS,
+      HMM_V4(0.5f, 0.5f, 0.5f, 1.0f));
     draw_stroked_rect(
-      ctx, pos, size, view->zoom * 5.0f, view->zoom * 1.0f,
+      ctx, pos, size, view->zoom * COMPONENT_RADIUS, view->zoom * 1.0f,
       HMM_V4(0.8, 0.8, 0.8, 1.0f));
 
     for (int j = 0; j < desc->numPorts; j++) {
       PortView *portView = &view->ports[component->portStart + j];
       // Port *port = &view->circuit.ports[component->portStart + j];
 
-      HMM_Vec2 portPosition =
-        panZoom(view, HMM_Add(componentView->position, portView->position));
+      HMM_Vec2 portPosition = panZoom(
+        view, HMM_Sub(
+                HMM_Add(componentView->box.center, portView->center),
+                HMM_V2(PORT_WIDTH / 2.0f, PORT_WIDTH / 2.0f)));
       HMM_Vec2 portSize = zoom(view, HMM_V2(PORT_WIDTH, PORT_WIDTH));
 
       draw_filled_circle(
@@ -169,22 +175,14 @@ void view_draw(CircuitView *view, Context ctx) {
     ComponentView *componentViewFrom = &view->components[portFrom->component];
 
     HMM_Vec2 portFromPosition = panZoom(
-      view,
-      HMM_Add(
-        HMM_Add(
-          componentViewFrom->position, HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2)),
-        portViewFrom->position));
+      view, HMM_Add(componentViewFrom->box.center, portViewFrom->center));
 
     Port *portTo = &view->circuit.ports[net->portTo];
     PortView *portViewTo = &view->ports[net->portTo];
     ComponentView *componentViewTo = &view->components[portTo->component];
 
-    HMM_Vec2 portToPosition = panZoom(
-      view,
-      HMM_Add(
-        HMM_Add(
-          componentViewTo->position, HMM_V2(PORT_WIDTH / 2, PORT_WIDTH / 2)),
-        portViewTo->position));
+    HMM_Vec2 portToPosition =
+      panZoom(view, HMM_Add(componentViewTo->box.center, portViewTo->center));
 
     HMM_Vec2 pos = portFromPosition;
 

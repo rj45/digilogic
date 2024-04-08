@@ -19,9 +19,6 @@
 
 #include "view/view.h"
 
-/** defines an STB array */
-#define arr(type) type *
-
 typedef struct {
   CircuitView circuit;
 
