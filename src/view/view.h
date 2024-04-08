@@ -50,6 +50,24 @@ static inline bool box_intersect_point(Box a, HMM_Vec2 b) {
   return ex < 0 && ey < 0;
 }
 
+typedef struct Theme {
+  float portSpacing;
+  float componentWidth;
+  float portWidth;
+  float borderWidth;
+  float componentRadius;
+  float wireThickness;
+  struct {
+    HMM_Vec4 component;
+    HMM_Vec4 componentBorder;
+    HMM_Vec4 port;
+    HMM_Vec4 portBorder;
+    HMM_Vec4 wire;
+  } color;
+} Theme;
+
+void theme_init(Theme *theme);
+
 typedef struct PortView {
   // postion of center of port relative to the component
   HMM_Vec2 center;
@@ -66,6 +84,7 @@ typedef struct NetView {
 
 typedef struct CircuitView {
   Circuit circuit;
+  Theme theme;
   AvoidRouter *avoid;
 
   arr(ComponentView) components;

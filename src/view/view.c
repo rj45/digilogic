@@ -21,11 +21,24 @@
 #include "core/core.h"
 #include "view.h"
 
-#define PORT_SPACING 20.0f
-#define COMPONENT_WIDTH PORT_SPACING * 3
-#define PORT_WIDTH 15.0f
-#define BORDER_WIDTH 1.0f
-#define COMPONENT_RADIUS 5.0f
+void theme_init(Theme *theme) {
+  *theme = (Theme){
+    .portSpacing = 20.0f,
+    .componentWidth = 20.0f * 3,
+    .portWidth = 15.0f,
+    .borderWidth = 1.0f,
+    .componentRadius = 5.0f,
+    .wireThickness = 2.0f,
+    .color =
+      {
+        .component = HMM_V4(0.5f, 0.5f, 0.5f, 1.0f),
+        .componentBorder = HMM_V4(0.8f, 0.8f, 0.8f, 1.0f),
+        .port = HMM_V4(0.8f, 0.8f, 0.8f, 1.0f),
+        .portBorder = HMM_V4(0.3f, 0.3f, 0.3f, 1.0f),
+        .wire = HMM_V4(0.3f, 0.6f, 0.3f, 1.0f),
+      },
+  };
+}
 
 void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
   *view = (CircuitView){
@@ -34,6 +47,7 @@ void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
     .zoom = 1.0f,
   };
   circuit_init(&view->circuit, componentDescs);
+  theme_init(&view->theme);
 }
 
 void view_free(CircuitView *view) {
@@ -68,8 +82,9 @@ ComponentID view_add_component(
     }
   }
   float height =
-    fmaxf(numInputPorts, numOutputPorts) * PORT_SPACING + PORT_SPACING;
-  float width = COMPONENT_WIDTH;
+    fmaxf(numInputPorts, numOutputPorts) * view->theme.portSpacing +
+    view->theme.portSpacing;
+  float width = view->theme.componentWidth;
 
   componentView->box.halfSize = HMM_V2(width / 2, height / 2);
 
@@ -82,17 +97,18 @@ ComponentID view_add_component(
   float rightInc = (height) / (numOutputPorts + 1);
   float leftY = leftInc - height / 2;
   float rightY = rightInc - height / 2;
+  float borderWidth = view->theme.borderWidth;
 
   for (int j = 0; j < desc->numPorts; j++) {
     PortView portView = (PortView){0};
     PortSide side = SIDE_LEFT;
 
     if (desc->ports[j].direction == PORT_IN) {
-      portView.center = HMM_V2(-width / 2 + BORDER_WIDTH / 2, leftY);
+      portView.center = HMM_V2(-width / 2 + borderWidth / 2, leftY);
       leftY += leftInc;
       side = SIDE_LEFT;
     } else if (desc->ports[j].direction != PORT_IN) {
-      portView.center = HMM_V2(width / 2 - BORDER_WIDTH / 2, rightY);
+      portView.center = HMM_V2(width / 2 - borderWidth / 2, rightY);
       rightY += rightInc;
       side = SIDE_RIGHT;
     }
@@ -142,27 +158,26 @@ void view_draw(CircuitView *view, Context ctx) {
     HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
 
     draw_filled_rect(
-      ctx, pos, size, view->zoom * COMPONENT_RADIUS,
-      HMM_V4(0.5f, 0.5f, 0.5f, 1.0f));
+      ctx, pos, size, view->zoom * view->theme.componentRadius,
+      view->theme.color.component);
     draw_stroked_rect(
-      ctx, pos, size, view->zoom * COMPONENT_RADIUS, view->zoom * 1.0f,
-      HMM_V4(0.8, 0.8, 0.8, 1.0f));
+      ctx, pos, size, view->zoom * view->theme.componentRadius,
+      view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
 
     for (int j = 0; j < desc->numPorts; j++) {
       PortView *portView = &view->ports[component->portStart + j];
-      // Port *port = &view->circuit.ports[component->portStart + j];
 
+      float portWidth = view->theme.portWidth;
       HMM_Vec2 portPosition = panZoom(
         view, HMM_Sub(
                 HMM_Add(componentView->box.center, portView->center),
-                HMM_V2(PORT_WIDTH / 2.0f, PORT_WIDTH / 2.0f)));
-      HMM_Vec2 portSize = zoom(view, HMM_V2(PORT_WIDTH, PORT_WIDTH));
+                HMM_V2(portWidth / 2.0f, portWidth / 2.0f)));
+      HMM_Vec2 portSize = zoom(view, HMM_V2(portWidth, portWidth));
 
-      draw_filled_circle(
-        ctx, portPosition, portSize, HMM_V4(0.8, 0.8, 0.8, 1.0f));
+      draw_filled_circle(ctx, portPosition, portSize, view->theme.color.port);
       draw_stroked_circle(
-        ctx, portPosition, portSize, view->zoom * 1.0f,
-        HMM_V4(0.3, 0.3, 0.3, 1.0f));
+        ctx, portPosition, portSize, view->zoom * view->theme.borderWidth,
+        view->theme.color.portBorder);
     }
   }
 
@@ -189,12 +204,14 @@ void view_draw(CircuitView *view, Context ctx) {
     for (int i = netView->vertexStart; i < netView->vertexEnd; i++) {
       HMM_Vec2 vertex = panZoom(view, view->vertices[i]);
       draw_stroked_line(
-        ctx, pos, vertex, view->zoom * 2.0f, HMM_V4(0.3, 0.6, 0.3, 1.0f));
+        ctx, pos, vertex, view->zoom * view->theme.wireThickness,
+        view->theme.color.wire);
       pos = vertex;
     }
 
     draw_stroked_line(
-      ctx, pos, portToPosition, view->zoom * 2.0f, HMM_V4(0.3, 0.6, 0.3, 1.0f));
+      ctx, pos, portToPosition, view->zoom * view->theme.wireThickness,
+      view->theme.color.wire);
   }
 }
 
