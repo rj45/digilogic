@@ -33,14 +33,8 @@
 #include "sokol_nuklear.h"
 #include "stb_ds.h"
 
-#define MAX_ZOOM 20.0f
-
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
-
-  // ensure the keys array is big enough to fit all the keys
-  bv_setlen(app->keys, SAPP_KEYCODE_MENU + 1);
-  bv_clear_all(app->keys);
 
   ux_init(&app->circuit, circuit_component_descs());
 
@@ -70,8 +64,6 @@ static void init(void *user_data) {
 
 void cleanup(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
-
-  bv_free(app->keys);
 
   ux_free(&app->circuit);
 
@@ -130,23 +122,12 @@ static void canvas(struct nk_context *ctx, my_app_t *app) {
   if (canvas_begin(
         ctx, &canvas, 0, 0, 0, sapp_width(), sapp_height(),
         nk_rgb(0x22, 0x29, 0x33))) {
+    app->circuit.input.frameDuration = sapp_frame_duration();
 
-    if (nk_window_is_hovered(ctx)) {
-      float dt = (float)sapp_frame_duration();
-      if (bv_is_set(app->keys, SAPP_KEYCODE_W)) {
-        app->circuit.view.pan.Y -= 600.0f * dt * app->circuit.view.zoom;
-      }
-      if (bv_is_set(app->keys, SAPP_KEYCODE_A)) {
-        app->circuit.view.pan.X -= 600.0f * dt * app->circuit.view.zoom;
-      }
-      if (bv_is_set(app->keys, SAPP_KEYCODE_S)) {
-        app->circuit.view.pan.Y += 600.0f * dt * app->circuit.view.zoom;
-      }
-      if (bv_is_set(app->keys, SAPP_KEYCODE_D)) {
-        app->circuit.view.pan.X += 600.0f * dt * app->circuit.view.zoom;
-      }
-    }
     ux_draw(&app->circuit, canvas.painter);
+
+    app->circuit.input.scroll = HMM_V2(0, 0);
+    app->circuit.input.mouseDelta = HMM_V2(0, 0);
   }
   canvas_end(ctx, &canvas);
 }
@@ -229,41 +210,25 @@ void event(const sapp_event *event, void *user_data) {
 
   switch (event->type) {
   case SAPP_EVENTTYPE_KEY_DOWN:
-    bv_set(app->keys, event->key_code);
+    bv_set(app->circuit.input.keys, event->key_code);
     if (event->key_code == SAPP_KEYCODE_ESCAPE) {
       sapp_request_quit();
     }
     break;
   case SAPP_EVENTTYPE_KEY_UP:
-    bv_clear(app->keys, event->key_code);
+    bv_clear(app->circuit.input.keys, event->key_code);
     break;
+  case SAPP_EVENTTYPE_MOUSE_MOVE: {
+    HMM_Vec2 mousePos = HMM_V2(event->mouse_x, event->mouse_y);
+    app->circuit.input.mouseDelta = HMM_Add(
+      app->circuit.input.mouseDelta,
+      HMM_Sub(app->circuit.input.mousePos, mousePos));
+    app->circuit.input.mousePos = mousePos;
+    break;
+  }
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
-    // calculate the new zoom
-    app->circuit.view.zoomExp += event->scroll_y * 0.5f;
-    if (app->circuit.view.zoomExp < -MAX_ZOOM) {
-      app->circuit.view.zoomExp = -MAX_ZOOM;
-    } else if (app->circuit.view.zoomExp > MAX_ZOOM) {
-      app->circuit.view.zoomExp = MAX_ZOOM;
-    }
-    float newZoom = powf(1.1f, app->circuit.view.zoomExp);
-    float oldZoom = app->circuit.view.zoom;
-    app->circuit.view.zoom = newZoom;
-
-    // figure out where the mouse was in "world coords" with the old zoom
-    HMM_Vec2 originalMousePos = HMM_DivV2F(
-      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.view.pan),
-      oldZoom);
-
-    // figure out where the mouse is in "world coords" with the new zoom
-    HMM_Vec2 newMousePos = HMM_DivV2F(
-      HMM_Sub(HMM_V2(event->mouse_x, event->mouse_y), app->circuit.view.pan),
-      newZoom);
-
-    // figure out the correction to the pan so that the zoom is centred on the
-    // mouse position
-    HMM_Vec2 correction =
-      HMM_MulV2F(HMM_Sub(newMousePos, originalMousePos), newZoom);
-    app->circuit.view.pan = HMM_Add(app->circuit.view.pan, correction);
+    app->circuit.input.scroll = HMM_Add(
+      app->circuit.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
 
     break;
   }

@@ -160,11 +160,18 @@ enum {
 typedef struct Input {
   bv(uint64_t) keys;
   uint16_t modifiers;
+  double frameDuration;
+  HMM_Vec2 mousePos;
+  HMM_Vec2 mouseDelta;
+  HMM_Vec2 scroll;
 } Input;
 
 typedef struct CircuitUX {
   CircuitView view;
+  Input input;
   AvoidRouter *avoid;
+
+  float zoomExp;
 } CircuitUX;
 
 void ux_init(CircuitUX *ux, const ComponentDesc *componentDescs);

@@ -19,15 +19,20 @@
 
 #include "ux.h"
 
+#define MAX_ZOOM 20.0f
+
 void ux_init(CircuitUX *ux, const ComponentDesc *componentDescs) {
   *ux = (CircuitUX){
     .avoid = avoid_new(),
   };
+  bv_setlen(ux->input.keys, KEYCODE_MENU + 1);
+  bv_clear_all(ux->input.keys);
   view_init(&ux->view, componentDescs);
 }
 
 void ux_free(CircuitUX *ux) {
   view_free(&ux->view);
+  bv_free(ux->input.keys);
   avoid_free(ux->avoid);
 }
 
@@ -82,7 +87,54 @@ void ux_set_vertex(CircuitUX *ux, NetID net, VertexID index, HMM_Vec2 pos) {
   view_set_vertex(&ux->view, net, index, pos);
 }
 
-void ux_draw(CircuitUX *ux, Context ctx) { view_draw(&ux->view, ctx); }
+static void ux_zoom(CircuitUX *ux) {
+  // calculate the new zoom
+  ux->zoomExp += ux->input.scroll.Y * 0.5f;
+  if (ux->zoomExp < -MAX_ZOOM) {
+    ux->zoomExp = -MAX_ZOOM;
+  } else if (ux->zoomExp > MAX_ZOOM) {
+    ux->zoomExp = MAX_ZOOM;
+  }
+  float newZoom = powf(1.1f, ux->zoomExp);
+  float oldZoom = ux->view.zoom;
+  ux->view.zoom = newZoom;
+
+  // figure out where the mouse was in "world coords" with the old zoom
+  HMM_Vec2 originalMousePos =
+    HMM_DivV2F(HMM_Sub(ux->input.mousePos, ux->view.pan), oldZoom);
+
+  // figure out where the mouse is in "world coords" with the new zoom
+  HMM_Vec2 newMousePos =
+    HMM_DivV2F(HMM_Sub(ux->input.mousePos, ux->view.pan), newZoom);
+
+  // figure out the correction to the pan so that the zoom is centred on the
+  // mouse position
+  HMM_Vec2 correction =
+    HMM_MulV2F(HMM_Sub(newMousePos, originalMousePos), newZoom);
+  ux->view.pan = HMM_Add(ux->view.pan, correction);
+}
+
+void ux_draw(CircuitUX *ux, Context ctx) {
+  float dt = (float)ux->input.frameDuration;
+  if (bv_is_set(ux->input.keys, KEYCODE_W)) {
+    ux->view.pan.Y -= 600.0f * dt * ux->view.zoom;
+  }
+  if (bv_is_set(ux->input.keys, KEYCODE_A)) {
+    ux->view.pan.X -= 600.0f * dt * ux->view.zoom;
+  }
+  if (bv_is_set(ux->input.keys, KEYCODE_S)) {
+    ux->view.pan.Y += 600.0f * dt * ux->view.zoom;
+  }
+  if (bv_is_set(ux->input.keys, KEYCODE_D)) {
+    ux->view.pan.X += 600.0f * dt * ux->view.zoom;
+  }
+
+  if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {
+    ux_zoom(ux);
+  }
+
+  view_draw(&ux->view, ctx);
+}
 
 void ux_route(CircuitUX *ux) {
   avoid_route(ux->avoid);
