@@ -14,12 +14,15 @@
    limitations under the License.
 */
 
+#include "core/core.h"
+#include "handmade_math.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
 #include "ux.h"
 
 #define MAX_ZOOM 20.0f
+#define MOUSE_FUDGE 1.5f
 
 void ux_init(CircuitUX *ux, const ComponentDesc *componentDescs) {
   *ux = (CircuitUX){
@@ -114,6 +117,82 @@ static void ux_zoom(CircuitUX *ux) {
   ux->view.pan = HMM_Add(ux->view.pan, correction);
 }
 
+static void ux_handle_mouse(CircuitUX *ux) {
+  ux->view.hoveredComponent = NO_COMPONENT;
+  ux->view.hoveredPort = NO_PORT;
+
+  HMM_Vec2 worldMousePos =
+    HMM_DivV2F(HMM_Sub(ux->input.mousePos, ux->view.pan), ux->view.zoom);
+
+  Box mouseBox = {
+    .center = worldMousePos,
+    .halfSize = HMM_V2(MOUSE_FUDGE, MOUSE_FUDGE),
+  };
+
+  for (size_t i = 0; i < arrlen(ux->view.components); i++) {
+    ComponentView *componentView = &ux->view.components[i];
+    if (box_intersect_box(componentView->box, mouseBox)) {
+      ux->view.hoveredComponent = i;
+    }
+    for (size_t j = view_port_start(&ux->view, i);
+         j < view_port_end(&ux->view, i); j++) {
+      PortView *portView = &ux->view.ports[j];
+      Box portBox = {
+        .center = HMM_Add(portView->center, componentView->box.center),
+        .halfSize = HMM_V2(
+          ux->view.theme.portWidth / 2.0f, ux->view.theme.portWidth / 2.0f),
+      };
+      if (box_intersect_box(portBox, mouseBox)) {
+        ux->view.hoveredPort = j;
+      }
+    }
+  }
+
+  if (ux->input.modifiers & MODIFIER_LMB) {
+    if (ux->downMeaning == DOWN_MEANING_NONE) {
+      ux->downMeaning = DOWN_MEANING_CLICK;
+      ux->downStart = worldMousePos;
+      if (
+        ux->view.hoveredComponent != NO_COMPONENT &&
+        arrlen(ux->view.selectedComponents) == 0) {
+        arrput(ux->view.selectedComponents, ux->view.hoveredComponent);
+      }
+    } else if (
+      ux->downMeaning == DOWN_MEANING_CLICK &&
+      HMM_LenV2(HMM_Sub(ux->downStart, worldMousePos)) >
+        10.0f * ux->view.zoom) {
+      if (arrlen(ux->view.selectedComponents) > 0) {
+        ux->downMeaning = DOWN_MEANING_MOVE;
+      } else {
+        ux->downMeaning = DOWN_MEANING_SELECT;
+      }
+    }
+    if (ux->downMeaning == DOWN_MEANING_MOVE) {
+      HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
+      for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
+        ComponentID id = ux->view.selectedComponents[i];
+        ComponentView *componentView = &ux->view.components[id];
+        componentView->box.center = HMM_Add(componentView->box.center, delta);
+        avoid_move_node(ux->avoid, id, delta.X, delta.Y);
+      }
+      ux->downStart = worldMousePos;
+      ux_route(ux);
+    }
+  } else {
+    if (
+      ux->downMeaning == DOWN_MEANING_CLICK &&
+      arrlen(ux->view.selectedComponents) > 0) {
+      arrsetlen(ux->view.selectedComponents, 0);
+    }
+    if (
+      ux->downMeaning == DOWN_MEANING_MOVE &&
+      arrlen(ux->view.selectedComponents) > 0) {
+      // finalize move
+    }
+    ux->downMeaning = DOWN_MEANING_NONE;
+  }
+}
+
 void ux_draw(CircuitUX *ux, Context ctx) {
   float dt = (float)ux->input.frameDuration;
   if (bv_is_set(ux->input.keys, KEYCODE_W)) {
@@ -132,6 +211,8 @@ void ux_draw(CircuitUX *ux, Context ctx) {
   if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {
     ux_zoom(ux);
   }
+
+  ux_handle_mouse(ux);
 
   view_draw(&ux->view, ctx);
 }
@@ -152,11 +233,15 @@ void ux_route(CircuitUX *ux) {
       continue;
     }
 
-    while ((netView->vertexEnd - netView->vertexStart) < len - 2) {
+    int curSize = (netView->vertexEnd - netView->vertexStart) + 2;
+
+    while (curSize < len) {
       ux_add_vertex(ux, i, HMM_V2(0, 0));
+      curSize++;
     }
-    while ((netView->vertexEnd - netView->vertexStart) > len - 2) {
+    while (curSize > len && curSize > 2) {
       ux_rem_vertex(ux, i);
+      curSize--;
     }
     for (int j = 0; j < len - 2; j++) {
       ux_set_vertex(

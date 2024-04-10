@@ -54,6 +54,19 @@ void avoid_add_node(
   state->nodeShapes.insert(state->nodeShapes.begin() + nodeID, node);
 }
 
+#include <cstdio>
+
+void avoid_move_node(AvoidRouter *a, ComponentID nodeID, float x, float y) {
+  auto state = reinterpret_cast<AvoidState *>(a);
+
+  Avoid::ShapeRef *node = state->nodeShapes[nodeID];
+  Avoid::Point p(x, y);
+
+  auto poly = node->polygon();
+  poly.translate(x, y);
+  state->router.moveShape(node, poly);
+}
+
 void avoid_add_port(
   AvoidRouter *a, PortID portID, ComponentID nodeID, PortSide side,
   float centerX, float centerY) {

@@ -157,6 +157,15 @@ enum {
   MODIFIER_MMB = 0x400, // middle mouse button
 };
 
+typedef enum DownMeaning {
+  DOWN_MEANING_NONE,
+  DOWN_MEANING_CLICK,
+  DOWN_MEANING_SELECT,
+  DOWN_MEANING_MOVE,
+  DOWN_MEANING_PAN,
+  DOWN_MEANING_WIRE,
+} DownMeaning;
+
 typedef struct Input {
   bv(uint64_t) keys;
   uint16_t modifiers;
@@ -166,10 +175,29 @@ typedef struct Input {
   HMM_Vec2 scroll;
 } Input;
 
+typedef struct ItemID {
+  enum {
+    ITEM_NONE,
+    ITEM_COMPONENT,
+    ITEM_PORT,
+    ITEM_NET,
+  } type;
+  union {
+    ComponentID componentID;
+    PortID portID;
+    NetID netID;
+  };
+} ItemID;
+
 typedef struct CircuitUX {
   CircuitView view;
   Input input;
   AvoidRouter *avoid;
+
+  ItemID moving;
+
+  DownMeaning downMeaning;
+  HMM_Vec2 downStart;
 
   float zoomExp;
 } CircuitUX;

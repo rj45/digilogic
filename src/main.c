@@ -211,13 +211,22 @@ void event(const sapp_event *event, void *user_data) {
   switch (event->type) {
   case SAPP_EVENTTYPE_KEY_DOWN:
     bv_set(app->circuit.input.keys, event->key_code);
+    app->circuit.input.modifiers = event->modifiers;
     if (event->key_code == SAPP_KEYCODE_ESCAPE) {
       sapp_request_quit();
     }
     break;
+
   case SAPP_EVENTTYPE_KEY_UP:
     bv_clear(app->circuit.input.keys, event->key_code);
+    app->circuit.input.modifiers = event->modifiers;
     break;
+
+  case SAPP_EVENTTYPE_MOUSE_DOWN:
+  case SAPP_EVENTTYPE_MOUSE_UP:
+    app->circuit.input.modifiers = event->modifiers;
+    break;
+
   case SAPP_EVENTTYPE_MOUSE_MOVE: {
     HMM_Vec2 mousePos = HMM_V2(event->mouse_x, event->mouse_y);
     app->circuit.input.mouseDelta = HMM_Add(

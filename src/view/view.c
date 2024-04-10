@@ -20,6 +20,8 @@
 #include "core/core.h"
 #include "view.h"
 
+#include <assert.h>
+
 void theme_init(Theme *theme) {
   *theme = (Theme){
     .portSpacing = 20.0f,
@@ -35,6 +37,8 @@ void theme_init(Theme *theme) {
         .port = HMM_V4(0.8f, 0.8f, 0.8f, 1.0f),
         .portBorder = HMM_V4(0.3f, 0.3f, 0.3f, 1.0f),
         .wire = HMM_V4(0.3f, 0.6f, 0.3f, 1.0f),
+        .hovered = HMM_V4(0.6f, 0.6f, 0.6f, 1.0f),
+        .selected = HMM_V4(0.3f, 0.3f, 0.6f, 1.0f),
       },
   };
 }
@@ -43,6 +47,9 @@ void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
   *view = (CircuitView){
     .pan = HMM_V2(0.0f, 0.0f),
     .zoom = 1.0f,
+    .hoveredComponent = NO_COMPONENT,
+    .selectedPort = NO_PORT,
+    .hoveredPort = NO_PORT,
   };
   circuit_init(&view->circuit, componentDescs);
   theme_init(&view->theme);
@@ -53,6 +60,7 @@ void view_free(CircuitView *view) {
   arrfree(view->ports);
   arrfree(view->nets);
   arrfree(view->vertices);
+  arrfree(view->selectedComponents);
   circuit_free(&view->circuit);
 }
 
@@ -135,9 +143,31 @@ void view_draw(CircuitView *view, Context ctx) {
       view, HMM_SubV2(componentView->box.center, componentView->box.halfSize));
     HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
 
+    if (i == view->hoveredComponent) {
+      draw_filled_rect(
+        ctx,
+        HMM_Sub(
+          pos, HMM_V2(
+                 view->theme.borderWidth * view->zoom * 2.0f,
+                 view->theme.borderWidth * view->zoom * 2.0f)),
+        HMM_Add(
+          size, HMM_V2(
+                  view->theme.borderWidth * view->zoom * 4.0f,
+                  view->theme.borderWidth * view->zoom * 4.0f)),
+        view->zoom * view->theme.componentRadius, view->theme.color.hovered);
+    }
+
+    bool isSelected = false;
+    for (int j = 0; j < arrlen(view->selectedComponents); j++) {
+      if (view->selectedComponents[j] == i) {
+        isSelected = true;
+        break;
+      }
+    }
+
     draw_filled_rect(
       ctx, pos, size, view->zoom * view->theme.componentRadius,
-      view->theme.color.component);
+      isSelected ? view->theme.color.selected : view->theme.color.component);
     draw_stroked_rect(
       ctx, pos, size, view->zoom * view->theme.componentRadius,
       view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
@@ -151,6 +181,20 @@ void view_draw(CircuitView *view, Context ctx) {
                 HMM_Add(componentView->box.center, portView->center),
                 HMM_V2(portWidth / 2.0f, portWidth / 2.0f)));
       HMM_Vec2 portSize = zoom(view, HMM_V2(portWidth, portWidth));
+
+      if (component->portStart + j == view->hoveredPort) {
+        draw_filled_circle(
+          ctx,
+          HMM_Sub(
+            portPosition, HMM_V2(
+                            view->theme.borderWidth * view->zoom * 2.0f,
+                            view->theme.borderWidth * view->zoom * 2.0f)),
+          HMM_Add(
+            portSize, HMM_V2(
+                        view->theme.borderWidth * view->zoom * 4.0f,
+                        view->theme.borderWidth * view->zoom * 4.0f)),
+          view->theme.color.hovered);
+      }
 
       draw_filled_circle(ctx, portPosition, portSize, view->theme.color.port);
       draw_stroked_circle(
@@ -206,8 +250,10 @@ void view_add_vertex(CircuitView *view, NetID net, HMM_Vec2 vertex) {
 
 void view_rem_vertex(CircuitView *view, NetID net) {
   NetView *netView = &view->nets[net];
-  arrdel(view->vertices, netView->vertexEnd);
+  assert(netView->vertexEnd > netView->vertexStart);
+  assert(netView->vertexEnd <= arrlen(view->vertices));
   netView->vertexEnd--;
+  arrdel(view->vertices, netView->vertexEnd);
   for (int i = net + 1; i < arrlen(view->nets); i++) {
     NetView *netView = &view->nets[i];
     netView->vertexStart--;

@@ -50,5 +50,7 @@ EXPORT_C void avoid_add_edge(
 EXPORT_C void avoid_route(AvoidRouter *a);
 EXPORT_C size_t
 avoid_get_edge_path(AvoidRouter *a, NetID edgeID, float *coords, size_t maxLen);
+EXPORT_C void
+avoid_move_node(AvoidRouter *a, ComponentID nodeID, float x, float y);
 
 #endif // AVOID_H

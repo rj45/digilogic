@@ -62,6 +62,8 @@ typedef struct Theme {
     HMM_Vec4 port;
     HMM_Vec4 portBorder;
     HMM_Vec4 wire;
+    HMM_Vec4 hovered;
+    HMM_Vec4 selected;
   } color;
 } Theme;
 
@@ -92,6 +94,12 @@ typedef struct CircuitView {
 
   HMM_Vec2 pan;
   float zoom;
+
+  ComponentID hoveredComponent;
+  arr(ComponentID) selectedComponents;
+
+  PortID hoveredPort;
+  PortID selectedPort;
 } CircuitView;
 
 typedef void *Context;
