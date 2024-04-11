@@ -49,6 +49,22 @@ static inline bool box_intersect_point(Box a, HMM_Vec2 b) {
   return ex < 0 && ey < 0;
 }
 
+static inline Box box_from_tlbr(HMM_Vec2 tl, HMM_Vec2 br) {
+  if (tl.X > br.X) {
+    float tmp = tl.X;
+    tl.X = br.X;
+    br.X = tmp;
+  }
+  if (tl.Y > br.Y) {
+    float tmp = tl.Y;
+    tl.Y = br.Y;
+    br.Y = tmp;
+  }
+  return ((Box){
+    .center = HMM_LerpV2(tl, 0.5f, br),
+    .halfSize = HMM_MulV2F(HMM_SubV2(br, tl), 0.5f)});
+}
+
 typedef struct Theme {
   float portSpacing;
   float componentWidth;
@@ -64,6 +80,7 @@ typedef struct Theme {
     HMM_Vec4 wire;
     HMM_Vec4 hovered;
     HMM_Vec4 selected;
+    HMM_Vec4 selectFill;
   } color;
 } Theme;
 
@@ -100,6 +117,8 @@ typedef struct CircuitView {
 
   PortID hoveredPort;
   PortID selectedPort;
+
+  Box selectionBox;
 } CircuitView;
 
 typedef void *Context;

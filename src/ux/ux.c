@@ -117,6 +117,211 @@ static void ux_zoom(CircuitUX *ux) {
   ux->view.pan = HMM_Add(ux->view.pan, correction);
 }
 
+/* Enter this into mermaid.live:
+    stateDiagram
+        [*] --> Up : !down
+        Up --> Down : down & !overComp & !overPort & !inSel
+        Down --> Click : !down & !sel
+        Down --> Desel : !down & sel
+        Desel --> [*]
+        Down --> SelArea : move & !sel
+        SelArea --> [*]
+        Up --> MoveSel : down & inSel
+        MoveSel --> [*]
+        SelOne --> MoveSel : move
+        SelOne --> [*]
+        Click --> [*]
+        ConnectPort --> [*]
+        Up --> SelOne : down & overComp & !overPort & !inSel
+        Up --> ClickPort : down & overPort & !inSel
+        ClickPort --> DragWiring : move
+        ClickPort --> ClickWiring : !down
+        DragWiring --> ConnectPort : overPort & !down
+        DragWiring --> FloatingWire : !overPort & !down
+        ClickWiring --> ConnectPort : overPort & down
+        ClickWiring --> FloatingWire : !overPort & down
+        FloatingWire --> [*]
+*/
+static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
+  bool down = ux->input.modifiers & MODIFIER_LMB;
+  bool overPort = ux->view.hoveredPort != NO_PORT;
+  bool overComponent = ux->view.hoveredComponent != NO_COMPONENT;
+
+  MouseDownState oldState = ux->mouseDownState;
+  MouseDownState state = oldState;
+  for (;;) {
+    bool move = down && HMM_LenV2(HMM_Sub(worldMousePos, ux->downStart)) >
+                          (10.0f * ux->view.zoom);
+    bool selected = arrlen(ux->view.selectedComponents) > 0 ||
+                    HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.0f;
+
+    bool inSelection =
+      box_intersect_point(ux->view.selectionBox, worldMousePos);
+    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
+      ComponentID id = ux->view.selectedComponents[i];
+      ComponentView *componentView = &ux->view.components[id];
+      if (box_intersect_point(componentView->box, worldMousePos)) {
+        inSelection = true;
+        break;
+      }
+    }
+
+    // process the state transitions -- do not put actions here, see the next
+    // switch statement
+    switch (state) {
+    case STATE_UP:
+      if (down) {
+        if (inSelection) {
+          state = STATE_MOVE_SELECTION;
+        } else if (overPort) {
+          state = STATE_CLICK_PORT;
+        } else if (overComponent) {
+          state = STATE_SELECT_ONE;
+        } else {
+          state = STATE_DOWN;
+        }
+      }
+      break;
+    case STATE_DOWN:
+      if (!down) {
+        if (selected) {
+          state = STATE_DESELECT;
+        } else {
+          state = STATE_CLICK;
+        }
+      } else if (move && !selected) {
+        state = STATE_SELECT_AREA;
+      }
+      break;
+    case STATE_CLICK:
+      if (!down) {
+        state = STATE_UP;
+      }
+      break;
+    case STATE_DESELECT:
+      if (!down) {
+        state = STATE_UP;
+      }
+      break;
+    case STATE_SELECT_AREA:
+      if (!down) {
+        state = STATE_UP;
+      }
+      break;
+    case STATE_SELECT_ONE:
+      if (!down) {
+        state = STATE_UP;
+      } else if (move) {
+        state = STATE_MOVE_SELECTION;
+      }
+      break;
+    case STATE_MOVE_SELECTION:
+      if (!down) {
+        state = STATE_UP;
+      }
+      break;
+    case STATE_CLICK_PORT:
+      if (down) {
+        state = STATE_CLICK_WIRING;
+      } else if (move) {
+        state = STATE_DRAG_WIRING;
+      }
+      break;
+    case STATE_DRAG_WIRING:
+      if (overPort && !down) {
+        state = STATE_CONNECT_PORT;
+      } else if (!overPort && !down) {
+        state = STATE_FLOATING_WIRE;
+      }
+      break;
+    case STATE_CLICK_WIRING:
+      if (down) {
+        if (overPort) {
+          state = STATE_CONNECT_PORT;
+        } else if (!overPort) {
+          state = STATE_FLOATING_WIRE;
+        }
+      }
+      break;
+    case STATE_CONNECT_PORT:
+      if (!down) {
+        state = STATE_UP;
+        break;
+      }
+    case STATE_FLOATING_WIRE:
+      if (!down) {
+        state = STATE_UP;
+        break;
+      }
+    }
+
+    if (state != oldState) {
+      // process exit state actions here
+      switch (oldState) {
+      case STATE_UP:
+        ux->downStart = worldMousePos;
+        break;
+
+      default:
+        break;
+      }
+
+      // process enter state actions here
+      switch (state) {
+      case STATE_DESELECT:
+        arrsetlen(ux->view.selectedComponents, 0);
+        ux->view.selectionBox = (Box){0};
+        break;
+
+      case STATE_SELECT_ONE:
+        arrsetlen(ux->view.selectedComponents, 0);
+        arrput(ux->view.selectedComponents, ux->view.hoveredComponent);
+        break;
+
+      default:
+        break;
+      }
+
+      oldState = state;
+      continue;
+    }
+
+    break;
+  }
+
+  // handle continuous update state actions here
+  switch (state) {
+  case STATE_MOVE_SELECTION: {
+    HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
+    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
+      ComponentID id = ux->view.selectedComponents[i];
+      ComponentView *componentView = &ux->view.components[id];
+      componentView->box.center = HMM_Add(componentView->box.center, delta);
+      avoid_move_node(ux->avoid, id, delta.X, delta.Y);
+    }
+    ux_route(ux);
+    ux->view.selectionBox.center =
+      HMM_AddV2(ux->view.selectionBox.center, delta);
+    ux->downStart = worldMousePos;
+    break;
+  }
+  case STATE_SELECT_AREA:
+    ux->view.selectionBox = box_from_tlbr(ux->downStart, worldMousePos);
+    arrsetlen(ux->view.selectedComponents, 0);
+    for (size_t i = 0; i < arrlen(ux->view.components); i++) {
+      ComponentView *componentView = &ux->view.components[i];
+      if (box_intersect_box(componentView->box, ux->view.selectionBox)) {
+        arrput(ux->view.selectedComponents, i);
+      }
+    }
+    break;
+  default:
+    break;
+  }
+
+  ux->mouseDownState = state;
+}
+
 static void ux_handle_mouse(CircuitUX *ux) {
   ux->view.hoveredComponent = NO_COMPONENT;
   ux->view.hoveredPort = NO_PORT;
@@ -148,49 +353,7 @@ static void ux_handle_mouse(CircuitUX *ux) {
     }
   }
 
-  if (ux->input.modifiers & MODIFIER_LMB) {
-    if (ux->downMeaning == DOWN_MEANING_NONE) {
-      ux->downMeaning = DOWN_MEANING_CLICK;
-      ux->downStart = worldMousePos;
-      if (
-        ux->view.hoveredComponent != NO_COMPONENT &&
-        arrlen(ux->view.selectedComponents) == 0) {
-        arrput(ux->view.selectedComponents, ux->view.hoveredComponent);
-      }
-    } else if (
-      ux->downMeaning == DOWN_MEANING_CLICK &&
-      HMM_LenV2(HMM_Sub(ux->downStart, worldMousePos)) >
-        10.0f * ux->view.zoom) {
-      if (arrlen(ux->view.selectedComponents) > 0) {
-        ux->downMeaning = DOWN_MEANING_MOVE;
-      } else {
-        ux->downMeaning = DOWN_MEANING_SELECT;
-      }
-    }
-    if (ux->downMeaning == DOWN_MEANING_MOVE) {
-      HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
-      for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
-        ComponentID id = ux->view.selectedComponents[i];
-        ComponentView *componentView = &ux->view.components[id];
-        componentView->box.center = HMM_Add(componentView->box.center, delta);
-        avoid_move_node(ux->avoid, id, delta.X, delta.Y);
-      }
-      ux->downStart = worldMousePos;
-      ux_route(ux);
-    }
-  } else {
-    if (
-      ux->downMeaning == DOWN_MEANING_CLICK &&
-      arrlen(ux->view.selectedComponents) > 0) {
-      arrsetlen(ux->view.selectedComponents, 0);
-    }
-    if (
-      ux->downMeaning == DOWN_MEANING_MOVE &&
-      arrlen(ux->view.selectedComponents) > 0) {
-      // finalize move
-    }
-    ux->downMeaning = DOWN_MEANING_NONE;
-  }
+  ux_mouse_down_state_machine(ux, worldMousePos);
 }
 
 void ux_draw(CircuitUX *ux, Context ctx) {

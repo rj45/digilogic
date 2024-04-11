@@ -39,6 +39,7 @@ void theme_init(Theme *theme) {
         .wire = HMM_V4(0.3f, 0.6f, 0.3f, 1.0f),
         .hovered = HMM_V4(0.6f, 0.6f, 0.6f, 1.0f),
         .selected = HMM_V4(0.3f, 0.3f, 0.6f, 1.0f),
+        .selectFill = HMM_V4(0.2f, 0.2f, 0.35f, 1.0f),
       },
   };
 }
@@ -134,6 +135,16 @@ static HMM_Vec2 zoom(CircuitView *view, HMM_Vec2 size) {
 }
 
 void view_draw(CircuitView *view, Context ctx) {
+  if (
+    view->selectionBox.halfSize.X > 0.001f &&
+    view->selectionBox.halfSize.Y > 0.001f) {
+    HMM_Vec2 pos = panZoom(
+      view, HMM_SubV2(view->selectionBox.center, view->selectionBox.halfSize));
+    HMM_Vec2 size = zoom(view, HMM_MulV2F(view->selectionBox.halfSize, 2.0f));
+
+    draw_filled_rect(ctx, pos, size, 0, view->theme.color.selected);
+  }
+
   for (int i = 0; i < arrlen(view->components); i++) {
     ComponentView *componentView = &view->components[i];
     Component *component = &view->circuit.components[i];

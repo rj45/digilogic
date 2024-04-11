@@ -157,14 +157,20 @@ enum {
   MODIFIER_MMB = 0x400, // middle mouse button
 };
 
-typedef enum DownMeaning {
-  DOWN_MEANING_NONE,
-  DOWN_MEANING_CLICK,
-  DOWN_MEANING_SELECT,
-  DOWN_MEANING_MOVE,
-  DOWN_MEANING_PAN,
-  DOWN_MEANING_WIRE,
-} DownMeaning;
+typedef enum MouseDownState {
+  STATE_UP,
+  STATE_DOWN,
+  STATE_CLICK,
+  STATE_DESELECT,
+  STATE_SELECT_AREA,
+  STATE_SELECT_ONE,
+  STATE_MOVE_SELECTION,
+  STATE_CLICK_PORT,
+  STATE_DRAG_WIRING,
+  STATE_CLICK_WIRING,
+  STATE_CONNECT_PORT,
+  STATE_FLOATING_WIRE,
+} MouseDownState;
 
 typedef struct Input {
   bv(uint64_t) keys;
@@ -196,7 +202,8 @@ typedef struct CircuitUX {
 
   ItemID moving;
 
-  DownMeaning downMeaning;
+  MouseDownState mouseDownState;
+
   HMM_Vec2 downStart;
 
   float zoomExp;

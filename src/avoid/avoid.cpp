@@ -32,7 +32,7 @@ struct AvoidState {
 
 AvoidRouter *avoid_new() {
   AvoidState *state = new AvoidState();
-  state->router.setRoutingPenalty(Avoid::shapeBufferDistance, 20.0);
+  state->router.setRoutingPenalty(Avoid::shapeBufferDistance, 15.0);
   state->router.setRoutingPenalty(Avoid::crossingPenalty, 200.0);
   return state;
 }

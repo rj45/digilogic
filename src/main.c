@@ -39,10 +39,15 @@ static void init(void *user_data) {
   ux_init(&app->circuit, circuit_component_descs());
 
   ComponentID and = ux_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
-  ComponentID or = ux_add_component(&app->circuit, COMP_OR, HMM_V2(200, 200));
+  ComponentID or = ux_add_component(&app->circuit, COMP_OR, HMM_V2(300, 200));
+  ComponentID not = ux_add_component(&app->circuit, COMP_NOT, HMM_V2(200, 150));
 
   ux_add_net(
     &app->circuit, view_port_start(&app->circuit.view, and) + 2,
+    view_port_start(&app->circuit.view, not ));
+
+  ux_add_net(
+    &app->circuit, view_port_start(&app->circuit.view, not ) + 1,
     view_port_start(&app->circuit.view, or));
 
   ux_add_net(

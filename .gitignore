@@ -4,3 +4,4 @@ digilogic
 *.dSYM
 thirdparty/adaptagrams
 *.o
+.DS_Store
