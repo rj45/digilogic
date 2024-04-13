@@ -203,6 +203,8 @@ void frame(void *user_data) {
   snk_render(sapp_width(), sapp_height());
   sg_end_pass();
   sg_commit();
+
+  bv_clear_all(app->circuit.input.keysPressed);
 }
 
 void event(const sapp_event *event, void *user_data) {
@@ -215,7 +217,8 @@ void event(const sapp_event *event, void *user_data) {
 
   switch (event->type) {
   case SAPP_EVENTTYPE_KEY_DOWN:
-    bv_set(app->circuit.input.keys, event->key_code);
+    bv_set(app->circuit.input.keysDown, event->key_code);
+    bv_set(app->circuit.input.keysPressed, event->key_code);
     app->circuit.input.modifiers = event->modifiers;
     if (event->key_code == SAPP_KEYCODE_ESCAPE) {
       sapp_request_quit();
@@ -223,7 +226,7 @@ void event(const sapp_event *event, void *user_data) {
     break;
 
   case SAPP_EVENTTYPE_KEY_UP:
-    bv_clear(app->circuit.input.keys, event->key_code);
+    bv_clear(app->circuit.input.keysDown, event->key_code);
     app->circuit.input.modifiers = event->modifiers;
     break;
 

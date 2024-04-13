@@ -28,14 +28,15 @@ void ux_init(CircuitUX *ux, const ComponentDesc *componentDescs) {
   *ux = (CircuitUX){
     .avoid = avoid_new(),
   };
-  bv_setlen(ux->input.keys, KEYCODE_MENU + 1);
-  bv_clear_all(ux->input.keys);
+  bv_setlen(ux->input.keysDown, KEYCODE_MENU + 1);
+  bv_setlen(ux->input.keysPressed, KEYCODE_MENU + 1);
+  bv_clear_all(ux->input.keysDown);
   view_init(&ux->view, componentDescs);
 }
 
 void ux_free(CircuitUX *ux) {
   view_free(&ux->view);
-  bv_free(ux->input.keys);
+  bv_free(ux->input.keysDown);
   avoid_free(ux->avoid);
 }
 
@@ -268,14 +269,37 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
       // process enter state actions here
       switch (state) {
+      case STATE_SELECT_ONE: // fallthrough
       case STATE_DESELECT:
-        arrsetlen(ux->view.selectedComponents, 0);
-        ux->view.selectionBox = (Box){0};
-        break;
+        if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
+          ux_do(
+            ux, (UndoCommand){
+                  .verb = UNDO_DESELECT_AREA,
+                  .area = ux->view.selectionBox,
+                });
+        } else {
+          if (
+            state == STATE_DESELECT ||
+            (ux->input.modifiers & MODIFIER_SHIFT) == 0) {
+            while (arrlen(ux->view.selectedComponents) > 0) {
+              ux_do(
+                ux,
+                (UndoCommand){
+                  .verb = UNDO_DESELECT_COMPONENT,
+                  .componentID = ux->view.selectedComponents
+                                   [arrlen(ux->view.selectedComponents) - 1],
+                });
+            }
+          }
+        }
 
-      case STATE_SELECT_ONE:
-        arrsetlen(ux->view.selectedComponents, 0);
-        arrput(ux->view.selectedComponents, ux->view.hoveredComponent);
+        if (state == STATE_SELECT_ONE) {
+          ux_do(
+            ux, (UndoCommand){
+                  .verb = UNDO_SELECT_COMPONENT,
+                  .componentID = ux->view.hoveredComponent,
+                });
+        }
         break;
 
       default:
@@ -293,27 +317,20 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   switch (state) {
   case STATE_MOVE_SELECTION: {
     HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
-    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
-      ComponentID id = ux->view.selectedComponents[i];
-      ComponentView *componentView = &ux->view.components[id];
-      componentView->box.center = HMM_Add(componentView->box.center, delta);
-      avoid_move_node(ux->avoid, id, delta.X, delta.Y);
-    }
-    ux_route(ux);
-    ux->view.selectionBox.center =
-      HMM_AddV2(ux->view.selectionBox.center, delta);
-    ux->downStart = worldMousePos;
+    ux_do(
+      ux, (UndoCommand){
+            .verb = UNDO_MOVE_SELECTION,
+            .delta = delta,
+          });
+
     break;
   }
   case STATE_SELECT_AREA:
-    ux->view.selectionBox = box_from_tlbr(ux->downStart, worldMousePos);
-    arrsetlen(ux->view.selectedComponents, 0);
-    for (size_t i = 0; i < arrlen(ux->view.components); i++) {
-      ComponentView *componentView = &ux->view.components[i];
-      if (box_intersect_box(componentView->box, ux->view.selectionBox)) {
-        arrput(ux->view.selectedComponents, i);
-      }
-    }
+    ux_do(
+      ux, (UndoCommand){
+            .verb = UNDO_SELECT_AREA,
+            .area = box_from_tlbr(ux->downStart, worldMousePos),
+          });
     break;
   default:
     break;
@@ -358,17 +375,40 @@ static void ux_handle_mouse(CircuitUX *ux) {
 
 void ux_draw(CircuitUX *ux, Context ctx) {
   float dt = (float)ux->input.frameDuration;
-  if (bv_is_set(ux->input.keys, KEYCODE_W)) {
+  if (bv_is_set(ux->input.keysDown, KEYCODE_W)) {
     ux->view.pan.Y -= 600.0f * dt * ux->view.zoom;
   }
-  if (bv_is_set(ux->input.keys, KEYCODE_A)) {
+  if (bv_is_set(ux->input.keysDown, KEYCODE_A)) {
     ux->view.pan.X -= 600.0f * dt * ux->view.zoom;
   }
-  if (bv_is_set(ux->input.keys, KEYCODE_S)) {
+  if (bv_is_set(ux->input.keysDown, KEYCODE_S)) {
     ux->view.pan.Y += 600.0f * dt * ux->view.zoom;
   }
-  if (bv_is_set(ux->input.keys, KEYCODE_D)) {
+  if (bv_is_set(ux->input.keysDown, KEYCODE_D)) {
     ux->view.pan.X += 600.0f * dt * ux->view.zoom;
+  }
+
+  // cmd + z or ctrl + z: undo
+  // cmd + shift + z or ctrl + shift + z: redo (common on macos)
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_Z)) {
+    if (
+      ux->input.modifiers & MODIFIER_CTRL ||
+      ux->input.modifiers & MODIFIER_SUPER) {
+      if (ux->input.modifiers & MODIFIER_SHIFT) {
+        ux_redo(ux);
+      } else {
+        ux_undo(ux);
+      }
+    }
+  }
+
+  // cmd + y or ctrl + y: redo (common on windows / linux)
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_Y)) {
+    if (
+      ux->input.modifiers & MODIFIER_CTRL ||
+      ux->input.modifiers & MODIFIER_SUPER) {
+      ux_redo(ux);
+    }
   }
 
   if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {
@@ -411,4 +451,146 @@ void ux_route(CircuitUX *ux) {
         ux, i, j, HMM_V2(coords[(j + 1) * 2], coords[(j + 1) * 2 + 1]));
     }
   }
+}
+
+static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
+  switch (command.verb) {
+  case UNDO_NONE:
+    break;
+  case UNDO_MOVE_SELECTION: {
+    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
+      ComponentID id = ux->view.selectedComponents[i];
+      ComponentView *componentView = &ux->view.components[id];
+      componentView->box.center =
+        HMM_Add(componentView->box.center, command.delta);
+      avoid_move_node(ux->avoid, id, command.delta.X, command.delta.Y);
+    }
+    ux_route(ux);
+    ux->view.selectionBox.center =
+      HMM_AddV2(ux->view.selectionBox.center, command.delta);
+    ux->downStart = HMM_AddV2(ux->downStart, command.delta);
+    break;
+  }
+  case UNDO_SELECT_COMPONENT:
+    arrput(ux->view.selectedComponents, command.componentID);
+    break;
+  case UNDO_SELECT_AREA:
+    ux->view.selectionBox = command.area;
+    arrsetlen(ux->view.selectedComponents, 0);
+    for (size_t i = 0; i < arrlen(ux->view.components); i++) {
+      ComponentView *componentView = &ux->view.components[i];
+      if (box_intersect_box(componentView->box, command.area)) {
+        arrput(ux->view.selectedComponents, i);
+      }
+    }
+    break;
+  case UNDO_DESELECT_COMPONENT:
+    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
+      if (ux->view.selectedComponents[i] == command.componentID) {
+        arrdel(ux->view.selectedComponents, i);
+        break;
+      }
+    }
+    break;
+  case UNDO_DESELECT_AREA:
+    arrsetlen(ux->view.selectedComponents, 0);
+    ux->view.selectionBox = (Box){0};
+    break;
+  }
+}
+
+static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
+  int last = arrlen(ux->undoStack) - 1;
+  if (last >= 0) {
+    // merge commands if they are the same
+    UndoCommand *lastCommand = &ux->undoStack[last];
+    if (lastCommand->verb == command.verb) {
+      switch (command.verb) {
+      case UNDO_NONE:
+        return;
+      case UNDO_MOVE_SELECTION:
+        lastCommand->delta = HMM_Add(lastCommand->delta, command.delta);
+        return;
+      case UNDO_SELECT_COMPONENT:
+        lastCommand->componentID = command.componentID;
+        return;
+      case UNDO_SELECT_AREA:
+        lastCommand->area = command.area;
+        return;
+      case UNDO_DESELECT_COMPONENT:
+        if (lastCommand->componentID == command.componentID) {
+          return;
+        }
+        break;
+      case UNDO_DESELECT_AREA:
+        break;
+      }
+    }
+  }
+  arrput(ux->undoStack, command);
+}
+
+void ux_do(CircuitUX *ux, UndoCommand command) {
+  arrsetlen(ux->redoStack, 0);
+  ux_push_undo(ux, command);
+  ux_perform_command(ux, command);
+}
+
+static UndoCommand ux_flip_command(UndoCommand cmd) {
+  UndoCommand flip = {0};
+  switch (cmd.verb) {
+  case UNDO_NONE:
+    break;
+  case UNDO_MOVE_SELECTION:
+    flip.verb = UNDO_MOVE_SELECTION;
+    flip.delta = HMM_V2(-cmd.delta.X, -cmd.delta.Y);
+    break;
+  case UNDO_SELECT_COMPONENT:
+    flip.verb = UNDO_DESELECT_COMPONENT;
+    flip.componentID = cmd.componentID;
+    break;
+  case UNDO_SELECT_AREA:
+    flip.verb = UNDO_DESELECT_AREA;
+    flip.area = cmd.area;
+    break;
+  case UNDO_DESELECT_COMPONENT:
+    flip.verb = UNDO_SELECT_COMPONENT;
+    flip.componentID = cmd.componentID;
+    break;
+  case UNDO_DESELECT_AREA:
+    flip.verb = UNDO_SELECT_AREA;
+    flip.area = cmd.area;
+    break;
+  }
+  return flip;
+}
+
+UndoCommand ux_undo(CircuitUX *ux) {
+  if (arrlen(ux->undoStack) == 0) {
+    return (UndoCommand){0};
+  }
+
+  UndoCommand cmd = arrpop(ux->undoStack);
+
+  // push the opposite of the command to the redo stack
+  UndoCommand redoCmd = ux_flip_command(cmd);
+  arrput(ux->redoStack, redoCmd);
+
+  ux_perform_command(ux, redoCmd);
+  return cmd;
+}
+
+UndoCommand ux_redo(CircuitUX *ux) {
+  if (arrlen(ux->redoStack) == 0) {
+    return (UndoCommand){0};
+  }
+
+  UndoCommand cmd = arrpop(ux->redoStack);
+
+  // push the opposite of the command to the undo stack
+  UndoCommand undoCmd = ux_flip_command(cmd);
+  arrput(ux->undoStack, undoCmd);
+
+  ux_perform_command(ux, undoCmd);
+  return cmd;
 }

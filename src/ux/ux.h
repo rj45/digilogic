@@ -173,7 +173,8 @@ typedef enum MouseDownState {
 } MouseDownState;
 
 typedef struct Input {
-  bv(uint64_t) keys;
+  bv(uint64_t) keysDown;
+  bv(uint64_t) keysPressed;
   uint16_t modifiers;
   double frameDuration;
   HMM_Vec2 mousePos;
@@ -195,12 +196,30 @@ typedef struct ItemID {
   };
 } ItemID;
 
+typedef struct UndoCommand {
+  enum {
+    UNDO_NONE,
+    UNDO_MOVE_SELECTION,
+    UNDO_SELECT_COMPONENT,
+    UNDO_SELECT_AREA,
+    UNDO_DESELECT_COMPONENT,
+    UNDO_DESELECT_AREA,
+  } verb;
+
+  union {
+    HMM_Vec2 delta;
+    ComponentID componentID;
+    Box area;
+  };
+} UndoCommand;
+
 typedef struct CircuitUX {
   CircuitView view;
   Input input;
   AvoidRouter *avoid;
 
-  ItemID moving;
+  arr(UndoCommand) undoStack;
+  arr(UndoCommand) redoStack;
 
   MouseDownState mouseDownState;
 
@@ -216,5 +235,8 @@ ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);
 NetID ux_add_net(CircuitUX *circuit, PortID portFrom, PortID portTo);
 void ux_draw(CircuitUX *ux, Context ctx);
 void ux_route(CircuitUX *ux);
+void ux_do(CircuitUX *ux, UndoCommand command);
+UndoCommand ux_undo(CircuitUX *ux);
+UndoCommand ux_redo(CircuitUX *ux);
 
 #endif // UX_H
