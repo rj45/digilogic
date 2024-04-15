@@ -17,10 +17,16 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "sokol_gfx.h"
 #include "ux/ux.h"
 
 typedef struct {
   CircuitUX circuit;
+
+  sg_shader msdf_shader;
+  sg_pipeline msdf_pipeline;
+  sg_image msdf_tex;
+  sg_sampler msdf_sampler;
 } my_app_t;
 
 #endif // MAIN_H

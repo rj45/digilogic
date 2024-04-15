@@ -29,9 +29,13 @@
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_INCLUDE_STANDARD_VARARGS
 #define NK_IMPLEMENTATION
+#define MSDF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+
 
 #define SOKOL_IMPL
 #define SOKOL_METAL
+#define SGP_UNIFORM_CONTENT_SLOTS 12
 
 
 #include "nuklear.h"
@@ -40,3 +44,7 @@
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_nuklear.h"
+#include "stb_image.h"
+#include "sokol_gp.h"
+
+#include "msdf.h"

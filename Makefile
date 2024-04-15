@@ -1,9 +1,9 @@
 
-HEADERS = src/main.h src/core/core.h $(THIRDPARTY)
+HEADERS = src/main.h src/core/core.h src/font.h src/view/view.h src/ux/ux.h src/shaders/msdf_shader.h $(THIRDPARTY)
 SRCS = src/core/circuit.c src/ux/ux.c src/view/view.c
 THIRDPARTY = $(wildcard thirdparty/*.h)
 THIRDPARTY_LIBS = thirdparty/adaptagrams/libavoid.a
-MAIN_SRCS = $(SRCS) src/main.c src/apple.m
+MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/noto_sans_regular.c
 TEST_SRCS = $(SRCS) src/test.c src/view/view_test.c src/core/core_test.c
 
 CFLAGS = -I thirdparty -I src -Wall -Werror -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
@@ -12,7 +12,7 @@ LIBFLAGS = -fobjc-arc -framework Metal -framework Cocoa -framework MetalKit -fra
 
 .PHONY: all clean
 
-all: digilogic test
+all: digilogic test gen
 
 test: $(TEST_SRCS) $(HEADERS) $(THIRDPARTY_LIBS)
 	gcc $(CFLAGS) $(LIBFLAGS) $(TEST_SRCS) avoid.o -o test
@@ -20,6 +20,9 @@ test: $(TEST_SRCS) $(HEADERS) $(THIRDPARTY_LIBS)
 
 digilogic: $(MAIN_SRCS) $(HEADERS) $(THIRDPARTY_LIBS) avoid.o
 	gcc $(CFLAGS) $(LIBFLAGS) $(MAIN_SRCS) avoid.o -o digilogic
+
+gen: src/gen.c thirdparty/cjson.c
+	gcc $(CFLAGS) $(LIBFLAGS) src/gen.c thirdparty/cjson.c -o gen
 
 avoid.o: src/avoid/avoid.cpp
 	g++ -c $(CFLAGS) -std=c++17 -Ithirdparty/adaptagrams/cola src/avoid/avoid.cpp -o avoid.o
@@ -31,4 +34,4 @@ thirdparty/adaptagrams/cola/libavoid/.libs/libavoid.a:
 	cd thirdparty/adaptagrams/cola && ./autogen.sh
 
 clean:
-	rm -f digilogic test avoid.o
+	rm -f digilogic test gen avoid.o

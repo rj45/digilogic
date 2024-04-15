@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "font.h"
 #include "view/view.h"
 #include <stdio.h>
 #define STB_DS_IMPLEMENTATION
@@ -23,15 +24,21 @@
 #include "handmade_math.h"
 
 #include "core/core.h"
+#include "font.h"
 #include "main.h"
 
 #include "nuklear.h"
 #include "sokol_app.h"
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
+#include "sokol_gp.h"
 #include "sokol_log.h"
 #include "sokol_nuklear.h"
 #include "stb_ds.h"
+#include "stb_image.h"
+
+#define SOKOL_METAL
+#include "shaders/msdf_shader.h"
 
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
@@ -64,15 +71,106 @@ static void init(void *user_data) {
     .environment = sglue_environment(),
     .logger.func = slog_func,
   });
+  if (!sg_isvalid()) {
+    fprintf(stderr, "Failed to create Sokol GFX context!\n");
+    exit(1);
+  }
+
+  // initialize Sokol GP
+  sgp_desc sgpdesc = {0};
+  sgp_setup(&sgpdesc);
+  if (!sgp_is_valid()) {
+    fprintf(
+      stderr, "Failed to create Sokol GP context: %s\n",
+      sgp_get_error_message(sgp_get_last_error()));
+    exit(1);
+  }
+
   snk_setup(&(snk_desc_t){.logger.func = slog_func, .sample_count = 4});
+
+  app->msdf_shader = sg_make_shader(msdf_shader_desc(sg_query_backend()));
+
+  if (sg_query_shader_state(app->msdf_shader) != SG_RESOURCESTATE_VALID) {
+    fprintf(stderr, "failed to make MSDF shader\n");
+    exit(1);
+  }
+
+  app->msdf_pipeline = sgp_make_pipeline(&(sgp_pipeline_desc){
+    .shader = app->msdf_shader,
+    .has_vs_color = true,
+    .sample_count = 4,
+  });
+
+  if (sg_query_pipeline_state(app->msdf_pipeline) != SG_RESOURCESTATE_VALID) {
+    fprintf(stderr, "failed to make MSDF pipeline\n");
+    exit(1);
+  }
+  int width, height, channels;
+  stbi_uc *data = stbi_load_from_memory(
+    (const stbi_uc *)notoSansRegular.png, notoSansRegular.pngSize, &width,
+    &height, &channels, 0);
+  if (!data) {
+    fprintf(stderr, "failed to load image\n");
+    exit(1);
+  }
+
+  stbi_uc *img = data;
+
+  int colorFormat = sapp_color_format();
+
+  if (channels != 4) {
+    img = malloc(width * height * 4);
+    for (int i = 0; i < width * height; i++) {
+      if (colorFormat == SG_PIXELFORMAT_RGBA8) {
+        img[i * 4 + 0] = data[i * channels + 0];
+        img[i * 4 + 1] = data[i * channels + 1];
+        img[i * 4 + 2] = data[i * channels + 2];
+      } else if (colorFormat == SG_PIXELFORMAT_BGRA8) {
+        img[i * 4 + 0] = data[i * channels + 2];
+        img[i * 4 + 1] = data[i * channels + 1];
+        img[i * 4 + 2] = data[i * channels + 0];
+      }
+      img[i * 4 + 3] = 255;
+    }
+  }
+
+  app->msdf_tex = sg_make_image(&(sg_image_desc){
+    .width = width,
+    .height = height,
+    .pixel_format = colorFormat,
+    .data.subimage[0][0] =
+      {
+        .ptr = img,
+        .size = width * height * sizeof(stbi_uc) * 4,
+      },
+  });
+
+  if (channels != 4) {
+    free(img);
+  }
+
+  stbi_image_free(data);
+
+  app->msdf_sampler = sg_make_sampler(&(sg_sampler_desc){
+    .min_filter = SG_FILTER_LINEAR,
+    .mag_filter = SG_FILTER_LINEAR,
+    .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+    .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+  });
 }
 
 void cleanup(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
 
+  sg_destroy_sampler(app->msdf_sampler);
+  sg_destroy_image(app->msdf_tex);
+  sg_destroy_pipeline(app->msdf_pipeline);
+  sg_destroy_shader(app->msdf_shader);
+
   ux_free(&app->circuit);
 
   snk_shutdown();
+  sgp_shutdown();
   sg_shutdown();
   free(app);
 }
@@ -190,6 +288,59 @@ void frame(void *user_data) {
 
   canvas(ctx, app);
 
+  int width = sapp_width(), height = sapp_height();
+  sgp_begin(width, height);
+
+  const FontGlyph *glyph;
+  for (int i = 0; i < notoSansRegular.numGlyphs; i++) {
+    glyph = &notoSansRegular.glyphs[i];
+    if (glyph->unicode == 'A') {
+      break;
+    }
+  }
+
+  float pxSize = 64;
+
+  HMM_Vec2 pos = HMM_V2(
+    10 + glyph->planeBounds.x * pxSize, 300 + glyph->planeBounds.y * pxSize);
+  HMM_Vec2 tl =
+    HMM_Add(HMM_MulV2F(pos, app->circuit.view.zoom), app->circuit.view.pan);
+  HMM_Vec2 size = HMM_MulV2F(
+    HMM_V2(glyph->planeBounds.width, glyph->planeBounds.height), pxSize);
+  HMM_Vec2 br = HMM_AddV2(
+    HMM_MulV2F(HMM_AddV2(pos, size), app->circuit.view.zoom),
+    app->circuit.view.pan);
+
+  sgp_set_pipeline(app->msdf_pipeline);
+  msdfUniform_t msdfParams = {
+    .scale = 1.0f,
+    .bgColor = HMM_V4(0x22 / 255.0f, 0x29 / 255.0f, 0x33 / 255.0f, 1.0f),
+    .fgColor = HMM_V4(1.0f, 1.0f, 1.0f, 1.0f),
+  };
+  sgp_set_image(0, app->msdf_tex);
+  sgp_set_sampler(0, app->msdf_sampler);
+  sgp_set_color(1, 1, 1, 1);
+  sgp_set_uniform(&msdfParams, sizeof(msdfParams));
+  sgp_draw_textured_rect(
+    0,
+    (sgp_rect){
+      .x = tl.X,
+      .y = tl.Y,
+      .w = br.X - tl.X,
+      .h = br.Y - tl.Y,
+    },
+    (sgp_rect){
+      .x = glyph->atlasBounds.x,
+      .y = glyph->atlasBounds.y,
+      .w = glyph->atlasBounds.width,
+      .h = glyph->atlasBounds.height,
+    });
+  sgp_reset_uniform();
+  sgp_reset_color();
+  sgp_reset_sampler(0);
+  sgp_reset_image(0);
+  sgp_reset_pipeline();
+
   sg_pass pass = {
     .action =
       {
@@ -201,6 +352,8 @@ void frame(void *user_data) {
     .swapchain = sglue_swapchain()};
   sg_begin_pass(&pass);
   snk_render(sapp_width(), sapp_height());
+  sgp_flush();
+  sgp_end();
   sg_end_pass();
   sg_commit();
 
