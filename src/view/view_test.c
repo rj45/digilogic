@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "handmade_math.h"
 #include "stb_ds.h"
 #include "utest.h"
 
@@ -27,6 +28,7 @@ typedef enum DrawCmdType {
   DRAW_FILLED_CIRCLE,
   DRAW_STROKED_CIRCLE,
   DRAW_STROKED_LINE,
+  DRAW_TEXT,
 } DrawCmdType;
 
 typedef struct DrawCmd {
@@ -36,6 +38,8 @@ typedef struct DrawCmd {
   float radius;
   float line_thickness;
   HMM_Vec4 color;
+  char *text;
+  HMM_Vec4 bgColor;
 } DrawCmd;
 
 ////////////////////////////////////////
@@ -110,6 +114,55 @@ void draw_stroked_line(
   arrput(*cmds, cmd);
 }
 
+void draw_text(
+  Context ctx, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
+  DrawCmd **cmds = (DrawCmd **)ctx;
+  DrawCmd cmd = {
+    .type = DRAW_TEXT,
+    .position = HMM_SubV2(rect.center, rect.halfSize),
+    .size = HMM_MulV2F(rect.halfSize, 2),
+    .text = strndup(text, len),
+    .color = fgColor,
+    .bgColor = bgColor,
+  };
+  arrput(*cmds, cmd);
+}
+
+Box draw_text_bounds(
+  Context ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
+  VertAlign vert, float fontSize, FontHandle font) {
+
+  float ascender = -1.069000f * fontSize;
+  float descender = 0.293000f * fontSize;
+  float width = 0.987464f * fontSize * len;
+  float height = 1.362000f * fontSize;
+  HMM_Vec2 center = pos;
+  switch (horz) {
+  case ALIGN_LEFT:
+    center.X += width / 2;
+    break;
+  case ALIGN_CENTER:
+    break;
+  case ALIGN_RIGHT:
+    center.X -= width / 2;
+    break;
+  }
+  // correct for baseline
+  center.Y -= height / 2 - descender;
+  switch (vert) {
+  case ALIGN_TOP:
+    center.Y += ascender;
+    break;
+  case ALIGN_MIDDLE:
+    center.Y += ascender / 2;
+    break;
+  case ALIGN_BOTTOM:
+    break;
+  }
+  return (Box){.center = center, .halfSize = HMM_V2(width / 2, height / 2)};
+}
+
 ////////////////////////////////////////
 
 const char *drawNames[] = {
@@ -118,6 +171,7 @@ const char *drawNames[] = {
   [DRAW_FILLED_CIRCLE] = "filled_circle",
   [DRAW_STROKED_CIRCLE] = "stroked_circle",
   [DRAW_STROKED_LINE] = "stroked_line",
+  [DRAW_TEXT] = "text",
 };
 
 typedef struct Vert {
@@ -175,10 +229,10 @@ char *dumpDrawCmds(char *start, char *end, DrawCmd *cmds) {
       }
     }
 
-    uint8_t r = (uint8_t)(cmd.color.X * 255);
-    uint8_t g = (uint8_t)(cmd.color.Y * 255);
-    uint8_t b = (uint8_t)(cmd.color.Z * 255);
-    uint8_t a = (uint8_t)(cmd.color.W * 255);
+    uint8_t r = (uint8_t)(cmd.color.R * 255);
+    uint8_t g = (uint8_t)(cmd.color.G * 255);
+    uint8_t b = (uint8_t)(cmd.color.B * 255);
+    uint8_t a = (uint8_t)(cmd.color.A * 255);
     int colorid = -1;
     for (int j = 0; j < arrlen(colors); j++) {
       if (
@@ -194,10 +248,37 @@ char *dumpDrawCmds(char *start, char *end, DrawCmd *cmds) {
       arrput(colors, colorName);
     }
 
+    r = (uint8_t)(cmd.bgColor.R * 255);
+    g = (uint8_t)(cmd.bgColor.G * 255);
+    b = (uint8_t)(cmd.bgColor.B * 255);
+    a = (uint8_t)(cmd.bgColor.A * 255);
+    int bgcolorid = -1;
+    for (int j = 0; j < arrlen(colors); j++) {
+      if (
+        colors[j].r == r && colors[j].g == g && colors[j].b == b &&
+        colors[j].a == a) {
+        bgcolorid = j;
+        break;
+      }
+    }
+    if (bgcolorid < 0) {
+      Color colorName = {r, g, b, a};
+      bgcolorid = arrlen(colors);
+      arrput(colors, colorName);
+    }
+
     if (cmd.type == DRAW_STROKED_LINE) {
       start += snprintf(
         start, end - start, "%s v%d v%d c%d\n", drawNames[cmd.type], vertid,
         vertid2, colorid);
+      continue;
+    }
+
+    if (cmd.type == DRAW_TEXT) {
+      start += snprintf(
+        start, end - start, "%s \"%s\" v%d fg c%d bg c%d\n",
+        drawNames[cmd.type], cmd.text, vertid, colorid, bgcolorid);
+      free(cmd.text);
       continue;
     }
 
@@ -220,7 +301,7 @@ char *dumpDrawCmds(char *start, char *end, DrawCmd *cmds) {
 UTEST(View, view_add_component) {
   CircuitView view = {0};
 
-  view_init(&view, circuit_component_descs());
+  view_init(&view, circuit_component_descs(), NULL);
 
   view_add_component(&view, COMP_AND, HMM_V2(100, 100));
   view_add_component(&view, COMP_OR, HMM_V2(200, 200));
@@ -238,7 +319,7 @@ UTEST(View, view_draw_components) {
   CircuitView view = {0};
   DrawCmd *cmds = NULL;
 
-  view_init(&view, circuit_component_descs());
+  view_init(&view, circuit_component_descs(), NULL);
 
   view_add_component(&view, COMP_AND, HMM_V2(100, 100));
 
@@ -263,7 +344,7 @@ UTEST(View, view_draw_component_with_wires) {
   CircuitView view = {0};
   DrawCmd *cmds = NULL;
 
-  view_init(&view, circuit_component_descs());
+  view_init(&view, circuit_component_descs(), NULL);
   ComponentID and = view_add_component(&view, COMP_AND, HMM_V2(100, 100));
   ComponentID or = view_add_component(&view, COMP_OR, HMM_V2(200, 200));
 

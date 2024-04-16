@@ -24,14 +24,15 @@
 #define MAX_ZOOM 20.0f
 #define MOUSE_FUDGE 1.5f
 
-void ux_init(CircuitUX *ux, const ComponentDesc *componentDescs) {
+void ux_init(
+  CircuitUX *ux, const ComponentDesc *componentDescs, FontHandle font) {
   *ux = (CircuitUX){
     .avoid = avoid_new(),
   };
   bv_setlen(ux->input.keysDown, KEYCODE_MENU + 1);
   bv_setlen(ux->input.keysPressed, KEYCODE_MENU + 1);
   bv_clear_all(ux->input.keysDown);
-  view_init(&ux->view, componentDescs);
+  view_init(&ux->view, componentDescs, font);
 }
 
 void ux_free(CircuitUX *ux) {

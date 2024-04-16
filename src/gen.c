@@ -113,11 +113,11 @@ int main(int argc, char **argv) {
 
   printf("  .glyphs = (const FontGlyph[]){\n");
   for (int i = 0; i < numGlyphs; i++) {
+    uint32_t unicode =
+      cJSON_GetObjectItem(cJSON_GetArrayItem(glyphs, i), "unicode")->valueint;
     cJSON *glyph = cJSON_GetArrayItem(glyphs, i);
-    printf("    {\n");
-    printf(
-      "      .unicode = %d,\n",
-      cJSON_GetObjectItem(glyph, "unicode")->valueint);
+    printf("    [%d] = {\n", unicode);
+    printf("      .unicode = %d,\n", unicode);
     printf(
       "      .advance = %ff,\n",
       cJSON_GetObjectItem(glyph, "advance")->valuedouble);

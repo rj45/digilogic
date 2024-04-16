@@ -228,7 +228,8 @@ typedef struct CircuitUX {
   float zoomExp;
 } CircuitUX;
 
-void ux_init(CircuitUX *ux, const ComponentDesc *componentDescs);
+void ux_init(
+  CircuitUX *ux, const ComponentDesc *componentDescs, FontHandle font);
 void ux_free(CircuitUX *ux);
 ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);

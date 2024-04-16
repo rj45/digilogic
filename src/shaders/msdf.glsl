@@ -20,7 +20,6 @@
 
 @vs vs
 uniform msdfUniform {
-    float scale;
     vec4 fgColor;
     vec4 bgColor;
 };
@@ -29,7 +28,7 @@ layout(location=0) out vec2 texUV;
 layout(location=1) out vec2 fragPos;
 void main() {
     gl_Position = vec4(coord.xy, 0.0, 1.0);
-    fragPos = vec2(coord.x * scale, coord.y*scale);
+    fragPos = coord.xy;
     texUV = coord.zw;
 }
 @end
@@ -38,7 +37,6 @@ void main() {
 uniform texture2D atlas;
 uniform sampler samp;
 uniform msdfUniform {
-    float scale;
     vec4 fgColor;
     vec4 bgColor;
 };
@@ -46,21 +44,37 @@ layout(location=0) in vec2 texUV;
 layout(location=1) in vec2 fragPos;
 layout(location=0) out vec4 fragColor;
 
-#line 33
+#line 31
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }
 
+float screenPxRange() {
+    // 2.0 is the pixel range value
+    vec2 unitRange = 2.0 / vec2(textureSize(sampler2D(atlas, samp), 0));
+    vec2 screenTexSize = vec2(1.0) / fwidth(texUV);
+    return max(0.5 * dot(unitRange, screenTexSize), 1.0);
+}
+
 void main() {
-    //vec2 flippedUV = vec2(texUV.x, 1.0 - texUV.y);
     vec3 msd = texture(sampler2D(atlas, samp), texUV).rgb;
-    float sd = median(msd.r, msd.g, msd.b);
-    float w = fwidth(sd);
-    //float opacity = clamp(w + 0.5, 0.0, 1.0);
-    float opacity = smoothstep(0.5 - w, 0.5 + w, sd);
+    float dist = median(msd.r, msd.g, msd.b);
+
+    float pxDist = screenPxRange() * (dist - 0.5);
+    float opacity = clamp(pxDist + 0.5, 0.0, 1.0);
+
     fragColor = mix(bgColor, fgColor, opacity);
 }
+
+// void main() {
+//     vec3 msd = texture(sampler2D(atlas, samp), texUV).rgb;
+//     float sd = median(msd.r, msd.g, msd.b);
+//     float w = fwidth(sd);
+//     float opacity = smoothstep(0.5 - w, 0.5 + w, sd);
+//     fragColor = mix(bgColor, fgColor, opacity);
+// }
+
 @end
 
 @program msdf vs fs

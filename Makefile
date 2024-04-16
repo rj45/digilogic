@@ -6,7 +6,7 @@ THIRDPARTY_LIBS = thirdparty/adaptagrams/libavoid.a
 MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/noto_sans_regular.c
 TEST_SRCS = $(SRCS) src/test.c src/view/view_test.c src/core/core_test.c
 
-CFLAGS = -I thirdparty -I src -Wall -Werror -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+CFLAGS = -I thirdparty -I src -Wall -Werror -DDEBUG -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
 LIBFLAGS = -fobjc-arc -framework Metal -framework Cocoa -framework MetalKit -framework Quartz \
 	-Lthirdparty/adaptagrams -lavoid -lstdc++
 
@@ -32,6 +32,9 @@ thirdparty/adaptagrams/libavoid.a: thirdparty/adaptagrams/cola/libavoid/.libs/li
 
 thirdparty/adaptagrams/cola/libavoid/.libs/libavoid.a:
 	cd thirdparty/adaptagrams/cola && ./autogen.sh
+
+src/shaders/msdf_shader.h: src/shaders/msdf.glsl
+	cd src/shaders/ && ../../../fips-deploy/sokol-tools/osx-xcode-release/sokol-shdc -i msdf.glsl -o msdf_shader.h --slang glsl330:glsl300es:hlsl4:metal_macos:metal_ios:metal_sim:wgsl --ifdef
 
 clean:
 	rm -f digilogic test gen avoid.o

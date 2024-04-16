@@ -40,10 +40,14 @@
 #define SOKOL_METAL
 #include "shaders/msdf_shader.h"
 
+#define LOG_TAG "main"
+#include "common/log.h"
+
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
 
-  ux_init(&app->circuit, circuit_component_descs());
+  ux_init(
+    &app->circuit, circuit_component_descs(), (FontHandle)&notoSansRegular);
 
   ComponentID and = ux_add_component(&app->circuit, COMP_AND, HMM_V2(100, 100));
   ComponentID or = ux_add_component(&app->circuit, COMP_OR, HMM_V2(300, 200));
@@ -99,6 +103,7 @@ static void init(void *user_data) {
     .shader = app->msdf_shader,
     .has_vs_color = true,
     .sample_count = 4,
+    .blend_mode = SGP_BLENDMODE_BLEND,
   });
 
   if (sg_query_pipeline_state(app->msdf_pipeline) != SG_RESOURCESTATE_VALID) {
@@ -279,6 +284,83 @@ void draw_stroked_line(
     nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
+void draw_text(
+  Context ctx, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
+  Font *f = (Font *)font;
+  // position dot in top left corner of rect
+  HMM_Vec2 dot = HMM_SubV2(rect.center, rect.halfSize);
+  // position dot in bottom left corner of rect
+  dot.Y += rect.halfSize.Y * 2;
+  // correct for baseline
+  dot.Y -= f->descender * fontSize;
+
+  msdfUniform_t msdfParams = {
+    .bgColor = bgColor,
+    .fgColor = fgColor,
+  };
+  sgp_set_uniform(&msdfParams, sizeof(msdfParams));
+
+  for (int i = 0; i < len; i++) {
+    const FontGlyph *glyph = &f->glyphs[(int)text[i]];
+    sgp_draw_textured_rect(
+      0,
+      (sgp_rect){
+        .x = dot.X + glyph->planeBounds.x * fontSize,
+        .y = dot.Y + glyph->planeBounds.y * fontSize,
+        .w = glyph->planeBounds.width * fontSize,
+        .h = glyph->planeBounds.height * fontSize,
+      },
+      (sgp_rect){
+        .x = glyph->atlasBounds.x,
+        .y = glyph->atlasBounds.y,
+        .w = glyph->atlasBounds.width,
+        .h = glyph->atlasBounds.height,
+      });
+
+    dot.X += glyph->advance * fontSize;
+  }
+
+  sgp_reset_uniform();
+}
+
+Box draw_text_bounds(
+  Context ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
+  VertAlign vert, float fontSize, FontHandle font) {
+  Font *f = (Font *)font;
+  float ascender = f->ascender * fontSize;
+  float descender = f->descender * fontSize;
+  float width = 0;
+  for (int i = 0; i < len; i++) {
+    width += f->glyphs[(int)text[i]].advance * fontSize;
+  }
+  float height = f->lineHeight * fontSize;
+  HMM_Vec2 center = pos;
+  switch (horz) {
+  case ALIGN_LEFT:
+    center.X += width / 2;
+    break;
+  case ALIGN_CENTER:
+    break;
+  case ALIGN_RIGHT:
+    center.X -= width / 2;
+    break;
+  }
+  // correct for baseline
+  center.Y -= height / 2 - descender;
+  switch (vert) {
+  case ALIGN_TOP:
+    center.Y += ascender;
+    break;
+  case ALIGN_MIDDLE:
+    center.Y += ascender / 2;
+    break;
+  case ALIGN_BOTTOM:
+    break;
+  }
+  return (Box){.center = center, .halfSize = HMM_V2(width / 2, height / 2)};
+}
+
 void frame(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
   (void)app;
@@ -286,56 +368,16 @@ void frame(void *user_data) {
   struct nk_context *ctx = snk_new_frame();
   (void)ctx;
 
-  canvas(ctx, app);
-
   int width = sapp_width(), height = sapp_height();
   sgp_begin(width, height);
-
-  const FontGlyph *glyph;
-  for (int i = 0; i < notoSansRegular.numGlyphs; i++) {
-    glyph = &notoSansRegular.glyphs[i];
-    if (glyph->unicode == 'A') {
-      break;
-    }
-  }
-
-  float pxSize = 64;
-
-  HMM_Vec2 pos = HMM_V2(
-    10 + glyph->planeBounds.x * pxSize, 300 + glyph->planeBounds.y * pxSize);
-  HMM_Vec2 tl =
-    HMM_Add(HMM_MulV2F(pos, app->circuit.view.zoom), app->circuit.view.pan);
-  HMM_Vec2 size = HMM_MulV2F(
-    HMM_V2(glyph->planeBounds.width, glyph->planeBounds.height), pxSize);
-  HMM_Vec2 br = HMM_AddV2(
-    HMM_MulV2F(HMM_AddV2(pos, size), app->circuit.view.zoom),
-    app->circuit.view.pan);
-
   sgp_set_pipeline(app->msdf_pipeline);
-  msdfUniform_t msdfParams = {
-    .scale = 1.0f,
-    .bgColor = HMM_V4(0x22 / 255.0f, 0x29 / 255.0f, 0x33 / 255.0f, 1.0f),
-    .fgColor = HMM_V4(1.0f, 1.0f, 1.0f, 1.0f),
-  };
+
   sgp_set_image(0, app->msdf_tex);
   sgp_set_sampler(0, app->msdf_sampler);
   sgp_set_color(1, 1, 1, 1);
-  sgp_set_uniform(&msdfParams, sizeof(msdfParams));
-  sgp_draw_textured_rect(
-    0,
-    (sgp_rect){
-      .x = tl.X,
-      .y = tl.Y,
-      .w = br.X - tl.X,
-      .h = br.Y - tl.Y,
-    },
-    (sgp_rect){
-      .x = glyph->atlasBounds.x,
-      .y = glyph->atlasBounds.y,
-      .w = glyph->atlasBounds.width,
-      .h = glyph->atlasBounds.height,
-    });
-  sgp_reset_uniform();
+
+  canvas(ctx, app);
+
   sgp_reset_color();
   sgp_reset_sampler(0);
   sgp_reset_image(0);

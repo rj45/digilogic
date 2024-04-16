@@ -22,7 +22,7 @@
 
 #include <assert.h>
 
-void theme_init(Theme *theme) {
+void theme_init(Theme *theme, FontHandle font) {
   *theme = (Theme){
     .portSpacing = 20.0f,
     .componentWidth = 20.0f * 3,
@@ -30,6 +30,7 @@ void theme_init(Theme *theme) {
     .borderWidth = 1.0f,
     .componentRadius = 5.0f,
     .wireThickness = 2.0f,
+    .font = font,
     .color =
       {
         .component = HMM_V4(0.5f, 0.5f, 0.5f, 1.0f),
@@ -44,7 +45,8 @@ void theme_init(Theme *theme) {
   };
 }
 
-void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
+void view_init(
+  CircuitView *view, const ComponentDesc *componentDescs, FontHandle font) {
   *view = (CircuitView){
     .pan = HMM_V2(0.0f, 0.0f),
     .zoom = 1.0f,
@@ -53,7 +55,7 @@ void view_init(CircuitView *view, const ComponentDesc *componentDescs) {
     .hoveredPort = NO_PORT,
   };
   circuit_init(&view->circuit, componentDescs);
-  theme_init(&view->theme);
+  theme_init(&view->theme, font);
 }
 
 void view_free(CircuitView *view) {
@@ -132,6 +134,12 @@ static HMM_Vec2 panZoom(CircuitView *view, HMM_Vec2 position) {
 
 static HMM_Vec2 zoom(CircuitView *view, HMM_Vec2 size) {
   return HMM_MulV2F(size, view->zoom);
+}
+
+static Box transformBox(CircuitView *view, Box box) {
+  HMM_Vec2 center = panZoom(view, box.center);
+  HMM_Vec2 halfSize = zoom(view, box.halfSize);
+  return (Box){.center = center, .halfSize = halfSize};
 }
 
 void view_draw(CircuitView *view, Context ctx) {
@@ -246,6 +254,14 @@ void view_draw(CircuitView *view, Context ctx) {
       ctx, pos, portToPosition, view->zoom * view->theme.wireThickness,
       view->theme.color.wire);
   }
+
+  Box bounds = draw_text_bounds(
+    ctx, HMM_V2(50, 300), "Hellorld!", sizeof("Hellorld!"), ALIGN_LEFT,
+    ALIGN_BOTTOM, 32.0f, view->theme.font);
+  bounds = transformBox(view, bounds);
+  draw_text(
+    ctx, bounds, "Hellorld!", sizeof("Hellorld!"), 32.0f * view->zoom,
+    view->theme.font, HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
 }
 
 void view_add_vertex(CircuitView *view, NetID net, HMM_Vec2 vertex) {

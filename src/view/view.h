@@ -65,6 +65,8 @@ static inline Box box_from_tlbr(HMM_Vec2 tl, HMM_Vec2 br) {
     .halfSize = HMM_MulV2F(HMM_SubV2(br, tl), 0.5f)});
 }
 
+typedef void *FontHandle;
+
 typedef struct Theme {
   float portSpacing;
   float componentWidth;
@@ -72,6 +74,7 @@ typedef struct Theme {
   float borderWidth;
   float componentRadius;
   float wireThickness;
+  FontHandle font;
   struct {
     HMM_Vec4 component;
     HMM_Vec4 componentBorder;
@@ -84,7 +87,7 @@ typedef struct Theme {
   } color;
 } Theme;
 
-void theme_init(Theme *theme);
+void theme_init(Theme *theme, FontHandle font);
 
 typedef struct PortView {
   // postion of center of port relative to the component
@@ -123,7 +126,8 @@ typedef struct CircuitView {
 
 typedef void *Context;
 
-void view_init(CircuitView *view, const ComponentDesc *componentDescs);
+void view_init(
+  CircuitView *view, const ComponentDesc *componentDescs, FontHandle font);
 void view_free(CircuitView *view);
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position);
@@ -148,6 +152,18 @@ static inline PortID view_port_end(CircuitView *view, ComponentID id) {
 // external interface for drawing the circuit
 ////////////////////////////////////////
 
+typedef enum VertAlign {
+  ALIGN_TOP,
+  ALIGN_MIDDLE,
+  ALIGN_BOTTOM,
+} VertAlign;
+
+typedef enum HorizAlign {
+  ALIGN_LEFT,
+  ALIGN_CENTER,
+  ALIGN_RIGHT,
+} HorizAlign;
+
 void draw_filled_rect(
   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius, HMM_Vec4 color);
 void draw_stroked_rect(
@@ -161,5 +177,11 @@ void draw_stroked_circle(
 void draw_stroked_line(
   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color);
+void draw_text(
+  Context ctx, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
+Box draw_text_bounds(
+  Context ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
+  VertAlign vert, float fontSize, FontHandle font);
 
 #endif // VIEW_H
