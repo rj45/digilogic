@@ -454,6 +454,12 @@ void ux_route(CircuitUX *ux) {
   }
 }
 
+void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
+  ComponentView *componentView = &ux->view.components[id];
+  componentView->box.center = HMM_Add(componentView->box.center, delta);
+  avoid_move_node(ux->avoid, id, delta.X, delta.Y);
+}
+
 static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   switch (command.verb) {
   case UNDO_NONE:
@@ -461,10 +467,7 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   case UNDO_MOVE_SELECTION: {
     for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
       ComponentID id = ux->view.selectedComponents[i];
-      ComponentView *componentView = &ux->view.components[id];
-      componentView->box.center =
-        HMM_Add(componentView->box.center, command.delta);
-      avoid_move_node(ux->avoid, id, command.delta.X, command.delta.Y);
+      ux_move_component(ux, id, command.delta);
     }
     ux_route(ux);
     ux->view.selectionBox.center =

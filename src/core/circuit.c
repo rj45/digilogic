@@ -38,6 +38,14 @@ const ComponentDesc *circuit_component_descs() {
     {.direction = PORT_OUT, .name = "Y"},
   };
 
+  static PortDesc inputPorts[] = {
+    {.direction = PORT_OUT, .name = "Y"},
+  };
+
+  static PortDesc outputPorts[] = {
+    {.direction = PORT_IN, .name = "A"},
+  };
+
   static const ComponentDesc descs[] = {
     [COMP_AND] =
       {
@@ -53,12 +61,28 @@ const ComponentDesc *circuit_component_descs() {
         .namePrefix = 'X',
         .ports = orPorts,
       },
-    [COMP_NOT] = {
-      .typeName = "NOT",
-      .numPorts = 2,
-      .namePrefix = 'X',
-      .ports = notPorts,
-    }};
+    [COMP_NOT] =
+      {
+        .typeName = "NOT",
+        .numPorts = 2,
+        .namePrefix = 'X',
+        .ports = notPorts,
+      },
+    [COMP_INPUT] =
+      {
+        .typeName = "IN",
+        .numPorts = 1,
+        .namePrefix = 'I',
+        .ports = inputPorts,
+      },
+    [COMP_OUTPUT] =
+      {
+        .typeName = "OUT",
+        .numPorts = 1,
+        .namePrefix = 'O',
+        .ports = outputPorts,
+      },
+  };
   return descs;
 }
 

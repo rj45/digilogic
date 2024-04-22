@@ -233,6 +233,7 @@ void ux_init(
 void ux_free(CircuitUX *ux);
 ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);
+void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
 NetID ux_add_net(CircuitUX *circuit, PortID portFrom, PortID portTo);
 void ux_draw(CircuitUX *ux, Context ctx);
 void ux_route(CircuitUX *ux);

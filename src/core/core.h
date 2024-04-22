@@ -28,6 +28,8 @@ enum {
   COMP_AND,
   COMP_OR,
   COMP_NOT,
+  COMP_INPUT,
+  COMP_OUTPUT,
 };
 
 typedef uint32_t ComponentDescID;
