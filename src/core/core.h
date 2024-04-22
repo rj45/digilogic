@@ -46,6 +46,9 @@ typedef uint32_t PortID;
 typedef uint32_t VertexID;
 #define NO_VERTEX ((VertexID)-1)
 
+typedef uint32_t LabelID;
+#define NO_LABEL ((LabelID)-1)
+
 typedef enum PortDirection {
   PORT_IN,
   PORT_OUT,
@@ -59,19 +62,23 @@ typedef struct PortDesc {
 } PortDesc;
 
 typedef struct ComponentDesc {
-  const char *name;
+  const char *typeName;
   int numPorts;
+  char namePrefix;
   PortDesc *ports;
 } ComponentDesc;
 
 typedef struct Component {
   ComponentDescID desc;
   PortID portStart;
+  LabelID typeLabel;
+  LabelID nameLabel;
 } Component;
 
 typedef struct Port {
   ComponentID component;
   PortDescID desc; // index into the component's port descriptions
+  LabelID label;
 
   // the net the port is connected to. May be just the head of a linked list of
   // nets.
@@ -82,16 +89,29 @@ typedef struct Net {
   PortID portFrom;
   PortID portTo;
 
+  LabelID label;
+
   // linked list of all nets connected to the same source ports
   NetID next;
   NetID prev;
 } Net;
+
+typedef struct Label {
+  uint32_t textOffset;
+} Label;
 
 typedef struct Circuit {
   const ComponentDesc *componentDescs;
   arr(Component) components;
   arr(Port) ports;
   arr(Net) nets;
+  arr(Label) labels;
+  arr(char) text;
+
+  struct {
+    char key;
+    uint32_t value;
+  } *nextName;
 } Circuit;
 
 const ComponentDesc *circuit_component_descs();
@@ -99,6 +119,9 @@ void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
 ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc);
 NetID circuit_add_net(Circuit *circuit, PortID portFrom, PortID portTo);
+
+LabelID circuit_add_label(Circuit *circuit, const char *text);
+const char *circuit_label_text(Circuit *circuit, LabelID id);
 
 #define BV_BIT_SHIFT(bv)                                                       \
   ((sizeof(bv[0]) == 1)                                                        \

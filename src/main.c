@@ -288,12 +288,11 @@ void draw_text(
   Context ctx, Box rect, const char *text, int len, float fontSize,
   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
   Font *f = (Font *)font;
-  // position dot in top left corner of rect
-  HMM_Vec2 dot = HMM_SubV2(rect.center, rect.halfSize);
+  // top left corner of rect
+  HMM_Vec2 dot = box_top_left(rect);
+
   // position dot in bottom left corner of rect
   dot.Y += rect.halfSize.Y * 2;
-  // correct for baseline
-  dot.Y -= f->descender * fontSize;
 
   msdfUniform_t msdfParams = {
     .bgColor = bgColor,
@@ -325,16 +324,19 @@ void draw_text(
 }
 
 Box draw_text_bounds(
-  Context ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
-  VertAlign vert, float fontSize, FontHandle font) {
+  HMM_Vec2 pos, const char *text, int len, HorizAlign horz, VertAlign vert,
+  float fontSize, FontHandle font) {
   Font *f = (Font *)font;
-  float ascender = f->ascender * fontSize;
-  float descender = f->descender * fontSize;
   float width = 0;
+  float height = 0;
   for (int i = 0; i < len; i++) {
     width += f->glyphs[(int)text[i]].advance * fontSize;
+    float glyphHeight = f->glyphs[(int)text[i]].planeBounds.height * fontSize;
+    if (glyphHeight > height) {
+      height = glyphHeight;
+    }
   }
-  float height = f->lineHeight * fontSize;
+  // float height = f->lineHeight * fontSize;
   HMM_Vec2 center = pos;
   switch (horz) {
   case ALIGN_LEFT:
@@ -347,15 +349,14 @@ Box draw_text_bounds(
     break;
   }
   // correct for baseline
-  center.Y -= height / 2 - descender;
   switch (vert) {
   case ALIGN_TOP:
-    center.Y += ascender;
+    center.Y += height / 2;
     break;
   case ALIGN_MIDDLE:
-    center.Y += ascender / 2;
     break;
   case ALIGN_BOTTOM:
+    center.Y -= height / 2;
     break;
   }
   return (Box){.center = center, .halfSize = HMM_V2(width / 2, height / 2)};

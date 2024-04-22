@@ -130,8 +130,8 @@ void draw_text(
 }
 
 Box draw_text_bounds(
-  Context ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
-  VertAlign vert, float fontSize, FontHandle font) {
+  HMM_Vec2 pos, const char *text, int len, HorizAlign horz, VertAlign vert,
+  float fontSize, FontHandle font) {
 
   float ascender = -1.069000f * fontSize;
   float descender = 0.293000f * fontSize;
@@ -276,8 +276,8 @@ char *dumpDrawCmds(char *start, char *end, DrawCmd *cmds) {
 
     if (cmd.type == DRAW_TEXT) {
       start += snprintf(
-        start, end - start, "%s \"%s\" v%d fg c%d bg c%d\n",
-        drawNames[cmd.type], cmd.text, vertid, colorid, bgcolorid);
+        start, end - start, "%s '%s' v%d fg c%d bg c%d\n", drawNames[cmd.type],
+        cmd.text, vertid, colorid, bgcolorid);
       free(cmd.text);
       continue;
     }
@@ -327,13 +327,18 @@ UTEST(View, view_draw_components) {
 
   ASSERT_DRAW(
     "filled_rect v0 c0\n"
-    "stroked_rect v0 c1\n"
-    "filled_circle v1 c1\n"
-    "stroked_circle v1 c2\n"
-    "filled_circle v2 c1\n"
-    "stroked_circle v2 c2\n"
-    "filled_circle v3 c1\n"
-    "stroked_circle v3 c2\n",
+    "stroked_rect v0 c2\n"
+    "text 'AND' v1 fg c3 bg c1\n"
+    "text 'X1' v2 fg c2 bg c1\n"
+    "filled_circle v3 c2\n"
+    "stroked_circle v3 c4\n"
+    "text 'A' v4 fg c3 bg c1\n"
+    "filled_circle v5 c2\n"
+    "stroked_circle v5 c4\n"
+    "text 'B' v6 fg c3 bg c1\n"
+    "filled_circle v7 c2\n"
+    "stroked_circle v7 c4\n"
+    "text 'Y' v8 fg c3 bg c1\n",
     cmds);
 
   view_free(&view);
@@ -357,22 +362,32 @@ UTEST(View, view_draw_component_with_wires) {
 
   ASSERT_DRAW(
     "filled_rect v0 c0\n"
-    "stroked_rect v0 c1\n"
-    "filled_circle v1 c1\n"
-    "stroked_circle v1 c2\n"
-    "filled_circle v2 c1\n"
-    "stroked_circle v2 c2\n"
-    "filled_circle v3 c1\n"
-    "stroked_circle v3 c2\n"
-    "filled_rect v4 c0\n"
-    "stroked_rect v4 c1\n"
-    "filled_circle v5 c1\n"
-    "stroked_circle v5 c2\n"
-    "filled_circle v6 c1\n"
-    "stroked_circle v6 c2\n"
-    "filled_circle v7 c1\n"
-    "stroked_circle v7 c2\n"
-    "stroked_line v3 v5 c3\n",
+    "stroked_rect v0 c2\n"
+    "text 'AND' v1 fg c3 bg c1\n"
+    "text 'X1' v2 fg c2 bg c1\n"
+    "filled_circle v3 c2\n"
+    "stroked_circle v3 c4\n"
+    "text 'A' v4 fg c3 bg c1\n"
+    "filled_circle v5 c2\n"
+    "stroked_circle v5 c4\n"
+    "text 'B' v6 fg c3 bg c1\n"
+    "filled_circle v7 c2\n"
+    "stroked_circle v7 c4\n"
+    "text 'Y' v8 fg c3 bg c1\n"
+    "filled_rect v9 c0\n"
+    "stroked_rect v9 c2\n"
+    "text 'OR' v10 fg c3 bg c1\n"
+    "text 'X2' v11 fg c2 bg c1\n"
+    "filled_circle v12 c2\n"
+    "stroked_circle v12 c4\n"
+    "text 'A' v13 fg c3 bg c1\n"
+    "filled_circle v14 c2\n"
+    "stroked_circle v14 c4\n"
+    "text 'B' v15 fg c3 bg c1\n"
+    "filled_circle v16 c2\n"
+    "stroked_circle v16 c4\n"
+    "text 'Y' v17 fg c3 bg c1\n"
+    "stroked_line v7 v12 c5\n",
     cmds);
 
   view_free(&view);

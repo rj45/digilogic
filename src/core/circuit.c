@@ -16,6 +16,7 @@
 
 #include "stb_ds.h"
 #include <assert.h>
+#include <stdio.h>
 
 #include "core.h"
 
@@ -40,19 +41,22 @@ const ComponentDesc *circuit_component_descs() {
   static const ComponentDesc descs[] = {
     [COMP_AND] =
       {
-        .name = "AND",
+        .typeName = "AND",
         .numPorts = 3,
+        .namePrefix = 'X',
         .ports = andPorts,
       },
     [COMP_OR] =
       {
-        .name = "OR",
+        .typeName = "OR",
         .numPorts = 3,
+        .namePrefix = 'X',
         .ports = orPorts,
       },
     [COMP_NOT] = {
-      .name = "NOT",
+      .typeName = "NOT",
       .numPorts = 2,
+      .namePrefix = 'X',
       .ports = notPorts,
     }};
   return descs;
@@ -66,21 +70,46 @@ void circuit_free(Circuit *circuit) {
   arrfree(circuit->components);
   arrfree(circuit->ports);
   arrfree(circuit->nets);
+  arrfree(circuit->labels);
+  arrfree(circuit->text);
+  hmfree(circuit->nextName);
 }
 
 ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc) {
   ComponentID id = arrlen(circuit->components);
   PortID portStart = arrlen(circuit->ports);
 
-  Component comp = {.desc = desc, .portStart = portStart};
+  LabelID typeLabel =
+    circuit_add_label(circuit, circuit->componentDescs[desc].typeName);
+
+  int num = hmget(circuit->nextName, circuit->componentDescs[desc].namePrefix);
+  if (num < 1) {
+    num = 1;
+  }
+  hmput(circuit->nextName, circuit->componentDescs[desc].namePrefix, num + 1);
+  char name[256];
+  snprintf(
+    name, sizeof(name), "%c%d", circuit->componentDescs[desc].namePrefix, num);
+
+  LabelID nameLabel = circuit_add_label(circuit, name);
+
+  Component comp = {
+    .desc = desc,
+    .portStart = portStart,
+    .typeLabel = typeLabel,
+    .nameLabel = nameLabel};
   arrput(circuit->components, comp);
 
   int numPorts = circuit->componentDescs[desc].numPorts;
   for (int i = 0; i < numPorts; i++) {
+    LabelID label =
+      circuit_add_label(circuit, circuit->componentDescs[desc].ports[i].name);
+
     Port port = {
       .component = id,
       .desc = i,
       .net = NO_NET,
+      .label = label,
     };
     arrput(circuit->ports, port);
   }
@@ -109,4 +138,27 @@ NetID circuit_add_net(Circuit *circuit, PortID portFrom, PortID portTo) {
   }
 
   return id;
+}
+
+LabelID circuit_add_label(Circuit *circuit, const char *text) {
+  LabelID id = arrlen(circuit->labels);
+  Label label = {.textOffset = arrlen(circuit->text)};
+
+  char *found =
+    memmem(circuit->text, arrlen(circuit->text), text, strlen(text) + 1);
+  if (found) {
+    label.textOffset = found - circuit->text;
+  } else {
+    for (const char *c = text; *c; c++) {
+      arrput(circuit->text, *c);
+    }
+    arrput(circuit->text, '\0');
+  }
+
+  arrput(circuit->labels, label);
+  return id;
+}
+
+const char *circuit_label_text(Circuit *circuit, LabelID id) {
+  return circuit->text + circuit->labels[id].textOffset;
 }

@@ -25,12 +25,14 @@
 void theme_init(Theme *theme, FontHandle font) {
   *theme = (Theme){
     .portSpacing = 20.0f,
-    .componentWidth = 20.0f * 3,
+    .componentWidth = 55.0f,
     .portWidth = 15.0f,
     .borderWidth = 1.0f,
     .componentRadius = 5.0f,
     .wireThickness = 2.0f,
     .font = font,
+    .labelPadding = 2.0f,
+    .labelFontSize = 8.0f,
     .color =
       {
         .component = HMM_V4(0.5f, 0.5f, 0.5f, 1.0f),
@@ -41,6 +43,8 @@ void theme_init(Theme *theme, FontHandle font) {
         .hovered = HMM_V4(0.6f, 0.6f, 0.6f, 1.0f),
         .selected = HMM_V4(0.3f, 0.3f, 0.6f, 1.0f),
         .selectFill = HMM_V4(0.2f, 0.2f, 0.35f, 1.0f),
+        .labelColor = HMM_V4(0.0f, 0.0f, 0.0f, 1.0f),
+        .nameColor = HMM_V4(0.8f, 0.8f, 0.8f, 1.0f),
       },
   };
 }
@@ -67,6 +71,14 @@ void view_free(CircuitView *view) {
   circuit_free(&view->circuit);
 }
 
+void view_augment_label(CircuitView *view, LabelID id, Box bounds) {
+  if (id >= arrlen(view->labels)) {
+    arrsetlen(view->labels, id + 1);
+  }
+  LabelView labelView = {.bounds = bounds};
+  view->labels[id] = labelView;
+}
+
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position) {
   ComponentID id = circuit_add_component(&view->circuit, descID);
@@ -78,21 +90,54 @@ ComponentID view_add_component(
   arrput(view->components, componentViewTmp);
   ComponentView *componentView = &view->components[id];
 
+  float labelPadding = view->theme.labelPadding;
+  float width = view->theme.componentWidth;
+
   // figure out the size of the component
   int numInputPorts = 0;
   int numOutputPorts = 0;
   for (int j = 0; j < desc->numPorts; j++) {
-
     if (desc->ports[j].direction == PORT_IN) {
       numInputPorts++;
     } else if (desc->ports[j].direction != PORT_IN) {
       numOutputPorts++;
     }
+
+    // figure out the width needed for the label of the port and adjust width if
+    // it's too small
+    LabelID labelID = view->circuit.ports[component->portStart + j].label;
+    const char *labelText = circuit_label_text(&view->circuit, labelID);
+    Box labelBounds = draw_text_bounds(
+      HMM_V2(0, 0), labelText, strlen(labelText), ALIGN_CENTER, ALIGN_MIDDLE,
+      view->theme.labelFontSize, view->theme.font);
+    float desiredHalfWidth =
+      labelBounds.halfSize.X * 2 + labelPadding * 3 + view->theme.portWidth / 2;
+    if (desiredHalfWidth > width / 2) {
+      width = desiredHalfWidth * 2;
+    }
   }
   float height =
     fmaxf(numInputPorts, numOutputPorts) * view->theme.portSpacing +
     view->theme.portSpacing;
-  float width = view->theme.componentWidth;
+
+  LabelID typeLabelID = component->typeLabel;
+  const char *typeLabelText = circuit_label_text(&view->circuit, typeLabelID);
+  Box typeLabelBounds = draw_text_bounds(
+    HMM_V2(0, -(height / 2) + labelPadding), typeLabelText,
+    strlen(typeLabelText), ALIGN_CENTER, ALIGN_TOP, view->theme.labelFontSize,
+    view->theme.font);
+  if ((typeLabelBounds.halfSize.X + labelPadding) > width / 2) {
+    width = typeLabelBounds.halfSize.X * 2 + labelPadding * 2;
+  }
+  view_augment_label(view, typeLabelID, typeLabelBounds);
+
+  LabelID nameLabelID = component->nameLabel;
+  const char *nameLabelText = circuit_label_text(&view->circuit, nameLabelID);
+  Box nameLabelBounds = draw_text_bounds(
+    HMM_V2(0, -(height / 2) - labelPadding), nameLabelText,
+    strlen(nameLabelText), ALIGN_CENTER, ALIGN_BOTTOM,
+    view->theme.labelFontSize, view->theme.font);
+  view_augment_label(view, nameLabelID, nameLabelBounds);
 
   componentView->box.halfSize = HMM_V2(width / 2, height / 2);
 
@@ -106,13 +151,29 @@ ComponentID view_add_component(
   for (int j = 0; j < desc->numPorts; j++) {
     PortView portView = (PortView){0};
 
+    HMM_Vec2 labelPos = HMM_V2(0, 0);
+    HorizAlign horz = ALIGN_CENTER;
+
     if (desc->ports[j].direction == PORT_IN) {
       portView.center = HMM_V2(-width / 2 + borderWidth / 2, leftY);
       leftY += leftInc;
+
+      labelPos = HMM_V2(labelPadding + view->theme.portWidth / 2, 0);
+      horz = ALIGN_LEFT;
     } else if (desc->ports[j].direction != PORT_IN) {
       portView.center = HMM_V2(width / 2 - borderWidth / 2, rightY);
       rightY += rightInc;
+
+      labelPos = HMM_V2(-labelPadding - view->theme.portWidth / 2, 0);
+      horz = ALIGN_RIGHT;
     }
+
+    LabelID labelID = view->circuit.ports[component->portStart + j].label;
+    const char *labelText = circuit_label_text(&view->circuit, labelID);
+    Box labelBounds = draw_text_bounds(
+      HMM_V2(labelPos.X, labelPos.Y), labelText, strlen(labelText), horz,
+      ALIGN_MIDDLE, view->theme.labelFontSize, view->theme.font);
+    view_augment_label(view, labelID, labelBounds);
 
     arrput(view->ports, portView);
   }
@@ -158,8 +219,9 @@ void view_draw(CircuitView *view, Context ctx) {
     Component *component = &view->circuit.components[i];
     const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
 
-    HMM_Vec2 pos = panZoom(
-      view, HMM_SubV2(componentView->box.center, componentView->box.halfSize));
+    HMM_Vec2 center = componentView->box.center;
+    HMM_Vec2 pos =
+      panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
     HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
 
     if (i == view->hoveredComponent) {
@@ -191,6 +253,26 @@ void view_draw(CircuitView *view, Context ctx) {
       ctx, pos, size, view->zoom * view->theme.componentRadius,
       view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
 
+    LabelView *typeLabel = &view->labels[component->typeLabel];
+    const char *typeLabelText =
+      circuit_label_text(&view->circuit, component->typeLabel);
+    Box typeLabelBounds =
+      transformBox(view, box_translate(typeLabel->bounds, center));
+    draw_text(
+      ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
+      view->theme.labelFontSize * view->zoom, view->theme.font,
+      view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+
+    LabelView *nameLabel = &view->labels[component->nameLabel];
+    const char *nameLabelText =
+      circuit_label_text(&view->circuit, component->nameLabel);
+    Box nameLabelBounds =
+      transformBox(view, box_translate(nameLabel->bounds, center));
+    draw_text(
+      ctx, nameLabelBounds, nameLabelText, strlen(nameLabelText),
+      view->theme.labelFontSize * view->zoom, view->theme.font,
+      view->theme.color.nameColor, HMM_V4(0, 0, 0, 0));
+
     for (int j = 0; j < desc->numPorts; j++) {
       PortView *portView = &view->ports[component->portStart + j];
 
@@ -219,6 +301,18 @@ void view_draw(CircuitView *view, Context ctx) {
       draw_stroked_circle(
         ctx, portPosition, portSize, view->zoom * view->theme.borderWidth,
         view->theme.color.portBorder);
+
+      LabelView *labelView =
+        &view->labels[view->circuit.ports[component->portStart + j].label];
+      const char *labelText = circuit_label_text(
+        &view->circuit, view->circuit.ports[component->portStart + j].label);
+      Box labelBounds = transformBox(
+        view,
+        box_translate(labelView->bounds, HMM_Add(center, portView->center)));
+      draw_text(
+        ctx, labelBounds, labelText, strlen(labelText),
+        view->theme.labelFontSize * view->zoom, view->theme.font,
+        view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
     }
   }
 
@@ -254,14 +348,6 @@ void view_draw(CircuitView *view, Context ctx) {
       ctx, pos, portToPosition, view->zoom * view->theme.wireThickness,
       view->theme.color.wire);
   }
-
-  Box bounds = draw_text_bounds(
-    ctx, HMM_V2(50, 300), "Hellorld!", sizeof("Hellorld!"), ALIGN_LEFT,
-    ALIGN_BOTTOM, 32.0f, view->theme.font);
-  bounds = transformBox(view, bounds);
-  draw_text(
-    ctx, bounds, "Hellorld!", sizeof("Hellorld!"), 32.0f * view->zoom,
-    view->theme.font, HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
 }
 
 void view_add_vertex(CircuitView *view, NetID net, HMM_Vec2 vertex) {
@@ -292,4 +378,23 @@ void view_set_vertex(
   CircuitView *view, NetID net, VertexID index, HMM_Vec2 pos) {
   NetView *netView = &view->nets[net];
   view->vertices[netView->vertexStart + index] = pos;
+}
+
+LabelID view_add_label(CircuitView *view, const char *text, Box bounds) {
+  LabelID id = circuit_add_label(&view->circuit, text);
+  LabelView labelView = {.bounds = bounds};
+  arrput(view->labels, labelView);
+  return id;
+}
+
+Box view_label_size(
+  CircuitView *view, const char *text, HMM_Vec2 pos, HorizAlign horz,
+  VertAlign vert, float fontSize) {
+  Box bounds = draw_text_bounds(
+    pos, text, strlen(text), horz, vert, fontSize, view->theme.font);
+  return bounds;
+}
+
+const char *view_label_text(CircuitView *view, LabelID id) {
+  return circuit_label_text(&view->circuit, id);
 }

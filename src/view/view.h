@@ -27,13 +27,20 @@ typedef struct Box {
   HMM_Vec2 halfSize;
 } Box;
 
-#define box_top_left(box)                                                      \
-  ((HMM_Vec2){                                                                 \
-    (box).center.X - (box).halfSize.X, (box).center.Y - (box).halfSize.Y})
-#define box_bottom_right(box)                                                  \
-  ((HMM_Vec2){                                                                 \
-    (box).center.X + (box).halfSize.X, (box).center.Y + (box).halfSize.Y})
-#define box_size(box) ((HMM_Vec2){(box).halfSize.X * 2, (box).halfSize.Y * 2})
+static inline HMM_Vec2 box_top_left(Box box) {
+  return HMM_SubV2(box.center, box.halfSize);
+}
+
+static inline HMM_Vec2 box_bottom_right(Box box) {
+  return HMM_AddV2(box.center, box.halfSize);
+}
+
+static inline HMM_Vec2 box_size(Box box) { return HMM_MulV2F(box.halfSize, 2); }
+
+static inline Box box_translate(Box box, HMM_Vec2 offset) {
+  return (
+    (Box){.center = HMM_AddV2(box.center, offset), .halfSize = box.halfSize});
+}
 
 static inline bool box_intersect_box(Box a, Box b) {
   HMM_Vec2 delta = HMM_SubV2(a.center, b.center);
@@ -65,6 +72,18 @@ static inline Box box_from_tlbr(HMM_Vec2 tl, HMM_Vec2 br) {
     .halfSize = HMM_MulV2F(HMM_SubV2(br, tl), 0.5f)});
 }
 
+typedef enum VertAlign {
+  ALIGN_TOP,
+  ALIGN_MIDDLE,
+  ALIGN_BOTTOM,
+} VertAlign;
+
+typedef enum HorizAlign {
+  ALIGN_LEFT,
+  ALIGN_CENTER,
+  ALIGN_RIGHT,
+} HorizAlign;
+
 typedef void *FontHandle;
 
 typedef struct Theme {
@@ -74,6 +93,8 @@ typedef struct Theme {
   float borderWidth;
   float componentRadius;
   float wireThickness;
+  float labelPadding;
+  float labelFontSize;
   FontHandle font;
   struct {
     HMM_Vec4 component;
@@ -84,6 +105,8 @@ typedef struct Theme {
     HMM_Vec4 hovered;
     HMM_Vec4 selected;
     HMM_Vec4 selectFill;
+    HMM_Vec4 labelColor;
+    HMM_Vec4 nameColor;
   } color;
 } Theme;
 
@@ -103,6 +126,10 @@ typedef struct NetView {
   VertexID vertexEnd;
 } NetView;
 
+typedef struct LabelView {
+  Box bounds;
+} LabelView;
+
 typedef struct CircuitView {
   Circuit circuit;
   Theme theme;
@@ -111,6 +138,7 @@ typedef struct CircuitView {
   arr(PortView) ports;
   arr(NetView) nets;
   arr(HMM_Vec2) vertices;
+  arr(LabelView) labels;
 
   HMM_Vec2 pan;
   float zoom;
@@ -148,21 +176,15 @@ static inline PortID view_port_end(CircuitView *view, ComponentID id) {
            .numPorts;
 }
 
+LabelID view_add_label(CircuitView *view, const char *text, Box bounds);
+Box view_label_size(
+  CircuitView *view, const char *text, HMM_Vec2 pos, HorizAlign horz,
+  VertAlign vert, float fontSize);
+const char *view_label_text(CircuitView *view, LabelID id);
+
 ////////////////////////////////////////
 // external interface for drawing the circuit
 ////////////////////////////////////////
-
-typedef enum VertAlign {
-  ALIGN_TOP,
-  ALIGN_MIDDLE,
-  ALIGN_BOTTOM,
-} VertAlign;
-
-typedef enum HorizAlign {
-  ALIGN_LEFT,
-  ALIGN_CENTER,
-  ALIGN_RIGHT,
-} HorizAlign;
 
 void draw_filled_rect(
   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius, HMM_Vec4 color);
@@ -181,7 +203,7 @@ void draw_text(
   Context ctx, Box rect, const char *text, int len, float fontSize,
   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
 Box draw_text_bounds(
-  Context ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
-  VertAlign vert, float fontSize, FontHandle font);
+  HMM_Vec2 pos, const char *text, int len, HorizAlign horz, VertAlign vert,
+  float fontSize, FontHandle font);
 
 #endif // VIEW_H
