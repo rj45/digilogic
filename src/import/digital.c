@@ -39,7 +39,7 @@ struct {
   ComponentDescID desc;
 } componentTypes[] = {
   {"In", COMP_INPUT}, {"Out", COMP_OUTPUT}, {"And", COMP_AND},
-  {"Or", COMP_OR},    {"Not", COMP_NOT},
+  {"Or", COMP_OR},    {"XOr", COMP_XOR},    {"Not", COMP_NOT},
 };
 
 typedef struct IVec2 {
@@ -56,7 +56,7 @@ typedef struct WireEnd {
   };
 } WireEnd;
 
-static int compare(const void *va, const void *vb) {
+static int compare_x_then_y(const void *va, const void *vb) {
   WireEnd *a = (WireEnd *)va;
   WireEnd *b = (WireEnd *)vb;
   if (a->pos.x < b->pos.x) {
@@ -261,15 +261,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
   }
 
   // sort first by X, then by Y
-  qsort(wireEnds, arrlen(wireEnds), sizeof(WireEnd), compare);
-
-  for (int i = 0; i < arrlen(wireEnds); i++) {
-    WireEnd *end = &wireEnds[i];
-    printf(
-      "WireEnd %d: %s %d, %d\n", i,
-      end->type == IN_PORT ? "IN  " : (end->type == OUT_PORT ? "OUT " : "WIRE"),
-      end->pos.x, end->pos.y);
-  }
+  qsort(wireEnds, arrlen(wireEnds), sizeof(WireEnd), compare_x_then_y);
 
   // recursively follow wires and build nets from them
   for (int i = 0; i < arrlen(wireEnds); i++) {

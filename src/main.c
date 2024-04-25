@@ -71,7 +71,7 @@ static void init(void *user_data) {
   //   &app->circuit, view_port_start(&app->circuit.view, and) + 1,
   //   view_port_start(&app->circuit.view, or) + 1);
 
-  import_digital(&app->circuit, "testdata/simple_test.dig");
+  import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
 
   ux_route(&app->circuit);
 

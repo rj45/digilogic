@@ -49,6 +49,7 @@ enum {
   COMP_NONE,
   COMP_AND,
   COMP_OR,
+  COMP_XOR,
   COMP_NOT,
   COMP_INPUT,
   COMP_OUTPUT,

@@ -33,6 +33,12 @@ const ComponentDesc *circuit_component_descs() {
     {.direction = PORT_OUT, .name = "Y"},
   };
 
+  static PortDesc xorPorts[] = {
+    {.direction = PORT_IN, .name = "A"},
+    {.direction = PORT_IN, .name = "B"},
+    {.direction = PORT_OUT, .name = "Y"},
+  };
+
   static PortDesc notPorts[] = {
     {.direction = PORT_IN, .name = "A"},
     {.direction = PORT_OUT, .name = "Y"},
@@ -60,6 +66,13 @@ const ComponentDesc *circuit_component_descs() {
         .numPorts = 3,
         .namePrefix = 'X',
         .ports = orPorts,
+      },
+    [COMP_XOR] =
+      {
+        .typeName = "XOR",
+        .numPorts = 3,
+        .namePrefix = 'X',
+        .ports = xorPorts,
       },
     [COMP_NOT] =
       {
