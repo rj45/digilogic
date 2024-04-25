@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "core/core.h"
 #include "handmade_math.h"
 #include "stb_ds.h"
 #include "utest.h"
@@ -356,7 +357,10 @@ UTEST(View, view_draw_component_with_wires) {
   PortID from = view_port_start(&view, and) + 2;
   PortID to = view_port_start(&view, or);
 
-  view_add_net(&view, from, to);
+  NetID net = view_add_net(&view);
+  view_add_wire(
+    &view, net, wire_end_make(WIRE_END_PORT, from),
+    wire_end_make(WIRE_END_PORT, to));
 
   view_draw(&view, (Context)&cmds);
 
@@ -386,8 +390,7 @@ UTEST(View, view_draw_component_with_wires) {
     "text 'B' v15 fg c3 bg c1\n"
     "filled_circle v16 c2\n"
     "stroked_circle v16 c4\n"
-    "text 'Y' v17 fg c3 bg c1\n"
-    "stroked_line v7 v12 c5\n",
+    "text 'Y' v17 fg c3 bg c1\n",
     cmds);
 
   view_free(&view);

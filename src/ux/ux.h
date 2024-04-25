@@ -182,20 +182,6 @@ typedef struct Input {
   HMM_Vec2 scroll;
 } Input;
 
-typedef struct ItemID {
-  enum {
-    ITEM_NONE,
-    ITEM_COMPONENT,
-    ITEM_PORT,
-    ITEM_NET,
-  } type;
-  union {
-    ComponentID componentID;
-    PortID portID;
-    NetID netID;
-  };
-} ItemID;
-
 typedef struct UndoCommand {
   enum {
     UNDO_NONE,
@@ -233,8 +219,12 @@ void ux_init(
 void ux_free(CircuitUX *ux);
 ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);
+NetID ux_add_net(CircuitUX *circuit);
+JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position);
+WireID ux_add_wire(CircuitUX *ux, NetID net, WireEndID from, WireEndID to);
+
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
-NetID ux_add_net(CircuitUX *circuit, PortID portFrom, PortID portTo);
+
 void ux_draw(CircuitUX *ux, Context ctx);
 void ux_route(CircuitUX *ux);
 void ux_do(CircuitUX *ux, UndoCommand command);

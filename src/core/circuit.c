@@ -95,6 +95,8 @@ void circuit_free(Circuit *circuit) {
   arrfree(circuit->ports);
   arrfree(circuit->nets);
   arrfree(circuit->labels);
+  arrfree(circuit->wires);
+  arrfree(circuit->junctions);
   arrfree(circuit->text);
   hmfree(circuit->nextName);
 }
@@ -141,24 +143,75 @@ ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc) {
   return id;
 }
 
-NetID circuit_add_net(Circuit *circuit, PortID portFrom, PortID portTo) {
+NetID circuit_add_net(Circuit *circuit) {
   NetID id = arrlen(circuit->nets);
   Net net = {
-    .portFrom = portFrom,
-    .portTo = portTo,
-    .next = NO_NET,
-    .prev = NO_NET,
-  };
+    .portFirst = NO_PORT,
+    .portLast = NO_PORT,
+    .label = NO_LABEL,
+    .wireFirst = NO_WIRE,
+    .wireLast = NO_WIRE};
   arrput(circuit->nets, net);
 
-  if (portFrom != NO_PORT) {
-    assert(portFrom < arrlen(circuit->ports));
-    circuit->ports[portFrom].net = id;
+  return id;
+}
+
+JunctionID circuit_add_junction(Circuit *circuit) {
+  JunctionID id = arrlen(circuit->junctions);
+  Junction junction = {.net = NO_NET, .next = NO_JUNCTION, .prev = NO_JUNCTION};
+  arrput(circuit->junctions, junction);
+  return id;
+}
+
+WireID
+circuit_add_wire(Circuit *circuit, NetID net, WireEndID from, WireEndID to) {
+  WireID id = arrlen(circuit->wires);
+  Wire wire = {.net = net, .from = from, .to = to};
+  arrput(circuit->wires, wire);
+
+  if (net != NO_NET) {
+    Net *n = &circuit->nets[net];
+    if (n->wireFirst == NO_WIRE) {
+      n->wireFirst = id;
+    } else {
+      circuit->wires[n->wireLast].next = id;
+    }
+    n->wireLast = id;
   }
 
-  if (portTo != NO_PORT) {
-    assert(portTo < arrlen(circuit->ports));
-    circuit->ports[portTo].net = id;
+  Net *n = &circuit->nets[net];
+  WireEndID ends[2] = {from, to};
+
+  for (int i = 0; i < 2; i++) {
+    switch (wire_end_type(ends[i])) {
+    case WIRE_END_INVALID:
+      assert(0);
+      break;
+    case WIRE_END_NONE:
+      break;
+    case WIRE_END_PORT:
+      assert(circuit->ports[wire_end_index(ends[i])].net == NO_NET);
+      circuit->ports[wire_end_index(ends[i])].net = net;
+      if (n->portFirst == NO_PORT) {
+        n->portFirst = wire_end_index(ends[i]);
+      } else {
+        circuit->ports[n->portLast].next = wire_end_index(ends[i]);
+      }
+      n->portLast = wire_end_index(ends[i]);
+      break;
+    case WIRE_END_JUNC:
+      assert(
+        circuit->junctions[wire_end_index(ends[i])].net == NO_NET ||
+        circuit->junctions[wire_end_index(ends[i])].net == net);
+      circuit->junctions[wire_end_index(ends[i])].net = net;
+      if (n->junctionFirst == NO_JUNCTION) {
+        n->junctionFirst = wire_end_index(ends[i]);
+      } else {
+        circuit->junctions[n->junctionLast].next = wire_end_index(ends[i]);
+      }
+      n->junctionLast = wire_end_index(ends[i]);
+      break;
+    }
   }
 
   return id;

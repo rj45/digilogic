@@ -76,6 +76,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
   arr(uint32_t) stack = 0;
   arr(PortID) inPorts = 0;
   arr(PortID) outPorts = 0;
+  arr(uint32_t) netEnds = 0;
 
   XMLDocument doc;
   if (!XMLDocument_load(&doc, filename)) {
@@ -201,62 +202,61 @@ void import_digital(CircuitUX *ux, const char *filename) {
         break;
       }
       }
+    }
+  }
 
-      XMLNode *wires = find_node(circuit, "wires");
-      if (!wires) {
-        printf("No wires node\n");
+  XMLNode *wires = find_node(circuit, "wires");
+  if (!wires) {
+    printf("No wires node\n");
+    goto fail;
+  }
+
+  for (int i = 0; i < wires->children.size; i++) {
+    XMLNode *wire = wires->children.data[i];
+    if (strcmp(wire->tag, "wire") == 0) {
+      XMLNode *p1 = find_node(wire, "p1");
+      if (!p1) {
+        printf("No p1 node\n");
         goto fail;
       }
 
-      for (int i = 0; i < wires->children.size; i++) {
-        XMLNode *wire = wires->children.data[i];
-        if (strcmp(wire->tag, "wire") == 0) {
-          XMLNode *p1 = find_node(wire, "p1");
-          if (!p1) {
-            printf("No p1 node\n");
+      XMLNode *p2 = find_node(wire, "p2");
+      if (!p2) {
+        printf("No p2 node\n");
+        goto fail;
+      }
+
+      XMLNode *nodes[2] = {p1, p2};
+      IVec2 positions[2] = {0};
+
+      for (int j = 0; j < 2; j++) {
+        XMLNode *node = nodes[j];
+        for (int k = 0; k < node->attributes.size; k++) {
+          XMLAttribute *attr = &node->attributes.data[k];
+          if (strcmp(attr->key, "x") == 0) {
+            positions[j].x = atoi(attr->value);
+          } else if (strcmp(attr->key, "y") == 0) {
+            positions[j].y = atoi(attr->value);
+          } else {
+            printf("Unknown attribute %s\n", attr->key);
             goto fail;
           }
-
-          XMLNode *p2 = find_node(wire, "p2");
-          if (!p2) {
-            printf("No p2 node\n");
-            goto fail;
-          }
-
-          IVec2 p1Pos = {0};
-          IVec2 p2Pos = {0};
-
-          for (int j = 0; j < 2; j++) {
-            XMLNode *node = j == 0 ? p1 : p2;
-            IVec2 *pos = j == 0 ? &p1Pos : &p2Pos;
-            for (int k = 0; k < node->attributes.size; k++) {
-              XMLAttribute *attr = &node->attributes.data[k];
-              if (strcmp(attr->key, "x") == 0) {
-                pos->x = atoi(attr->value);
-              } else if (strcmp(attr->key, "y") == 0) {
-                pos->y = atoi(attr->value);
-              } else {
-                printf("Unknown attribute %s\n", attr->key);
-                goto fail;
-              }
-            }
-          }
-
-          WireEnd start = {
-            .pos = p1Pos,
-            .type = WIRE,
-            .farSide = p2Pos,
-          };
-          WireEnd end = {
-            .pos = p2Pos,
-            .type = WIRE,
-            .farSide = p1Pos,
-          };
-
-          arrput(wireEnds, start);
-          arrput(wireEnds, end);
         }
       }
+
+      WireEnd start = {
+        .pos = positions[0],
+        .type = WIRE,
+        .farSide = positions[1],
+      };
+      WireEnd end = {
+        .pos = positions[1],
+        .type = WIRE,
+        .farSide = positions[0],
+      };
+
+      arrput(wireEnds, start);
+      arrput(wireEnds, end);
     }
   }
 
@@ -289,6 +289,8 @@ void import_digital(CircuitUX *ux, const char *filename) {
       }
       end->visited = true;
 
+      arrput(netEnds, j);
+
       for (int k = j + 1; k < arrlen(wireEnds); k++) {
         WireEnd *other = &wireEnds[k];
         if (other->pos.x == end->pos.x && other->pos.y == end->pos.y) {
@@ -318,14 +320,81 @@ void import_digital(CircuitUX *ux, const char *filename) {
       }
     }
 
-    for (int i = 0; i < arrlen(outPorts); i++) {
+    NetID netID = ux_add_net(ux);
+
+    if (arrlen(inPorts) == 1 && arrlen(outPorts) == 1) {
+      // simple case
+      printf("Adding wire from %d to %d\n", inPorts[0], outPorts[0]);
+      ux_add_wire(
+        ux, netID, wire_end_make(WIRE_END_PORT, inPorts[0]),
+        wire_end_make(WIRE_END_PORT, outPorts[0]));
+    } else {
+
+      float junctionX = 0;
+      float junctionY = 0;
+
+      // find junctions
+      for (int j = 0; j < arrlen(netEnds); j++) {
+        WireEnd *end = &wireEnds[netEnds[j]];
+        if (end->type != WIRE) {
+          continue;
+        }
+
+        int count = 0;
+
+        for (int k = 0; k < arrlen(netEnds); k++) {
+          WireEnd *other = &wireEnds[netEnds[k]];
+          if (other->type != WIRE) {
+            continue;
+          }
+
+          if (end->pos.x == other->pos.x && end->pos.y == other->pos.y) {
+            count++;
+          }
+        }
+
+        if (count > 2) {
+          printf(
+            "Juction location? %d : %d %d\n", count, end->pos.x, end->pos.y);
+          junctionX = end->pos.x;
+          junctionY = end->pos.y;
+          for (int k = 0; k < arrlen(netEnds); k++) {
+            WireEnd *other = &wireEnds[netEnds[k]];
+            if (other->type != WIRE) {
+              continue;
+            }
+            if (end->pos.x != other->pos.x || end->pos.y != other->pos.y) {
+              continue;
+            }
+            printf(
+              "   WireEnd %d: %s %d, %d --> %d, %d\n", i,
+              other->type == IN_PORT
+                ? "IN  "
+                : (other->type == OUT_PORT ? "OUT " : "WIRE"),
+              other->pos.x, other->pos.y, other->farSide.x, other->farSide.y);
+          }
+        }
+      }
+
+      // add junction
+      JunctionID junctionID = ux_add_junction(ux, HMM_V2(junctionX, junctionY));
+
+      for (int i = 0; i < arrlen(outPorts); i++) {
+        printf("Adding net from %d to j%d\n", outPorts[i], junctionID);
+        ux_add_wire(
+          ux, netID, wire_end_make(WIRE_END_PORT, outPorts[i]),
+          wire_end_make(WIRE_END_JUNC, junctionID));
+      }
       for (int j = 0; j < arrlen(inPorts); j++) {
-        printf("Adding net from %d to %d\n", outPorts[i], inPorts[j]);
-        ux_add_net(ux, outPorts[i], inPorts[j]);
+        printf("Adding net from j%d to %d\n", junctionID, inPorts[j]);
+        ux_add_wire(
+          ux, netID, wire_end_make(WIRE_END_JUNC, junctionID),
+          wire_end_make(WIRE_END_PORT, inPorts[j]));
       }
     }
     arrsetlen(inPorts, 0);
     arrsetlen(outPorts, 0);
+    arrsetlen(netEnds, 0);
   }
 
 fail:
@@ -333,5 +402,6 @@ fail:
   arrfree(inPorts);
   arrfree(outPorts);
   arrfree(wireEnds);
+  arrfree(netEnds);
   XMLDocument_free(&doc);
 }

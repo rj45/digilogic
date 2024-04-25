@@ -19,8 +19,30 @@
 
 #include <stdint.h>
 
-/** defines an STB array */
+// defines an STB array
 #define arr(type) type *
+
+typedef enum ID_TYPE {
+  ID_NONE,
+  ID_COMPONENT,
+  ID_PORT,
+  ID_NET,
+  ID_WIRE,
+  ID_JUNCTION,
+  ID_LABEL,
+} ID_TYPE;
+
+typedef uint32_t ID;
+
+#define ID_TYPE_BITS 3
+#define ID_TYPE_MASK ((1 << ID_TYPE_BITS) - 1)
+#define ID_INDEX_BITS (sizeof(ID) * 8 - ID_TYPE_BITS)
+#define ID_INDEX_MASK ((1 << ID_INDEX_BITS) - 1)
+
+#define id_type(id) (((id) >> ID_INDEX_BITS) & ID_TYPE_MASK)
+#define id_index(id) ((id) & ID_INDEX_MASK)
+#define id_make(type, index)                                                   \
+  (((type & ID_TYPE_MASK) << ID_INDEX_BITS) | (index & ID_INDEX_MASK))
 
 // default ComponentDescIDs for the built-in components
 enum {
@@ -50,6 +72,12 @@ typedef uint32_t VertexID;
 
 typedef uint32_t LabelID;
 #define NO_LABEL ((LabelID)-1)
+
+typedef uint32_t WireID;
+#define NO_WIRE ((WireID)-1)
+
+typedef uint32_t JunctionID;
+#define NO_JUNCTION ((JunctionID)-1)
 
 typedef enum PortDirection {
   PORT_IN,
@@ -82,20 +110,67 @@ typedef struct Port {
   PortDescID desc; // index into the component's port descriptions
   LabelID label;
 
-  // the net the port is connected to. May be just the head of a linked list of
-  // nets.
+  // the net the port is connected to.
   NetID net;
+
+  // linked list of all ports connected to the same net
+  PortID next;
+  PortID prev;
 } Port;
 
+typedef uint32_t WireEndID;
+typedef enum WireEndType {
+  WIRE_END_INVALID,
+  WIRE_END_NONE,
+  WIRE_END_PORT,
+  WIRE_END_JUNC,
+} WireEndType;
+
+#define WIRE_END_TYPE_BITS 2
+#define WIRE_END_TYPE_MASK ((1 << WIRE_END_TYPE_BITS) - 1)
+#define WIRE_END_INDEX_BITS (sizeof(WireEndID) * 8 - WIRE_END_TYPE_BITS)
+#define WIRE_END_INDEX_MASK ((1 << WIRE_END_INDEX_BITS) - 1)
+
+#define wire_end_type(id)                                                      \
+  (WireEndType)(((id) >> WIRE_END_INDEX_BITS) & WIRE_END_TYPE_MASK)
+#define wire_end_index(id) ((id) & WIRE_END_INDEX_MASK)
+#define wire_end_make(type, index)                                             \
+  ((((uint32_t)(type) & WIRE_END_TYPE_MASK) << WIRE_END_INDEX_BITS) |          \
+   ((uint32_t)(index) & WIRE_END_INDEX_MASK))
+
+typedef struct Wire {
+  NetID net;
+
+  WireEndID from;
+  WireEndID to;
+
+  // linked list of all wires in the net
+  WireID next;
+  WireID prev;
+} Wire;
+
+typedef struct Junction {
+  NetID net;
+
+  // linked list of all junctions in the net
+  JunctionID next;
+  JunctionID prev;
+} Junction;
+
 typedef struct Net {
-  PortID portFrom;
-  PortID portTo;
+  // head and tail of the linked list of ports connected to this net
+  PortID portFirst;
+  PortID portLast;
+
+  // head and tail of the linked list of wires in this net
+  WireID wireFirst;
+  WireID wireLast;
+
+  // head and tail of the linked list of junctions in this net
+  JunctionID junctionFirst;
+  JunctionID junctionLast;
 
   LabelID label;
-
-  // linked list of all nets connected to the same source ports
-  NetID next;
-  NetID prev;
 } Net;
 
 typedef struct Label {
@@ -107,6 +182,8 @@ typedef struct Circuit {
   arr(Component) components;
   arr(Port) ports;
   arr(Net) nets;
+  arr(Wire) wires;
+  arr(Junction) junctions;
   arr(Label) labels;
   arr(char) text;
 
@@ -120,7 +197,10 @@ const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
 ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc);
-NetID circuit_add_net(Circuit *circuit, PortID portFrom, PortID portTo);
+NetID circuit_add_net(Circuit *circuit);
+JunctionID circuit_add_junction(Circuit *circuit);
+WireID
+circuit_add_wire(Circuit *circuit, NetID net, WireEndID from, WireEndID to);
 
 LabelID circuit_add_label(Circuit *circuit, const char *text);
 const char *circuit_label_text(Circuit *circuit, LabelID id);

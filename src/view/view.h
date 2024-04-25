@@ -121,10 +121,14 @@ typedef struct ComponentView {
   Box box;
 } ComponentView;
 
-typedef struct NetView {
+typedef struct WireView {
   VertexID vertexStart;
   VertexID vertexEnd;
-} NetView;
+} WireView;
+
+typedef struct JunctionView {
+  HMM_Vec2 pos;
+} JunctionView;
 
 typedef struct LabelView {
   Box bounds;
@@ -136,7 +140,8 @@ typedef struct CircuitView {
 
   arr(ComponentView) components;
   arr(PortView) ports;
-  arr(NetView) nets;
+  arr(WireView) wires;
+  arr(JunctionView) junctions;
   arr(HMM_Vec2) vertices;
   arr(LabelView) labels;
 
@@ -159,11 +164,16 @@ void view_init(
 void view_free(CircuitView *view);
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position);
-NetID view_add_net(CircuitView *circuit, PortID portFrom, PortID portTo);
-void view_add_vertex(CircuitView *view, NetID net, HMM_Vec2 vertex);
-void view_rem_vertex(CircuitView *view, NetID net);
+NetID view_add_net(CircuitView *view);
+JunctionID view_add_junction(CircuitView *view, HMM_Vec2 position);
+WireID
+view_add_wire(CircuitView *view, NetID net, WireEndID from, WireEndID to);
+
+void view_add_vertex(CircuitView *view, WireID wire, HMM_Vec2 vertex);
+void view_rem_vertex(CircuitView *view, WireID wire);
+void view_fix_wire_end_vertices(CircuitView *view, WireID wire);
 void view_set_vertex(
-  CircuitView *view, NetID net, VertexID index, HMM_Vec2 pos);
+  CircuitView *view, WireID wire, VertexID index, HMM_Vec2 pos);
 void view_draw(CircuitView *view, Context ctx);
 
 static inline PortID view_port_start(CircuitView *view, ComponentID id) {

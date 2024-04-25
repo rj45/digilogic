@@ -35,11 +35,9 @@ UTEST(Circuit, add_component) {
 UTEST(Circuit, add_net_no_ports) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
-  NetID id = circuit_add_net(&circuit, NO_PORT, NO_PORT);
+  NetID id = circuit_add_net(&circuit);
   ASSERT_EQ(id, 0);
   ASSERT_EQ(arrlen(circuit.nets), 1);
-  ASSERT_EQ(circuit.nets[id].portFrom, NO_PORT);
-  ASSERT_EQ(circuit.nets[id].portTo, NO_PORT);
   circuit_free(&circuit);
 }
 
@@ -48,15 +46,18 @@ UTEST(Circuit, add_net_with_ports) {
   circuit_init(&circuit, circuit_component_descs());
   ComponentID compID = circuit_add_component(&circuit, COMP_AND);
   PortID portID = circuit.components[compID].portStart;
-  NetID id = circuit_add_net(&circuit, portID, portID + 1);
-  ASSERT_EQ(id, 0);
+  NetID net = circuit_add_net(&circuit);
+  WireID id = circuit_add_wire(
+    &circuit, net, wire_end_make(WIRE_END_PORT, portID),
+    wire_end_make(WIRE_END_PORT, portID + 1));
+  ASSERT_EQ(net, 0);
   ASSERT_EQ(arrlen(circuit.nets), 1);
-  ASSERT_EQ(circuit.nets[id].portFrom, portID);
-  ASSERT_EQ(circuit.ports[portID].net, id);
-  ASSERT_EQ(circuit.nets[id].portTo, portID + 1);
-  ASSERT_EQ(circuit.ports[portID + 1].net, id);
-  ASSERT_EQ(circuit.nets[id].next, NO_NET);
-  ASSERT_EQ(circuit.nets[id].prev, NO_NET);
+  ASSERT_EQ(circuit.wires[id].from, wire_end_make(WIRE_END_PORT, portID));
+  ASSERT_EQ(circuit.ports[portID].net, net);
+  ASSERT_EQ(circuit.wires[id].to, wire_end_make(WIRE_END_PORT, portID + 1));
+  ASSERT_EQ(circuit.ports[portID + 1].net, net);
+  ASSERT_EQ(circuit.wires[id].next, id);
+  ASSERT_EQ(circuit.wires[id].prev, id);
   circuit_free(&circuit);
 }
 

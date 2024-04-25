@@ -32,7 +32,7 @@ void theme_init(Theme *theme, FontHandle font) {
     .wireThickness = 2.0f,
     .font = font,
     .labelPadding = 2.0f,
-    .labelFontSize = 8.0f,
+    .labelFontSize = 12.0f,
     .color =
       {
         .component = HMM_V4(0.5f, 0.5f, 0.5f, 1.0f),
@@ -65,7 +65,8 @@ void view_init(
 void view_free(CircuitView *view) {
   arrfree(view->components);
   arrfree(view->ports);
-  arrfree(view->nets);
+  arrfree(view->wires);
+  arrfree(view->junctions);
   arrfree(view->vertices);
   arrfree(view->selectedComponents);
   circuit_free(&view->circuit);
@@ -181,12 +182,108 @@ ComponentID view_add_component(
   return id;
 }
 
-NetID view_add_net(CircuitView *view, PortID portFrom, PortID portTo) {
-  NetID id = circuit_add_net(&view->circuit, portFrom, portTo);
-  NetView netView = {0};
+NetID view_add_net(CircuitView *view) {
+  return circuit_add_net(&view->circuit);
+}
 
-  arrput(view->nets, netView);
+JunctionID view_add_junction(CircuitView *view, HMM_Vec2 position) {
+  JunctionID id = circuit_add_junction(&view->circuit);
+  JunctionView junctionView = {.pos = position};
+  arrput(view->junctions, junctionView);
   return id;
+}
+
+WireID
+view_add_wire(CircuitView *view, NetID net, WireEndID from, WireEndID to) {
+  WireID id = circuit_add_wire(&view->circuit, net, from, to);
+  WireView wireView = {.vertexStart = 0, .vertexEnd = 0};
+  arrput(view->wires, wireView);
+  view_fix_wire_end_vertices(view, id);
+  return id;
+}
+
+void view_add_vertex(CircuitView *view, WireID wire, HMM_Vec2 vertex) {
+  WireView *wireView = &view->wires[wire];
+  arrins(view->vertices, wireView->vertexEnd, vertex);
+  wireView->vertexEnd++;
+  for (int i = wire + 1; i < arrlen(view->wires); i++) {
+    WireView *wireView = &view->wires[i];
+    wireView->vertexStart++;
+    wireView->vertexEnd++;
+  }
+}
+
+void view_rem_vertex(CircuitView *view, WireID wire) {
+  WireView *wireView = &view->wires[wire];
+  assert(wireView->vertexEnd > wireView->vertexStart);
+  assert(wireView->vertexEnd <= arrlen(view->vertices));
+  wireView->vertexEnd--;
+  arrdel(view->vertices, wireView->vertexEnd);
+  for (int i = wire + 1; i < arrlen(view->wires); i++) {
+    WireView *wireView = &view->wires[i];
+    wireView->vertexStart--;
+    wireView->vertexEnd--;
+  }
+}
+
+void view_set_vertex(
+  CircuitView *view, WireID wire, VertexID index, HMM_Vec2 pos) {
+  WireView *netView = &view->wires[wire];
+  view->vertices[netView->vertexStart + index] = pos;
+}
+
+void view_fix_wire_end_vertices(CircuitView *view, WireID wire) {
+  WireView *wireView = &view->wires[wire];
+  Wire *wireData = &view->circuit.wires[wire];
+
+  if ((wireView->vertexEnd - wireView->vertexStart) < 2) {
+    return;
+  }
+
+  WireEndID ends[2] = {wireData->from, wireData->to};
+  VertexID vert[2] = {0, wireView->vertexEnd - wireView->vertexStart - 1};
+
+  for (int i = 0; i < 2; i++) {
+    switch (wire_end_type(ends[i])) {
+    case WIRE_END_INVALID:
+      assert(0);
+      break;
+    case WIRE_END_NONE:
+      break;
+    case WIRE_END_PORT: {
+      Port *port = &view->circuit.ports[wire_end_index(ends[i])];
+      ComponentView *componentView = &view->components[port->component];
+      PortView *portView = &view->ports[wire_end_index(ends[i])];
+      HMM_Vec2 pt = HMM_Add(componentView->box.center, portView->center);
+      view_set_vertex(view, wire, vert[i], pt);
+      break;
+    }
+    case WIRE_END_JUNC: {
+      JunctionView *junctionView = &view->junctions[wire_end_index(ends[i])];
+      view_set_vertex(view, wire, vert[i], junctionView->pos);
+      break;
+    }
+    }
+  }
+}
+
+LabelID view_add_label(CircuitView *view, const char *text, Box bounds) {
+  LabelID id = circuit_add_label(&view->circuit, text);
+  LabelView labelView = {.bounds = bounds};
+  arrput(view->labels, labelView);
+  return id;
+}
+
+Box view_label_size(
+  CircuitView *view, const char *text, HMM_Vec2 pos, HorizAlign horz,
+  VertAlign vert, float fontSize) {
+  Box bounds = draw_text_bounds(
+    pos, text, strlen(text), horz, vert, fontSize, view->theme.font);
+  return bounds;
+}
+
+const char *view_label_text(CircuitView *view, LabelID id) {
+  return circuit_label_text(&view->circuit, id);
 }
 
 static HMM_Vec2 panZoom(CircuitView *view, HMM_Vec2 position) {
@@ -316,85 +413,34 @@ void view_draw(CircuitView *view, Context ctx) {
     }
   }
 
-  for (int i = 0; i < arrlen(view->nets); i++) {
-    NetView *netView = &view->nets[i];
-    Net *net = &view->circuit.nets[i];
+  for (int i = 0; i < arrlen(view->wires); i++) {
+    WireView *wireView = &view->wires[i];
 
-    Port *portFrom = &view->circuit.ports[net->portFrom];
-    PortView *portViewFrom = &view->ports[net->portFrom];
-    ComponentView *componentViewFrom = &view->components[portFrom->component];
+    if ((wireView->vertexEnd - wireView->vertexStart) < 2) {
+      continue;
+    }
 
-    HMM_Vec2 portFromPosition = panZoom(
-      view, HMM_Add(componentViewFrom->box.center, portViewFrom->center));
+    HMM_Vec2 pos = panZoom(view, view->vertices[wireView->vertexStart]);
 
-    Port *portTo = &view->circuit.ports[net->portTo];
-    PortView *portViewTo = &view->ports[net->portTo];
-    ComponentView *componentViewTo = &view->components[portTo->component];
-
-    HMM_Vec2 portToPosition =
-      panZoom(view, HMM_Add(componentViewTo->box.center, portViewTo->center));
-
-    HMM_Vec2 pos = portFromPosition;
-
-    for (int i = netView->vertexStart; i < netView->vertexEnd; i++) {
+    for (int i = wireView->vertexStart + 1; i < wireView->vertexEnd; i++) {
       HMM_Vec2 vertex = panZoom(view, view->vertices[i]);
       draw_stroked_line(
         ctx, pos, vertex, view->zoom * view->theme.wireThickness,
         view->theme.color.wire);
       pos = vertex;
     }
+  }
 
-    draw_stroked_line(
-      ctx, pos, portToPosition, view->zoom * view->theme.wireThickness,
+  for (int i = 0; i < arrlen(view->junctions); i++) {
+    JunctionView *junctionView = &view->junctions[i];
+    HMM_Vec2 pos = panZoom(view, junctionView->pos);
+    draw_filled_circle(
+      ctx,
+      HMM_SubV2(
+        pos,
+        HMM_V2(
+          view->theme.wireThickness * 1.5, view->theme.wireThickness * 1.5)),
+      HMM_V2(view->theme.wireThickness * 3, view->theme.wireThickness * 3),
       view->theme.color.wire);
   }
-}
-
-void view_add_vertex(CircuitView *view, NetID net, HMM_Vec2 vertex) {
-  NetView *netView = &view->nets[net];
-  arrins(view->vertices, netView->vertexEnd, vertex);
-  netView->vertexEnd++;
-  for (int i = net + 1; i < arrlen(view->nets); i++) {
-    NetView *netView = &view->nets[i];
-    netView->vertexStart++;
-    netView->vertexEnd++;
-  }
-}
-
-void view_rem_vertex(CircuitView *view, NetID net) {
-  NetView *netView = &view->nets[net];
-  assert(netView->vertexEnd > netView->vertexStart);
-  assert(netView->vertexEnd <= arrlen(view->vertices));
-  netView->vertexEnd--;
-  arrdel(view->vertices, netView->vertexEnd);
-  for (int i = net + 1; i < arrlen(view->nets); i++) {
-    NetView *netView = &view->nets[i];
-    netView->vertexStart--;
-    netView->vertexEnd--;
-  }
-}
-
-void view_set_vertex(
-  CircuitView *view, NetID net, VertexID index, HMM_Vec2 pos) {
-  NetView *netView = &view->nets[net];
-  view->vertices[netView->vertexStart + index] = pos;
-}
-
-LabelID view_add_label(CircuitView *view, const char *text, Box bounds) {
-  LabelID id = circuit_add_label(&view->circuit, text);
-  LabelView labelView = {.bounds = bounds};
-  arrput(view->labels, labelView);
-  return id;
-}
-
-Box view_label_size(
-  CircuitView *view, const char *text, HMM_Vec2 pos, HorizAlign horz,
-  VertAlign vert, float fontSize) {
-  Box bounds = draw_text_bounds(
-    pos, text, strlen(text), horz, vert, fontSize, view->theme.font);
-  return bounds;
-}
-
-const char *view_label_text(CircuitView *view, LabelID id) {
-  return circuit_label_text(&view->circuit, id);
 }

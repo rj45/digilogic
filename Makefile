@@ -14,7 +14,7 @@ LIBFLAGS = -fobjc-arc -framework Metal -framework Cocoa -framework MetalKit -fra
 
 all: digilogic test gen
 
-test: $(TEST_SRCS) $(HEADERS) $(THIRDPARTY_LIBS)
+test: $(TEST_SRCS) $(HEADERS) $(THIRDPARTY_LIBS) avoid.o
 	gcc $(CFLAGS) $(LIBFLAGS) $(TEST_SRCS) avoid.o -o test
 	./test
 

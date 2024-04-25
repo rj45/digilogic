@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "avoid/avoid.h"
 #include "core/core.h"
 #include "handmade_math.h"
 #include "stb_ds.h"
@@ -68,28 +69,19 @@ ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position) {
   return id;
 }
 
-NetID ux_add_net(CircuitUX *ux, PortID portFrom, PortID portTo) {
-  NetID id = view_add_net(&ux->view, portFrom, portTo);
+NetID ux_add_net(CircuitUX *ux) { return view_add_net(&ux->view); }
 
-  Port *portFromPtr = &ux->view.circuit.ports[portFrom];
-  Port *portToPtr = &ux->view.circuit.ports[portTo];
-  avoid_add_edge(
-    ux->avoid, id, portFromPtr->component, portFrom, portToPtr->component,
-    portTo);
-
+JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position) {
+  JunctionID id = view_add_junction(&ux->view, position);
+  avoid_add_junction(ux->avoid, id, position.X, position.Y);
   return id;
 }
 
-void ux_add_vertex(CircuitUX *ux, NetID net, HMM_Vec2 vertex) {
-  view_add_vertex(&ux->view, net, vertex);
-}
+WireID ux_add_wire(CircuitUX *ux, NetID net, WireEndID from, WireEndID to) {
+  WireID id = view_add_wire(&ux->view, net, from, to);
+  avoid_add_edge(ux->avoid, id, from, to, 0, 0, 0, 0);
 
-void ux_rem_vertex(CircuitUX *ux, NetID net) {
-  view_rem_vertex(&ux->view, net);
-}
-
-void ux_set_vertex(CircuitUX *ux, NetID net, VertexID index, HMM_Vec2 pos) {
-  view_set_vertex(&ux->view, net, index, pos);
+  return id;
 }
 
 static void ux_zoom(CircuitUX *ux) {
@@ -426,31 +418,34 @@ void ux_route(CircuitUX *ux) {
 
   float coords[1024];
 
-  for (int i = 0; i < arrlen(ux->view.nets); i++) {
-    NetView *netView = &ux->view.nets[i];
+  for (int i = 0; i < arrlen(ux->view.wires); i++) {
+    WireView *wireView = &ux->view.wires[i];
 
     size_t len = avoid_get_edge_path(
       ux->avoid, i, coords, sizeof(coords) / sizeof(coords[0]));
     len /= 2;
 
-    if (len <= 2) {
-      continue;
-    }
-
-    int curSize = (netView->vertexEnd - netView->vertexStart) + 2;
+    int curSize = wireView->vertexEnd - wireView->vertexStart;
 
     while (curSize < len) {
-      ux_add_vertex(ux, i, HMM_V2(0, 0));
+      view_add_vertex(&ux->view, i, HMM_V2(0, 0));
       curSize++;
     }
-    while (curSize > len && curSize > 2) {
-      ux_rem_vertex(ux, i);
+    while (curSize > len) {
+      view_rem_vertex(&ux->view, i);
       curSize--;
     }
-    for (int j = 0; j < len - 2; j++) {
-      ux_set_vertex(
-        ux, i, j, HMM_V2(coords[(j + 1) * 2], coords[(j + 1) * 2 + 1]));
+    for (int j = 0; j < len; j++) {
+      view_set_vertex(
+        &ux->view, i, j, HMM_V2(coords[j * 2], coords[j * 2 + 1]));
     }
+    view_fix_wire_end_vertices(&ux->view, i);
+  }
+
+  for (int i = 0; i < arrlen(ux->view.junctions); i++) {
+    JunctionView *junctionView = &ux->view.junctions[i];
+    avoid_get_junction_pos(
+      ux->avoid, i, &junctionView->pos.X, &junctionView->pos.Y);
   }
 }
 
