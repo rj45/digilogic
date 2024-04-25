@@ -17,7 +17,6 @@
 #ifndef UX_H
 #define UX_H
 
-#include "avoid/avoid.h"
 #include "handmade_math.h"
 
 #include "core/core.h"
@@ -198,6 +197,8 @@ typedef struct UndoCommand {
     Box area;
   };
 } UndoCommand;
+
+typedef void AvoidRouter;
 
 typedef struct CircuitUX {
   CircuitView view;
