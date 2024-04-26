@@ -224,13 +224,15 @@ const char *circuit_label_text(Circuit *circuit, LabelID id);
 #define bv_free(bv) arrfree(bv)
 
 /** Set a bit in the bitvector. */
-#define bv_set(bv, i) (bv[i >> BV_BIT_SHIFT(bv)] |= (1 << (i & BV_MASK(bv))))
+#define bv_set(bv, i)                                                          \
+  (bv[(i) >> BV_BIT_SHIFT(bv)] |= ((typeof(bv[0]))1 << ((i) & BV_MASK(bv))))
 
 /** Set a bit to a specific value in the bitvector. */
 #define bv_set_to(bv, i, val) (val ? bv_set(bv, i) : bv_clear(bv, i))
 
 /** Clear a specific bit of the bitvector. */
-#define bv_clear(bv, i) (bv[i >> BV_BIT_SHIFT(bv)] &= ~(1 << (i & BV_MASK(bv))))
+#define bv_clear(bv, i)                                                        \
+  (bv[(i) >> BV_BIT_SHIFT(bv)] &= ~((typeof(bv[0]))1 << ((i) & BV_MASK(bv))))
 
 /** Clear all bits in the bitvector. */
 #define bv_clear_all(bv) memset(bv, 0, arrlen(bv) * sizeof(bv[0]))
@@ -239,12 +241,14 @@ const char *circuit_label_text(Circuit *circuit, LabelID id);
 #define bv_set_all(bv) memset(bv, 0xFF, arrlen(bv) * sizeof(bv[0]))
 
 /** Toggle a specific bit in the bitvector. */
-#define bv_toggle(bv, i) (bv[i >> BV_BIT_SHIFT(bv)] ^= (1 << (i & BV_MASK(bv))))
+#define bv_toggle(bv, i)                                                       \
+  (bv[(i) >> BV_BIT_SHIFT(bv)] ^= ((typeof(bv[0]))1 << ((i) & BV_MASK(bv))))
 
 /** Check if a specific bit is set in the bitvector. */
-#define bv_is_set(bv, i) (bv[i >> BV_BIT_SHIFT(bv)] & (1 << (i & BV_MASK(bv))))
+#define bv_is_set(bv, i)                                                       \
+  (bv[(i) >> BV_BIT_SHIFT(bv)] & ((typeof(bv[0]))1 << ((i) & BV_MASK(bv))))
 
 /** Get the value of a specific bit in the bitvector. */
-#define bv_val(bv, i) bv_is_set(bv, i) >> (i & BV_MASK(bv))
+#define bv_val(bv, i) bv_is_set(bv, i) >> ((i) & BV_MASK(bv))
 
 #endif // CORE_H
