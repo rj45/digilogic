@@ -17,11 +17,21 @@
 #ifndef CORE_H
 #define CORE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
+#include "handmade_math.h"
+
 // defines an STB array
 #define arr(type) type *
+
+// defines an STB hash map
+#define map(type) type *
+
+////////////////////////////////////////////////////////////////////////////////
+// Circuit
+////////////////////////////////////////////////////////////////////////////////
 
 typedef enum ID_TYPE {
   ID_NONE,
@@ -208,6 +218,109 @@ LabelID circuit_add_label(Circuit *circuit, const char *text);
 const char *circuit_label_text(Circuit *circuit, LabelID id);
 
 void circuit_write_dot(Circuit *circuit, FILE *file);
+
+////////////////////////////////////////////////////////////////////////////////
+// Bounding Boxes
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct Box {
+  HMM_Vec2 center;
+  HMM_Vec2 halfSize;
+} Box;
+
+static inline HMM_Vec2 box_top_left(Box box) {
+  return HMM_SubV2(box.center, box.halfSize);
+}
+
+static inline HMM_Vec2 box_bottom_right(Box box) {
+  return HMM_AddV2(box.center, box.halfSize);
+}
+
+static inline HMM_Vec2 box_size(Box box) { return HMM_MulV2F(box.halfSize, 2); }
+
+static inline Box box_translate(Box box, HMM_Vec2 offset) {
+  return (
+    (Box){.center = HMM_AddV2(box.center, offset), .halfSize = box.halfSize});
+}
+
+static inline bool box_intersect_box(Box a, Box b) {
+  HMM_Vec2 delta = HMM_SubV2(a.center, b.center);
+  float ex = HMM_ABS(delta.X) - (a.halfSize.X + b.halfSize.X);
+  float ey = HMM_ABS(delta.Y) - (a.halfSize.Y + b.halfSize.Y);
+  return ex < 0 && ey < 0;
+}
+
+static inline bool box_intersect_point(Box a, HMM_Vec2 b) {
+  HMM_Vec2 delta = HMM_SubV2(a.center, b);
+  float ex = HMM_ABS(delta.X) - a.halfSize.X;
+  float ey = HMM_ABS(delta.Y) - a.halfSize.Y;
+  return ex < 0 && ey < 0;
+}
+
+static inline Box box_from_tlbr(HMM_Vec2 tl, HMM_Vec2 br) {
+  if (tl.X > br.X) {
+    float tmp = tl.X;
+    tl.X = br.X;
+    br.X = tmp;
+  }
+  if (tl.Y > br.Y) {
+    float tmp = tl.Y;
+    tl.Y = br.Y;
+    br.Y = tmp;
+  }
+  return ((Box){
+    .center = HMM_LerpV2(tl, 0.5f, br),
+    .halfSize = HMM_MulV2F(HMM_SubV2(br, tl), 0.5f)});
+}
+
+static inline Box box_union(Box a, Box b) {
+  HMM_Vec2 tl = (HMM_Vec2){
+    .X = HMM_MIN(a.center.X - a.halfSize.X, b.center.X - b.halfSize.X),
+    .Y = HMM_MIN(a.center.Y - a.halfSize.Y, b.center.Y - b.halfSize.Y)};
+  HMM_Vec2 br = (HMM_Vec2){
+    .X = HMM_MAX(a.center.X + a.halfSize.X, b.center.X + b.halfSize.X),
+    .Y = HMM_MAX(a.center.Y + a.halfSize.Y, b.center.Y + b.halfSize.Y)};
+  return box_from_tlbr(tl, br);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Bounding Volume Hierarchy
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct BVHNode {
+  Box box;
+  uint32_t firstLeaf;
+  uint32_t numLeaves;
+
+  // for debugging
+  float median;
+  int axis;
+} BVHNode;
+
+typedef struct BVHLeaf {
+  Box box;
+  ID item;
+} BVHLeaf;
+
+typedef struct BVH {
+  arr(BVHNode) nodeHeap;
+
+  arr(BVHLeaf) leaves;
+
+  arr(uint32_t) stack;
+} BVH;
+
+void bvh_init(BVH *bvh);
+void bvh_free(BVH *bvh);
+void bvh_add(BVH *bvh, Box box, ID item);
+void bvh_remove(BVH *bvh, Box box, ID item);
+void bvh_update(BVH *bvh, Box old, Box new, ID item);
+void bvh_rebuild(BVH *bvh);
+arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result);
+
+////////////////////////////////////////////////////////////////////////////////
+// Bitvector
+////////////////////////////////////////////////////////////////////////////////
 
 #define BV_BIT_SHIFT(bv)                                                       \
   ((sizeof(bv[0]) == 1)                                                        \
