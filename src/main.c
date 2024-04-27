@@ -17,7 +17,11 @@
 #include "font.h"
 #include "ux/ux.h"
 #include "view/view.h"
+#include <execinfo.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #define STB_DS_IMPLEMENTATION
 
 #include <stdlib.h>
@@ -78,7 +82,6 @@ static void init(void *user_data) {
   circuit_write_dot(&app->circuit.view.circuit, fp);
   fclose(fp);
 
-  ux_force_reroute(&app->circuit);
   ux_route(&app->circuit);
 
   sg_setup(&(sg_desc){
@@ -461,9 +464,23 @@ void event(const sapp_event *event, void *user_data) {
   }
 }
 
+void handler(int sig) {
+  void *array[150];
+  size_t size;
+
+  size = backtrace(array, 150);
+
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 sapp_desc sokol_main(int argc, char *argv[]) {
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){0};
+
+  signal(SIGSEGV, handler);
+  signal(SIGABRT, handler);
 
   return (sapp_desc){
     .width = 1024,

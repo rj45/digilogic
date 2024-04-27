@@ -19,7 +19,7 @@ test: $(TEST_SRCS) $(HEADERS) $(THIRDPARTY_LIBS) avoid.o
 	./test
 
 digilogic: $(MAIN_SRCS) $(HEADERS) $(THIRDPARTY_LIBS) avoid.o
-	gcc $(CFLAGS) $(LIBFLAGS) $(MAIN_SRCS) avoid.o -o digilogic
+	gcc $(CFLAGS) $(LIBFLAGS) $(MAIN_SRCS) -rdynamic avoid.o -o digilogic
 
 gen: src/gen.c thirdparty/cjson.c
 	gcc $(CFLAGS) $(LIBFLAGS) src/gen.c thirdparty/cjson.c -o gen

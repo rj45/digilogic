@@ -355,7 +355,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         PortID portID = view_port_start(&ux->view, componentID);
         printf("Adding port %s at %d, %d\n", desc->ports[0].name, x, y);
         replace_wire_end_with_port(
-          digWires, digWireEnds, portID, (IVec2){x, y}, descID == COMP_INPUT);
+          digWires, digWireEnds, portID, (IVec2){x, y}, descID == COMP_OUTPUT);
         break;
       }
       case COMP_AND:
@@ -625,6 +625,16 @@ void import_digital(CircuitUX *ux, const char *filename) {
         continue;
       }
       bool skip = false;
+
+      if (
+        digWire->ends[1].type == PORT_OUT || digWire->ends[0].type == PORT_IN) {
+        // swap the ends
+        WireEnd tmp = digWire->ends[0];
+        digWire->ends[0] = digWire->ends[1];
+        digWire->ends[1] = tmp;
+        printf("  Swapped\n");
+      }
+
       printf("  Connecting ");
       for (int k = 0; k < 2; k++) {
         WireEnd *end = &digWire->ends[k];
@@ -632,7 +642,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         case IN_PORT:
         case OUT_PORT:
           ends[k] = wire_end_make(WIRE_END_PORT, end->port);
-          printf("port %d ", end->port);
+          printf("%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
           break;
         case JUNCTION:
           ends[k] = wire_end_make(WIRE_END_JUNC, end->junc);

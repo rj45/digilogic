@@ -232,7 +232,6 @@ void ux_do(CircuitUX *ux, UndoCommand command);
 UndoCommand ux_undo(CircuitUX *ux);
 UndoCommand ux_redo(CircuitUX *ux);
 
-void ux_force_reroute(CircuitUX *ux);
 void ux_route(CircuitUX *ux);
 
 #endif // UX_H

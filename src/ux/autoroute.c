@@ -55,19 +55,3 @@ void ux_route(CircuitUX *ux) {
       ux->avoid, i, &junctionView->pos.X, &junctionView->pos.Y);
   }
 }
-
-void ux_force_reroute(CircuitUX *ux) {
-  // avoid_route(ux->avoid);
-  // arr(WireID) netWires = NULL;
-  // for (int i = 0; i < arrlen(ux->view.circuit.nets); i++) {
-  //   printf("Forcing reroute: %d\n", i);
-  //   WireID wireID = ux->view.circuit.nets[i].wireFirst;
-  //   while (wireID != NO_WIRE) {
-  //     arrput(netWires, wireID);
-  //     wireID = ux->view.circuit.wires[wireID].next;
-  //   }
-  //   avoid_force_reroute(ux->avoid, netWires, arrlen(netWires));
-  //   arrsetlen(netWires, 0);
-  // }
-  // arrfree(netWires);
-}

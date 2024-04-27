@@ -43,9 +43,12 @@ struct AvoidState {
 
 AvoidRouter *avoid_new() {
   AvoidState *state = new AvoidState();
-  state->router.setRoutingOption(Avoid::improveHyperedgeRoutesMovingJunctions, false);
-  state->router.setRoutingOption(Avoid::penaliseOrthogonalSharedPathsAtConnEnds, true);
-  state->router.setRoutingOption(Avoid::nudgeOrthogonalTouchingColinearSegments, true);
+  state->router.setRoutingOption(
+    Avoid::improveHyperedgeRoutesMovingJunctions, false);
+  state->router.setRoutingOption(
+    Avoid::penaliseOrthogonalSharedPathsAtConnEnds, true);
+  state->router.setRoutingOption(
+    Avoid::nudgeOrthogonalTouchingColinearSegments, true);
   state->router.setRoutingPenalty(Avoid::shapeBufferDistance, 10.0);
   state->router.setRoutingPenalty(Avoid::crossingPenalty, 200.0);
   state->router.setRoutingPenalty(Avoid::idealNudgingDistance, 8.0);
@@ -120,8 +123,8 @@ void avoid_add_port(
   state->ports.push_back({nodeShape, port});
 }
 
-void
-avoid_add_junction(AvoidRouter *a, JunctionID junctionID, float x, float y) {
+void avoid_add_junction(
+  AvoidRouter *a, JunctionID junctionID, float x, float y) {
   auto state = reinterpret_cast<AvoidState *>(a);
 
   Avoid::JunctionRef *junction =
@@ -131,7 +134,8 @@ avoid_add_junction(AvoidRouter *a, JunctionID junctionID, float x, float y) {
 }
 
 void avoid_add_edge(
-  AvoidRouter *a, WireID edgeID, WireEndID srcID, WireEndID dstID, float x1, float y1, float x2, float y2) {
+  AvoidRouter *a, WireID edgeID, WireEndID srcID, WireEndID dstID, float x1,
+  float y1, float x2, float y2) {
   auto state = reinterpret_cast<AvoidState *>(a);
 
   Avoid::ConnEnd ends[2];
@@ -139,16 +143,16 @@ void avoid_add_edge(
   Avoid::Point points[2] = {{x1, y1}, {x2, y2}};
 
   for (int i = 0; i < 2; i++) {
-    switch(wire_end_type(endIDs[i])) {
+    switch (wire_end_type(endIDs[i])) {
     case WIRE_END_INVALID:
       assert(0);
       break;
     case WIRE_END_NONE:
       ends[i] = Avoid::ConnEnd(points[i]);
       break;
-    case WIRE_END_PORT:{
+    case WIRE_END_PORT: {
       AvoidPort port = state->ports[wire_end_index(endIDs[i])];
-      ends[i] = Avoid::ConnEnd(port.node, wire_end_index(endIDs[i])+1);
+      ends[i] = Avoid::ConnEnd(port.node, wire_end_index(endIDs[i]) + 1);
       break;
     }
     case WIRE_END_JUNC:
@@ -164,34 +168,6 @@ void avoid_add_edge(
   state->edges.push_back(edge);
 }
 
-void avoid_force_reroute(AvoidRouter *a, WireID* netWires, size_t numWires) {
-    auto state = reinterpret_cast<AvoidState *>(a);
-  printf("Forcing reroute: ");
-  Avoid::ConnEndList endList;
-  for (int i = 0; i < numWires; i++) {
-    auto wireID = netWires[i];
-    auto edge = state->edges[wireID];
-    auto ends = edge->endpointConnEnds();
-
-    assert(ends.first.type() == Avoid::ConnEndJunction || ends.first.type() == Avoid::ConnEndShapePin);
-    assert(ends.second.type() == Avoid::ConnEndJunction || ends.second.type() == Avoid::ConnEndShapePin);
-
-    if (ends.first.type() == Avoid::ConnEndJunction) {
-      state->router.hyperedgeRerouter()->registerHyperedgeForRerouting(ends.first.junction());
-    }
-
-    if (ends.second.type() == Avoid::ConnEndJunction) {
-      state->router.hyperedgeRerouter()->registerHyperedgeForRerouting(ends.second.junction());
-    }
-
-    endList.push_back(ends.first);
-    endList.push_back(ends.second);
-    printf("%d ", wireID);
-  }
-  printf("\n");
-  state->router.hyperedgeRerouter()->registerHyperedgeForRerouting(endList);
-}
-
 void avoid_route(AvoidRouter *a) {
   auto state = reinterpret_cast<AvoidState *>(a);
 
@@ -202,8 +178,10 @@ void avoid_route(AvoidRouter *a) {
       break;
     }
     // for (auto junction : state->junctions) {
-    //   if (!junction->position().equals(junction->recommendedPosition(), 0.1)) {
-    //     state->router.moveJunction(junction, junction->recommendedPosition());
+    //   if (!junction->position().equals(junction->recommendedPosition(), 0.1))
+    //   {
+    //     state->router.moveJunction(junction,
+    //     junction->recommendedPosition());
     //   }
     // }
     break;
