@@ -18,6 +18,7 @@
 #define CORE_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 // defines an STB array
 #define arr(type) type *
@@ -205,6 +206,8 @@ circuit_add_wire(Circuit *circuit, NetID net, WireEndID from, WireEndID to);
 
 LabelID circuit_add_label(Circuit *circuit, const char *text);
 const char *circuit_label_text(Circuit *circuit, LabelID id);
+
+void circuit_write_dot(Circuit *circuit, FILE *file);
 
 #define BV_BIT_SHIFT(bv)                                                       \
   ((sizeof(bv[0]) == 1)                                                        \

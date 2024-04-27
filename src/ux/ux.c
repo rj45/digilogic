@@ -15,6 +15,7 @@
 */
 
 #include "avoid/avoid.h"
+#include "handmade_math.h"
 #include "stb_ds.h"
 #include "view/view.h"
 

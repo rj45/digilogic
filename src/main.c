@@ -15,6 +15,7 @@
 */
 
 #include "font.h"
+#include "ux/ux.h"
 #include "view/view.h"
 #include <stdio.h>
 #define STB_DS_IMPLEMENTATION
@@ -73,6 +74,11 @@ static void init(void *user_data) {
 
   import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
 
+  FILE *fp = fopen("circuit.dot", "w");
+  circuit_write_dot(&app->circuit.view.circuit, fp);
+  fclose(fp);
+
+  ux_force_reroute(&app->circuit);
   ux_route(&app->circuit);
 
   sg_setup(&(sg_desc){

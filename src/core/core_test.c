@@ -56,8 +56,10 @@ UTEST(Circuit, add_net_with_ports) {
   ASSERT_EQ(circuit.ports[portID].net, net);
   ASSERT_EQ(circuit.wires[id].to, wire_end_make(WIRE_END_PORT, portID + 1));
   ASSERT_EQ(circuit.ports[portID + 1].net, net);
-  ASSERT_EQ(circuit.wires[id].next, id);
-  ASSERT_EQ(circuit.wires[id].prev, id);
+  ASSERT_EQ(circuit.wires[id].next, NO_WIRE);
+  ASSERT_EQ(circuit.wires[id].prev, NO_WIRE);
+  ASSERT_EQ(circuit.nets[net].wireFirst, id);
+  ASSERT_EQ(circuit.nets[net].wireLast, id);
   circuit_free(&circuit);
 }
 

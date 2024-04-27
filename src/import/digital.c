@@ -23,6 +23,7 @@
 #define DEBUG_PRINT(...)
 #include "lxml.h"
 #include "stb_ds.h"
+#include <assert.h>
 
 static XMLNode *find_node(XMLNode *node, const char *tag) {
   for (int i = 0; i < node->children.size; i++) {
@@ -49,34 +50,160 @@ typedef struct IVec2 {
 typedef struct WireEnd {
   IVec2 pos;
   bool visited;
-  enum { IN_PORT, OUT_PORT, WIRE } type;
+  enum { IN_PORT, OUT_PORT, WIRE, JUNCTION } type;
   union {
     PortID port;
+    JunctionID junc;
     IVec2 farSide;
   };
 } WireEnd;
 
-static int compare_x_then_y(const void *va, const void *vb) {
-  WireEnd *a = (WireEnd *)va;
-  WireEnd *b = (WireEnd *)vb;
-  if (a->pos.x < b->pos.x) {
-    return -1;
-  } else if (a->pos.x > b->pos.x) {
-    return 1;
-  } else if (a->pos.y < b->pos.y) {
-    return -1;
-  } else if (a->pos.y > b->pos.y) {
-    return 1;
+typedef struct DigWire {
+  WireEnd ends[2];
+  bool valid;
+  bool visited;
+} DigWire;
+
+typedef struct {
+  IVec2 key;
+  arr(uint32_t) value;
+} DigWireHash;
+
+// static int compare_x_then_y(const void *va, const void *vb) {
+//   WireEnd *a = (WireEnd *)va;
+//   WireEnd *b = (WireEnd *)vb;
+//   if (a->pos.x < b->pos.x) {
+//     return -1;
+//   } else if (a->pos.x > b->pos.x) {
+//     return 1;
+//   } else if (a->pos.y < b->pos.y) {
+//     return -1;
+//   } else if (a->pos.y > b->pos.y) {
+//     return 1;
+//   }
+//   return 0;
+// }
+
+void replace_wire_end_with_port(
+  arr(DigWire) digWires, DigWireHash *digWireEnds, PortID port, IVec2 pos,
+  bool in) {
+  arr(uint32_t) ends = hmget(digWireEnds, pos);
+  assert(arrlen(ends) == 1); // junction on pin not supported yet
+  for (int i = 0; i < arrlen(ends); i++) {
+    DigWire *digWire = &digWires[ends[i]];
+    for (int j = 0; j < 2; j++) {
+      if (digWire->ends[j].pos.x == pos.x && digWire->ends[j].pos.y == pos.y) {
+        assert(digWire->ends[j].type == WIRE);
+        digWire->ends[j].type = in ? IN_PORT : OUT_PORT;
+        digWire->ends[j].port = port;
+      }
+    }
   }
-  return 0;
+}
+
+void remove_from_hash(DigWireHash *digWireEnds, IVec2 pos, uint32_t index) {
+  arr(uint32_t) ends = hmget(digWireEnds, pos);
+  for (int i = 0; i < arrlen(ends); i++) {
+    if (ends[i] == index) {
+      arrdel(ends, i);
+      break;
+    }
+  }
+  // if (arrlen(ends) == 0) {
+  //   arrfree(ends);
+  //   hmdel(digWireEnds, pos);
+  // } else {
+  hmput(digWireEnds, pos, ends);
+  // }
+}
+
+static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
+
+  // simplify wires by merging neighbouring wires
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    printf("Merge round\n");
+    for (int i = 0; i < arrlen(digWires); i++) {
+      DigWire *digWire = &digWires[i];
+      if (!digWire->valid) {
+        continue;
+      }
+      for (int j = 0; j < 2; j++) {
+        WireEnd *end = &digWire->ends[j];
+        if (end->type != WIRE) {
+          continue;
+        }
+
+        arr(uint32_t) ends = hmget(digWireEnds, end->pos);
+
+        if (arrlen(ends) != 2) {
+          continue;
+        }
+
+        for (int k = 0; k < 2; k++) {
+          uint32_t otherIndex = ends[k];
+          if (otherIndex == i) {
+            continue;
+          }
+
+          DigWire *other = &digWires[otherIndex];
+          for (int l = 0; l < 2; l++) {
+            WireEnd *otherEnd = &other->ends[l];
+            if (otherEnd->type != WIRE) {
+              continue;
+            }
+            WireEnd *otherFarEnd = &other->ends[(l + 1) % 2];
+            if (
+              otherEnd->pos.x == end->pos.x && otherEnd->pos.y == end->pos.y) {
+              // merge the two wires keeping the far ends of each
+              printf(
+                "  Merged %d and %d at %d, %d\n", i, otherIndex, end->pos.x,
+                end->pos.y);
+
+              // remove both ends of other from the hash
+              remove_from_hash(digWireEnds, otherEnd->pos, otherIndex);
+              remove_from_hash(digWireEnds, otherFarEnd->pos, otherIndex);
+
+              // remove the replaced end from the hash
+              remove_from_hash(digWireEnds, end->pos, i);
+
+              *end = *otherFarEnd;
+
+              arr(uint32_t) ends = hmget(digWireEnds, end->pos);
+              arrput(ends, i);
+              hmput(digWireEnds, end->pos, ends);
+
+              other->valid = false;
+
+              changed = true;
+              break;
+            }
+          }
+          // if (changed) {
+          //   break;
+          // }
+        }
+        // if (changed) {
+        //   break;
+        // }
+      }
+      // if (changed) {
+      //   break;
+      // }
+    }
+  }
 }
 
 void import_digital(CircuitUX *ux, const char *filename) {
-  arr(WireEnd) wireEnds = 0;
   arr(uint32_t) stack = 0;
   arr(PortID) inPorts = 0;
   arr(PortID) outPorts = 0;
-  arr(uint32_t) netEnds = 0;
+  arr(uint32_t) netWires = 0;
+
+  arr(DigWire) digWires = 0;
+
+  DigWireHash *digWireEnds = 0;
 
   XMLDocument doc;
   if (!XMLDocument_load(&doc, filename)) {
@@ -94,6 +221,71 @@ void import_digital(CircuitUX *ux, const char *filename) {
   if (!circuit) {
     printf("No circuit node\n");
     goto fail;
+  }
+
+  XMLNode *wires = find_node(circuit, "wires");
+  if (!wires) {
+    printf("No wires node\n");
+    goto fail;
+  }
+
+  // load all the wires into digWires
+  for (int i = 0; i < wires->children.size; i++) {
+    XMLNode *wire = wires->children.data[i];
+    if (strcmp(wire->tag, "wire") == 0) {
+      XMLNode *p1 = find_node(wire, "p1");
+      if (!p1) {
+        printf("No p1 node\n");
+        goto fail;
+      }
+
+      XMLNode *p2 = find_node(wire, "p2");
+      if (!p2) {
+        printf("No p2 node\n");
+        goto fail;
+      }
+
+      XMLNode *nodes[2] = {p1, p2};
+      IVec2 positions[2] = {0};
+
+      for (int j = 0; j < 2; j++) {
+        XMLNode *node = nodes[j];
+        for (int k = 0; k < node->attributes.size; k++) {
+          XMLAttribute *attr = &node->attributes.data[k];
+          if (strcmp(attr->key, "x") == 0) {
+            positions[j].x = atoi(attr->value);
+          } else if (strcmp(attr->key, "y") == 0) {
+            positions[j].y = atoi(attr->value);
+          } else {
+            printf("Unknown attribute %s\n", attr->key);
+            goto fail;
+          }
+        }
+      }
+
+      DigWire digWire = {
+        .valid = true,
+        .ends =
+          {
+            {
+              .pos = positions[0],
+              .type = WIRE,
+            },
+            {
+              .pos = positions[1],
+              .type = WIRE,
+            },
+          },
+      };
+
+      arrput(digWires, digWire);
+
+      for (int j = 0; j < 2; j++) {
+        arr(uint32_t) ends = hmget(digWireEnds, digWire.ends[j].pos);
+        arrput(ends, arrlen(digWires) - 1);
+        hmput(digWireEnds, digWire.ends[j].pos, ends);
+      }
+    }
   }
 
   XMLNode *visualElements = find_node(circuit, "visualElements");
@@ -161,19 +353,14 @@ void import_digital(CircuitUX *ux, const char *filename) {
       case COMP_INPUT:
       case COMP_OUTPUT: {
         PortID portID = view_port_start(&ux->view, componentID);
-        WireEnd end = {
-          .pos = {x, y},
-          .type = desc->ports[0].direction == PORT_OUT ? OUT_PORT : IN_PORT,
-          .port = portID,
-        };
-        printf(
-          "Adding port %s at %d, %d\n", desc->ports[0].name, end.pos.x,
-          end.pos.y);
-        arrput(wireEnds, end);
+        printf("Adding port %s at %d, %d\n", desc->ports[0].name, x, y);
+        replace_wire_end_with_port(
+          digWires, digWireEnds, portID, (IVec2){x, y}, descID == COMP_INPUT);
         break;
       }
       case COMP_AND:
       case COMP_OR:
+      case COMP_XOR:
       case COMP_NOT: {
         IVec2 nextInput = {x, y};
         IVec2 nextOutput = {x + 4 * 20, y + 20};
@@ -182,91 +369,215 @@ void import_digital(CircuitUX *ux, const char *filename) {
         }
         for (int j = 0; j < desc->numPorts; j++) {
           PortID portID = view_port_start(&ux->view, componentID) + j;
-          WireEnd end = {
-            .pos = nextInput,
-            .type = IN_PORT,
-            .port = portID,
-          };
+          IVec2 pos = nextInput;
           if (desc->ports[j].direction == PORT_OUT) {
-            end.pos = nextOutput;
-            end.type = OUT_PORT;
+            pos = nextOutput;
             nextOutput.y += 20;
           } else {
             nextInput.y += 40;
           }
           printf(
-            "Adding port %s at %d, %d\n", desc->ports[j].name, end.pos.x,
-            end.pos.y);
-          arrput(wireEnds, end);
+            "Adding port %s at %d, %d\n", desc->ports[j].name, pos.x, pos.y);
+          replace_wire_end_with_port(
+            digWires, digWireEnds, portID, pos,
+            desc->ports[j].direction == PORT_IN);
         }
         break;
       }
+      default:
+        printf("Unknown component type %d\n", descID);
+        assert(0);
+        break;
       }
     }
   }
 
-  XMLNode *wires = find_node(circuit, "wires");
-  if (!wires) {
-    printf("No wires node\n");
-    goto fail;
+  // debug code: double check the wire ends are all valid
+  bool allValid = true;
+  for (int i = 0; i < hmlen(digWireEnds); i++) {
+    for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
+      DigWire *digWire = &digWires[digWireEnds[i].value[j]];
+      if (!digWire->valid) {
+        printf(
+          "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
+          digWireEnds[i].key.y);
+        allValid = false;
+      }
+    }
+  }
+  assert(allValid);
+
+  // check all valid wire ends are in the hash
+  for (int i = 0; i < arrlen(digWires); i++) {
+    DigWire *digWire = &digWires[i];
+    if (!digWire->valid) {
+      continue;
+    }
+    for (int j = 0; j < 2; j++) {
+      WireEnd *end = &digWire->ends[j];
+      arr(uint32_t) ends = hmget(digWireEnds, end->pos);
+      bool found = false;
+      for (int k = 0; k < arrlen(ends); k++) {
+        if (ends[k] == i) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        printf("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        allValid = false;
+      }
+    }
+  }
+  assert(allValid);
+
+  simplify_wires(digWires, digWireEnds);
+
+  // debug code: double check the wire ends are all valid
+  allValid = true;
+  for (int i = 0; i < hmlen(digWireEnds); i++) {
+    for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
+      DigWire *digWire = &digWires[digWireEnds[i].value[j]];
+      if (!digWire->valid) {
+        printf(
+          "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
+          digWireEnds[i].key.y);
+        allValid = false;
+      }
+    }
+  }
+  assert(allValid);
+
+  // check all valid wire ends are in the hash
+  for (int i = 0; i < arrlen(digWires); i++) {
+    DigWire *digWire = &digWires[i];
+    if (!digWire->valid) {
+      continue;
+    }
+    for (int j = 0; j < 2; j++) {
+      WireEnd *end = &digWire->ends[j];
+      arr(uint32_t) ends = hmget(digWireEnds, end->pos);
+      bool found = false;
+      for (int k = 0; k < arrlen(ends); k++) {
+        if (ends[k] == i) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        printf("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        allValid = false;
+      }
+    }
+  }
+  assert(allValid);
+
+  // trim free floating wire ends
+  for (int i = 0; i < hmlen(digWireEnds); i++) {
+    if (arrlen(digWireEnds[i].value) == 1) {
+      DigWire *digWire = &digWires[digWireEnds[i].value[0]];
+      if (!digWire->valid) {
+        continue;
+      }
+      for (int j = 0; j < 2; j++) {
+        if (
+          digWire->ends[j].pos.x == digWireEnds[i].key.x &&
+          digWire->ends[j].pos.y == digWireEnds[i].key.y &&
+          digWire->ends[j].type == WIRE) {
+          printf(
+            "Trimming free floating wire at %d, %d\n", digWire->ends[j].pos.x,
+            digWire->ends[j].pos.y);
+          digWire->valid = false;
+          remove_from_hash(
+            digWireEnds, digWireEnds[i].key, digWireEnds[i].value[0]);
+          uint32_t otherEnd = (j + 1) % 2;
+          remove_from_hash(
+            digWireEnds, digWire->ends[otherEnd].pos, digWireEnds[i].value[0]);
+        }
+      }
+    }
   }
 
-  for (int i = 0; i < wires->children.size; i++) {
-    XMLNode *wire = wires->children.data[i];
-    if (strcmp(wire->tag, "wire") == 0) {
-      XMLNode *p1 = find_node(wire, "p1");
-      if (!p1) {
-        printf("No p1 node\n");
-        goto fail;
+  // see if more simplifications are possible
+  simplify_wires(digWires, digWireEnds);
+
+  // debug code: double check the wire ends are all valid
+  allValid = true;
+  for (int i = 0; i < hmlen(digWireEnds); i++) {
+    for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
+      DigWire *digWire = &digWires[digWireEnds[i].value[j]];
+      if (!digWire->valid) {
+        printf(
+          "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
+          digWireEnds[i].key.y);
+        allValid = false;
+      }
+    }
+  }
+  assert(allValid);
+
+  // check all valid wire ends are in the hash
+  for (int i = 0; i < arrlen(digWires); i++) {
+    DigWire *digWire = &digWires[i];
+    if (!digWire->valid) {
+      continue;
+    }
+    for (int j = 0; j < 2; j++) {
+      WireEnd *end = &digWire->ends[j];
+      arr(uint32_t) ends = hmget(digWireEnds, end->pos);
+      bool found = false;
+      for (int k = 0; k < arrlen(ends); k++) {
+        if (ends[k] == i) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        printf("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        allValid = false;
+      }
+    }
+  }
+  assert(allValid);
+
+  // figure out where the junctions are
+  for (int i = 0; i < hmlen(digWireEnds); i++) {
+    if (arrlen(digWireEnds[i].value) > 2) {
+      printf(
+        "Junction at %d, %d\n", digWireEnds[i].key.x, digWireEnds[i].key.y);
+
+      JunctionID junctionID =
+        ux_add_junction(ux, HMM_V2(digWireEnds[i].key.x, digWireEnds[i].key.y));
+      bool valid = true;
+      for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
+        DigWire *digWire = &digWires[digWireEnds[i].value[j]];
+        if (!digWire->valid) {
+          valid = false;
+          break;
+        }
+      }
+      if (!valid) {
+        continue;
       }
 
-      XMLNode *p2 = find_node(wire, "p2");
-      if (!p2) {
-        printf("No p2 node\n");
-        goto fail;
-      }
-
-      XMLNode *nodes[2] = {p1, p2};
-      IVec2 positions[2] = {0};
-
-      for (int j = 0; j < 2; j++) {
-        XMLNode *node = nodes[j];
-        for (int k = 0; k < node->attributes.size; k++) {
-          XMLAttribute *attr = &node->attributes.data[k];
-          if (strcmp(attr->key, "x") == 0) {
-            positions[j].x = atoi(attr->value);
-          } else if (strcmp(attr->key, "y") == 0) {
-            positions[j].y = atoi(attr->value);
-          } else {
-            printf("Unknown attribute %s\n", attr->key);
-            goto fail;
+      for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
+        DigWire *digWire = &digWires[digWireEnds[i].value[j]];
+        for (int k = 0; k < 2; k++) {
+          if (
+            digWire->ends[k].pos.x == digWireEnds[i].key.x &&
+            digWire->ends[k].pos.y == digWireEnds[i].key.y) {
+            digWire->ends[k].type = JUNCTION;
+            digWire->ends[k].junc = junctionID;
           }
         }
       }
-
-      WireEnd start = {
-        .pos = positions[0],
-        .type = WIRE,
-        .farSide = positions[1],
-      };
-      WireEnd end = {
-        .pos = positions[1],
-        .type = WIRE,
-        .farSide = positions[0],
-      };
-
-      arrput(wireEnds, start);
-      arrput(wireEnds, end);
     }
   }
 
-  // sort first by X, then by Y
-  qsort(wireEnds, arrlen(wireEnds), sizeof(WireEnd), compare_x_then_y);
-
   // recursively follow wires and build nets from them
-  for (int i = 0; i < arrlen(wireEnds); i++) {
-    WireEnd *firstEnd = &wireEnds[i];
-    if (firstEnd->visited) {
+  for (int i = 0; i < arrlen(digWires); i++) {
+    DigWire *digWire = &digWires[i];
+    if (!digWire->valid || digWire->visited) {
       continue;
     }
 
@@ -274,126 +585,90 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
     while (arrlen(stack) > 0) {
       int j = arrpop(stack);
-      WireEnd *end = &wireEnds[j];
+      DigWire *digWire = &digWires[j];
 
-      if (end->visited) {
+      if (!digWire->valid || digWire->visited) {
         continue;
       }
-      end->visited = true;
+      digWire->visited = true;
+      arrput(netWires, j);
 
-      arrput(netEnds, j);
+      for (int k = 0; k < 2; k++) {
+        WireEnd *end = &digWire->ends[k];
 
-      for (int k = j + 1; k < arrlen(wireEnds); k++) {
-        WireEnd *other = &wireEnds[k];
-        if (other->pos.x == end->pos.x && other->pos.y == end->pos.y) {
-          arrput(stack, k);
-        } else {
+        arr(uint32_t) ends = hmget(digWireEnds, end->pos);
+        for (int l = 0; l < arrlen(ends); l++) {
+          arrput(stack, ends[l]);
+        }
+
+        switch (end->type) {
+        case IN_PORT:
+          arrput(inPorts, end->port);
+          break;
+        case OUT_PORT:
+          arrput(outPorts, end->port);
+          break;
+        case WIRE:
+          break;
+        case JUNCTION:
           break;
         }
-      }
-
-      switch (end->type) {
-      case IN_PORT:
-        arrput(inPorts, end->port);
-        break;
-      case OUT_PORT:
-        arrput(outPorts, end->port);
-        break;
-      case WIRE:
-        for (int k = 0; k < arrlen(wireEnds); k++) {
-          WireEnd *other = &wireEnds[k];
-          if (
-            other->pos.x == end->farSide.x && other->pos.y == end->farSide.y) {
-            arrput(stack, k);
-            break;
-          }
-        }
-        break;
       }
     }
 
     NetID netID = ux_add_net(ux);
-
-    if (arrlen(inPorts) == 1 && arrlen(outPorts) == 1) {
-      // simple case
-      printf("Adding wire from %d to %d\n", inPorts[0], outPorts[0]);
-      ux_add_wire(
-        ux, netID, wire_end_make(WIRE_END_PORT, inPorts[0]),
-        wire_end_make(WIRE_END_PORT, outPorts[0]));
-    } else {
-
-      float junctionX = 0;
-      float junctionY = 0;
-
-      // find junctions
-      for (int j = 0; j < arrlen(netEnds); j++) {
-        WireEnd *end = &wireEnds[netEnds[j]];
-        if (end->type != WIRE) {
-          continue;
-        }
-
-        int count = 0;
-
-        for (int k = 0; k < arrlen(netEnds); k++) {
-          WireEnd *other = &wireEnds[netEnds[k]];
-          if (other->type != WIRE) {
-            continue;
-          }
-
-          if (end->pos.x == other->pos.x && end->pos.y == other->pos.y) {
-            count++;
-          }
-        }
-
-        if (count > 2) {
-          printf(
-            "Juction location? %d : %d %d\n", count, end->pos.x, end->pos.y);
-          junctionX = end->pos.x;
-          junctionY = end->pos.y;
-          for (int k = 0; k < arrlen(netEnds); k++) {
-            WireEnd *other = &wireEnds[netEnds[k]];
-            if (other->type != WIRE) {
-              continue;
-            }
-            if (end->pos.x != other->pos.x || end->pos.y != other->pos.y) {
-              continue;
-            }
-            printf(
-              "   WireEnd %d: %s %d, %d --> %d, %d\n", i,
-              other->type == IN_PORT
-                ? "IN  "
-                : (other->type == OUT_PORT ? "OUT " : "WIRE"),
-              other->pos.x, other->pos.y, other->farSide.x, other->farSide.y);
-          }
+    printf("Net %d\n", netID);
+    for (int j = 0; j < arrlen(netWires); j++) {
+      DigWire *digWire = &digWires[netWires[j]];
+      WireEndID ends[2] = {WIRE_END_INVALID, WIRE_END_INVALID};
+      if (!digWire->valid) {
+        continue;
+      }
+      bool skip = false;
+      printf("  Connecting ");
+      for (int k = 0; k < 2; k++) {
+        WireEnd *end = &digWire->ends[k];
+        switch (end->type) {
+        case IN_PORT:
+        case OUT_PORT:
+          ends[k] = wire_end_make(WIRE_END_PORT, end->port);
+          printf("port %d ", end->port);
+          break;
+        case JUNCTION:
+          ends[k] = wire_end_make(WIRE_END_JUNC, end->junc);
+          printf("junction %d ", end->junc);
+          break;
+        case WIRE:
+          ends[k] = wire_end_make(WIRE_END_NONE, 0);
+          printf("wire %d, %d ", end->pos.x, end->pos.y);
+          skip = true;
+          break;
         }
       }
-
-      // add junction
-      JunctionID junctionID = ux_add_junction(ux, HMM_V2(junctionX, junctionY));
-
-      for (int i = 0; i < arrlen(outPorts); i++) {
-        printf("Adding net from %d to j%d\n", outPorts[i], junctionID);
-        ux_add_wire(
-          ux, netID, wire_end_make(WIRE_END_PORT, outPorts[i]),
-          wire_end_make(WIRE_END_JUNC, junctionID));
+      if (skip) {
+        printf("  --> skipping\n");
+        allValid = false;
+        continue;
       }
-      for (int j = 0; j < arrlen(inPorts); j++) {
-        printf("Adding net from j%d to %d\n", junctionID, inPorts[j]);
-        ux_add_wire(
-          ux, netID, wire_end_make(WIRE_END_JUNC, junctionID),
-          wire_end_make(WIRE_END_PORT, inPorts[j]));
-      }
+      printf("\n");
+      ux_add_wire(ux, netID, ends[0], ends[1]);
     }
+    assert(allValid);
+
     arrsetlen(inPorts, 0);
     arrsetlen(outPorts, 0);
-    arrsetlen(netEnds, 0);
+    arrsetlen(netWires, 0);
   }
 
 fail:
   arrfree(stack);
   arrfree(inPorts);
   arrfree(outPorts);
-  arrfree(wireEnds);
-  arrfree(netEnds);
+  arrfree(netWires);
+  arrfree(digWires);
+  for (int i = 0; i < hmlen(digWireEnds); i++) {
+    arrfree(digWireEnds[i].value);
+  }
+  hmfree(digWireEnds);
   XMLDocument_free(&doc);
 }

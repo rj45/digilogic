@@ -56,5 +56,7 @@ EXPORT_C void avoid_get_junction_pos(
   AvoidRouter *a, JunctionID junctionID, float *x, float *y);
 EXPORT_C void
 avoid_move_node(AvoidRouter *a, ComponentID nodeID, float x, float y);
+EXPORT_C void
+avoid_force_reroute(AvoidRouter *a, WireID *netWires, size_t numWires);
 
 #endif // AVOID_H

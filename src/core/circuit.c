@@ -149,7 +149,8 @@ ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc) {
       .desc = i,
       .net = NO_NET,
       .label = label,
-    };
+      .next = NO_PORT,
+      .prev = NO_PORT};
     arrput(circuit->ports, port);
   }
 
@@ -177,53 +178,64 @@ JunctionID circuit_add_junction(Circuit *circuit) {
 }
 
 WireID
-circuit_add_wire(Circuit *circuit, NetID net, WireEndID from, WireEndID to) {
+circuit_add_wire(Circuit *circuit, NetID netID, WireEndID from, WireEndID to) {
   WireID id = arrlen(circuit->wires);
-  Wire wire = {.net = net, .from = from, .to = to};
+  Wire wire = {
+    .net = netID, .from = from, .to = to, .next = NO_WIRE, .prev = NO_WIRE};
   arrput(circuit->wires, wire);
 
-  if (net != NO_NET) {
-    Net *n = &circuit->nets[net];
-    if (n->wireFirst == NO_WIRE) {
-      n->wireFirst = id;
-    } else {
-      circuit->wires[n->wireLast].next = id;
-    }
-    n->wireLast = id;
-  }
+  assert(netID != NO_NET);
 
-  Net *n = &circuit->nets[net];
+  Net *net = &circuit->nets[netID];
+  if (net->wireFirst == NO_WIRE) {
+    net->wireFirst = id;
+  } else {
+    circuit->wires[net->wireLast].next = id;
+  }
+  circuit->wires[id].prev = net->wireLast;
+  net->wireLast = id;
+
   WireEndID ends[2] = {from, to};
 
   for (int i = 0; i < 2; i++) {
+    uint32_t index = wire_end_index(ends[i]);
     switch (wire_end_type(ends[i])) {
     case WIRE_END_INVALID:
       assert(0);
       break;
     case WIRE_END_NONE:
       break;
-    case WIRE_END_PORT:
-      assert(circuit->ports[wire_end_index(ends[i])].net == NO_NET);
-      circuit->ports[wire_end_index(ends[i])].net = net;
-      if (n->portFirst == NO_PORT) {
-        n->portFirst = wire_end_index(ends[i]);
-      } else {
-        circuit->ports[n->portLast].next = wire_end_index(ends[i]);
+    case WIRE_END_PORT: {
+      Port *port = &circuit->ports[index];
+      assert(port->net == NO_NET || port->net == netID);
+      if (port->net == NO_NET) {
+        port->net = netID;
+        if (net->portFirst == NO_PORT) {
+          net->portFirst = index;
+        } else {
+          circuit->ports[net->portLast].next = index;
+        }
+        port->prev = net->portLast;
+        assert(port->next == NO_PORT);
+        net->portLast = index;
       }
-      n->portLast = wire_end_index(ends[i]);
       break;
-    case WIRE_END_JUNC:
-      assert(
-        circuit->junctions[wire_end_index(ends[i])].net == NO_NET ||
-        circuit->junctions[wire_end_index(ends[i])].net == net);
-      circuit->junctions[wire_end_index(ends[i])].net = net;
-      if (n->junctionFirst == NO_JUNCTION) {
-        n->junctionFirst = wire_end_index(ends[i]);
-      } else {
-        circuit->junctions[n->junctionLast].next = wire_end_index(ends[i]);
+    }
+    case WIRE_END_JUNC: {
+      Junction *junction = &circuit->junctions[index];
+      assert(junction->net == NO_NET || junction->net == netID);
+      if (junction->net == NO_NET) {
+        junction->net = netID;
+        if (net->junctionFirst == NO_JUNCTION) {
+          net->junctionFirst = index;
+        } else {
+          circuit->junctions[net->junctionLast].next = index;
+        }
+        junction->prev = net->junctionLast;
+        net->junctionLast = index;
       }
-      n->junctionLast = wire_end_index(ends[i]);
       break;
+    }
     }
   }
 
@@ -251,4 +263,71 @@ LabelID circuit_add_label(Circuit *circuit, const char *text) {
 
 const char *circuit_label_text(Circuit *circuit, LabelID id) {
   return circuit->text + circuit->labels[id].textOffset;
+}
+
+void circuit_write_dot(Circuit *circuit, FILE *file) {
+  fprintf(file, "graph {\n");
+  fprintf(file, "  rankdir=LR;\n");
+  fprintf(file, "  node [shape=record];\n");
+
+  for (ComponentID i = 0; i < arrlen(circuit->components); i++) {
+    Component comp = circuit->components[i];
+    const ComponentDesc *desc = &circuit->componentDescs[comp.desc];
+    // const char *typeName = circuit_label_text(circuit, comp.typeLabel);
+    const char *name = circuit_label_text(circuit, comp.nameLabel);
+    fprintf(file, "  c%d [label=\"%s %s|", i, desc->typeName, name);
+
+    for (int j = 0; j < desc->numPorts; j++) {
+      PortDesc *portDesc = &desc->ports[j];
+      fprintf(file, "<p%d>%s", j, portDesc->name);
+      if (j < desc->numPorts - 1) {
+        fprintf(file, "|");
+      }
+    }
+
+    fprintf(file, "\"];\n");
+  }
+
+  fprintf(file, "\n");
+
+  for (JunctionID i = 0; i < arrlen(circuit->junctions); i++) {
+    fprintf(file, "  j%d [shape=\"point\"];\n", i);
+  }
+
+  fprintf(file, "\n");
+
+  int floatPoint = 0;
+
+  for (WireID i = 0; i < arrlen(circuit->wires); i++) {
+    Wire wire = circuit->wires[i];
+
+    fprintf(file, "  ");
+
+    for (int j = 0; j < 2; j++) {
+      WireEndID end = j == 0 ? wire.from : wire.to;
+      switch (wire_end_type(end)) {
+      case WIRE_END_INVALID:
+        assert(0);
+        break;
+      case WIRE_END_NONE:
+        fprintf(file, "f%d[shape=\"point\"]", floatPoint);
+        floatPoint++;
+        break;
+      case WIRE_END_JUNC:
+        fprintf(file, "j%d", wire_end_index(end));
+        break;
+      case WIRE_END_PORT: {
+        Port *port = &circuit->ports[wire_end_index(end)];
+        fprintf(file, "c%d:p%d", port->component, port->desc);
+        break;
+      }
+      }
+      if (j == 0) {
+        fprintf(file, " -- ");
+      }
+    }
+    fprintf(file, ";\n");
+  }
+
+  fprintf(file, "}\n");
 }

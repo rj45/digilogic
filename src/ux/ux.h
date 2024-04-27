@@ -159,6 +159,7 @@ enum {
 typedef enum MouseDownState {
   STATE_UP,
   STATE_DOWN,
+  STATE_PAN,
   STATE_CLICK,
   STATE_DESELECT,
   STATE_SELECT_AREA,
@@ -227,9 +228,11 @@ WireID ux_add_wire(CircuitUX *ux, NetID net, WireEndID from, WireEndID to);
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
 
 void ux_draw(CircuitUX *ux, Context ctx);
-void ux_route(CircuitUX *ux);
 void ux_do(CircuitUX *ux, UndoCommand command);
 UndoCommand ux_undo(CircuitUX *ux);
 UndoCommand ux_redo(CircuitUX *ux);
+
+void ux_force_reroute(CircuitUX *ux);
+void ux_route(CircuitUX *ux);
 
 #endif // UX_H

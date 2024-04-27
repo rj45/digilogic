@@ -48,15 +48,16 @@
         FloatingWire --> [*]
 */
 static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
-  bool down = ux->input.modifiers & MODIFIER_LMB;
+  bool rightDown = ux->input.modifiers & MODIFIER_RMB;
+  bool leftDown = ux->input.modifiers & MODIFIER_LMB;
   bool overPort = ux->view.hoveredPort != NO_PORT;
   bool overComponent = ux->view.hoveredComponent != NO_COMPONENT;
 
   MouseDownState oldState = ux->mouseDownState;
   MouseDownState state = oldState;
   for (;;) {
-    bool move = down && HMM_LenV2(HMM_Sub(worldMousePos, ux->downStart)) >
-                          (10.0f * ux->view.zoom);
+    bool move = leftDown && HMM_LenV2(HMM_Sub(worldMousePos, ux->downStart)) >
+                              (10.0f * ux->view.zoom);
     bool selected = arrlen(ux->view.selectedComponents) > 0 ||
                     HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.0f;
 
@@ -75,7 +76,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
     // switch statement
     switch (state) {
     case STATE_UP:
-      if (down) {
+      if (leftDown) {
         if (inSelection) {
           state = STATE_MOVE_SELECTION;
         } else if (overPort) {
@@ -85,10 +86,17 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         } else {
           state = STATE_DOWN;
         }
+      } else if (rightDown) {
+        state = STATE_PAN;
+      }
+      break;
+    case STATE_PAN:
+      if (!rightDown) {
+        state = STATE_UP;
       }
       break;
     case STATE_DOWN:
-      if (!down) {
+      if (!leftDown) {
         if (selected) {
           state = STATE_DESELECT;
         } else {
@@ -99,48 +107,48 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       }
       break;
     case STATE_CLICK:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
       }
       break;
     case STATE_DESELECT:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
       }
       break;
     case STATE_SELECT_AREA:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
       }
       break;
     case STATE_SELECT_ONE:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
       } else if (move) {
         state = STATE_MOVE_SELECTION;
       }
       break;
     case STATE_MOVE_SELECTION:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
       }
       break;
     case STATE_CLICK_PORT:
-      if (down) {
+      if (leftDown) {
         state = STATE_CLICK_WIRING;
       } else if (move) {
         state = STATE_DRAG_WIRING;
       }
       break;
     case STATE_DRAG_WIRING:
-      if (overPort && !down) {
+      if (overPort && !leftDown) {
         state = STATE_CONNECT_PORT;
-      } else if (!overPort && !down) {
+      } else if (!overPort && !leftDown) {
         state = STATE_FLOATING_WIRE;
       }
       break;
     case STATE_CLICK_WIRING:
-      if (down) {
+      if (leftDown) {
         if (overPort) {
           state = STATE_CONNECT_PORT;
         } else if (!overPort) {
@@ -149,12 +157,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       }
       break;
     case STATE_CONNECT_PORT:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
         break;
       }
     case STATE_FLOATING_WIRE:
-      if (!down) {
+      if (!leftDown) {
         state = STATE_UP;
         break;
       }
@@ -236,6 +244,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
             .area = box_from_tlbr(ux->downStart, worldMousePos),
           });
     break;
+  case STATE_PAN: {
+    HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
+    ux->downStart = worldMousePos;
+    ux->view.pan = HMM_Add(ux->view.pan, delta);
+    break;
+  }
   default:
     break;
   }

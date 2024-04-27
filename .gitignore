@@ -6,3 +6,5 @@ gen
 thirdparty/adaptagrams
 *.o
 .DS_Store
+circuit.dot
+circuit.pdf
