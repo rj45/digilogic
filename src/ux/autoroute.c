@@ -14,11 +14,12 @@
    limitations under the License.
 */
 
-#include "avoid/avoid.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
 #include "ux.h"
+
+#include "avoid/avoid.h"
 
 void ux_route(CircuitUX *ux) {
   avoid_route(ux->avoid);

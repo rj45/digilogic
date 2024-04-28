@@ -4,6 +4,7 @@ gen
 .cache
 *.dSYM
 thirdparty/adaptagrams
+thirdparty/routing
 *.o
 .DS_Store
 circuit.dot

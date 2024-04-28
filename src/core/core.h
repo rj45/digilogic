@@ -27,7 +27,7 @@
 #define arr(type) type *
 
 // defines an STB hash map
-#define map(type) type *
+#define hmap(type) type *
 
 ////////////////////////////////////////////////////////////////////////////////
 // Circuit
@@ -314,7 +314,7 @@ void bvh_init(BVH *bvh);
 void bvh_free(BVH *bvh);
 void bvh_add(BVH *bvh, Box box, ID item);
 void bvh_remove(BVH *bvh, Box box, ID item);
-void bvh_update(BVH *bvh, Box old, Box new, ID item);
+void bvh_update(BVH *bvh, Box oldBox, Box newBox, ID item);
 void bvh_rebuild(BVH *bvh);
 arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result);
 

@@ -47,8 +47,8 @@ EXPORT_C void avoid_add_port(
 EXPORT_C void
 avoid_add_junction(AvoidRouter *a, JunctionID junctionID, float x, float y);
 EXPORT_C void avoid_add_edge(
-  AvoidRouter *a, WireID edgeID, WireEndID srcID, WireEndID dstID, float x1,
-  float y1, float x2, float y2);
+  AvoidRouter *a, NetID netID, WireID edgeID, WireEndID srcID, WireEndID dstID,
+  float x1, float y1, float x2, float y2);
 EXPORT_C void avoid_route(AvoidRouter *a);
 EXPORT_C size_t
 avoid_get_edge_path(AvoidRouter *a, NetID edgeID, float *coords, size_t maxLen);

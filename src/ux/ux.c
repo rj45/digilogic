@@ -75,7 +75,7 @@ JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position) {
 
 WireID ux_add_wire(CircuitUX *ux, NetID net, WireEndID from, WireEndID to) {
   WireID id = view_add_wire(&ux->view, net, from, to);
-  avoid_add_edge(ux->avoid, id, from, to, 0, 0, 0, 0);
+  avoid_add_edge(ux->avoid, net, id, from, to, 0, 0, 0, 0);
 
   return id;
 }

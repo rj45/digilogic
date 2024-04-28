@@ -40,10 +40,10 @@ void bvh_add(BVH *bvh, Box box, ID item) {
 
 void bvh_remove(BVH *bvh, Box box, ID item) {}
 
-void bvh_update(BVH *bvh, Box old, Box new, ID item) {
+void bvh_update(BVH *bvh, Box oldBox, Box newBox, ID item) {
   // todo: a more efficient algorithm
-  bvh_remove(bvh, old, item);
-  bvh_add(bvh, new, item);
+  bvh_remove(bvh, oldBox, item);
+  bvh_add(bvh, newBox, item);
 }
 
 static int bvh_compare_x(const void *a, const void *b) {

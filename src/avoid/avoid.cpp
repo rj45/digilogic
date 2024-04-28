@@ -134,7 +134,7 @@ void avoid_add_junction(
 }
 
 void avoid_add_edge(
-  AvoidRouter *a, WireID edgeID, WireEndID srcID, WireEndID dstID, float x1,
+  AvoidRouter *a, NetID netID, WireID edgeID, WireEndID srcID, WireEndID dstID, float x1,
   float y1, float x2, float y2) {
   auto state = reinterpret_cast<AvoidState *>(a);
 
