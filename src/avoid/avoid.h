@@ -61,5 +61,6 @@ avoid_force_reroute(AvoidRouter *a, WireID *netWires, size_t numWires);
 
 void avoid_draw_debug_lines(
   AvoidRouter *a, void *ctx, float zoom, HMM_Vec2 pan);
+void avoid_dump_anchor_boxes(AvoidRouter *a);
 
 #endif // AVOID_H

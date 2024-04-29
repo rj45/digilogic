@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "avoid/avoid.h"
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -80,7 +81,7 @@ static void init(void *user_data) {
 
   import_digital(&app->circuit, "testdata/alu_1bit_2inpgate.dig");
   //  import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
-  //  import_digital(&app->circuit, "testdata/simple_test.dig");
+  // import_digital(&app->circuit, "testdata/simple_test.dig");
 
   printf("circuit size: %td\n", arrlen(app->circuit.view.circuit.components));
 
@@ -89,6 +90,8 @@ static void init(void *user_data) {
   fclose(fp);
 
   ux_route(&app->circuit);
+
+  // avoid_dump_anchor_boxes(app->circuit.avoid);
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),

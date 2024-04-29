@@ -141,6 +141,7 @@ pub fn build(b: *std.build.Builder) void {
     const csrc_root = "src/";
     const csources = [_][]const u8{
         "core/circuit.c",
+        "core/timer.c",
         "ux/ux.c",
         "ux/input.c",
         "ux/undo.c",

@@ -72,6 +72,8 @@ struct AvoidState {
   arr(RT_PathDef) paths;
 
   arr(RT_VertexBuffer) vertexBuffers;
+
+  Timer timer;
 };
 
 AvoidRouter *avoid_new() {
@@ -94,6 +96,8 @@ AvoidRouter *avoid_new() {
         .vertex_count = 0,
       }));
   }
+
+  timer_init(&state->timer);
 
   return state;
 }
@@ -344,6 +348,8 @@ void avoid_route(AvoidRouter *a) {
   //   state->anchors[i].y);
   // }
 
+  double start = timer_now(&state->timer);
+
   RT_Result res = RT_graph_build(
     state->graph, state->anchors, arrlen(state->anchors), state->boundingBoxes,
     arrlen(state->boundingBoxes));
@@ -352,10 +358,48 @@ void avoid_route(AvoidRouter *a) {
   }
   assert(res == RT_RESULT_SUCCESS);
 
+  double graphBuild = timer_now(&state->timer);
+
   res = RT_graph_find_paths(
     state->graph, state->paths, arrlen(state->paths), state->vertexBuffers,
     state->vertBufferCapacity);
   assert(res == RT_RESULT_SUCCESS);
+
+  double pathFind = timer_now(&state->timer);
+
+  printf(
+    "Graph build: %f, Path find: %f\n", graphBuild - start,
+    pathFind - graphBuild);
+  printf(
+    "Number of anchors: %zu, boxes: %zu\n", arrlen(state->anchors),
+    arrlen(state->boundingBoxes));
+}
+
+void avoid_dump_anchor_boxes(AvoidRouter *a) {
+  struct AvoidState *state = a;
+
+  FILE *fp = fopen("dump.rs", "w");
+  fprintf(fp, "const ANCHOR_POINTS: &[Point] = &[\n");
+  for (size_t i = 0; i < arrlen(state->anchors); i++) {
+    fprintf(
+      fp, "    Point { x: %d, y: %d },\n", state->anchors[i].x,
+      state->anchors[i].y);
+  }
+  fprintf(fp, "];\n\n");
+  fprintf(fp, "const BOUNDING_BOXES: &[BoundingBox] = &[\n");
+  for (size_t i = 0; i < arrlen(state->boundingBoxes); i++) {
+    fprintf(fp, "    BoundingBox {\n");
+    fprintf(
+      fp, "        center: Point { x: %d, y: %d },\n",
+      state->boundingBoxes[i].center.x, state->boundingBoxes[i].center.y);
+    fprintf(
+      fp, "        half_width: %d,\n", state->boundingBoxes[i].half_width);
+    fprintf(
+      fp, "        half_height: %d,\n", state->boundingBoxes[i].half_height);
+    fprintf(fp, "    },\n");
+  }
+  fprintf(fp, "];\n");
+  fclose(fp);
 }
 
 size_t avoid_get_edge_path(
