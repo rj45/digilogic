@@ -59,6 +59,7 @@ ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position) {
     if (dir != PORT_IN) {
       side = SIDE_RIGHT;
     }
+    // todo: seems like a bug here
     HMM_Vec2 center = HMM_Add(portView.center, box.halfSize);
     avoid_add_port(ux->avoid, portID, id, side, center.X, center.Y);
   }

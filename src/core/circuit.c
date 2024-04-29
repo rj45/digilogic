@@ -58,6 +58,7 @@ const ComponentDesc *circuit_component_descs() {
         .typeName = "AND",
         .numPorts = 3,
         .namePrefix = 'X',
+        .shape = SHAPE_AND,
         .ports = andPorts,
       },
     [COMP_OR] =

@@ -28,6 +28,8 @@ typedef enum DrawCmdType {
   DRAW_STROKED_RECT,
   DRAW_FILLED_CIRCLE,
   DRAW_STROKED_CIRCLE,
+  DRAW_FILLED_ARC,
+  DRAW_STROKED_ARC,
   DRAW_STROKED_LINE,
   DRAW_TEXT,
 } DrawCmdType;
@@ -95,6 +97,33 @@ void draw_stroked_circle(
     .type = DRAW_STROKED_CIRCLE,
     .position = position,
     .size = size,
+    .line_thickness = line_thickness,
+    .color = color,
+  };
+  arrput(*cmds, cmd);
+}
+
+void draw_filled_arc(
+  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
+  HMM_Vec4 color) {
+  DrawCmd **cmds = (DrawCmd **)ctx;
+  DrawCmd cmd = {
+    .type = DRAW_FILLED_ARC,
+    .position = position,
+    .size = HMM_V2(radius, radius),
+    .color = color,
+  };
+  arrput(*cmds, cmd);
+}
+
+void draw_stroked_arc(
+  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
+  float line_thickness, HMM_Vec4 color) {
+  DrawCmd **cmds = (DrawCmd **)ctx;
+  DrawCmd cmd = {
+    .type = DRAW_STROKED_ARC,
+    .position = position,
+    .size = HMM_V2(radius, radius),
     .line_thickness = line_thickness,
     .color = color,
   };
@@ -171,6 +200,8 @@ const char *drawNames[] = {
   [DRAW_STROKED_RECT] = "stroked_rect",
   [DRAW_FILLED_CIRCLE] = "filled_circle",
   [DRAW_STROKED_CIRCLE] = "stroked_circle",
+  [DRAW_FILLED_ARC] = "filled_arc",
+  [DRAW_STROKED_ARC] = "stroked_arc",
   [DRAW_STROKED_LINE] = "stroked_line",
   [DRAW_TEXT] = "text",
 };

@@ -50,13 +50,16 @@ EXPORT_C void avoid_add_edge(
   AvoidRouter *a, NetID netID, WireID edgeID, WireEndID srcID, WireEndID dstID,
   float x1, float y1, float x2, float y2);
 EXPORT_C void avoid_route(AvoidRouter *a);
-EXPORT_C size_t
-avoid_get_edge_path(AvoidRouter *a, NetID edgeID, float *coords, size_t maxLen);
+EXPORT_C size_t avoid_get_edge_path(
+  AvoidRouter *a, WireID edgeID, float *coords, size_t maxLen);
 EXPORT_C void avoid_get_junction_pos(
   AvoidRouter *a, JunctionID junctionID, float *x, float *y);
 EXPORT_C void
 avoid_move_node(AvoidRouter *a, ComponentID nodeID, float x, float y);
 EXPORT_C void
 avoid_force_reroute(AvoidRouter *a, WireID *netWires, size_t numWires);
+
+void avoid_draw_debug_lines(
+  AvoidRouter *a, void *ctx, float zoom, HMM_Vec2 pan);
 
 #endif // AVOID_H

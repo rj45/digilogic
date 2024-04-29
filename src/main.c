@@ -76,7 +76,9 @@ static void init(void *user_data) {
   //   &app->circuit, view_port_start(&app->circuit.view, and) + 1,
   //   view_port_start(&app->circuit.view, or) + 1);
 
-  import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
+  import_digital(&app->circuit, "testdata/alu_1bit_2inpgate.dig");
+  // import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
+  // import_digital(&app->circuit, "testdata/simple_test.dig");
 
   FILE *fp = fopen("circuit.dot", "w");
   circuit_write_dot(&app->circuit.view.circuit, fp);
@@ -103,7 +105,8 @@ static void init(void *user_data) {
     exit(1);
   }
 
-  snk_setup(&(snk_desc_t){.logger.func = slog_func, .sample_count = 4});
+  snk_setup(&(snk_desc_t){
+    .max_vertices = 1024 * 1024, .logger.func = slog_func, .sample_count = 4});
 
   app->msdf_shader = sg_make_shader(msdf_shader_desc(sg_query_backend()));
 
@@ -285,6 +288,24 @@ void draw_stroked_circle(
   struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
   nk_stroke_circle(
     nk_ctx, nk_rect(position.X, position.Y, size.X, size.Y), line_thickness,
+    nk_rgba_f(color.R, color.G, color.B, color.A));
+}
+
+void draw_stroked_arc(
+  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
+  float line_thickness, HMM_Vec4 color) {
+  struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
+  nk_stroke_arc(
+    nk_ctx, position.X, position.Y, radius, aMin, aMax, line_thickness,
+    nk_rgba_f(color.R, color.G, color.B, color.A));
+}
+
+void draw_filled_arc(
+  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
+  HMM_Vec4 color) {
+  struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
+  nk_fill_arc(
+    nk_ctx, position.X, position.Y, radius, aMin, aMax,
     nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 

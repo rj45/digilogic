@@ -103,10 +103,19 @@ typedef struct PortDesc {
   const char *name;
 } PortDesc;
 
+typedef enum ShapeType {
+  SHAPE_DEFAULT,
+  SHAPE_AND,
+  SHAPE_OR,
+  SHAPE_XOR,
+  SHAPE_NOT,
+} ShapeType;
+
 typedef struct ComponentDesc {
   const char *typeName;
   int numPorts;
   char namePrefix;
+  ShapeType shape;
   PortDesc *ports;
 } ComponentDesc;
 

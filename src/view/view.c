@@ -300,6 +300,88 @@ static Box transformBox(CircuitView *view, Box box) {
   return (Box){.center = center, .halfSize = halfSize};
 }
 
+static void draw_chip(
+  CircuitView *view, Context ctx, ComponentID id, bool isHovered,
+  bool isSelected) {
+  ComponentView *componentView = &view->components[id];
+  Component *component = &view->circuit.components[id];
+  HMM_Vec2 center = componentView->box.center;
+  HMM_Vec2 pos = panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
+  HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
+
+  if (isHovered) {
+    draw_filled_rect(
+      ctx,
+      HMM_Sub(
+        pos, HMM_V2(
+               view->theme.borderWidth * view->zoom * 2.0f,
+               view->theme.borderWidth * view->zoom * 2.0f)),
+      HMM_Add(
+        size, HMM_V2(
+                view->theme.borderWidth * view->zoom * 4.0f,
+                view->theme.borderWidth * view->zoom * 4.0f)),
+      view->zoom * view->theme.componentRadius, view->theme.color.hovered);
+  }
+
+  draw_filled_rect(
+    ctx, pos, size, view->zoom * view->theme.componentRadius,
+    isSelected ? view->theme.color.selected : view->theme.color.component);
+  draw_stroked_rect(
+    ctx, pos, size, view->zoom * view->theme.componentRadius,
+    view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
+
+  LabelView *typeLabel = &view->labels[component->typeLabel];
+  const char *typeLabelText =
+    circuit_label_text(&view->circuit, component->typeLabel);
+  Box typeLabelBounds =
+    transformBox(view, box_translate(typeLabel->bounds, center));
+  draw_text(
+    ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
+    view->theme.labelFontSize * view->zoom, view->theme.font,
+    view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+}
+
+static void draw_and_gate(
+  CircuitView *view, Context ctx, ComponentID id, bool isHovered,
+  bool isSelected) {
+  ComponentView *componentView = &view->components[id];
+  Component *component = &view->circuit.components[id];
+  HMM_Vec2 center = componentView->box.center;
+  HMM_Vec2 pos = panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
+  HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
+
+  if (isHovered) {
+    draw_filled_rect(
+      ctx,
+      HMM_Sub(
+        pos, HMM_V2(
+               view->theme.borderWidth * view->zoom * 2.0f,
+               view->theme.borderWidth * view->zoom * 2.0f)),
+      HMM_Add(
+        size, HMM_V2(
+                view->theme.borderWidth * view->zoom * 4.0f,
+                view->theme.borderWidth * view->zoom * 4.0f)),
+      view->zoom * view->theme.componentRadius, view->theme.color.hovered);
+  }
+
+  draw_filled_rect(
+    ctx, pos, size, view->zoom * view->theme.componentRadius,
+    isSelected ? view->theme.color.selected : view->theme.color.component);
+  draw_stroked_rect(
+    ctx, pos, size, view->zoom * view->theme.componentRadius,
+    view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
+
+  LabelView *typeLabel = &view->labels[component->typeLabel];
+  const char *typeLabelText =
+    circuit_label_text(&view->circuit, component->typeLabel);
+  Box typeLabelBounds =
+    transformBox(view, box_translate(typeLabel->bounds, center));
+  draw_text(
+    ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
+    view->theme.labelFontSize * view->zoom, view->theme.font,
+    view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+}
+
 void view_draw(CircuitView *view, Context ctx) {
   if (
     view->selectionBox.halfSize.X > 0.001f &&
@@ -315,25 +397,7 @@ void view_draw(CircuitView *view, Context ctx) {
     ComponentView *componentView = &view->components[i];
     Component *component = &view->circuit.components[i];
     const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
-
     HMM_Vec2 center = componentView->box.center;
-    HMM_Vec2 pos =
-      panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
-    HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
-
-    if (i == view->hoveredComponent) {
-      draw_filled_rect(
-        ctx,
-        HMM_Sub(
-          pos, HMM_V2(
-                 view->theme.borderWidth * view->zoom * 2.0f,
-                 view->theme.borderWidth * view->zoom * 2.0f)),
-        HMM_Add(
-          size, HMM_V2(
-                  view->theme.borderWidth * view->zoom * 4.0f,
-                  view->theme.borderWidth * view->zoom * 4.0f)),
-        view->zoom * view->theme.componentRadius, view->theme.color.hovered);
-    }
 
     bool isSelected = false;
     for (int j = 0; j < arrlen(view->selectedComponents); j++) {
@@ -343,22 +407,18 @@ void view_draw(CircuitView *view, Context ctx) {
       }
     }
 
-    draw_filled_rect(
-      ctx, pos, size, view->zoom * view->theme.componentRadius,
-      isSelected ? view->theme.color.selected : view->theme.color.component);
-    draw_stroked_rect(
-      ctx, pos, size, view->zoom * view->theme.componentRadius,
-      view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
+    bool isHovered = i == view->hoveredComponent;
 
-    LabelView *typeLabel = &view->labels[component->typeLabel];
-    const char *typeLabelText =
-      circuit_label_text(&view->circuit, component->typeLabel);
-    Box typeLabelBounds =
-      transformBox(view, box_translate(typeLabel->bounds, center));
-    draw_text(
-      ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
-      view->theme.labelFontSize * view->zoom, view->theme.font,
-      view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+    switch (desc->shape) {
+    case SHAPE_DEFAULT:
+      draw_chip(view, ctx, i, isHovered, isSelected);
+      break;
+    case SHAPE_AND:
+      draw_and_gate(view, ctx, i, isHovered, isSelected);
+      break;
+    default:
+      assert(0);
+    }
 
     LabelView *nameLabel = &view->labels[component->nameLabel];
     const char *nameLabelText =

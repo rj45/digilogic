@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "avoid/avoid.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -363,4 +364,6 @@ void ux_draw(CircuitUX *ux, Context ctx) {
   ux_handle_mouse(ux);
 
   view_draw(&ux->view, ctx);
+
+  // avoid_draw_debug_lines(ux->avoid, ctx, ux->view.zoom, ux->view.pan);
 }

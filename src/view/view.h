@@ -153,6 +153,12 @@ void draw_filled_circle(
 void draw_stroked_circle(
   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float line_thickness,
   HMM_Vec4 color);
+void draw_filled_arc(
+  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
+  HMM_Vec4 color);
+void draw_stroked_arc(
+  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
+  float line_thickness, HMM_Vec4 color);
 void draw_stroked_line(
   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color);

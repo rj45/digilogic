@@ -1,7 +1,3 @@
-[submodule "thirdparty/adaptagrams"]
-	path = thirdparty/adaptagrams
-	url = https://github.com/mjwybrow/adaptagrams.git
-	shallow = true
 [submodule "thirdparty/routing"]
 	path = thirdparty/routing
 	url = https://github.com/Artentus/digilogic-routing.git
