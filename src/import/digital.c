@@ -22,6 +22,7 @@
 
 #define DEBUG_PRINT(...)
 #include "lxml.h"
+#define STBDS_ASSERT assert
 #include "stb_ds.h"
 #include <assert.h>
 
@@ -205,6 +206,10 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
   DigWireHash *digWireEnds = 0;
 
+  printf("Loading %s\n", filename);
+
+  hmdefault(digWireEnds, 0);
+
   XMLDocument doc;
   if (!XMLDocument_load(&doc, filename)) {
     printf("Failed to load %s\n", filename);
@@ -228,6 +233,8 @@ void import_digital(CircuitUX *ux, const char *filename) {
     printf("No wires node\n");
     goto fail;
   }
+
+  printf("Loading wires\n");
 
   // load all the wires into digWires
   for (int i = 0; i < wires->children.size; i++) {
@@ -281,12 +288,23 @@ void import_digital(CircuitUX *ux, const char *filename) {
       arrput(digWires, digWire);
 
       for (int j = 0; j < 2; j++) {
-        arr(uint32_t) ends = hmget(digWireEnds, digWire.ends[j].pos);
+        IVec2 key = digWire.ends[j].pos;
+        printf("om %zu \n", (size_t)digWireEnds);
+        arr(uint32_t) ends = hmget(digWireEnds, key);
+
+        printf("Wire end %d %d\n", i, j);
         arrput(ends, arrlen(digWires) - 1);
-        hmput(digWireEnds, digWire.ends[j].pos, ends);
+        printf(
+          "Wire end2 %d %d %zu %zu\n", i, j, (size_t)digWireEnds, (size_t)ends);
+        hmput(digWireEnds, key, ends);
+        printf("Wire end4 %d %d\n", i, j);
       }
+
+      printf("Wire %d\n", i);
     }
   }
+
+  printf("Loading components\n");
 
   XMLNode *visualElements = find_node(circuit, "visualElements");
   if (!visualElements) {

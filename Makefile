@@ -6,9 +6,9 @@ THIRDPARTY_LIBS =  thirdparty/routing/target/release/libdigilogic_routing.a
 MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/noto_sans_regular.c
 TEST_SRCS = $(SRCS) src/test.c src/view/view_test.c src/core/core_test.c
 
-CFLAGS = -I thirdparty -I src -Wall -Werror -DDEBUG -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+CFLAGS = -DSOKOL_METAL -I thirdparty -I src -Wall -Werror -DDEBUG -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
 LIBFLAGS = -fobjc-arc -framework Metal -framework Cocoa -framework MetalKit -framework Quartz \
-	-Lthirdparty/routing/target/release -ldigilogic_routing -lstdc++
+	-Lthirdparty/routing/target/release -ldigilogic_routing
 
 .PHONY: all clean
 
@@ -30,5 +30,8 @@ thirdparty/routing/target/release/libdigilogic_routing.a:
 src/shaders/msdf_shader.h: src/shaders/msdf.glsl
 	cd src/shaders/ && ../../../fips-deploy/sokol-tools/osx-xcode-release/sokol-shdc -i msdf.glsl -o msdf_shader.h --slang glsl330:glsl300es:hlsl4:metal_macos:metal_ios:metal_sim:wgsl --ifdef
 
+src/apple.m: src/nonapple.c
+	cp src/nonapple.c src/apple.m
+
 clean:
-	rm -f digilogic test gen
+	rm -f digilogic test gen src/apple.m

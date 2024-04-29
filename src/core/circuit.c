@@ -247,8 +247,23 @@ LabelID circuit_add_label(Circuit *circuit, const char *text) {
   LabelID id = arrlen(circuit->labels);
   Label label = {.textOffset = arrlen(circuit->text)};
 
-  char *found =
-    memmem(circuit->text, arrlen(circuit->text), text, strlen(text) + 1);
+  char *found = NULL;
+  int searchlen = strlen(text) + 1;
+  int matches = 0;
+  for (int i = 0; i < arrlen(circuit->text); i++) {
+    if (circuit->text[i] == text[matches]) {
+      matches++;
+      if (matches == searchlen) {
+        found = &circuit->text[i - matches + 1];
+        break;
+      }
+    } else {
+      matches = 0;
+    }
+  }
+
+  // char *found =
+  // memmem(circuit->text, arrlen(circuit->text), text, strlen(text) + 1);
   if (found) {
     label.textOffset = found - circuit->text;
   } else {

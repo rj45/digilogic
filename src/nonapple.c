@@ -14,13 +14,6 @@
    limitations under the License.
 */
 
-//------------------------------------------------------------------------------
-//  sokol_gfx.m
-//
-//  When using the Metal backend, the implementation source must be
-//  Objective-C (.m or .mm), but we want the samples to be in C. Thus
-//  move the sokol_gfx implementation into it's own .m file.
-//------------------------------------------------------------------------------
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -32,19 +25,16 @@
 #define MSDF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 
-
 #define SOKOL_IMPL
-#define SOKOL_METAL
 #define SGP_UNIFORM_CONTENT_SLOTS 12
 
-
 #include "nuklear.h"
-#include "sokol_gfx.h"
-#include "sokol_log.h"
 #include "sokol_app.h"
+#include "sokol_gfx.h"
 #include "sokol_glue.h"
+#include "sokol_gp.h"
+#include "sokol_log.h"
 #include "sokol_nuklear.h"
 #include "stb_image.h"
-#include "sokol_gp.h"
 
 #include "msdf.h"

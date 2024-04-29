@@ -14,15 +14,17 @@
    limitations under the License.
 */
 
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define STB_DS_IMPLEMENTATION
+
 #include "font.h"
 #include "ux/ux.h"
 #include "view/view.h"
-#include <execinfo.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#define STB_DS_IMPLEMENTATION
 
 #include <stdlib.h>
 
@@ -43,7 +45,6 @@
 #include "stb_ds.h"
 #include "stb_image.h"
 
-#define SOKOL_METAL
 #include "shaders/msdf_shader.h"
 
 #define LOG_TAG "main"
@@ -51,6 +52,7 @@
 
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
+  printf("init\n");
 
   ux_init(
     &app->circuit, circuit_component_descs(), (FontHandle)&notoSansRegular);
@@ -77,8 +79,10 @@ static void init(void *user_data) {
   //   view_port_start(&app->circuit.view, or) + 1);
 
   import_digital(&app->circuit, "testdata/alu_1bit_2inpgate.dig");
-  // import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
-  // import_digital(&app->circuit, "testdata/simple_test.dig");
+  //  import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
+  //  import_digital(&app->circuit, "testdata/simple_test.dig");
+
+  printf("circuit size: %td\n", arrlen(app->circuit.view.circuit.components));
 
   FILE *fp = fopen("circuit.dot", "w");
   circuit_write_dot(&app->circuit.view.circuit, fp);
@@ -485,6 +489,10 @@ void event(const sapp_event *event, void *user_data) {
   }
 }
 
+#ifdef __APPLE__
+#include <execinfo.h>
+#include <signal.h>
+
 void handler(int sig) {
   void *array[150];
   size_t size;
@@ -495,13 +503,17 @@ void handler(int sig) {
   backtrace_symbols_fd(array, size, STDERR_FILENO);
   exit(1);
 }
+#endif
 
 sapp_desc sokol_main(int argc, char *argv[]) {
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){0};
 
+#ifdef __APPLE__
   signal(SIGSEGV, handler);
   signal(SIGABRT, handler);
+  signal(SIGTRAP, handler);
+#endif
 
   return (sapp_desc){
     .width = 1024,

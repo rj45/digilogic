@@ -1,6 +1,9 @@
 test
 digilogic
 gen
+src/apple.m
+zig-cache
+zig-out
 .cache
 *.dSYM
 thirdparty/adaptagrams

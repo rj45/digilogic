@@ -1,33 +1,9 @@
 [
   {
     "arguments": [
-      "/usr/bin/g++",
-      "-c",
-      "-I",
-      "thirdparty",
-      "-I",
-      "src",
-      "-Wall",
-      "-Werror",
-      "-DDEBUG",
-      "-O0",
-      "-g",
-      "-fsanitize=address,undefined",
-      "-fno-omit-frame-pointer",
-      "-std=c++17",
-      "-Ithirdparty/adaptagrams/cola",
-      "-o",
-      "avoid.o",
-      "src/avoid/avoid.cpp"
-    ],
-    "directory": "/Users/rj45/Code/digilogic_sokol",
-    "file": "/Users/rj45/Code/digilogic_sokol/src/avoid/avoid.cpp",
-    "output": "/Users/rj45/Code/digilogic_sokol/avoid.o"
-  },
-  {
-    "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -48,7 +24,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/core/circuit.c"
@@ -61,6 +36,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -81,7 +57,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/ux/ux.c"
@@ -94,6 +69,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -114,7 +90,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/ux/input.c"
@@ -127,6 +102,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -147,7 +123,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/ux/undo.c"
@@ -160,6 +135,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -180,7 +156,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/ux/autoroute.c"
@@ -193,6 +168,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -213,7 +189,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/view/view.c"
@@ -226,6 +201,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -246,7 +222,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/import/digital.c"
@@ -259,6 +234,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -279,7 +255,39 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
+      "-o",
+      "digilogic",
+      "src/avoid/avoid.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/avoid/avoid.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/digilogic"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-DSOKOL_METAL",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-DDEBUG",
+      "-O0",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
       "-o",
       "digilogic",
       "src/main.c"
@@ -292,6 +300,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -312,7 +321,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/apple.m"
@@ -325,6 +333,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -345,7 +354,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "digilogic",
       "src/noto_sans_regular.c"
@@ -358,6 +366,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -378,7 +387,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/core/circuit.c"
@@ -391,6 +399,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -411,7 +420,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/ux/ux.c"
@@ -424,6 +432,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -444,7 +453,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/ux/input.c"
@@ -457,6 +465,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -477,7 +486,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/ux/undo.c"
@@ -490,6 +498,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -510,7 +519,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/ux/autoroute.c"
@@ -523,6 +531,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -543,7 +552,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/view/view.c"
@@ -556,6 +564,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -576,7 +585,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/import/digital.c"
@@ -589,6 +597,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -609,7 +618,39 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
+      "-o",
+      "test",
+      "src/avoid/avoid.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/avoid/avoid.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/test"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-DSOKOL_METAL",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-DDEBUG",
+      "-O0",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
       "-o",
       "test",
       "src/test.c"
@@ -622,6 +663,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -642,7 +684,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/view/view_test.c"
@@ -655,6 +696,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -675,7 +717,6 @@
       "MetalKit",
       "-framework",
       "Quartz",
-      "avoid.o",
       "-o",
       "test",
       "src/core/core_test.c"
@@ -688,6 +729,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
@@ -720,6 +762,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-DSOKOL_METAL",
       "-I",
       "thirdparty",
       "-I",
