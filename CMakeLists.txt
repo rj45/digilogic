@@ -190,6 +190,6 @@ target_include_directories(digilogic PUBLIC "src")
 target_link_libraries(digilogic PUBLIC impls)
 
 # link rust crates into digilogic
-target_link_libraries(digilogic PUBLIC digilogic-routing)
+target_link_libraries(digilogic PUBLIC digilogic_routing)
 
 
