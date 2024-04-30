@@ -26,9 +26,9 @@
 #include "stb_ds.h"
 #include <assert.h>
 
-static XMLNode *find_node(XMLNode *node, const char *tag) {
+static LXMLNode *find_node(LXMLNode *node, const char *tag) {
   for (int i = 0; i < node->children.size; i++) {
-    XMLNode *child = node->children.data[i];
+    LXMLNode *child = node->children.data[i];
     if (strcmp(child->tag, tag) == 0) {
       return child;
     }
@@ -210,25 +210,25 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
   hmdefault(digWireEnds, 0);
 
-  XMLDocument doc;
-  if (!XMLDocument_load(&doc, filename)) {
+  LXMLDocument doc;
+  if (!LXMLDocument_load(&doc, filename)) {
     printf("Failed to load %s\n", filename);
     return;
   }
 
-  XMLNode *root = doc.root;
+  LXMLNode *root = doc.root;
   if (!root) {
     printf("No root node\n");
     goto fail;
   }
 
-  XMLNode *circuit = find_node(root, "circuit");
+  LXMLNode *circuit = find_node(root, "circuit");
   if (!circuit) {
     printf("No circuit node\n");
     goto fail;
   }
 
-  XMLNode *wires = find_node(circuit, "wires");
+  LXMLNode *wires = find_node(circuit, "wires");
   if (!wires) {
     printf("No wires node\n");
     goto fail;
@@ -238,27 +238,27 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
   // load all the wires into digWires
   for (int i = 0; i < wires->children.size; i++) {
-    XMLNode *wire = wires->children.data[i];
+    LXMLNode *wire = wires->children.data[i];
     if (strcmp(wire->tag, "wire") == 0) {
-      XMLNode *p1 = find_node(wire, "p1");
+      LXMLNode *p1 = find_node(wire, "p1");
       if (!p1) {
         printf("No p1 node\n");
         goto fail;
       }
 
-      XMLNode *p2 = find_node(wire, "p2");
+      LXMLNode *p2 = find_node(wire, "p2");
       if (!p2) {
         printf("No p2 node\n");
         goto fail;
       }
 
-      XMLNode *nodes[2] = {p1, p2};
+      LXMLNode *nodes[2] = {p1, p2};
       IVec2 positions[2] = {0};
 
       for (int j = 0; j < 2; j++) {
-        XMLNode *node = nodes[j];
+        LXMLNode *node = nodes[j];
         for (int k = 0; k < node->attributes.size; k++) {
-          XMLAttribute *attr = &node->attributes.data[k];
+          LXMLAttribute *attr = &node->attributes.data[k];
           if (strcmp(attr->key, "x") == 0) {
             positions[j].x = atoi(attr->value);
           } else if (strcmp(attr->key, "y") == 0) {
@@ -289,33 +289,26 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
       for (int j = 0; j < 2; j++) {
         IVec2 key = digWire.ends[j].pos;
-        printf("om %zu \n", (size_t)digWireEnds);
         arr(uint32_t) ends = hmget(digWireEnds, key);
 
-        printf("Wire end %d %d\n", i, j);
         arrput(ends, arrlen(digWires) - 1);
-        printf(
-          "Wire end2 %d %d %zu %zu\n", i, j, (size_t)digWireEnds, (size_t)ends);
         hmput(digWireEnds, key, ends);
-        printf("Wire end4 %d %d\n", i, j);
       }
-
-      printf("Wire %d\n", i);
     }
   }
 
   printf("Loading components\n");
 
-  XMLNode *visualElements = find_node(circuit, "visualElements");
+  LXMLNode *visualElements = find_node(circuit, "visualElements");
   if (!visualElements) {
     printf("No visualElements node\n");
     goto fail;
   }
 
   for (int i = 0; i < visualElements->children.size; i++) {
-    XMLNode *visualElement = visualElements->children.data[i];
+    LXMLNode *visualElement = visualElements->children.data[i];
     if (strcmp(visualElement->tag, "visualElement") == 0) {
-      XMLNode *typeNameNode = find_node(visualElement, "elementName");
+      LXMLNode *typeNameNode = find_node(visualElement, "elementName");
       if (!typeNameNode) {
         printf("No elementName node\n");
         goto fail;
@@ -334,7 +327,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         goto fail;
       }
 
-      XMLNode *positionNode = find_node(visualElement, "pos");
+      LXMLNode *positionNode = find_node(visualElement, "pos");
       if (!positionNode) {
         printf("No pos node\n");
         goto fail;
@@ -342,7 +335,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
       int x, y;
       for (int j = 0; j < positionNode->attributes.size; j++) {
-        XMLAttribute *attr = &positionNode->attributes.data[j];
+        LXMLAttribute *attr = &positionNode->attributes.data[j];
         if (strcmp(attr->key, "x") == 0) {
           x = atoi(attr->value);
         } else if (strcmp(attr->key, "y") == 0) {
@@ -698,5 +691,5 @@ fail:
     arrfree(digWireEnds[i].value);
   }
   hmfree(digWireEnds);
-  XMLDocument_free(&doc);
+  LXMLDocument_free(&doc);
 }

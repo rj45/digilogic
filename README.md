@@ -17,9 +17,6 @@ You'll need rust via rustup, and zig 0.12 (or newer?). The following instruction
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
-cd thirdparty/routing
-cargo build --release
-cd ../..
 zig build run-digilogic
 ```
 

@@ -46,7 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FALSE 0
 #endif
 
-int ends_with(const char *haystack, const char *needle) {
+int lxml_ends_with(const char *haystack, const char *needle) {
   int h_len = strlen(haystack);
   int n_len = strlen(needle);
   if (h_len < n_len) {
@@ -61,61 +61,61 @@ int ends_with(const char *haystack, const char *needle) {
   return TRUE;
 }
 
-struct _XMLNodeList {
+struct _LXMLNodeList {
   int heap_size;
   int size;
-  struct _XMLNode **data;
+  struct _LXMLNode **data;
 };
-typedef struct _XMLNodeList XMLNodeList;
+typedef struct _LXMLNodeList LXMLNodeList;
 
-struct _XMLAttribute {
+struct _LXMLAttribute {
   char *key;
   char *value;
 };
-typedef struct _XMLAttribute XMLAttribute;
+typedef struct _LXMLAttribute LXMLAttribute;
 
-struct _XMLAttributeList {
+struct _LXMLAttributeList {
   int heap_size;
   int size;
-  XMLAttribute *data;
+  LXMLAttribute *data;
 };
-typedef struct _XMLAttributeList XMLAttributeList;
+typedef struct _LXMLAttributeList LXMLAttributeList;
 
-struct _XMLNode {
+struct _LXMLNode {
   char *tag;
   char *inner_text;
-  struct _XMLNode *parent;
-  XMLAttributeList attributes;
-  XMLNodeList children;
+  struct _LXMLNode *parent;
+  LXMLAttributeList attributes;
+  LXMLNodeList children;
 };
-typedef struct _XMLNode XMLNode;
+typedef struct _LXMLNode LXMLNode;
 
-struct _XMLDocument {
+struct _LXMLDocument {
   char *version;
   char *encoding;
-  XMLNode *root;
+  LXMLNode *root;
 };
-typedef struct _XMLDocument XMLDocument;
+typedef struct _LXMLDocument LXMLDocument;
 
 // Forward declaration
 
-int XMLDocument_load(XMLDocument *doc, const char *path);
-int XMLDocument_write(XMLDocument *doc, const char *path, int indent);
-void XMLDocument_free(XMLDocument *doc);
-XMLNode *XMLNode_new(XMLNode *parent);
-void XMLNode_free(XMLNode *node);
-// XMLAttribute* XMLAttribute_new(XMLNode* parent);
-void XMLAttribute_free(XMLAttribute *attribute);
-void XMLAttributeList_init(XMLAttributeList *list);
-void XMLAttributeList_add(XMLAttributeList *list, XMLAttribute *attribute);
-void XMLNodeList_init(XMLNodeList *list);
-void XMLNodeList_free(XMLNodeList *list);
-void XMLNodeList_add(XMLNodeList *list, XMLNode *node);
-XMLNode *XMLNode_child(XMLNode *parent, int index);
-char *XMLNode_attribute_value(XMLNode *node, char *key);
-XMLNode *XMLNodeList_at(XMLNodeList *list, int index);
-XMLNodeList *XMLNode_children(XMLNode *parent, const char *tag);
-XMLAttribute *XMLNode_attribute(XMLNode *node, char *key);
+int LXMLDocument_load(LXMLDocument *doc, const char *path);
+int LXMLDocument_write(LXMLDocument *doc, const char *path, int indent);
+void LXMLDocument_free(LXMLDocument *doc);
+LXMLNode *LXMLNode_new(LXMLNode *parent);
+void LXMLNode_free(LXMLNode *node);
+// LXMLAttribute* LXMLAttribute_new(LXMLNode* parent);
+void LXMLAttribute_free(LXMLAttribute *attribute);
+void LXMLAttributeList_init(LXMLAttributeList *list);
+void LXMLAttributeList_add(LXMLAttributeList *list, LXMLAttribute *attribute);
+void LXMLNodeList_init(LXMLNodeList *list);
+void LXMLNodeList_free(LXMLNodeList *list);
+void LXMLNodeList_add(LXMLNodeList *list, LXMLNode *node);
+LXMLNode *LXMLNode_child(LXMLNode *parent, int index);
+char *LXMLNode_attribute_value(LXMLNode *node, char *key);
+LXMLNode *LXMLNodeList_at(LXMLNodeList *list, int index);
+LXMLNodeList *LXMLNode_children(LXMLNode *parent, const char *tag);
+LXMLAttribute *LXMLNode_attribute(LXMLNode *node, char *key);
 
 // Implementations
 
@@ -123,12 +123,12 @@ enum _TagType { TAG_START, TAG_INLINE };
 typedef enum _TagType TagType;
 
 /** static void parse_attributes(char* buffer, int* i, char* lex, int* lexi,
- * XMLNode* current_node)
+ * LXMLNode* current_node)
  *
  */
 static TagType parse_attributes(
-  char *buffer, int *i, char *lex, int *lexi, XMLNode *current_node) {
-  XMLAttribute currentAttribute = {0, 0};
+  char *buffer, int *i, char *lex, int *lexi, LXMLNode *current_node) {
+  LXMLAttribute currentAttribute = {0, 0};
   // Read the beginning of the tag of the node into the buffer
   while (buffer[(*i)] != '>') {
     lex[(*lexi)++] = buffer[(*i)++];
@@ -170,7 +170,7 @@ static TagType parse_attributes(
       }
       lex[(*lexi)] = '\0';
       currentAttribute.value = strdup(lex);
-      XMLAttributeList_add(&current_node->attributes, &currentAttribute);
+      LXMLAttributeList_add(&current_node->attributes, &currentAttribute);
       // Reset current attribute placeholder to empty
       currentAttribute.key = NULL;
       currentAttribute.value = NULL;
@@ -191,10 +191,10 @@ static TagType parse_attributes(
   return TAG_START;
 }
 
-/** bool XMLDocument_load(XMLDocument* doc, const char* path)
+/** bool LXMLDocument_load(LXMLDocument* doc, const char* path)
  *
  */
-int XMLDocument_load(XMLDocument *doc, const char *path) {
+int LXMLDocument_load(LXMLDocument *doc, const char *path) {
   DEBUG_PRINT("opening file %s \n", path);
   FILE *file = fopen(path, "r");
   if (!file) {
@@ -214,14 +214,14 @@ int XMLDocument_load(XMLDocument *doc, const char *path) {
   fclose(file);
   buffer[size] = '\0';
 
-  doc->root = XMLNode_new(NULL);
+  doc->root = LXMLNode_new(NULL);
 
   // Lexical Analysis
   char lex[256];
   int lexi = 0;
   int i = 0;
 
-  XMLNode *current_node = doc->root;
+  LXMLNode *current_node = doc->root;
 
   // While loop that parses the document into new nodes
   while (buffer[i] != '\0') {
@@ -255,7 +255,7 @@ int XMLDocument_load(XMLDocument *doc, const char *path) {
         lex[lexi] = '\0';
         lexi = 0;
         if (!current_node) {
-          fprintf(stderr, "Invalid XML document: end tag at root\n");
+          fprintf(stderr, "Invalid LXML document: end tag at root\n");
           return FALSE;
         }
         // If these buffers are not the same then we have a problem
@@ -280,7 +280,7 @@ int XMLDocument_load(XMLDocument *doc, const char *path) {
         lex[lexi] = '\0';
         if (!strcmp(lex, "<!--")) {
           lex[lexi] = '\0';
-          while (!ends_with(lex, "-->")) {
+          while (!lxml_ends_with(lex, "-->")) {
             lex[lexi++] = buffer[i++];
             lex[lexi] = '\0';
           }
@@ -297,10 +297,10 @@ int XMLDocument_load(XMLDocument *doc, const char *path) {
         // Handle xml version spec declaration
         if (!strcmp(lex, "<?xml")) {
           lexi = 0;
-          XMLNode *desc = XMLNode_new(NULL);
+          LXMLNode *desc = LXMLNode_new(NULL);
           parse_attributes(buffer, &i, lex, &lexi, desc);
-          doc->version = XMLNode_attribute_value(desc, "version");
-          doc->encoding = XMLNode_attribute_value(desc, "encoding");
+          doc->version = LXMLNode_attribute_value(desc, "version");
+          doc->encoding = LXMLNode_attribute_value(desc, "encoding");
           continue;
         }
       }
@@ -308,7 +308,7 @@ int XMLDocument_load(XMLDocument *doc, const char *path) {
       // We are at a new node, so prepare current_node for the new node
       DEBUG_PRINT("Parent node of new node is %s \n", current_node->tag);
       // Parent is the last node
-      current_node = XMLNode_new(current_node);
+      current_node = LXMLNode_new(current_node);
       // Progress document pointer
       i++;
       // Parse attributes
@@ -341,11 +341,11 @@ int XMLDocument_load(XMLDocument *doc, const char *path) {
   return TRUE;
 }
 
-static void node_out(FILE *file, XMLNode *node, int indent, int times) {
+static void node_out(FILE *file, LXMLNode *node, int indent, int times) {
   // For all child nodes
   for (int i = 0; i < node->children.size; i++) {
     // Get the node
-    XMLNode *child = XMLNode_child(node, i);
+    LXMLNode *child = LXMLNode_child(node, i);
     // Apply spacing
     if (times > 0) {
       fprintf(file, "%*s", indent * times, " ");
@@ -354,7 +354,7 @@ static void node_out(FILE *file, XMLNode *node, int indent, int times) {
     fprintf(file, "<%s", child->tag);
     // Write out non-null attributes of node
     for (int j = 0; j < child->attributes.size; j++) {
-      XMLAttribute attribute = child->attributes.data[j];
+      LXMLAttribute attribute = child->attributes.data[j];
       if ((!attribute.value) || (!strcmp(attribute.value, ""))) {
         continue;
       }
@@ -403,17 +403,17 @@ static void node_out(FILE *file, XMLNode *node, int indent, int times) {
   }
 }
 
-/** int XMLDocument_write(XMLDocument* doc, const char* path, int indent)
+/** int LXMLDocument_write(LXMLDocument* doc, const char* path, int indent)
  *
  *
  */
-int XMLDocument_write(XMLDocument *doc, const char *path, int indent) {
+int LXMLDocument_write(LXMLDocument *doc, const char *path, int indent) {
   FILE *file = fopen(path, "w");
   if (!file) {
     fprintf(stderr, "Failed to open file '%s' \n", path);
     return FALSE;
   }
-  // Write out XML header
+  // Write out LXML header
   fprintf(
     file, "<?xml version=\"%s\" encoding=\"%s\" ?>\n",
     (doc->version) ? doc->version : "1.0",
@@ -426,33 +426,33 @@ int XMLDocument_write(XMLDocument *doc, const char *path, int indent) {
   return TRUE;
 }
 
-void XMLDocument_free(XMLDocument *doc) { XMLNode_free(doc->root); }
+void LXMLDocument_free(LXMLDocument *doc) { LXMLNode_free(doc->root); }
 
-/** XMLNode* XMLNode_new(XMLNode* parent)
+/** LXMLNode* LXMLNode_new(LXMLNode* parent)
  * Allocates a new node with a pointer to the partent node and null contents
  * Args: Parent: Pointer to parent node
  */
-XMLNode *XMLNode_new(XMLNode *parent) {
-  XMLNode *node = (XMLNode *)malloc(sizeof(XMLNode));
+LXMLNode *LXMLNode_new(LXMLNode *parent) {
+  LXMLNode *node = (LXMLNode *)malloc(sizeof(LXMLNode));
   node->parent = parent;
   node->tag = NULL;
   node->inner_text = NULL;
-  XMLAttributeList_init(&node->attributes);
-  XMLNodeList_init(&node->children);
+  LXMLAttributeList_init(&node->attributes);
+  LXMLNodeList_init(&node->children);
   if (parent) {
-    XMLNodeList_add(&parent->children, node);
+    LXMLNodeList_add(&parent->children, node);
   }
   return node;
 }
 
-/** void XMLNode_free(XMLNode* node)
+/** void LXMLNode_free(LXMLNode* node)
  * Checks and frees the contnets of the tag and inner text of a node,
  * before freeing the node itself.
  */
-void XMLNode_free(XMLNode *node) {
+void LXMLNode_free(LXMLNode *node) {
   DEBUG_PRINT("Entered free of node %s \n", node->tag);
   DEBUG_PRINT("Freeing children of node %s \n", node->tag);
-  XMLNodeList_free(&node->children);
+  LXMLNodeList_free(&node->children);
   if (node->tag) {
     free(node->tag);
   }
@@ -462,80 +462,81 @@ void XMLNode_free(XMLNode *node) {
   free(node);
 }
 
-/** void XMLAttributeList_init(XMLAttributeList* list)
+/** void LXMLAttributeList_init(LXMLAttributeList* list)
  */
-void XMLAttributeList_init(XMLAttributeList *list) {
+void LXMLAttributeList_init(LXMLAttributeList *list) {
   list->heap_size = 1;
   list->size = 0;
-  list->data = (XMLAttribute *)malloc(sizeof(XMLAttribute) * list->heap_size);
+  list->data = (LXMLAttribute *)malloc(sizeof(LXMLAttribute) * list->heap_size);
 }
 
-/** void XMLAttributeList_add(XMLAttributeList* list, XMLAttribute* attribute)
+/** void LXMLAttributeList_add(LXMLAttributeList* list, LXMLAttribute*
+ * attribute)
  */
-void XMLAttributeList_add(XMLAttributeList *list, XMLAttribute *attribute) {
+void LXMLAttributeList_add(LXMLAttributeList *list, LXMLAttribute *attribute) {
   // ensure that our list size does not go beyond the heap have made available
   while (list->size >= list->heap_size) {
     list->heap_size *= 2;
-    list->data = (XMLAttribute *)realloc(
-      list->data, sizeof(XMLAttribute) * list->heap_size);
+    list->data = (LXMLAttribute *)realloc(
+      list->data, sizeof(LXMLAttribute) * list->heap_size);
   }
   list->data[list->size++] = *attribute;
 }
 
-/** void XMLAttributeList_free(XMLAttributeList* list)
+/** void LXMLAttributeList_free(LXMLAttributeList* list)
  */
-void XMLAttributeList_free(XMLAttributeList *list) {}
+void LXMLAttributeList_free(LXMLAttributeList *list) {}
 
-/** void XMLNodeList_init(XMLNodeList* list)
+/** void LXMLNodeList_init(LXMLNodeList* list)
  */
-void XMLNodeList_init(XMLNodeList *list) {
+void LXMLNodeList_init(LXMLNodeList *list) {
   list->heap_size = 1;
   list->size = 0;
-  list->data = (XMLNode **)malloc(sizeof(XMLNode *) * list->heap_size);
+  list->data = (LXMLNode **)malloc(sizeof(LXMLNode *) * list->heap_size);
 }
 
-/** void XMLNodeList_free(XMLNodeList* list);
+/** void LXMLNodeList_free(LXMLNodeList* list);
  *
  *
  */
-void XMLNodeList_free(XMLNodeList *list) {
+void LXMLNodeList_free(LXMLNodeList *list) {
   if (list->data) {
     for (int index = 0; index < list->size; index++) {
-      XMLNode_free(list->data[index]);
+      LXMLNode_free(list->data[index]);
     }
   }
   list->size = 0;
   list->heap_size = 0;
 }
 
-/** void XMLNodeList_add(XMLNodeList* list, XMLNode* node);
+/** void LXMLNodeList_add(LXMLNodeList* list, LXMLNode* node);
  *
  *
  */
-void XMLNodeList_add(XMLNodeList *list, XMLNode *node) {
+void LXMLNodeList_add(LXMLNodeList *list, LXMLNode *node) {
   // ensure that our list size does not go beyond the heap have made available
   while (list->size >= list->heap_size) {
     list->heap_size *= 2;
     list->data =
-      (XMLNode **)realloc(list->data, sizeof(XMLNode *) * list->heap_size);
+      (LXMLNode **)realloc(list->data, sizeof(LXMLNode *) * list->heap_size);
   }
   list->data[list->size++] = node;
 }
 
-/** XMLNode* XMLNode_child(XMLNode* parent, int index)
+/** LXMLNode* LXMLNode_child(LXMLNode* parent, int index)
  *
  *
  */
-XMLNode *XMLNode_child(XMLNode *parent, int index) {
+LXMLNode *LXMLNode_child(LXMLNode *parent, int index) {
   return parent->children.data[index];
 }
 
-/** char* XMLNode_attribute_value(XMLNode* node, char* key)
+/** char* LXMLNode_attribute_value(LXMLNode* node, char* key)
  *
  */
-char *XMLNode_attribute_value(XMLNode *node, char *key) {
+char *LXMLNode_attribute_value(LXMLNode *node, char *key) {
   for (int i = 0; i < node->attributes.size; i++) {
-    XMLAttribute tAttrib = node->attributes.data[i];
+    LXMLAttribute tAttrib = node->attributes.data[i];
     if (!strcmp(tAttrib.key, key)) {
       return tAttrib.value;
     }
@@ -543,36 +544,36 @@ char *XMLNode_attribute_value(XMLNode *node, char *key) {
   return NULL;
 }
 
-/** XMLNode* XMLNodeList_at(XMLNodeList* list, int index);
+/** LXMLNode* LXMLNodeList_at(LXMLNodeList* list, int index);
  * Get a node at a point in the node list
  */
-XMLNode *XMLNodeList_at(XMLNodeList *list, int index) {
+LXMLNode *LXMLNodeList_at(LXMLNodeList *list, int index) {
   return list->data[index];
 }
 
-/** XMLNodeList* XMLNode_children(XMLNode* node)
- * returns the nodelist of child nodes from an XMLNode
+/** LXMLNodeList* LXMLNode_children(LXMLNode* node)
+ * returns the nodelist of child nodes from an LXMLNode
  * Should be 'child by name'
  */
-XMLNodeList *XMLNode_children(XMLNode *parent, const char *tag) {
-  XMLNodeList *list = (XMLNodeList *)malloc(sizeof(XMLNodeList));
-  XMLNodeList_init(list);
+LXMLNodeList *LXMLNode_children(LXMLNode *parent, const char *tag) {
+  LXMLNodeList *list = (LXMLNodeList *)malloc(sizeof(LXMLNodeList));
+  LXMLNodeList_init(list);
   for (int i = 0; i < parent->children.size; i++) {
-    XMLNode *child = XMLNode_child(parent, i);
+    LXMLNode *child = LXMLNode_child(parent, i);
     if (!strcmp(child->tag, tag)) {
-      XMLNodeList_add(list, child);
+      LXMLNodeList_add(list, child);
     }
   }
   return list;
 }
 
-/** XMLAttribute* XMLNode_attribute(XMLNode* node, char* key)
+/** LXMLAttribute* LXMLNode_attribute(LXMLNode* node, char* key)
  *
  *
  */
-XMLAttribute *XMLNode_attribute(XMLNode *node, char *key) {
+LXMLAttribute *LXMLNode_attribute(LXMLNode *node, char *key) {
   for (int i = 0; i < node->attributes.size; i++) {
-    XMLAttribute *tAttrib = &node->attributes.data[i];
+    LXMLAttribute *tAttrib = &node->attributes.data[i];
     if (!strcmp(tAttrib->key, key)) {
       return tAttrib;
     }
