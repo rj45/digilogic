@@ -72,7 +72,7 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
       case UNDO_NONE:
         return;
       case UNDO_MOVE_SELECTION:
-        lastCommand->delta = HMM_Add(lastCommand->delta, command.delta);
+        lastCommand->delta = HMM_AddV2(lastCommand->delta, command.delta);
         return;
       case UNDO_SELECT_COMPONENT:
         lastCommand->componentID = command.componentID;

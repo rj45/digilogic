@@ -57,7 +57,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   MouseDownState oldState = ux->mouseDownState;
   MouseDownState state = oldState;
   for (;;) {
-    bool move = leftDown && HMM_LenV2(HMM_Sub(worldMousePos, ux->downStart)) >
+    bool move = leftDown && HMM_LenV2(HMM_SubV2(worldMousePos, ux->downStart)) >
                               (10.0f * ux->view.zoom);
     bool selected = arrlen(ux->view.selectedComponents) > 0 ||
                     HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.0f;
@@ -229,7 +229,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   // handle continuous update state actions here
   switch (state) {
   case STATE_MOVE_SELECTION: {
-    HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
+    HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
     ux_do(
       ux, (UndoCommand){
             .verb = UNDO_MOVE_SELECTION,
@@ -246,9 +246,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           });
     break;
   case STATE_PAN: {
-    HMM_Vec2 delta = HMM_Sub(worldMousePos, ux->downStart);
+    HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
     ux->downStart = worldMousePos;
-    ux->view.pan = HMM_Add(ux->view.pan, delta);
+    ux->view.pan = HMM_AddV2(ux->view.pan, delta);
     break;
   }
   default:
@@ -263,7 +263,7 @@ static void ux_handle_mouse(CircuitUX *ux) {
   ux->view.hoveredPort = NO_PORT;
 
   HMM_Vec2 worldMousePos =
-    HMM_DivV2F(HMM_Sub(ux->input.mousePos, ux->view.pan), ux->view.zoom);
+    HMM_DivV2F(HMM_SubV2(ux->input.mousePos, ux->view.pan), ux->view.zoom);
 
   Box mouseBox = {
     .center = worldMousePos,
@@ -279,7 +279,7 @@ static void ux_handle_mouse(CircuitUX *ux) {
          j < view_port_end(&ux->view, i); j++) {
       PortView *portView = &ux->view.ports[j];
       Box portBox = {
-        .center = HMM_Add(portView->center, componentView->box.center),
+        .center = HMM_AddV2(portView->center, componentView->box.center),
         .halfSize = HMM_V2(
           ux->view.theme.portWidth / 2.0f, ux->view.theme.portWidth / 2.0f),
       };
@@ -306,17 +306,17 @@ static void ux_zoom(CircuitUX *ux) {
 
   // figure out where the mouse was in "world coords" with the old zoom
   HMM_Vec2 originalMousePos =
-    HMM_DivV2F(HMM_Sub(ux->input.mousePos, ux->view.pan), oldZoom);
+    HMM_DivV2F(HMM_SubV2(ux->input.mousePos, ux->view.pan), oldZoom);
 
   // figure out where the mouse is in "world coords" with the new zoom
   HMM_Vec2 newMousePos =
-    HMM_DivV2F(HMM_Sub(ux->input.mousePos, ux->view.pan), newZoom);
+    HMM_DivV2F(HMM_SubV2(ux->input.mousePos, ux->view.pan), newZoom);
 
   // figure out the correction to the pan so that the zoom is centred on the
   // mouse position
   HMM_Vec2 correction =
-    HMM_MulV2F(HMM_Sub(newMousePos, originalMousePos), newZoom);
-  ux->view.pan = HMM_Add(ux->view.pan, correction);
+    HMM_MulV2F(HMM_SubV2(newMousePos, originalMousePos), newZoom);
+  ux->view.pan = HMM_AddV2(ux->view.pan, correction);
 }
 
 void ux_draw(CircuitUX *ux, Context ctx) {

@@ -197,7 +197,7 @@ void avoid_move_node(AvoidRouter *a, ComponentID nodeID, float dx, float dy) {
       continue;
     }
 
-    HMM_Vec2 pos = HMM_Add(HMM_V2(x, y), port->pos);
+    HMM_Vec2 pos = HMM_AddV2(HMM_V2(x, y), port->pos);
     state->anchors[port->anchorID] = (RT_Point){.x = pos.X, .y = pos.Y};
     // printf(
     //   "Moving port %d to %d %d - dxdy: %f, %f\n", portID,
@@ -279,12 +279,12 @@ void avoid_add_edge(
 // bool Intersect(
 //   HMM_Vec2 p1, HMM_Vec2 p2, Box box) {
 //   // d == line halfSize
-//   HMM_Vec2 d = HMM_MulV2F(HMM_Sub(p2, p1), 0.5f);
+//   HMM_Vec2 d = HMM_MulV2F(HMM_SubV2(p2, p1), 0.5f);
 //   // e = box halfSize
 //   HMM_Vec2 e = box.halfSize;
 
 //   // c = (line halfSize + p1) - box center -- centroid?
-//   HMM_Vec2 c = HMM_Sub(HMM_Add(p1, d), box.center);
+//   HMM_Vec2 c = HMM_SubV2(HMM_AddV2(p1, d), box.center);
 //   HMM_Vec2 ad = HMM_V2(fabs(d.X), fabs(d.Y));
 //   if (fabsf(c.X) > e.X + ad.X)
 //     return false;
@@ -440,7 +440,7 @@ void draw_stroked_line(
   HMM_Vec4 color);
 
 static HMM_Vec2 panZoom(RT_Point position, float zoom, HMM_Vec2 pan) {
-  return HMM_Add(HMM_MulV2F(HMM_V2(position.x, position.y), zoom), pan);
+  return HMM_AddV2(HMM_MulV2F(HMM_V2(position.x, position.y), zoom), pan);
 }
 
 void avoid_draw_debug_lines(

@@ -60,7 +60,7 @@ ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position) {
       side = SIDE_RIGHT;
     }
     // todo: seems like a bug here
-    HMM_Vec2 center = HMM_Add(portView.center, box.halfSize);
+    HMM_Vec2 center = HMM_AddV2(portView.center, box.halfSize);
     avoid_add_port(ux->avoid, portID, id, side, center.X, center.Y);
   }
   return id;
@@ -83,6 +83,6 @@ WireID ux_add_wire(CircuitUX *ux, NetID net, WireEndID from, WireEndID to) {
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
   ComponentView *componentView = &ux->view.components[id];
-  componentView->box.center = HMM_Add(componentView->box.center, delta);
+  componentView->box.center = HMM_AddV2(componentView->box.center, delta);
   avoid_move_node(ux->avoid, id, delta.X, delta.Y);
 }

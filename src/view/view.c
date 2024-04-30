@@ -254,7 +254,7 @@ void view_fix_wire_end_vertices(CircuitView *view, WireID wire) {
       Port *port = &view->circuit.ports[wire_end_index(ends[i])];
       ComponentView *componentView = &view->components[port->component];
       PortView *portView = &view->ports[wire_end_index(ends[i])];
-      HMM_Vec2 pt = HMM_Add(componentView->box.center, portView->center);
+      HMM_Vec2 pt = HMM_AddV2(componentView->box.center, portView->center);
       view_set_vertex(view, wire, vert[i], pt);
       break;
     }
@@ -287,7 +287,7 @@ const char *view_label_text(CircuitView *view, LabelID id) {
 }
 
 static HMM_Vec2 panZoom(CircuitView *view, HMM_Vec2 position) {
-  return HMM_Add(HMM_MulV2F(position, view->zoom), view->pan);
+  return HMM_AddV2(HMM_MulV2F(position, view->zoom), view->pan);
 }
 
 static HMM_Vec2 zoom(CircuitView *view, HMM_Vec2 size) {
@@ -312,11 +312,11 @@ static void draw_chip(
   if (isHovered) {
     draw_filled_rect(
       ctx,
-      HMM_Sub(
+      HMM_SubV2(
         pos, HMM_V2(
                view->theme.borderWidth * view->zoom * 2.0f,
                view->theme.borderWidth * view->zoom * 2.0f)),
-      HMM_Add(
+      HMM_AddV2(
         size, HMM_V2(
                 view->theme.borderWidth * view->zoom * 4.0f,
                 view->theme.borderWidth * view->zoom * 4.0f)),
@@ -353,11 +353,11 @@ static void draw_and_gate(
   if (isHovered) {
     draw_filled_rect(
       ctx,
-      HMM_Sub(
+      HMM_SubV2(
         pos, HMM_V2(
                view->theme.borderWidth * view->zoom * 2.0f,
                view->theme.borderWidth * view->zoom * 2.0f)),
-      HMM_Add(
+      HMM_AddV2(
         size, HMM_V2(
                 view->theme.borderWidth * view->zoom * 4.0f,
                 view->theme.borderWidth * view->zoom * 4.0f)),
@@ -435,19 +435,19 @@ void view_draw(CircuitView *view, Context ctx) {
 
       float portWidth = view->theme.portWidth;
       HMM_Vec2 portPosition = panZoom(
-        view, HMM_Sub(
-                HMM_Add(componentView->box.center, portView->center),
+        view, HMM_SubV2(
+                HMM_AddV2(componentView->box.center, portView->center),
                 HMM_V2(portWidth / 2.0f, portWidth / 2.0f)));
       HMM_Vec2 portSize = zoom(view, HMM_V2(portWidth, portWidth));
 
       if (component->portStart + j == view->hoveredPort) {
         draw_filled_circle(
           ctx,
-          HMM_Sub(
+          HMM_SubV2(
             portPosition, HMM_V2(
                             view->theme.borderWidth * view->zoom * 2.0f,
                             view->theme.borderWidth * view->zoom * 2.0f)),
-          HMM_Add(
+          HMM_AddV2(
             portSize, HMM_V2(
                         view->theme.borderWidth * view->zoom * 4.0f,
                         view->theme.borderWidth * view->zoom * 4.0f)),
@@ -465,7 +465,7 @@ void view_draw(CircuitView *view, Context ctx) {
         &view->circuit, view->circuit.ports[component->portStart + j].label);
       Box labelBounds = transformBox(
         view,
-        box_translate(labelView->bounds, HMM_Add(center, portView->center)));
+        box_translate(labelView->bounds, HMM_AddV2(center, portView->center)));
       draw_text(
         ctx, labelBounds, labelText, strlen(labelText),
         view->theme.labelFontSize * view->zoom, view->theme.font,

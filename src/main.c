@@ -474,14 +474,14 @@ void event(const sapp_event *event, void *user_data) {
 
   case SAPP_EVENTTYPE_MOUSE_MOVE: {
     HMM_Vec2 mousePos = HMM_V2(event->mouse_x, event->mouse_y);
-    app->circuit.input.mouseDelta = HMM_Add(
+    app->circuit.input.mouseDelta = HMM_AddV2(
       app->circuit.input.mouseDelta,
-      HMM_Sub(app->circuit.input.mousePos, mousePos));
+      HMM_SubV2(app->circuit.input.mousePos, mousePos));
     app->circuit.input.mousePos = mousePos;
     break;
   }
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
-    app->circuit.input.scroll = HMM_Add(
+    app->circuit.input.scroll = HMM_AddV2(
       app->circuit.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
 
     break;
