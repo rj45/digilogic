@@ -19,7 +19,7 @@
 @ctype vec4 HMM_Vec4
 
 @vs vs
-uniform msdfUniform {
+layout (std140) uniform msdfUniform {
     vec4 fgColor;
     vec4 bgColor;
 };
@@ -36,7 +36,7 @@ void main() {
 @fs fs
 uniform texture2D atlas;
 uniform sampler samp;
-uniform msdfUniform {
+layout (std140) uniform msdfUniform {
     vec4 fgColor;
     vec4 bgColor;
 };
@@ -66,14 +66,6 @@ void main() {
 
     fragColor = mix(bgColor, fgColor, opacity);
 }
-
-// void main() {
-//     vec3 msd = texture(sampler2D(atlas, samp), texUV).rgb;
-//     float sd = median(msd.r, msd.g, msd.b);
-//     float w = fwidth(sd);
-//     float opacity = smoothstep(0.5 - w, 0.5 + w, sd);
-//     fragColor = mix(bgColor, fgColor, opacity);
-// }
 
 @end
 

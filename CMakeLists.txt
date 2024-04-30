@@ -65,14 +65,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         src/nonapple.c
     )
 
-    target_compile_definitions(impls PUBLIC "SOKOL_D3D11")
+    if(USE_GL)
+        target_compile_definitions(impls PUBLIC "SOKOL_GLCORE33")
+        find_package(OpenGL REQUIRED)
+        target_link_libraries(impls OpenGL::OpenGL)
+    else()
+        target_compile_definitions(impls PUBLIC "SOKOL_D3D11")
+        target_link_libraries(impls PUBLIC
+            "d3d11"
+            "dxgi"
+        )
+    endif()
+
+
     target_link_libraries(impls PUBLIC
         "kernel32"
         "user32"
         "gdi32"
         "ole32"
-        "d3d11"
-        "dxgi"
     )
 
     add_executable(digilogic ${DIGILOGIC_SRCS} "res/app.o")

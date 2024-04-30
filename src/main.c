@@ -25,7 +25,6 @@
 #include "view/view.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <stdlib.h>
 
@@ -496,6 +495,7 @@ void event(const sapp_event *event, void *user_data) {
 #ifdef __APPLE__
 #include <execinfo.h>
 #include <signal.h>
+#include <unistd.h>
 
 void handler(int sig) {
   void *array[150];
