@@ -86,6 +86,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     )
 
     add_executable(digilogic ${DIGILOGIC_SRCS} "res/app.o")
+
+    set_property(TARGET digilogic PROPERTY
+  MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 #####################################
