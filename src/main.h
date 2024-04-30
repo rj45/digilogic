@@ -23,6 +23,8 @@
 typedef struct {
   CircuitUX circuit;
 
+  const char *filename;
+
   sg_shader msdf_shader;
   sg_pipeline msdf_pipeline;
   sg_image msdf_tex;

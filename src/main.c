@@ -79,9 +79,10 @@ static void init(void *user_data) {
   //   &app->circuit, view_port_start(&app->circuit.view, and) + 1,
   //   view_port_start(&app->circuit.view, or) + 1);
 
-  import_digital(&app->circuit, "testdata/alu_1bit_2inpgate.dig");
-  //  import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
+  // import_digital(&app->circuit, "testdata/alu_1bit_2inpgate.dig");
+  // import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
   // import_digital(&app->circuit, "testdata/simple_test.dig");
+  import_digital(&app->circuit, app->filename);
 
   printf("circuit size: %td\n", arrlen(app->circuit.view.circuit.components));
 
@@ -510,7 +511,13 @@ void handler(int sig) {
 
 sapp_desc sokol_main(int argc, char *argv[]) {
   my_app_t *app = malloc(sizeof(my_app_t));
-  *app = (my_app_t){0};
+  *app = (my_app_t){
+    .filename = "testdata/simple_test.dig",
+  };
+
+  if (argc > 1) {
+    app->filename = argv[1];
+  }
 
 #ifdef __APPLE__
   signal(SIGSEGV, handler);

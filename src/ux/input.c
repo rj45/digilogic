@@ -365,5 +365,5 @@ void ux_draw(CircuitUX *ux, Context ctx) {
 
   view_draw(&ux->view, ctx);
 
-  // avoid_draw_debug_lines(ux->avoid, ctx, ux->view.zoom, ux->view.pan);
+  avoid_draw_debug_lines(ux->avoid, ctx, ux->view.zoom, ux->view.pan);
 }
