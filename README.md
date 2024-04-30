@@ -11,15 +11,41 @@
     - Digital (github.com/hneemann/Digital)
     - LogiSim Evolution (github.com/logisim-evolution/logisim-evolution)
 
-# Building
+## Building
 
-You'll need rust via rustup, and zig 0.12 (or newer?). The following instructions should work on Mac and Windows. Linux as yet untested. Instructions may need adaptation for windows, and you'll need MSVC or mingw.
+You'll need rust via rustup, and cmake. Windows you'll need MSVC.
+
+### Mac
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
-zig build run-digilogic
+cd digilogic
+mkdir build
+cd build
+cmake -G Xcode ..
+cmake --build . --config Release
 ```
 
-# License
+### Windows
+
+```sh
+git clone --recurse-submodules https://github.com/rj45/digilogic.git
+cd digilogic
+cmake -B build
+cmake --build build --config Release
+build\Release\digilogic.exe
+```
+
+### Linux
+
+```sh
+git clone --recurse-submodules https://github.com/rj45/digilogic.git
+cd digilogic
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+make
+./digilogic
+```
+
+## License
 
 Apache 2.0, see [NOTICE](./NOTICE) and [LICENSE](./LICENSE).

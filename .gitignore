@@ -9,7 +9,6 @@ zig-out
 *.dSYM
 thirdparty/adaptagrams
 thirdparty/routing
-*.o
 .DS_Store
 circuit.dot
 circuit.pdf

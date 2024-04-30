@@ -1,5 +1,21 @@
 cmake_minimum_required(VERSION 3.16)
-project(digilogic)
+project(digilogic LANGUAGES C)
+
+set(DIGILOGIC_SRCS
+    src/main.c
+    src/core/circuit.c
+    src/core/timer.c
+    src/ux/ux.c
+    src/ux/input.c
+    src/ux/undo.c
+    src/ux/autoroute.c
+    src/view/view.c
+    src/import/digital.c
+    src/avoid/avoid.c
+    src/main.c
+    src/noto_sans_regular.c
+)
+
 
 #####################################
 # MacOS, iOS
@@ -23,6 +39,21 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-framework Quartz"
         "-framework Cocoa"
     )
+
+    add_executable(digilogic MACOSX_BUNDLE
+        ${DIGILOGIC_SRCS}
+        "res/logo.icns"
+    )
+    set_target_properties(digilogic PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER ca.rj45.digilogic
+        MACOSX_BUNDLE_BUNDLE_NAME digilogic
+        MACOSX_BUNDLE_ICON_FILE "logo.icns"
+        MACOSX_BUNDLE_COPYRIGHT "© 2024 Ryan \"rj45\" Sanche"
+        MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+        RESOURCE "res/logo.icns"
+    )
 endif()
 
 #####################################
@@ -43,6 +74,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         "d3d11"
         "dxgi"
     )
+
+    add_executable(digilogic ${DIGILOGIC_SRCS} "res/app.o")
 endif()
 
 #####################################
@@ -91,6 +124,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             "EGL"
         )
     endif()
+    add_executable(digilogic ${DIGILOGIC_SRCS})
 endif()
 
 #####################################
@@ -109,6 +143,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
         "GLESv3"
         "EGL"
     )
+    add_executable(digilogic ${DIGILOGIC_SRCS})
 endif()
 
 #####################################
@@ -134,20 +169,6 @@ corrosion_import_crate(
 # C
 #####################################
 
-add_executable(digilogic
-    src/main.c
-    src/core/circuit.c
-    src/core/timer.c
-    src/ux/ux.c
-    src/ux/input.c
-    src/ux/undo.c
-    src/ux/autoroute.c
-    src/view/view.c
-    src/import/digital.c
-    src/avoid/avoid.c
-    src/main.c
-    src/noto_sans_regular.c
-)
 
 file(COPY "testdata" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 
