@@ -68,7 +68,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     if(USE_GL)
         target_compile_definitions(impls PUBLIC "SOKOL_GLCORE33")
         find_package(OpenGL REQUIRED)
-        target_link_libraries(impls OpenGL::OpenGL)
+        target_link_libraries(impls PUBLIC OpenGL::GL)
     else()
         target_compile_definitions(impls PUBLIC "SOKOL_D3D11")
         target_link_libraries(impls PUBLIC

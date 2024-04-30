@@ -335,11 +335,7 @@ void draw_text(
   // position dot in bottom left corner of rect
   dot.Y += rect.halfSize.Y * 2;
 
-  msdfUniform_t msdfParams = {
-    .bgColor = bgColor,
-    .fgColor = fgColor,
-  };
-  sgp_set_uniform(&msdfParams, sizeof(msdfParams));
+  sgp_set_color(fgColor.R, fgColor.G, fgColor.B, fgColor.A);
 
   for (int i = 0; i < len; i++) {
     const FontGlyph *glyph = &f->glyphs[(int)text[i]];
@@ -361,7 +357,7 @@ void draw_text(
     dot.X += glyph->advance * fontSize;
   }
 
-  sgp_reset_uniform();
+  sgp_reset_color();
 }
 
 Box draw_text_bounds(
