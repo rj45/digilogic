@@ -12,7 +12,7 @@ pub const SokolBackend = enum {
     wgpu,
 };
 
-pub fn build(b: *std.build.Builder) void {
+pub fn build(b: *std.Build) void {
     const opt_use_gl = b.option(bool, "gl", "Force OpenGL (default: false)") orelse false;
     const opt_use_wgpu = b.option(bool, "wgpu", "Force WebGPU (default: false, web only)") orelse false;
     const opt_use_x11 = b.option(bool, "x11", "Force X11 (default: true, Linux only)") orelse true;
@@ -23,7 +23,7 @@ pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const backend = resolveSokolBackend(sokol_backend, target);
+    const backend = resolveSokolBackend(sokol_backend, target.result);
     const backend_cflags = switch (backend) {
         .d3d11 => "-DSOKOL_D3D11",
         .metal => "-DSOKOL_METAL",
@@ -40,12 +40,17 @@ pub fn build(b: *std.build.Builder) void {
     });
     digilogic.linkLibC();
 
+    const cargoCmd = b.addSystemCommand(&.{ "cargo", "build", "--release" });
+    cargoCmd.cwd = b.path("thirdparty/routing");
+    // cargoCmd.addDirectoryArg(b.path("thirdparty/routing"));
+    digilogic.step.dependOn(&cargoCmd.step);
+
     const default_cflags: []const []const u8 = &.{ backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror" };
 
     // platform specific compile and link options
     var cflags: []const []const u8 = default_cflags;
-    if (target.isDarwin()) {
-        cflags = &.{ "-O0", "-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror" };
+    if (target.result.isDarwin()) {
+        cflags = &.{ backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror" };
         digilogic.linkFramework("Foundation");
         // digilogic.linkFramework("CoreGraphics");
         // digilogic.linkFramework("AppKit");
@@ -69,19 +74,12 @@ pub fn build(b: *std.build.Builder) void {
         }
         // }
 
-        var mflags: []const []const u8 = &.{ "-ObjC", "-O0", "-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-fobjc-arc", backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror" };
+        const mflags: []const []const u8 = &.{ "-ObjC", "-fobjc-arc", backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror" };
         digilogic.addCSourceFile(.{
-            .file = .{ .path = "src/apple.m" },
+            .file = b.path("src/apple.m"),
             .flags = mflags,
         });
-
-        digilogic.addLibraryPath(.{ .path = "/opt/homebrew/opt/llvm/lib/clang/17/lib/darwin/" });
-        digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-        digilogic.linkSystemLibrary("clang_rt.ubsan_osx_dynamic");
-
-        digilogic.addLibraryPath(.{ .path = "thirdparty/routing/target/release" });
-        digilogic.linkSystemLibrary("digilogic_routing");
-    } else if (target.abi == .android) {
+    } else if (target.result.isAndroid()) {
         if (.gles3 != backend) {
             @panic("For android targets, you must have backend set to GLES3");
         }
@@ -90,16 +88,16 @@ pub fn build(b: *std.build.Builder) void {
         digilogic.linkSystemLibrary("android");
         digilogic.linkSystemLibrary("log");
         digilogic.addCSourceFile(.{
-            .file = .{ .path = "src/nonapple.c" },
+            .file = b.path("src/nonapple.c"),
             .flags = cflags,
         });
-    } else if (target.os_tag == .linux) {
+    } else if (target.result.os.tag == .linux) {
         const egl_cflags = if (opt_use_egl) "-DSOKOL_FORCE_EGL " else "";
         const x11_cflags = if (!opt_use_x11) "-DSOKOL_DISABLE_X11 " else "";
         const wayland_cflags = if (!opt_use_wayland) "-DSOKOL_DISABLE_WAYLAND" else "";
         const link_egl = opt_use_egl or opt_use_wayland;
         cflags = &.{ backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror", egl_cflags, x11_cflags, wayland_cflags };
-        digilogic.linkSystemLibrary("asound");
+        // digilogic.linkSystemLibrary("asound");
         digilogic.linkSystemLibrary("GL");
         if (opt_use_x11) {
             digilogic.linkSystemLibrary("X11");
@@ -116,10 +114,10 @@ pub fn build(b: *std.build.Builder) void {
             digilogic.linkSystemLibrary("EGL");
         }
         digilogic.addCSourceFile(.{
-            .file = .{ .path = "src/nonapple.c" },
+            .file = b.path("src/nonapple.c"),
             .flags = cflags,
         });
-    } else if (target.os_tag == .windows) {
+    } else if (target.result.os.tag == .windows) {
         cflags = &.{ backend_cflags, "-Ithirdparty", "-Isrc", "-Wall", "-Werror", "-Wno-unknown-pragmas" };
         digilogic.linkSystemLibrary("kernel32");
         digilogic.linkSystemLibrary("user32");
@@ -130,12 +128,13 @@ pub fn build(b: *std.build.Builder) void {
             digilogic.linkSystemLibrary("dxgi");
         }
         digilogic.addCSourceFile(.{
-            .file = .{ .path = "src/nonapple.c" },
+            .file = b.path("src/nonapple.c"),
             .flags = cflags,
         });
-        digilogic.addLibraryPath(.{ .path = "thirdparty/routing/target/x86_64-pc-windows-gnu/release" });
-        digilogic.linkSystemLibrary("digilogic_routing");
     }
+
+    digilogic.addLibraryPath(b.path("thirdparty/routing/target/release"));
+    digilogic.linkSystemLibrary("digilogic_routing");
 
     // finally add the C source files
     const csrc_root = "src/";
@@ -154,7 +153,7 @@ pub fn build(b: *std.build.Builder) void {
     };
     inline for (csources) |csrc| {
         digilogic.addCSourceFile(.{
-            .file = .{ .path = csrc_root ++ csrc },
+            .file = b.path(csrc_root ++ csrc),
             .flags = cflags,
         });
     }
@@ -165,16 +164,16 @@ pub fn build(b: *std.build.Builder) void {
 }
 
 // helper function to resolve .auto backend based on target platform
-pub fn resolveSokolBackend(backend: SokolBackend, target: std.zig.CrossTarget) SokolBackend {
+pub fn resolveSokolBackend(backend: SokolBackend, target: std.Target) SokolBackend {
     if (backend != .auto) {
         return backend;
     } else if (target.isDarwin()) {
         return .metal;
-    } else if (target.isWindows()) {
+    } else if (target.os.tag == .windows) {
         return .d3d11;
-    } else if (target.os_tag == .wasi) {
+    } else if (target.isWasm()) {
         return .gles3;
-    } else if (target.abi == .android) {
+    } else if (target.isAndroid()) {
         return .gles3;
     } else {
         return .gl;

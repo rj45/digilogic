@@ -13,7 +13,7 @@
 
 # Building
 
-You'll need rust via rustup, and zig 0.11 (or newer?). The following instructions should work on Mac and Windows. Linux as yet untested. Instructions may need adaptation for windows, and you'll need MSVC or mingw.
+You'll need rust via rustup, and zig 0.12 (or newer?). The following instructions should work on Mac and Windows. Linux as yet untested. Instructions may need adaptation for windows, and you'll need MSVC or mingw.
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
