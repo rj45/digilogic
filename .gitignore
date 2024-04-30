@@ -2,6 +2,7 @@ test
 digilogic
 gen
 src/apple.m
+build
 zig-cache
 zig-out
 .cache
