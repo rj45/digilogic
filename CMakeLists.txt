@@ -179,7 +179,7 @@ corrosion_import_crate(
 # C
 #####################################
 
-set_property(TARGET digilogic PROPERTY C_STANDARD 23)
+set_property(TARGET digilogic PROPERTY C_STANDARD 11)
 
 file(COPY "testdata" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 
