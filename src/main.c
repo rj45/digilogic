@@ -33,7 +33,6 @@
 #include "core/core.h"
 #include "font.h"
 #include "import/import.h"
-#include "main.h"
 
 #include "nuklear.h"
 #include "sokol_app.h"
@@ -49,6 +48,17 @@
 
 #define LOG_TAG "main"
 #include "common/log.h"
+
+typedef struct my_app_t {
+  CircuitUX circuit;
+
+  const char *filename;
+
+  sg_shader msdf_shader;
+  sg_pipeline msdf_pipeline;
+  sg_image msdf_tex;
+  sg_sampler msdf_sampler;
+} my_app_t;
 
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;

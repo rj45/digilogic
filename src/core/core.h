@@ -17,11 +17,13 @@
 #ifndef CORE_H
 #define CORE_H
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "handmade_math.h"
+#include "stb_ds.h"
 
 // defines an STB array
 #define arr(type) type *
@@ -29,11 +31,19 @@
 // defines an STB hash map
 #define hmap(type) type *
 
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+#define MUST_USE_RETURN __attribute__((warn_unused_result))
+#elif defined(_MSC_VER) && (_MSC_VER >= 1700)
+#define MUST_USE_RETURN _Check_return_
+#else
+#define MUST_USE_RETURN
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
-// Circuit
+// SparseMap and Generational Handle IDs
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum ID_TYPE {
+typedef enum IDType {
   ID_NONE,
   ID_COMPONENT,
   ID_PORT,
@@ -41,19 +51,146 @@ typedef enum ID_TYPE {
   ID_WIRE,
   ID_JUNCTION,
   ID_LABEL,
-} ID_TYPE;
+} IDType;
 
 typedef uint32_t ID;
+#define NO_ID 0
+
+typedef int8_t Gen;
+typedef void SparseMap;
+
+#define smap(type) type *
 
 #define ID_TYPE_BITS 3
+#define ID_GEN_BITS 7
+#define ID_INDEX_BITS (32 - ID_TYPE_BITS - ID_GEN_BITS)
+
 #define ID_TYPE_MASK ((1 << ID_TYPE_BITS) - 1)
-#define ID_INDEX_BITS (sizeof(ID) * 8 - ID_TYPE_BITS)
+#define ID_GEN_MASK ((1 << ID_GEN_BITS) - 1)
 #define ID_INDEX_MASK ((1 << ID_INDEX_BITS) - 1)
 
-#define id_type(id) (((id) >> ID_INDEX_BITS) & ID_TYPE_MASK)
+#define ID_TYPE_SHIFT (ID_GEN_BITS + ID_INDEX_BITS)
+#define ID_GEN_SHIFT (ID_INDEX_BITS)
+
+#define id_make(type, gen, index)                                              \
+  (((type & ID_TYPE_MASK) << ID_TYPE_SHIFT) |                                  \
+   ((gen & ID_GEN_MASK) << ID_GEN_SHIFT) | (index & ID_INDEX_MASK))
+#define id_type(id) ((IDType)(((id) >> ID_TYPE_SHIFT) & ID_TYPE_MASK))
+#define id_gen(id) ((Gen)(((id) >> ID_GEN_SHIFT) & ID_GEN_MASK))
+#define id_typegen(id) ((id) >> ID_GEN_SHIFT)
 #define id_index(id) ((id) & ID_INDEX_MASK)
-#define id_make(type, index)                                                   \
-  (((type & ID_TYPE_MASK) << ID_INDEX_BITS) | (index & ID_INDEX_MASK))
+#define id_valid(id) (id_gen(id) != 0 && id_type(id) != ID_NONE)
+
+typedef struct SparseMapHeader {
+  // has the type, generation and index of each element
+  arr(ID) sparse;
+
+  // has the full id of each element
+  ID *ids;
+
+  // to keep the index small, keep track of free handle indices and their old
+  // generation
+  arr(ID) freeList;
+
+  uint32_t elemSize;
+  uint32_t elemCount;
+  uint32_t capacity;
+  uint32_t temp;
+} SparseMapHeader;
+
+// internal bookkeeping macros
+#define smap_header(arr) ((SparseMapHeader *)(arr) - 1)
+#define smap_index_entry(arr, id) (smap_header(arr)->sparse[id_index(id)])
+#define smap_temp(arr) smap_header(arr)->temp
+
+// smap_ids returns the list of ids of each element in the sparse map
+#define smap_ids(arr) ((arr) == NULL ? NULL : smap_header(arr)->ids)
+
+// smap_len returns the number of elements in the sparse map
+#define smap_len(arr)                                                          \
+  ((arr) == NULL ? 0 : (ptrdiff_t)smap_header(arr)->elemCount)
+
+// smap_lenu returns the unsigned number of elements in the sparse map
+#define smap_lenu(arr) ((arr) == NULL ? 0 : smap_header(arr)->elemCount)
+
+// smap_cap returns the capacity of the sparse map
+#define smap_cap(arr) ((arr) == NULL ? 0 : smap_header(arr)->capacity)
+
+// smap_setcap sets the capacity of the sparse map
+#define smap_setcap(arr, cap) (smap_grow(arr, 0, cap))
+
+// smap_has returns true if the sparse map has an element with the given id
+#define smap_has(arr, id)                                                      \
+  ((arr) != NULL && id_index(id) < arrlen(smap_header(arr)->sparse) &&         \
+   id_typegen(smap_index_entry(arr, id)) == id_typegen(id))
+
+// smap_index returns the index of the element with the given id
+#define smap_index(arr, id)                                                    \
+  (smap_has(arr, id) ? id_index(smap_header(arr)->sparse[id_index(id)])        \
+                     : (uint32_t)(-1))
+
+// smap_maybe_grow grows the sparse map if it doesn't have enough room
+#define smap_maybe_grow(arr, room)                                             \
+  ((arr == NULL) ||                                                            \
+       (smap_header(arr)->elemCount + (room)) > smap_header(arr)->capacity     \
+     ? smap_grow(arr, room, 0)                                                 \
+     : arr)
+
+// smap_grow makes sure there is room for at least addLen more elements
+// or minCap elements total
+#define smap_grow(arr, addLen, minCap)                                         \
+  ((arr) = smap_grow_((arr), sizeof *(arr), (addLen), (minCap)))
+
+// smap_put adds an element to the sparse map, returning its ID
+#define smap_put(arr, type, elem)                                              \
+  (smap_maybe_grow(arr, 1), smap_temp(arr) = smap_alloc_(arr, type),           \
+   (arr)[smap_index(arr, smap_temp(arr))] = (elem), smap_temp(arr))
+
+// smap_alloc allocates a new element in the sparse map returning its ID
+#define smap_alloc(arr, type) (smap_maybe_grow(arr, 1), smap_alloc_(arr, type))
+
+// smap_getptr returns a pointer to the element with the given id
+#define smap_getptr(arr, id)                                                   \
+  (smap_has(arr, id) ? &((arr)[smap_index(arr, id)]) : NULL)
+
+// smap_get returns the element with the given id
+#define smap_get(arr, id)                                                      \
+  (smap_has(arr, id) ? ((arr)[smap_index(arr, id)]) : NULL)
+
+// smap_free frees the sparse map and sets the pointer to NULL
+#define smap_free(arr) (smap_free_((arr)), (arr) = NULL)
+
+// smap_alloc_ is an internal function to do the allocating
+static inline ID smap_alloc_(SparseMap *arr, IDType type) {
+  SparseMapHeader *header = smap_header(arr);
+  ID oldID;
+  if (arrlen(header->freeList) > 0) {
+    oldID = arrpop(header->freeList);
+  } else {
+    oldID = id_make(type, 0, arrlen(header->sparse));
+    arrput(header->sparse, oldID);
+  }
+  int gen = (id_gen(oldID) + 1) & ID_GEN_MASK;
+  int valueIndex = header->elemCount++;
+  header->sparse[id_index(oldID)] = id_make(type, gen, valueIndex);
+  ID id = id_make(type, gen, id_index(oldID));
+  header->ids[valueIndex] = id;
+  return id;
+}
+
+// smap_del removes an element from the sparse map
+void smap_del(SparseMap *arr, ID id);
+
+void smap_free_(SparseMap *arr);
+
+SparseMap *smap_grow_(
+  SparseMap *arr, uint32_t elemSize, uint32_t addLen,
+  uint32_t minCap) MUST_USE_RETURN;
+void smap_del(SparseMap *arr, ID id);
+
+////////////////////////////////////////////////////////////////////////////////
+// Circuit
+////////////////////////////////////////////////////////////////////////////////
 
 // default ComponentDescIDs for the built-in components
 enum {

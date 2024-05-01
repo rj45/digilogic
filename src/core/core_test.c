@@ -14,11 +14,175 @@
    limitations under the License.
 */
 
-#include "stb_ds.h"
 #include "utest.h"
 
 #include "core.h"
 #include "utest.h"
+
+UTEST(SparseMap, grow) {
+  smap(int) arr = NULL;
+  smap_grow(arr, 10, 0);
+  ASSERT_EQ(smap_cap(arr), 16);
+  ASSERT_EQ(smap_len(arr), 0);
+  smap_free(arr);
+}
+
+UTEST(SparseMap, grow_twice) {
+  smap(int) arr = NULL;
+  smap_grow(arr, 10, 0);
+  smap_grow(arr, 20, 0);
+  ASSERT_EQ(smap_cap(arr), 32);
+  ASSERT_EQ(smap_len(arr), 0);
+  smap_free(arr);
+}
+
+UTEST(SparseMap, free) {
+  smap(int) arr = NULL;
+  smap_grow(arr, 10, 0);
+  ASSERT_NE(arr, NULL);
+  smap_free(arr);
+  ASSERT_EQ(arr, NULL);
+}
+
+UTEST(SparseMap, maybe_grow) {
+  smap(int) arr = NULL;
+  smap_maybe_grow(arr, 1);
+  ASSERT_EQ(smap_cap(arr), 8);
+  smap_free(arr);
+}
+
+UTEST(SparseMap, alloc) {
+  smap(int) arr = NULL;
+  ID id = smap_alloc(arr, ID_COMPONENT);
+
+  ASSERT_NE(arr, NULL);
+  ASSERT_TRUE(id_valid(id));
+  ASSERT_TRUE(smap_has(arr, id));
+  ASSERT_EQ(smap_len(arr), 1);
+  ASSERT_EQ(smap_index(arr, id), 0);
+
+  ASSERT_EQ(id_type(id), ID_COMPONENT);
+  ASSERT_EQ(id_gen(id), 1);
+  ASSERT_EQ(id_index(id), 0);
+
+  smap_free(arr);
+}
+
+UTEST(SparseMap, put) {
+  smap(int) arr = NULL;
+  ID id = smap_put(arr, ID_COMPONENT, -2);
+
+  ASSERT_TRUE(id_valid(id));
+  ASSERT_TRUE(smap_has(arr, id));
+
+  ASSERT_EQ(smap_len(arr), 1);
+  ASSERT_EQ(arr[smap_index(arr, id)], -2);
+
+  ASSERT_EQ(smap_ids(arr)[0], id);
+
+  smap_free(arr);
+}
+
+UTEST(SparseMap, put_twice) {
+  smap(int) arr = NULL;
+  ID id1 = smap_put(arr, ID_COMPONENT, -2);
+  ID id2 = smap_put(arr, ID_COMPONENT, -3);
+
+  ASSERT_TRUE(id_valid(id1));
+  ASSERT_TRUE(id_valid(id2));
+  ASSERT_TRUE(smap_has(arr, id1));
+  ASSERT_TRUE(smap_has(arr, id2));
+  ASSERT_NE(id1, id2);
+
+  ASSERT_EQ(smap_ids(arr)[0], id1);
+  ASSERT_EQ(smap_ids(arr)[1], id2);
+
+  ASSERT_EQ(smap_len(arr), 2);
+  ASSERT_EQ(arr[smap_index(arr, id1)], -2);
+  ASSERT_EQ(arr[smap_index(arr, id2)], -3);
+
+  smap_free(arr);
+}
+
+UTEST(SparseMap, del) {
+  smap(int) arr = NULL;
+  ID id = smap_put(arr, ID_COMPONENT, -2);
+  smap_del(arr, id);
+
+  ASSERT_EQ(smap_len(arr), 0);
+  ASSERT_FALSE(smap_has(arr, id));
+  ASSERT_EQ(arrlen(smap_header(arr)->freeList), 1);
+  ASSERT_EQ(smap_header(arr)->freeList[0], id);
+
+  smap_free(arr);
+}
+
+UTEST(SparseMap, del_first_of_two) {
+  smap(int) arr = NULL;
+  ID id1 = smap_put(arr, ID_COMPONENT, -2);
+  ID id2 = smap_put(arr, ID_COMPONENT, -3);
+  smap_del(arr, id1);
+
+  ASSERT_EQ(smap_len(arr), 1);
+  ASSERT_FALSE(smap_has(arr, id1));
+  ASSERT_TRUE(smap_has(arr, id2));
+  ASSERT_EQ(smap_index(arr, id2), 0);
+  ASSERT_EQ(arr[smap_index(arr, id2)], -3);
+  ASSERT_EQ(arrlen(smap_header(arr)->freeList), 1);
+  ASSERT_EQ(smap_header(arr)->freeList[0], id1);
+
+  ASSERT_EQ(smap_ids(arr)[0], id2);
+
+  smap_free(arr);
+}
+
+UTEST(SparseMap, del_second_of_two) {
+  smap(int) arr = NULL;
+  ID id1 = smap_put(arr, ID_COMPONENT, -2);
+  ID id2 = smap_put(arr, ID_COMPONENT, -3);
+  smap_del(arr, id2);
+
+  ASSERT_EQ(smap_len(arr), 1);
+  ASSERT_TRUE(smap_has(arr, id1));
+  ASSERT_FALSE(smap_has(arr, id2));
+  ASSERT_EQ(smap_index(arr, id1), 0);
+  ASSERT_EQ(arr[smap_index(arr, id1)], -2);
+  ASSERT_EQ(arrlen(smap_header(arr)->freeList), 1);
+  ASSERT_EQ(smap_header(arr)->freeList[0], id2);
+
+  ASSERT_EQ(smap_ids(arr)[0], id1);
+
+  smap_free(arr);
+}
+
+UTEST(SparseMap, put_delled) {
+  smap(int) arr = NULL;
+  ID id1 = smap_put(arr, ID_COMPONENT, -2);
+  ID id2 = smap_put(arr, ID_COMPONENT, -3);
+  smap_del(arr, id1);
+  ID id3 = smap_put(arr, ID_COMPONENT, -4);
+
+  ASSERT_EQ(smap_len(arr), 2);
+  ASSERT_FALSE(smap_has(arr, id1));
+  ASSERT_TRUE(smap_has(arr, id2));
+  ASSERT_TRUE(smap_has(arr, id3));
+  ASSERT_EQ(smap_index(arr, id2), 0);
+  ASSERT_EQ(smap_index(arr, id3), 1);
+
+  ASSERT_EQ(arr[smap_index(arr, id2)], -3);
+  ASSERT_EQ(arr[smap_index(arr, id3)], -4);
+
+  ASSERT_EQ(arrlen(smap_header(arr)->freeList), 0);
+
+  ASSERT_EQ(id_index(id1), id_index(id3));
+  ASSERT_EQ(id_gen(id1), 1);
+  ASSERT_EQ(id_gen(id3), 2);
+
+  ASSERT_EQ(smap_ids(arr)[0], id2);
+  ASSERT_EQ(smap_ids(arr)[1], id3);
+
+  smap_free(arr);
+}
 
 UTEST(Circuit, add_component) {
   Circuit circuit;

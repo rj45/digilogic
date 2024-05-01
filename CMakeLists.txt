@@ -5,6 +5,7 @@ set(DIGILOGIC_SRCS
     src/main.c
     src/core/circuit.c
     src/core/timer.c
+    src/core/smap.c
     src/ux/ux.c
     src/ux/input.c
     src/ux/undo.c
