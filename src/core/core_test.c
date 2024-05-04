@@ -31,12 +31,10 @@ UTEST(SparseMap, add_synced_array) {
   smap_init(&smap, ID_COMPONENT);
   int data = 0;
   void *ptr = &data;
-  smap_add_synced_array(&smap, &ptr, sizeof(int), NULL, NULL);
+  smap_add_synced_array(&smap, &ptr, sizeof(int));
   ASSERT_EQ(arrlen(smap.syncedArrays), 1);
   ASSERT_EQ(smap.syncedArrays[0].ptr, &ptr);
   ASSERT_EQ(smap.syncedArrays[0].elemSize, sizeof(int));
-  ASSERT_EQ(smap.syncedArrays[0].user, NULL);
-  ASSERT_NE((size_t)smap.syncedArrays[0].callback, (size_t)NULL);
   smap_free(&smap);
 }
 
@@ -44,7 +42,7 @@ UTEST(SparseMap, alloc) {
   SparseMap smap;
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
-  smap_add_synced_array(&smap, (void **)&data, sizeof(int), NULL, NULL);
+  smap_add_synced_array(&smap, (void **)&data, sizeof(int));
   ID id = smap_alloc(&smap);
   ASSERT_EQ(id_index(id), 0);
   ASSERT_EQ(id_type(id), ID_COMPONENT);
@@ -61,7 +59,7 @@ UTEST(SparseMap, alloc_multiple) {
   SparseMap smap;
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
-  smap_add_synced_array(&smap, (void **)&data, sizeof(int), NULL, NULL);
+  smap_add_synced_array(&smap, (void **)&data, sizeof(int));
   ID id1 = smap_alloc(&smap);
   ID id2 = smap_alloc(&smap);
   ASSERT_EQ(id_index(id1), 0);
@@ -85,7 +83,7 @@ UTEST(SparseMap, alloc_full) {
   SparseMap smap;
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
-  smap_add_synced_array(&smap, (void **)&data, sizeof(int), NULL, NULL);
+  smap_add_synced_array(&smap, (void **)&data, sizeof(int));
   for (int i = 0; i < 7; i++) {
     smap_alloc(&smap);
   }
@@ -103,7 +101,7 @@ UTEST(SparseMap, del) {
   SparseMap smap;
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
-  smap_add_synced_array(&smap, (void **)&data, sizeof(int), NULL, NULL);
+  smap_add_synced_array(&smap, (void **)&data, sizeof(int));
   ID id1 = smap_alloc(&smap);
   ID id2 = smap_alloc(&smap);
   data[0] = 1;
@@ -125,7 +123,7 @@ UTEST(SparseMap, del_last) {
   SparseMap smap;
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
-  smap_add_synced_array(&smap, (void **)&data, sizeof(int), NULL, NULL);
+  smap_add_synced_array(&smap, (void **)&data, sizeof(int));
   ID id1 = smap_alloc(&smap);
   ID id2 = smap_alloc(&smap);
   data[0] = 1;
@@ -144,11 +142,11 @@ UTEST(Circuit, add_component) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
   ComponentID id = circuit_add_component(&circuit, COMP_AND);
-  ASSERT_EQ(id, 0);
-  ASSERT_EQ(arrlen(circuit.components), 1);
-  ASSERT_EQ(circuit.components[id].desc, COMP_AND);
-  ASSERT_EQ(circuit.components[id].portStart, 0);
-  ASSERT_EQ(arrlen(circuit.ports), 3);
+  ASSERT_EQ(circuit_component_index(&circuit, id), 0);
+  ASSERT_EQ(circuit_component_len(&circuit), 1);
+  ASSERT_EQ(circuit_component_ptr(&circuit, id)->desc, COMP_AND);
+  ASSERT_NE(circuit_component_ptr(&circuit, id)->portFirst, NO_PORT);
+  ASSERT_EQ(circuit_port_len(&circuit), 3);
   circuit_free(&circuit);
 }
 
@@ -156,8 +154,8 @@ UTEST(Circuit, add_net_no_ports) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
   NetID id = circuit_add_net(&circuit);
-  ASSERT_EQ(id, 0);
-  ASSERT_EQ(arrlen(circuit.nets), 1);
+  ASSERT_EQ(circuit_net_index(&circuit, id), 0);
+  ASSERT_EQ(circuit_net_len(&circuit), 1);
   circuit_free(&circuit);
 }
 
@@ -165,21 +163,21 @@ UTEST(Circuit, add_net_with_ports) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
   ComponentID compID = circuit_add_component(&circuit, COMP_AND);
-  PortID portID = circuit.components[compID].portStart;
+  Component *comp = circuit_component_ptr(&circuit, compID);
+  PortID portID1 = comp->portFirst;
+  PortID portID2 = circuit_port_ptr(&circuit, portID1)->compNext;
   NetID net = circuit_add_net(&circuit);
-  WireID id = circuit_add_wire(
-    &circuit, net, wire_end_make(WIRE_END_PORT, portID),
-    wire_end_make(WIRE_END_PORT, portID + 1));
-  ASSERT_EQ(net, 0);
-  ASSERT_EQ(arrlen(circuit.nets), 1);
-  ASSERT_EQ(circuit.wires[id].from, wire_end_make(WIRE_END_PORT, portID));
-  ASSERT_EQ(circuit.ports[portID].net, net);
-  ASSERT_EQ(circuit.wires[id].to, wire_end_make(WIRE_END_PORT, portID + 1));
-  ASSERT_EQ(circuit.ports[portID + 1].net, net);
-  ASSERT_EQ(circuit.wires[id].next, NO_WIRE);
-  ASSERT_EQ(circuit.wires[id].prev, NO_WIRE);
-  ASSERT_EQ(circuit.nets[net].wireFirst, id);
-  ASSERT_EQ(circuit.nets[net].wireLast, id);
+  WireID id = circuit_add_wire(&circuit, net, portID1, portID2);
+  ASSERT_EQ(circuit_net_index(&circuit, net), 0);
+  ASSERT_EQ(circuit_net_len(&circuit), 1);
+  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->from, portID1);
+  ASSERT_EQ(circuit_port_ptr(&circuit, portID1)->net, net);
+  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->to, portID2);
+  ASSERT_EQ(circuit_port_ptr(&circuit, portID2)->net, net);
+  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->next, NO_WIRE);
+  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->prev, NO_WIRE);
+  ASSERT_EQ(circuit_net_ptr(&circuit, net)->wireFirst, id);
+  ASSERT_EQ(circuit_net_ptr(&circuit, net)->wireLast, id);
   circuit_free(&circuit);
 }
 

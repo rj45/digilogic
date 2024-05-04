@@ -338,7 +338,7 @@ UTEST(View, view_add_component) {
   view_add_component(&view, COMP_AND, HMM_V2(100, 100));
   view_add_component(&view, COMP_OR, HMM_V2(200, 200));
 
-  ASSERT_EQ(arrlen(view.components), 2);
+  ASSERT_EQ(circuit_component_len(&view.circuit), 2);
   ASSERT_EQ(view.components[0].box.center.X, 100);
   ASSERT_EQ(view.components[0].box.center.Y, 100);
   ASSERT_EQ(view.components[1].box.center.X, 200);
@@ -385,13 +385,17 @@ UTEST(View, view_draw_component_with_wires) {
   ComponentID and = view_add_component(&view, COMP_AND, HMM_V2(100, 100));
   ComponentID or = view_add_component(&view, COMP_OR, HMM_V2(200, 200));
 
-  PortID from = view_port_start(&view, and) + 2;
-  PortID to = view_port_start(&view, or);
+  Component *andComp = circuit_component_ptr(&view.circuit, and);
+  PortID from = circuit_port_ptr(
+                  &view.circuit,
+                  circuit_port_ptr(&view.circuit, andComp->portFirst)->compNext)
+                  ->compNext;
+
+  Component *orComp = circuit_component_ptr(&view.circuit, or);
+  PortID to = orComp->portFirst;
 
   NetID net = view_add_net(&view);
-  view_add_wire(
-    &view, net, wire_end_make(WIRE_END_PORT, from),
-    wire_end_make(WIRE_END_PORT, to));
+  view_add_wire(&view, net, from, to);
 
   view_draw(&view, (Context)&cmds);
 

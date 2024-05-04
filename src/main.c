@@ -93,8 +93,6 @@ static void init(void *user_data) {
   // import_digital(&app->circuit, "testdata/simple_test.dig");
   import_digital(&app->circuit, app->filename);
 
-  printf("circuit size: %td\n", arrlen(app->circuit.view.circuit.components));
-
   FILE *fp = fopen("circuit.dot", "w");
   circuit_write_dot(&app->circuit.view.circuit, fp);
   fclose(fp);

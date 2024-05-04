@@ -80,22 +80,11 @@ typedef int8_t Gen;
 #define id_index(id) ((id) & ID_INDEX_MASK)
 #define id_valid(id) (id_gen(id) != 0 && id_type(id) != ID_NONE)
 
-typedef enum SparseMapChange {
-  SMAP_ADD,
-  SMAP_SWAP,
-  SMAP_DEL,
-  SMAP_UPDATE,
-} SparseMapChange;
-
 struct SparseMap;
 
 typedef struct SyncedArray {
   void **ptr;
   uint32_t elemSize;
-  void *user;
-  void (*callback)(
-    void *user, struct SparseMap *smap, SparseMapChange change, ID id,
-    uint32_t index, uint32_t index2);
 } SyncedArray;
 
 typedef struct SparseMap {
@@ -123,11 +112,7 @@ typedef struct SparseMap {
 void smap_init(SparseMap *smap, IDType type);
 void smap_free(SparseMap *smap);
 
-void smap_add_synced_array(
-  SparseMap *smap, void **ptr, uint32_t elemSize, void *user,
-  void (*callback)(
-    void *user, SparseMap *smap, SparseMapChange change, ID id, uint32_t index,
-    uint32_t index2));
+void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize);
 
 ID smap_alloc(SparseMap *smap);
 void smap_del(SparseMap *smap, ID id);
@@ -146,16 +131,6 @@ static inline int smap_index(SparseMap *smap, ID id) {
 
 static inline ID smap_id(SparseMap *smap, int index) {
   return smap->ids[index];
-}
-
-static inline void smap_update(SparseMap *smap, ID id) {
-  assert(smap_has(smap, id));
-
-  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
-    SyncedArray *syncedArray = &smap->syncedArrays[i];
-    syncedArray->callback(
-      syncedArray->user, smap, SMAP_UPDATE, id, smap_index(smap, id), 0);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,23 +155,23 @@ typedef uint32_t PortDescID;
 typedef uint32_t ComponentID;
 #define NO_COMPONENT ((ComponentID) - 1)
 
-typedef uint32_t NetID;
-#define NO_NET ((NetID) - 1)
+typedef ID NetID;
+#define NO_NET NO_ID
 
-typedef uint32_t PortID;
-#define NO_PORT ((PortID) - 1)
+typedef ID PortID;
+#define NO_PORT NO_ID
 
-typedef uint32_t VertexID;
-#define NO_VERTEX ((VertexID) - 1)
+typedef ID VertexID;
+#define NO_VERTEX NO_ID
 
-typedef uint32_t LabelID;
-#define NO_LABEL ((LabelID) - 1)
+typedef ID LabelID;
+#define NO_LABEL NO_ID
 
-typedef uint32_t WireID;
-#define NO_WIRE ((WireID) - 1)
+typedef ID WireID;
+#define NO_WIRE NO_ID
 
-typedef uint32_t JunctionID;
-#define NO_JUNCTION ((JunctionID) - 1)
+typedef ID JunctionID;
+#define NO_JUNCTION NO_ID
 
 typedef enum PortDirection {
   PORT_IN,
@@ -228,7 +203,8 @@ typedef struct ComponentDesc {
 
 typedef struct Component {
   ComponentDescID desc;
-  PortID portStart;
+  PortID portFirst;
+  PortID portLast;
   LabelID typeLabel;
   LabelID nameLabel;
 } Component;
@@ -238,39 +214,23 @@ typedef struct Port {
   PortDescID desc; // index into the component's port descriptions
   LabelID label;
 
+  // linked list of all ports in the component
+  PortID compNext;
+  PortID compPrev;
+
   // the net the port is connected to.
   NetID net;
 
   // linked list of all ports connected to the same net
-  PortID next;
-  PortID prev;
+  PortID netNext;
+  PortID netPrev;
 } Port;
-
-typedef uint32_t WireEndID;
-typedef enum WireEndType {
-  WIRE_END_INVALID,
-  WIRE_END_NONE,
-  WIRE_END_PORT,
-  WIRE_END_JUNC,
-} WireEndType;
-
-#define WIRE_END_TYPE_BITS 2
-#define WIRE_END_TYPE_MASK ((1 << WIRE_END_TYPE_BITS) - 1)
-#define WIRE_END_INDEX_BITS (sizeof(WireEndID) * 8 - WIRE_END_TYPE_BITS)
-#define WIRE_END_INDEX_MASK ((1 << WIRE_END_INDEX_BITS) - 1)
-
-#define wire_end_type(id)                                                      \
-  (WireEndType)(((id) >> WIRE_END_INDEX_BITS) & WIRE_END_TYPE_MASK)
-#define wire_end_index(id) ((id) & WIRE_END_INDEX_MASK)
-#define wire_end_make(type, index)                                             \
-  ((((uint32_t)(type) & WIRE_END_TYPE_MASK) << WIRE_END_INDEX_BITS) |          \
-   ((uint32_t)(index) & WIRE_END_INDEX_MASK))
 
 typedef struct Wire {
   NetID net;
 
-  WireEndID from;
-  WireEndID to;
+  ID from;
+  ID to;
 
   // linked list of all wires in the net
   WireID next;
@@ -306,13 +266,24 @@ typedef struct Label {
 } Label;
 
 typedef struct Circuit {
+  struct {
+    SparseMap components;
+    SparseMap ports;
+    SparseMap nets;
+    SparseMap wires;
+    SparseMap junctions;
+    SparseMap labels;
+  } sm;
+
   const ComponentDesc *componentDescs;
-  arr(Component) components;
-  arr(Port) ports;
-  arr(Net) nets;
-  arr(Wire) wires;
-  arr(Junction) junctions;
-  arr(Label) labels;
+
+  Component *components;
+  Port *ports;
+  Net *nets;
+  Wire *wires;
+  Junction *junctions;
+  Label *labels;
+
   arr(char) text;
 
   struct {
@@ -321,14 +292,55 @@ typedef struct Circuit {
   } *nextName;
 } Circuit;
 
+#define circuit_component_index(circuit, id)                                   \
+  (smap_index(&(circuit)->sm.components, (id)))
+#define circuit_component_ptr(circuit, id)                                     \
+  (&(circuit)->components[circuit_component_index(circuit, id)])
+#define circuit_component_len(circuit) (smap_len(&(circuit)->sm.components))
+#define circuit_component_id(circuit, index)                                   \
+  (smap_id(&(circuit)->sm.components, (index)))
+
+#define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
+#define circuit_port_ptr(circuit, id)                                          \
+  (&(circuit)->ports[circuit_port_index(circuit, id)])
+#define circuit_port_len(circuit) (smap_len(&(circuit)->sm.ports))
+#define circuit_port_id(circuit, index) (smap_id(&(circuit)->sm.ports, (index)))
+
+#define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
+#define circuit_net_ptr(circuit, id)                                           \
+  (&(circuit)->nets[circuit_net_index(circuit, id)])
+#define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
+#define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
+
+#define circuit_wire_index(circuit, id) (smap_index(&(circuit)->sm.wires, (id)))
+#define circuit_wire_ptr(circuit, id)                                          \
+  (&(circuit)->wires[circuit_wire_index(circuit, id)])
+#define circuit_wire_len(circuit) (smap_len(&(circuit)->sm.wires))
+#define circuit_wire_id(circuit, index) (smap_id(&(circuit)->sm.wires, (index)))
+
+#define circuit_junction_index(circuit, id)                                    \
+  (smap_index(&(circuit)->sm.junctions, (id)))
+#define circuit_junction_ptr(circuit, id)                                      \
+  (&(circuit)->junctions[circuit_junction_index(circuit, id)])
+#define circuit_junction_len(circuit) (smap_len(&(circuit)->sm.junctions))
+#define circuit_junction_id(circuit, index)                                    \
+  (smap_id(&(circuit)->sm.junctions, (index)))
+
+#define circuit_label_index(circuit, id)                                       \
+  (smap_index(&(circuit)->sm.labels, (id)))
+#define circuit_label_ptr(circuit, id)                                         \
+  (&(circuit)->labels[circuit_label_index(circuit, id)])
+#define circuit_label_len(circuit) (smap_len(&(circuit)->sm.labels))
+#define circuit_label_id(circuit, index)                                       \
+  (smap_id(&(circuit)->sm.labels, (index)))
+
 const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
 ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc);
 NetID circuit_add_net(Circuit *circuit);
 JunctionID circuit_add_junction(Circuit *circuit);
-WireID
-circuit_add_wire(Circuit *circuit, NetID net, WireEndID from, WireEndID to);
+WireID circuit_add_wire(Circuit *circuit, NetID net, ID from, ID to);
 
 LabelID circuit_add_label(Circuit *circuit, const char *text);
 const char *circuit_label_text(Circuit *circuit, LabelID id);

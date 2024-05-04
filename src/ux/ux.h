@@ -19,6 +19,7 @@
 
 #include "handmade_math.h"
 
+#include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "view/view.h"
 
@@ -204,7 +205,7 @@ typedef void AvoidRouter;
 typedef struct CircuitUX {
   CircuitView view;
   Input input;
-  AvoidRouter *avoid;
+  AutoRoute *router;
 
   arr(UndoCommand) undoStack;
   arr(UndoCommand) redoStack;
@@ -223,7 +224,7 @@ ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);
 NetID ux_add_net(CircuitUX *circuit);
 JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position);
-WireID ux_add_wire(CircuitUX *ux, NetID net, WireEndID from, WireEndID to);
+WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to);
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
 

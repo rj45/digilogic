@@ -19,23 +19,10 @@ void smap_free(SparseMap *smap) {
   arrfree(smap->freeList);
 }
 
-static void dummy_callback(
-  void *user, SparseMap *smap, SparseMapChange change, ID id, uint32_t index,
-  uint32_t index2) {}
-
-void smap_add_synced_array(
-  SparseMap *smap, void **ptr, uint32_t elemSize, void *user,
-  void (*callback)(
-    void *user, SparseMap *smap, SparseMapChange change, ID id, uint32_t index,
-    uint32_t index2)) {
-  if (callback == NULL) {
-    callback = dummy_callback;
-  }
+void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize) {
   SyncedArray syncedArray = {
     .ptr = ptr,
     .elemSize = elemSize,
-    .user = user,
-    .callback = callback,
   };
   arrput(smap->syncedArrays, syncedArray);
 }
@@ -94,11 +81,6 @@ ID smap_alloc(SparseMap *smap) {
   smap->sparse[sparseIndex] = sparseID;
   smap->ids[denseIndex] = denseID;
 
-  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
-    smap->syncedArrays[i].callback(
-      smap->syncedArrays[i].user, smap, SMAP_ADD, denseID, denseIndex, 0);
-  }
-
   return denseID;
 }
 
@@ -126,17 +108,8 @@ void smap_del(SparseMap *smap, ID id) {
         (char *)*smap->syncedArrays[i].ptr + denseIndex * elemSize,
         (char *)*smap->syncedArrays[i].ptr + lastDenseIndex * elemSize,
         elemSize);
-
-      smap->syncedArrays[i].callback(
-        smap->syncedArrays[i].user, smap, SMAP_SWAP, lastID, lastDenseIndex,
-        denseIndex);
     }
   }
 
   smap->length--;
-
-  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
-    smap->syncedArrays[i].callback(
-      smap->syncedArrays[i].user, smap, SMAP_DEL, id, denseIndex, 0);
-  }
 }

@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "core/core.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -40,10 +41,12 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   case UNDO_SELECT_AREA:
     ux->view.selectionBox = command.area;
     arrsetlen(ux->view.selectedComponents, 0);
-    for (size_t i = 0; i < arrlen(ux->view.components); i++) {
+    for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
       ComponentView *componentView = &ux->view.components[i];
       if (box_intersect_box(componentView->box, command.area)) {
-        arrput(ux->view.selectedComponents, i);
+        arrput(
+          ux->view.selectedComponents,
+          circuit_component_id(&ux->view.circuit, i));
       }
     }
     break;

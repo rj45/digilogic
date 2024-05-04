@@ -349,21 +349,23 @@ void import_digital(CircuitUX *ux, const char *filename) {
       ComponentID componentID = ux_add_component(ux, descID, HMM_V2(x, y));
 
       // digital's components are placed relative to the first port
-      PortID firstPort = view_port_start(&ux->view, componentID);
-      ux_move_component(
-        ux, componentID,
-        HMM_SubV2(HMM_V2(0, 0), ux->view.ports[firstPort].center));
+      Component *component =
+        circuit_component_ptr(&ux->view.circuit, componentID);
+      ComponentView *compView = view_component_ptr(&ux->view, componentID);
 
-      HMM_Vec2 portPos = HMM_AddV2(
-        ux->view.components[componentID].box.center,
-        ux->view.ports[firstPort].center);
+      PortID firstPort = component->portFirst;
+      PortView *portView = view_port_ptr(&ux->view, firstPort);
+      ux_move_component(
+        ux, componentID, HMM_SubV2(HMM_V2(0, 0), portView->center));
+
+      HMM_Vec2 portPos = HMM_AddV2(compView->box.center, portView->center);
       printf("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
 
       const ComponentDesc *desc = &ux->view.circuit.componentDescs[descID];
       switch (descID) {
       case COMP_INPUT:
       case COMP_OUTPUT: {
-        PortID portID = view_port_start(&ux->view, componentID);
+        PortID portID = firstPort;
         printf("Adding port %s at %d, %d\n", desc->ports[0].name, x, y);
         replace_wire_end_with_port(
           digWires, digWireEnds, portID, (IVec2){x, y}, descID == COMP_OUTPUT);
@@ -378,8 +380,9 @@ void import_digital(CircuitUX *ux, const char *filename) {
         if (descID == COMP_NOT) {
           nextOutput = (IVec2){x + 2 * 20, y};
         }
-        for (int j = 0; j < desc->numPorts; j++) {
-          PortID portID = view_port_start(&ux->view, componentID) + j;
+        PortID portID = component->portFirst;
+        int j = 0;
+        while (portID != NO_PORT) {
           IVec2 pos = nextInput;
           if (desc->ports[j].direction == PORT_OUT) {
             pos = nextOutput;
@@ -392,6 +395,9 @@ void import_digital(CircuitUX *ux, const char *filename) {
           replace_wire_end_with_port(
             digWires, digWireEnds, portID, pos,
             desc->ports[j].direction == PORT_IN);
+
+          portID = circuit_port_ptr(&ux->view.circuit, portID)->compNext;
+          j++;
         }
         break;
       }
@@ -631,7 +637,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
     printf("Net %d\n", netID);
     for (int j = 0; j < arrlen(netWires); j++) {
       DigWire *digWire = &digWires[netWires[j]];
-      WireEndID ends[2] = {WIRE_END_INVALID, WIRE_END_INVALID};
+      ID ends[2] = {0, 0};
       if (!digWire->valid) {
         continue;
       }
@@ -652,15 +658,15 @@ void import_digital(CircuitUX *ux, const char *filename) {
         switch (end->type) {
         case IN_PORT:
         case OUT_PORT:
-          ends[k] = wire_end_make(WIRE_END_PORT, end->port);
+          ends[k] = end->port;
           printf("%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
           break;
         case JUNCTION:
-          ends[k] = wire_end_make(WIRE_END_JUNC, end->junc);
+          ends[k] = end->junc;
           printf("junction %d ", end->junc);
           break;
         case WIRE:
-          ends[k] = wire_end_make(WIRE_END_NONE, 0);
+          ends[k] = NO_ID;
           printf("wire %d, %d ", end->pos.x, end->pos.y);
           skip = true;
           break;

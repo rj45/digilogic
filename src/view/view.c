@@ -59,37 +59,43 @@ void view_init(
     .hoveredPort = NO_PORT,
   };
   circuit_init(&view->circuit, componentDescs);
+  smap_add_synced_array(
+    &view->circuit.sm.components, (void **)&view->components,
+    sizeof(*view->components));
+  smap_add_synced_array(
+    &view->circuit.sm.ports, (void **)&view->ports, sizeof(*view->ports));
+  smap_add_synced_array(
+    &view->circuit.sm.wires, (void **)&view->wires, sizeof(*view->wires));
+  smap_add_synced_array(
+    &view->circuit.sm.junctions, (void **)&view->junctions,
+    sizeof(*view->junctions));
+  smap_add_synced_array(
+    &view->circuit.sm.labels, (void **)&view->labels, sizeof(*view->labels));
+
   theme_init(&view->theme, font);
 }
 
 void view_free(CircuitView *view) {
-  arrfree(view->components);
-  arrfree(view->ports);
-  arrfree(view->wires);
-  arrfree(view->junctions);
   arrfree(view->vertices);
   arrfree(view->selectedComponents);
   circuit_free(&view->circuit);
 }
 
 void view_augment_label(CircuitView *view, LabelID id, Box bounds) {
-  if (id >= arrlen(view->labels)) {
-    arrsetlen(view->labels, id + 1);
-  }
+  int index = circuit_label_index(&view->circuit, id);
   LabelView labelView = {.bounds = bounds};
-  view->labels[id] = labelView;
+  view->labels[index] = labelView;
 }
 
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position) {
   ComponentID id = circuit_add_component(&view->circuit, descID);
 
-  Component *component = &view->circuit.components[id];
+  Component *component = circuit_component_ptr(&view->circuit, id);
   const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
 
-  ComponentView componentViewTmp = {.box.center = position};
-  arrput(view->components, componentViewTmp);
-  ComponentView *componentView = &view->components[id];
+  ComponentView *componentView = view_component_ptr(view, id);
+  *componentView = (ComponentView){.box.center = position};
 
   float labelPadding = view->theme.labelPadding;
   float width = view->theme.componentWidth;
@@ -97,6 +103,7 @@ ComponentID view_add_component(
   // figure out the size of the component
   int numInputPorts = 0;
   int numOutputPorts = 0;
+  PortID portID = component->portFirst;
   for (int j = 0; j < desc->numPorts; j++) {
     if (desc->ports[j].direction == PORT_IN) {
       numInputPorts++;
@@ -106,7 +113,8 @@ ComponentID view_add_component(
 
     // figure out the width needed for the label of the port and adjust width if
     // it's too small
-    LabelID labelID = view->circuit.ports[component->portStart + j].label;
+    Port *port = circuit_port_ptr(&view->circuit, portID);
+    LabelID labelID = port->label;
     const char *labelText = circuit_label_text(&view->circuit, labelID);
     Box labelBounds = draw_text_bounds(
       HMM_V2(0, 0), labelText, strlen(labelText), ALIGN_CENTER, ALIGN_MIDDLE,
@@ -116,6 +124,8 @@ ComponentID view_add_component(
     if (desiredHalfWidth > width / 2) {
       width = desiredHalfWidth * 2;
     }
+
+    portID = port->compNext;
   }
   float height =
     fmaxf(numInputPorts, numOutputPorts) * view->theme.portSpacing +
@@ -149,34 +159,37 @@ ComponentID view_add_component(
   float rightY = rightInc - height / 2;
   float borderWidth = view->theme.borderWidth;
 
+  portID = component->portFirst;
   for (int j = 0; j < desc->numPorts; j++) {
-    PortView portView = (PortView){0};
+    PortView *portView = view_port_ptr(view, portID);
+    *portView = (PortView){0};
 
     HMM_Vec2 labelPos = HMM_V2(0, 0);
     HorizAlign horz = ALIGN_CENTER;
 
     if (desc->ports[j].direction == PORT_IN) {
-      portView.center = HMM_V2(-width / 2 + borderWidth / 2, leftY);
+      portView->center = HMM_V2(-width / 2 + borderWidth / 2, leftY);
       leftY += leftInc;
 
       labelPos = HMM_V2(labelPadding + view->theme.portWidth / 2, 0);
       horz = ALIGN_LEFT;
     } else if (desc->ports[j].direction != PORT_IN) {
-      portView.center = HMM_V2(width / 2 - borderWidth / 2, rightY);
+      portView->center = HMM_V2(width / 2 - borderWidth / 2, rightY);
       rightY += rightInc;
 
       labelPos = HMM_V2(-labelPadding - view->theme.portWidth / 2, 0);
       horz = ALIGN_RIGHT;
     }
 
-    LabelID labelID = view->circuit.ports[component->portStart + j].label;
+    Port *port = circuit_port_ptr(&view->circuit, portID);
+    LabelID labelID = port->label;
     const char *labelText = circuit_label_text(&view->circuit, labelID);
     Box labelBounds = draw_text_bounds(
       HMM_V2(labelPos.X, labelPos.Y), labelText, strlen(labelText), horz,
       ALIGN_MIDDLE, view->theme.labelFontSize, view->theme.font);
     view_augment_label(view, labelID, labelBounds);
 
-    arrput(view->ports, portView);
+    portID = port->compNext;
   }
 
   return id;
@@ -188,25 +201,25 @@ NetID view_add_net(CircuitView *view) {
 
 JunctionID view_add_junction(CircuitView *view, HMM_Vec2 position) {
   JunctionID id = circuit_add_junction(&view->circuit);
-  JunctionView junctionView = {.pos = position};
-  arrput(view->junctions, junctionView);
+  JunctionView *junctionView = view_junction_ptr(view, id);
+  *junctionView = (JunctionView){.pos = position};
   return id;
 }
 
-WireID
-view_add_wire(CircuitView *view, NetID net, WireEndID from, WireEndID to) {
+WireID view_add_wire(CircuitView *view, NetID net, ID from, ID to) {
   WireID id = circuit_add_wire(&view->circuit, net, from, to);
-  WireView wireView = {.vertexStart = 0, .vertexEnd = 0};
-  arrput(view->wires, wireView);
+  WireView *wireView = view_wire_ptr(view, id);
+  *wireView = (WireView){.vertexStart = 0, .vertexEnd = 0};
   view_fix_wire_end_vertices(view, id);
   return id;
 }
 
 void view_add_vertex(CircuitView *view, WireID wire, HMM_Vec2 vertex) {
-  WireView *wireView = &view->wires[wire];
+  WireView *wireView = view_wire_ptr(view, wire);
   arrins(view->vertices, wireView->vertexEnd, vertex);
   wireView->vertexEnd++;
-  for (int i = wire + 1; i < arrlen(view->wires); i++) {
+  for (int i = circuit_wire_index(&view->circuit, wire) + 1;
+       i < circuit_wire_len(&view->circuit); i++) {
     WireView *wireView = &view->wires[i];
     wireView->vertexStart++;
     wireView->vertexEnd++;
@@ -214,12 +227,13 @@ void view_add_vertex(CircuitView *view, WireID wire, HMM_Vec2 vertex) {
 }
 
 void view_rem_vertex(CircuitView *view, WireID wire) {
-  WireView *wireView = &view->wires[wire];
+  WireView *wireView = view_wire_ptr(view, wire);
   assert(wireView->vertexEnd > wireView->vertexStart);
   assert(wireView->vertexEnd <= arrlen(view->vertices));
   wireView->vertexEnd--;
   arrdel(view->vertices, wireView->vertexEnd);
-  for (int i = wire + 1; i < arrlen(view->wires); i++) {
+  for (int i = circuit_wire_index(&view->circuit, wire) + 1;
+       i < circuit_wire_len(&view->circuit); i++) {
     WireView *wireView = &view->wires[i];
     wireView->vertexStart--;
     wireView->vertexEnd--;
@@ -228,49 +242,48 @@ void view_rem_vertex(CircuitView *view, WireID wire) {
 
 void view_set_vertex(
   CircuitView *view, WireID wire, VertexID index, HMM_Vec2 pos) {
-  WireView *netView = &view->wires[wire];
-  view->vertices[netView->vertexStart + index] = pos;
+  WireView *wireView = view_wire_ptr(view, wire);
+  view->vertices[wireView->vertexStart + index] = pos;
 }
 
 void view_fix_wire_end_vertices(CircuitView *view, WireID wire) {
-  WireView *wireView = &view->wires[wire];
-  Wire *wireData = &view->circuit.wires[wire];
+  WireView *wireView = view_wire_ptr(view, wire);
+  Wire *wireData = circuit_wire_ptr(&view->circuit, wire);
 
   if ((wireView->vertexEnd - wireView->vertexStart) < 2) {
     return;
   }
 
-  WireEndID ends[2] = {wireData->from, wireData->to};
+  ID ends[2] = {wireData->from, wireData->to};
   VertexID vert[2] = {0, wireView->vertexEnd - wireView->vertexStart - 1};
 
   for (int i = 0; i < 2; i++) {
-    switch (wire_end_type(ends[i])) {
-    case WIRE_END_INVALID:
-      assert(0);
+    switch (id_type(ends[i])) {
+    case ID_NONE:
       break;
-    case WIRE_END_NONE:
-      break;
-    case WIRE_END_PORT: {
-      Port *port = &view->circuit.ports[wire_end_index(ends[i])];
-      ComponentView *componentView = &view->components[port->component];
-      PortView *portView = &view->ports[wire_end_index(ends[i])];
+    case ID_PORT: {
+      Port *port = circuit_port_ptr(&view->circuit, ends[i]);
+      ComponentView *componentView = view_component_ptr(view, port->component);
+      PortView *portView = view_port_ptr(view, ends[i]);
       HMM_Vec2 pt = HMM_AddV2(componentView->box.center, portView->center);
       view_set_vertex(view, wire, vert[i], pt);
       break;
     }
-    case WIRE_END_JUNC: {
-      JunctionView *junctionView = &view->junctions[wire_end_index(ends[i])];
+    case ID_JUNCTION: {
+      JunctionView *junctionView = view_junction_ptr(view, ends[i]);
       view_set_vertex(view, wire, vert[i], junctionView->pos);
       break;
     }
+    default:
+      assert(0);
     }
   }
 }
 
 LabelID view_add_label(CircuitView *view, const char *text, Box bounds) {
   LabelID id = circuit_add_label(&view->circuit, text);
-  LabelView labelView = {.bounds = bounds};
-  arrput(view->labels, labelView);
+  LabelView *labelView = view_label_ptr(view, id);
+  *labelView = (LabelView){.bounds = bounds};
   return id;
 }
 
@@ -301,10 +314,9 @@ static Box transformBox(CircuitView *view, Box box) {
 }
 
 static void draw_chip(
-  CircuitView *view, Context ctx, ComponentID id, bool isHovered,
-  bool isSelected) {
-  ComponentView *componentView = &view->components[id];
-  Component *component = &view->circuit.components[id];
+  CircuitView *view, Context ctx, int index, bool isHovered, bool isSelected) {
+  ComponentView *componentView = &view->components[index];
+  Component *component = &view->circuit.components[index];
   HMM_Vec2 center = componentView->box.center;
   HMM_Vec2 pos = panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
   HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
@@ -330,7 +342,7 @@ static void draw_chip(
     ctx, pos, size, view->zoom * view->theme.componentRadius,
     view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
 
-  LabelView *typeLabel = &view->labels[component->typeLabel];
+  LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
   const char *typeLabelText =
     circuit_label_text(&view->circuit, component->typeLabel);
   Box typeLabelBounds =
@@ -342,10 +354,9 @@ static void draw_chip(
 }
 
 static void draw_and_gate(
-  CircuitView *view, Context ctx, ComponentID id, bool isHovered,
-  bool isSelected) {
-  ComponentView *componentView = &view->components[id];
-  Component *component = &view->circuit.components[id];
+  CircuitView *view, Context ctx, int index, bool isHovered, bool isSelected) {
+  ComponentView *componentView = &view->components[index];
+  Component *component = &view->circuit.components[index];
   HMM_Vec2 center = componentView->box.center;
   HMM_Vec2 pos = panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
   HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
@@ -371,7 +382,7 @@ static void draw_and_gate(
     ctx, pos, size, view->zoom * view->theme.componentRadius,
     view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
 
-  LabelView *typeLabel = &view->labels[component->typeLabel];
+  LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
   const char *typeLabelText =
     circuit_label_text(&view->circuit, component->typeLabel);
   Box typeLabelBounds =
@@ -393,7 +404,8 @@ void view_draw(CircuitView *view, Context ctx) {
     draw_filled_rect(ctx, pos, size, 0, view->theme.color.selected);
   }
 
-  for (int i = 0; i < arrlen(view->components); i++) {
+  for (int i = 0; i < circuit_component_len(&view->circuit); i++) {
+    ComponentID id = circuit_component_id(&view->circuit, i);
     ComponentView *componentView = &view->components[i];
     Component *component = &view->circuit.components[i];
     const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
@@ -401,13 +413,13 @@ void view_draw(CircuitView *view, Context ctx) {
 
     bool isSelected = false;
     for (int j = 0; j < arrlen(view->selectedComponents); j++) {
-      if (view->selectedComponents[j] == i) {
+      if (view->selectedComponents[j] == id) {
         isSelected = true;
         break;
       }
     }
 
-    bool isHovered = i == view->hoveredComponent;
+    bool isHovered = id == view->hoveredComponent;
 
     switch (desc->shape) {
     case SHAPE_DEFAULT:
@@ -420,7 +432,7 @@ void view_draw(CircuitView *view, Context ctx) {
       assert(0);
     }
 
-    LabelView *nameLabel = &view->labels[component->nameLabel];
+    LabelView *nameLabel = view_label_ptr(view, component->nameLabel);
     const char *nameLabelText =
       circuit_label_text(&view->circuit, component->nameLabel);
     Box nameLabelBounds =
@@ -430,8 +442,10 @@ void view_draw(CircuitView *view, Context ctx) {
       view->theme.labelFontSize * view->zoom, view->theme.font,
       view->theme.color.nameColor, HMM_V4(0, 0, 0, 0));
 
-    for (int j = 0; j < desc->numPorts; j++) {
-      PortView *portView = &view->ports[component->portStart + j];
+    PortID portID = component->portFirst;
+    while (portID != NO_PORT) {
+      PortView *portView = view_port_ptr(view, portID);
+      Port *port = circuit_port_ptr(&view->circuit, portID);
 
       float portWidth = view->theme.portWidth;
       HMM_Vec2 portPosition = panZoom(
@@ -440,7 +454,7 @@ void view_draw(CircuitView *view, Context ctx) {
                 HMM_V2(portWidth / 2.0f, portWidth / 2.0f)));
       HMM_Vec2 portSize = zoom(view, HMM_V2(portWidth, portWidth));
 
-      if (component->portStart + j == view->hoveredPort) {
+      if (portID == view->hoveredPort) {
         draw_filled_circle(
           ctx,
           HMM_SubV2(
@@ -459,10 +473,8 @@ void view_draw(CircuitView *view, Context ctx) {
         ctx, portPosition, portSize, view->zoom * view->theme.borderWidth,
         view->theme.color.portBorder);
 
-      LabelView *labelView =
-        &view->labels[view->circuit.ports[component->portStart + j].label];
-      const char *labelText = circuit_label_text(
-        &view->circuit, view->circuit.ports[component->portStart + j].label);
+      LabelView *labelView = view_label_ptr(view, port->label);
+      const char *labelText = circuit_label_text(&view->circuit, port->label);
       Box labelBounds = transformBox(
         view,
         box_translate(labelView->bounds, HMM_AddV2(center, portView->center)));
@@ -470,10 +482,12 @@ void view_draw(CircuitView *view, Context ctx) {
         ctx, labelBounds, labelText, strlen(labelText),
         view->theme.labelFontSize * view->zoom, view->theme.font,
         view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+
+      portID = port->compNext;
     }
   }
 
-  for (int i = 0; i < arrlen(view->wires); i++) {
+  for (int i = 0; i < circuit_wire_len(&view->circuit); i++) {
     WireView *wireView = &view->wires[i];
 
     if ((wireView->vertexEnd - wireView->vertexStart) < 2) {
@@ -491,7 +505,7 @@ void view_draw(CircuitView *view, Context ctx) {
     }
   }
 
-  for (int i = 0; i < arrlen(view->junctions); i++) {
+  for (int i = 0; i < circuit_junction_len(&view->circuit); i++) {
     JunctionView *junctionView = &view->junctions[i];
     HMM_Vec2 pos = panZoom(view, junctionView->pos);
     draw_filled_circle(

@@ -14,7 +14,9 @@
    limitations under the License.
 */
 
+#include "autoroute/autoroute.h"
 #include "avoid/avoid.h"
+#include "core/core.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -66,7 +68,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       box_intersect_point(ux->view.selectionBox, worldMousePos);
     for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
       ComponentID id = ux->view.selectedComponents[i];
-      ComponentView *componentView = &ux->view.components[id];
+      ComponentView *componentView = view_component_ptr(&ux->view, id);
       if (box_intersect_point(componentView->box, worldMousePos)) {
         inSelection = true;
         break;
@@ -270,22 +272,24 @@ static void ux_handle_mouse(CircuitUX *ux) {
     .halfSize = HMM_V2(MOUSE_FUDGE, MOUSE_FUDGE),
   };
 
-  for (size_t i = 0; i < arrlen(ux->view.components); i++) {
+  for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
     ComponentView *componentView = &ux->view.components[i];
     if (box_intersect_box(componentView->box, mouseBox)) {
-      ux->view.hoveredComponent = i;
+      ux->view.hoveredComponent = circuit_component_id(&ux->view.circuit, i);
     }
-    for (size_t j = view_port_start(&ux->view, i);
-         j < view_port_end(&ux->view, i); j++) {
-      PortView *portView = &ux->view.ports[j];
+    PortID portID = ux->view.circuit.components[i].portFirst;
+    while (portID != NO_PORT) {
+      PortView *portView = view_port_ptr(&ux->view, portID);
       Box portBox = {
         .center = HMM_AddV2(portView->center, componentView->box.center),
         .halfSize = HMM_V2(
           ux->view.theme.portWidth / 2.0f, ux->view.theme.portWidth / 2.0f),
       };
       if (box_intersect_box(portBox, mouseBox)) {
-        ux->view.hoveredPort = j;
+        ux->view.hoveredPort = portID;
       }
+
+      portID = circuit_port_ptr(&ux->view.circuit, portID)->compNext;
     }
   }
 
@@ -365,5 +369,5 @@ void ux_draw(CircuitUX *ux, Context ctx) {
 
   view_draw(&ux->view, ctx);
 
-  avoid_draw_debug_lines(ux->avoid, ctx, ux->view.zoom, ux->view.pan);
+  autoroute_draw_debug_lines(ux->router, ctx, ux->view.zoom, ux->view.pan);
 }
