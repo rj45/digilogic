@@ -3,6 +3,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -36,6 +37,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -69,6 +71,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -102,6 +105,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -135,6 +139,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -168,6 +173,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -201,6 +207,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -234,6 +241,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -257,16 +265,17 @@
       "Quartz",
       "-o",
       "digilogic",
-      "src/avoid/avoid.c"
+      "src/autoroute/autoroute.c"
     ],
     "directory": "/Users/rj45/Code/digilogic_sokol",
-    "file": "/Users/rj45/Code/digilogic_sokol/src/avoid/avoid.c",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/autoroute/autoroute.c",
     "output": "/Users/rj45/Code/digilogic_sokol/digilogic"
   },
   {
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -300,6 +309,41 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
+      "-DSOKOL_METAL",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-DDEBUG",
+      "-O0",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
+      "-o",
+      "digilogic",
+      "src/core/smap.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/core/smap.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/digilogic"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -333,6 +377,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -366,6 +411,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -399,6 +445,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -432,6 +479,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -465,6 +513,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -498,6 +547,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -531,6 +581,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -564,6 +615,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -597,6 +649,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -630,6 +683,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -653,16 +707,17 @@
       "Quartz",
       "-o",
       "test",
-      "src/avoid/avoid.c"
+      "src/autoroute/autoroute.c"
     ],
     "directory": "/Users/rj45/Code/digilogic_sokol",
-    "file": "/Users/rj45/Code/digilogic_sokol/src/avoid/avoid.c",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/autoroute/autoroute.c",
     "output": "/Users/rj45/Code/digilogic_sokol/test"
   },
   {
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -696,6 +751,41 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
+      "-DSOKOL_METAL",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-DDEBUG",
+      "-O0",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
+      "-o",
+      "test",
+      "src/core/smap.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/core/smap.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/test"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -729,6 +819,41 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
+      "-DSOKOL_METAL",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-DDEBUG",
+      "-O0",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
+      "-o",
+      "test",
+      "src/ux/ux_test.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/ux/ux_test.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/test"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -762,6 +887,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -795,6 +921,41 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
+      "-DSOKOL_METAL",
+      "-I",
+      "thirdparty",
+      "-I",
+      "src",
+      "-Wall",
+      "-Werror",
+      "-DDEBUG",
+      "-O0",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-fobjc-arc",
+      "-framework",
+      "Metal",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "MetalKit",
+      "-framework",
+      "Quartz",
+      "-o",
+      "test",
+      "src/noto_sans_regular.c"
+    ],
+    "directory": "/Users/rj45/Code/digilogic_sokol",
+    "file": "/Users/rj45/Code/digilogic_sokol/src/noto_sans_regular.c",
+    "output": "/Users/rj45/Code/digilogic_sokol/test"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",
@@ -828,6 +989,7 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
+      "-std=c11",
       "-DSOKOL_METAL",
       "-I",
       "thirdparty",

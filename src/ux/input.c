@@ -15,7 +15,6 @@
 */
 
 #include "autoroute/autoroute.h"
-#include "avoid/avoid.h"
 #include "core/core.h"
 #include "stb_ds.h"
 #include "view/view.h"

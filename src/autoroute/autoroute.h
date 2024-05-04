@@ -21,6 +21,7 @@
 
 typedef struct AutoRoute AutoRoute;
 
+void autoroute_global_init();
 AutoRoute *autoroute_create(CircuitView *view);
 void autoroute_free(AutoRoute *ar);
 void autoroute_update_component(AutoRoute *ar, ID id);

@@ -14,11 +14,9 @@
    limitations under the License.
 */
 
-#include "avoid/avoid.h"
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define STB_DS_IMPLEMENTATION
 
 #include "font.h"
 #include "ux/ux.h"
@@ -41,7 +39,6 @@
 #include "sokol_gp.h"
 #include "sokol_log.h"
 #include "sokol_nuklear.h"
-#include "stb_ds.h"
 #include "stb_image.h"
 
 #include "shaders/msdf_shader.h"
@@ -514,6 +511,8 @@ void handler(int sig) {
 #endif
 
 sapp_desc sokol_main(int argc, char *argv[]) {
+  ux_global_init();
+
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){
     .filename = "testdata/simple_test.dig",

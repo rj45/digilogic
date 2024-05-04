@@ -13,10 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+#include "ux/ux.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
 #include "utest.h"
 
-UTEST_MAIN();
+UTEST_STATE();
+int main(int argc, const char *const argv[]) {
+  ux_global_init();
+  return utest_main(argc, argv);
+}

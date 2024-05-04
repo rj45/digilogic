@@ -21,6 +21,8 @@
 
 #include "ux.h"
 
+void ux_global_init() { autoroute_global_init(); }
+
 void ux_init(
   CircuitUX *ux, const ComponentDesc *componentDescs, FontHandle font) {
   *ux = (CircuitUX){0};

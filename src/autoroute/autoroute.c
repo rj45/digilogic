@@ -44,6 +44,11 @@ struct AutoRoute {
   Timer timer;
 };
 
+void autoroute_global_init() {
+  RT_Result res = RT_init_thread_pool();
+  assert(res == RT_RESULT_SUCCESS);
+}
+
 AutoRoute *autoroute_create(CircuitView *view) {
   AutoRoute *ar = malloc(sizeof(AutoRoute));
   *ar = (AutoRoute){
@@ -57,9 +62,8 @@ AutoRoute *autoroute_create(CircuitView *view) {
   smap_add_synced_array(
     &view->circuit.sm.wires, (void **)&ar->paths, sizeof(*ar->paths));
 
-  RT_Result res = RT_init_thread_pool(&ar->threadCount);
-  (void)res;
-  // assert(res == RT_RESULT_SUCCESS);
+  RT_Result res = RT_get_thread_count(&ar->threadCount);
+  assert(res == RT_RESULT_SUCCESS);
 
   res = RT_graph_new(&ar->graph);
   assert(res == RT_RESULT_SUCCESS);
@@ -193,7 +197,7 @@ void autoroute_route(AutoRoute *ar) {
 
   RT_Result res = RT_graph_build(
     ar->graph, ar->anchors, arrlen(ar->anchors), ar->boxes,
-    circuit_component_len(&ar->view->circuit));
+    circuit_component_len(&ar->view->circuit), true);
   if (res != RT_RESULT_SUCCESS) {
     printf("Error building graph: %d\n", res);
   }
