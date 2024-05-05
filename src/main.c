@@ -321,6 +321,15 @@ void draw_filled_arc(
     nk_rgba_f(color.R, color.G, color.B, color.A));
 }
 
+void draw_stroked_curve(
+  Context ctx, HMM_Vec2 a, HMM_Vec2 ctrl0, HMM_Vec2 ctrl1, HMM_Vec2 b,
+  float line_thickness, HMM_Vec4 color) {
+  struct nk_command_buffer *nk_ctx = (struct nk_command_buffer *)ctx;
+  nk_stroke_curve(
+    nk_ctx, a.X, a.Y, ctrl0.X, ctrl0.Y, ctrl1.X, ctrl1.Y, b.X, b.Y,
+    line_thickness, nk_rgba_f(color.R, color.G, color.B, color.A));
+}
+
 void draw_stroked_line(
   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color) {

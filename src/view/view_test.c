@@ -31,6 +31,7 @@ typedef enum DrawCmdType {
   DRAW_FILLED_ARC,
   DRAW_STROKED_ARC,
   DRAW_STROKED_LINE,
+  DRAW_STROKED_CURVE,
   DRAW_TEXT,
 } DrawCmdType;
 
@@ -144,6 +145,20 @@ void draw_stroked_line(
   arrput(*cmds, cmd);
 }
 
+void draw_stroked_curve(
+  Context ctx, HMM_Vec2 a, HMM_Vec2 ctrl0, HMM_Vec2 ctrl1, HMM_Vec2 b,
+  float line_thickness, HMM_Vec4 color) {
+  DrawCmd **cmds = (DrawCmd **)ctx;
+  DrawCmd cmd = {
+    .type = DRAW_STROKED_CURVE,
+    .position = a,
+    .size = b,
+    .line_thickness = line_thickness,
+    .color = color,
+  };
+  arrput(*cmds, cmd);
+}
+
 void draw_text(
   Context ctx, Box rect, const char *text, int len, float fontSize,
   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
@@ -203,6 +218,7 @@ const char *drawNames[] = {
   [DRAW_FILLED_ARC] = "filled_arc",
   [DRAW_STROKED_ARC] = "stroked_arc",
   [DRAW_STROKED_LINE] = "stroked_line",
+  [DRAW_STROKED_CURVE] = "stroked_curve",
   [DRAW_TEXT] = "text",
 };
 
@@ -353,14 +369,14 @@ UTEST(View, view_draw_components) {
 
   view_init(&view, circuit_component_descs(), NULL);
 
-  view_add_component(&view, COMP_AND, HMM_V2(100, 100));
+  view_add_component(&view, COMP_OR, HMM_V2(100, 100));
 
   view_draw(&view, (Context)&cmds);
 
   ASSERT_DRAW(
     "filled_rect v0 c0\n"
     "stroked_rect v0 c2\n"
-    "text 'AND' v1 fg c3 bg c1\n"
+    "text 'OR' v1 fg c3 bg c1\n"
     "text 'X1' v2 fg c2 bg c1\n"
     "filled_circle v3 c2\n"
     "stroked_circle v3 c4\n"
@@ -400,32 +416,31 @@ UTEST(View, view_draw_component_with_wires) {
   view_draw(&view, (Context)&cmds);
 
   ASSERT_DRAW(
-    "filled_rect v0 c0\n"
-    "stroked_rect v0 c2\n"
-    "text 'AND' v1 fg c3 bg c1\n"
-    "text 'X1' v2 fg c2 bg c1\n"
-    "filled_circle v3 c2\n"
-    "stroked_circle v3 c4\n"
-    "text 'A' v4 fg c3 bg c1\n"
-    "filled_circle v5 c2\n"
-    "stroked_circle v5 c4\n"
-    "text 'B' v6 fg c3 bg c1\n"
-    "filled_circle v7 c2\n"
-    "stroked_circle v7 c4\n"
-    "text 'Y' v8 fg c3 bg c1\n"
-    "filled_rect v9 c0\n"
-    "stroked_rect v9 c2\n"
-    "text 'OR' v10 fg c3 bg c1\n"
-    "text 'X2' v11 fg c2 bg c1\n"
-    "filled_circle v12 c2\n"
-    "stroked_circle v12 c4\n"
-    "text 'A' v13 fg c3 bg c1\n"
-    "filled_circle v14 c2\n"
-    "stroked_circle v14 c4\n"
-    "text 'B' v15 fg c3 bg c1\n"
-    "filled_circle v16 c2\n"
-    "stroked_circle v16 c4\n"
-    "text 'Y' v17 fg c3 bg c1\n",
+    "stroked_line v0 v1 c0\n"
+    "stroked_line v2 v3 c0\n"
+    "stroked_line v4 v5 c0\n"
+    "stroked_curve v6 c0\n"
+    "stroked_curve v7 c0\n"
+    "text 'X1' v8 fg c0 bg c1\n"
+    "filled_circle v9 c0\n"
+    "stroked_circle v9 c2\n"
+    "filled_circle v10 c0\n"
+    "stroked_circle v10 c2\n"
+    "filled_circle v11 c0\n"
+    "stroked_circle v11 c2\n"
+    "filled_rect v12 c3\n"
+    "stroked_rect v12 c0\n"
+    "text 'OR' v13 fg c4 bg c1\n"
+    "text 'X2' v14 fg c0 bg c1\n"
+    "filled_circle v15 c0\n"
+    "stroked_circle v15 c2\n"
+    "text 'A' v16 fg c4 bg c1\n"
+    "filled_circle v17 c0\n"
+    "stroked_circle v17 c2\n"
+    "text 'B' v18 fg c4 bg c1\n"
+    "filled_circle v19 c0\n"
+    "stroked_circle v19 c2\n"
+    "text 'Y' v20 fg c4 bg c1\n",
     cmds);
 
   view_free(&view);

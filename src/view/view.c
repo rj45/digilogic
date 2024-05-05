@@ -30,6 +30,7 @@ void theme_init(Theme *theme, FontHandle font) {
     .borderWidth = 1.0f,
     .componentRadius = 5.0f,
     .wireThickness = 2.0f,
+    .gateThickness = 3.0f,
     .font = font,
     .labelPadding = 2.0f,
     .labelFontSize = 12.0f,
@@ -353,44 +354,70 @@ static void draw_chip(
     view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
 }
 
+static void draw_and_symbol(
+  Context ctx, HMM_Vec2 pos, HMM_Vec2 size, float lineThickness,
+  HMM_Vec4 color) {
+  // M 0.5 1                -- move to
+  // L 0 1                  -- line to
+  // L 0 0                  -- line to
+  // L 0.5 0                -- line to
+  // C 0.75 0 1 0.25 1 0.5  -- curve to
+  // C 1 0.75 0.75 1 0.5 1  -- curve to
+  // z                      -- close path
+  HMM_Vec2 p0 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
+  HMM_Vec2 p1 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 1.0f * size.Y));
+  HMM_Vec2 p2 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 0.0f * size.Y));
+  HMM_Vec2 p3 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 0.0f * size.Y));
+  HMM_Vec2 p4 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 0.0f * size.Y));
+  HMM_Vec2 p5 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.25f * size.Y));
+  HMM_Vec2 p6 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.5f * size.Y));
+  HMM_Vec2 p7 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.75f * size.Y));
+  HMM_Vec2 p8 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 1.0f * size.Y));
+  HMM_Vec2 p9 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
+
+  HMM_Vec2 p1l = HMM_SubV2(p1, HMM_V2(lineThickness * 0.5f, 0));
+  HMM_Vec2 p2t = HMM_SubV2(p2, HMM_V2(0, lineThickness * 0.5f));
+
+  draw_stroked_line(ctx, p0, p1l, lineThickness, color);
+  draw_stroked_line(ctx, p1, p2t, lineThickness, color);
+  draw_stroked_line(ctx, p2, p3, lineThickness, color);
+  draw_stroked_curve(ctx, p3, p4, p5, p6, lineThickness, color);
+  draw_stroked_curve(ctx, p6, p7, p8, p9, lineThickness, color);
+}
+
 static void draw_and_gate(
   CircuitView *view, Context ctx, int index, bool isHovered, bool isSelected) {
   ComponentView *componentView = &view->components[index];
-  Component *component = &view->circuit.components[index];
+  // Component *component = &view->circuit.components[index];
   HMM_Vec2 center = componentView->box.center;
   HMM_Vec2 pos = panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
   HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
 
-  if (isHovered) {
-    draw_filled_rect(
-      ctx,
-      HMM_SubV2(
-        pos, HMM_V2(
-               view->theme.borderWidth * view->zoom * 2.0f,
-               view->theme.borderWidth * view->zoom * 2.0f)),
-      HMM_AddV2(
-        size, HMM_V2(
-                view->theme.borderWidth * view->zoom * 4.0f,
-                view->theme.borderWidth * view->zoom * 4.0f)),
-      view->zoom * view->theme.componentRadius, view->theme.color.hovered);
+  if (isSelected) {
+    draw_and_symbol(
+      ctx, pos, size, view->zoom * view->theme.gateThickness * 4,
+      view->theme.color.selected);
   }
 
-  draw_filled_rect(
-    ctx, pos, size, view->zoom * view->theme.componentRadius,
-    isSelected ? view->theme.color.selected : view->theme.color.component);
-  draw_stroked_rect(
-    ctx, pos, size, view->zoom * view->theme.componentRadius,
-    view->zoom * view->theme.borderWidth, view->theme.color.componentBorder);
+  if (isHovered) {
+    draw_and_symbol(
+      ctx, pos, size, view->zoom * view->theme.gateThickness * 1.5,
+      view->theme.color.hovered);
+  }
 
-  LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
-  const char *typeLabelText =
-    circuit_label_text(&view->circuit, component->typeLabel);
-  Box typeLabelBounds =
-    transformBox(view, box_translate(typeLabel->bounds, center));
-  draw_text(
-    ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
-    view->theme.labelFontSize * view->zoom, view->theme.font,
-    view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+  draw_and_symbol(
+    ctx, pos, size, view->zoom * view->theme.gateThickness,
+    view->theme.color.componentBorder);
+
+  // LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
+  // const char *typeLabelText =
+  //   circuit_label_text(&view->circuit, component->typeLabel);
+  // Box typeLabelBounds =
+  //   transformBox(view, box_translate(typeLabel->bounds, center));
+  // draw_text(
+  //   ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
+  //   view->theme.labelFontSize * view->zoom, view->theme.font,
+  //   view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
 }
 
 void view_draw(CircuitView *view, Context ctx) {
@@ -473,15 +500,17 @@ void view_draw(CircuitView *view, Context ctx) {
         ctx, portPosition, portSize, view->zoom * view->theme.borderWidth,
         view->theme.color.portBorder);
 
-      LabelView *labelView = view_label_ptr(view, port->label);
-      const char *labelText = circuit_label_text(&view->circuit, port->label);
-      Box labelBounds = transformBox(
-        view,
-        box_translate(labelView->bounds, HMM_AddV2(center, portView->center)));
-      draw_text(
-        ctx, labelBounds, labelText, strlen(labelText),
-        view->theme.labelFontSize * view->zoom, view->theme.font,
-        view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+      if (desc->shape == SHAPE_DEFAULT) {
+        LabelView *labelView = view_label_ptr(view, port->label);
+        const char *labelText = circuit_label_text(&view->circuit, port->label);
+        Box labelBounds = transformBox(
+          view, box_translate(
+                  labelView->bounds, HMM_AddV2(center, portView->center)));
+        draw_text(
+          ctx, labelBounds, labelText, strlen(labelText),
+          view->theme.labelFontSize * view->zoom, view->theme.font,
+          view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+      }
 
       portID = port->compNext;
     }

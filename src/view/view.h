@@ -42,6 +42,7 @@ typedef struct Theme {
   float wireThickness;
   float labelPadding;
   float labelFontSize;
+  float gateThickness;
   FontHandle font;
   struct {
     HMM_Vec4 component;
@@ -163,6 +164,9 @@ void draw_stroked_arc(
 void draw_stroked_line(
   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color);
+void draw_stroked_curve(
+  Context ctx, HMM_Vec2 a, HMM_Vec2 ctrl0, HMM_Vec2 ctrl1, HMM_Vec2 b,
+  float line_thickness, HMM_Vec4 color);
 void draw_text(
   Context ctx, Box rect, const char *text, int len, float fontSize,
   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
