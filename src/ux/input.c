@@ -360,6 +360,10 @@ void ux_draw(CircuitUX *ux, Context ctx) {
     }
   }
 
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_SPACE)) {
+    ux->debugLines = !ux->debugLines;
+  }
+
   if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {
     ux_zoom(ux);
   }
@@ -368,5 +372,7 @@ void ux_draw(CircuitUX *ux, Context ctx) {
 
   view_draw(&ux->view, ctx);
 
-  autoroute_draw_debug_lines(ux->router, ctx, ux->view.zoom, ux->view.pan);
+  if (ux->debugLines) {
+    autoroute_draw_debug_lines(ux->router, ctx, ux->view.zoom, ux->view.pan);
+  }
 }

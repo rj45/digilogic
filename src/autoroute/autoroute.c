@@ -32,10 +32,11 @@ struct AutoRoute {
   RT_PathDef *paths;
   RT_BoundingBox *boxes;
   AnchorEnds *anchorEnds;
+  RT_PathRange *pathRanges;
 
   arr(RT_Point) anchors;
 
-  size_t threadCount;
+  uint16_t threadCount;
   size_t vertBufferCapacity;
   RT_Graph *graph;
 
@@ -61,6 +62,8 @@ AutoRoute *autoroute_create(CircuitView *view) {
     sizeof(*ar->anchorEnds));
   smap_add_synced_array(
     &view->circuit.sm.wires, (void **)&ar->paths, sizeof(*ar->paths));
+  smap_add_synced_array(
+    &view->circuit.sm.wires, (void **)&ar->pathRanges, sizeof(*ar->pathRanges));
 
   RT_Result res = RT_get_thread_count(&ar->threadCount);
   assert(res == RT_RESULT_SUCCESS);
@@ -181,10 +184,11 @@ void autoroute_update_wire(AutoRoute *ar, ID id) {
     }
   }
   *path = (RT_PathDef){
-    .net_id = id,
     .start = points[0],
     .end = points[1],
   };
+  ar->pathRanges[circuit_wire_index(&ar->view->circuit, id)] =
+    (RT_PathRange){0};
 }
 
 void autoroute_update_junction(AutoRoute *ar, ID id) {
@@ -206,7 +210,7 @@ void autoroute_route(AutoRoute *ar) {
   double graphBuild = timer_now(&ar->timer);
 
   res = RT_graph_find_paths(
-    ar->graph, ar->paths, circuit_wire_len(&ar->view->circuit),
+    ar->graph, ar->paths, ar->pathRanges, circuit_wire_len(&ar->view->circuit),
     ar->vertexBuffers, ar->vertBufferCapacity);
   assert(res == RT_RESULT_SUCCESS);
 
@@ -219,17 +223,17 @@ void autoroute_route(AutoRoute *ar) {
 
 size_t autoroute_wire_vertices(
   AutoRoute *ar, WireID wireID, float *coords, size_t maxLen) {
-  int index = 0;
-  for (int i = 0; i < arrlen(ar->vertexBuffers); i++) {
-    RT_VertexBuffer *vb = &ar->vertexBuffers[i];
-    for (int j = 0; j < vb->vertex_count; j++) {
-      if (vb->vertices[j].net_id == wireID) {
-        coords[index++] = vb->vertices[j].x;
-        coords[index++] = vb->vertices[j].y;
-      }
-    }
-  }
-  return index;
+
+  int index = circuit_wire_index(&ar->view->circuit, wireID);
+  RT_PathRange *range = &ar->pathRanges[index];
+  RT_VertexBuffer *vb = &ar->vertexBuffers[range->vertex_buffer_index];
+
+  // todo: this copy could be avoided
+  memcpy(
+    coords, &vb->vertices[range->vertex_offset],
+    range->vertex_count * sizeof(RT_Vertex));
+
+  return (sizeof(RT_Vertex) * range->vertex_count) / sizeof(float);
 }
 
 void autoroute_get_junction_pos(
@@ -239,7 +243,41 @@ void autoroute_get_junction_pos(
   *y = junctionView->pos.Y;
 }
 
+typedef void *Context;
+void draw_stroked_line(
+  Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
+  HMM_Vec4 color);
+
+static HMM_Vec2 panZoom(RT_Point position, float zoom, HMM_Vec2 pan) {
+  return HMM_AddV2(HMM_MulV2F(HMM_V2(position.x, position.y), zoom), pan);
+}
+
 void autoroute_draw_debug_lines(
-  AutoRoute *ar, void *ctx, float zoom, HMM_Vec2 pan) {}
+  AutoRoute *ar, void *ctx, float zoom, HMM_Vec2 pan) {
+  const RT_Node *nodes;
+  size_t nodeCount;
+
+  RT_Result res = RT_graph_get_nodes(ar->graph, &nodes, &nodeCount);
+  assert(res == RT_RESULT_SUCCESS);
+
+  for (size_t i = 0; i < nodeCount; i++) {
+    const RT_Node *node = &nodes[i];
+    RT_Point p1 = node->position;
+    RT_NodeIndex neighbors[4] = {
+      node->neighbors.pos_x,
+      node->neighbors.neg_x,
+      node->neighbors.pos_y,
+      node->neighbors.neg_y,
+    };
+    for (size_t j = 0; j < 4; j++) {
+      if (neighbors[j] < nodeCount) {
+        RT_Point p2 = nodes[neighbors[j]].position;
+        draw_stroked_line(
+          ctx, panZoom(p1, zoom, pan), panZoom(p2, zoom, pan), 1,
+          HMM_V4(0.5f, 0.5f, 0.7f, 0.5f));
+      }
+    }
+  }
+}
 
 void autoroute_dump_anchor_boxes(AutoRoute *ar) {}

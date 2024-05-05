@@ -12,7 +12,7 @@ set(DIGILOGIC_SRCS
     src/ux/autoroute.c
     src/view/view.c
     src/import/digital.c
-    src/avoid/avoid.c
+    src/autoroute/autoroute.c
     src/main.c
     src/noto_sans_regular.c
 )

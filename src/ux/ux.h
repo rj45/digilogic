@@ -215,6 +215,8 @@ typedef struct CircuitUX {
   HMM_Vec2 downStart;
 
   float zoomExp;
+
+  bool debugLines;
 } CircuitUX;
 
 void ux_global_init();

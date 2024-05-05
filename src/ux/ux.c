@@ -15,6 +15,7 @@
 */
 
 #include "autoroute/autoroute.h"
+#include "core/core.h"
 #include "handmade_math.h"
 #include "stb_ds.h"
 #include "view/view.h"
@@ -63,5 +64,35 @@ WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to) {
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
   ComponentView *componentView = view_component_ptr(&ux->view, id);
   componentView->box.center = HMM_AddV2(componentView->box.center, delta);
+
+  printf("Move updating component %x\n", id);
   autoroute_update_component(ux->router, id);
+  PortID portID = circuit_component_ptr(&ux->view.circuit, id)->portFirst;
+  while (portID) {
+    Port *port = circuit_port_ptr(&ux->view.circuit, portID);
+
+    // todo: this is slow, maybe store wireID instead of netID on port?
+    bool found = false;
+    NetID netID = port->net;
+    if (netID != NO_NET) {
+      WireID wireID = circuit_net_ptr(&ux->view.circuit, netID)->wireFirst;
+      while (wireID) {
+        Wire *wire = circuit_wire_ptr(&ux->view.circuit, wireID);
+        if (wire->from == portID || wire->to == portID) {
+          printf("  Move updating wire %x\n", wireID);
+          autoroute_update_wire(ux->router, wireID);
+          found = true;
+        }
+        wireID = wire->next;
+      }
+    } else {
+      printf("  Port %x has no net\n", portID);
+    }
+
+    if (!found) {
+      printf("  Could not find wire for port %x\n", portID);
+    }
+
+    portID = port->compNext;
+  }
 }
