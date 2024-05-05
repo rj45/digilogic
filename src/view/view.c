@@ -355,8 +355,7 @@ static void draw_chip(
 }
 
 static void draw_and_symbol(
-  Context ctx, HMM_Vec2 pos, HMM_Vec2 size, float lineThickness,
-  HMM_Vec4 color) {
+  Context ctx, CircuitView *view, Box box, HMM_Vec4 color, bool outline) {
   // M 0.5 1                -- move to
   // L 0 1                  -- line to
   // L 0 0                  -- line to
@@ -364,50 +363,80 @@ static void draw_and_symbol(
   // C 0.75 0 1 0.25 1 0.5  -- curve to
   // C 1 0.75 0.75 1 0.5 1  -- curve to
   // z                      -- close path
-  HMM_Vec2 p0 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
-  HMM_Vec2 p1 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 1.0f * size.Y));
-  HMM_Vec2 p2 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 0.0f * size.Y));
-  HMM_Vec2 p3 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 0.0f * size.Y));
-  HMM_Vec2 p4 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 0.0f * size.Y));
-  HMM_Vec2 p5 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.25f * size.Y));
-  HMM_Vec2 p6 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.5f * size.Y));
-  HMM_Vec2 p7 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.75f * size.Y));
-  HMM_Vec2 p8 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 1.0f * size.Y));
-  HMM_Vec2 p9 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
+  // HMM_Vec2 p0 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
+  // HMM_Vec2 p1 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 1.0f * size.Y));
+  // HMM_Vec2 p2 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 0.0f * size.Y));
+  // HMM_Vec2 p3 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 0.0f * size.Y));
+  // HMM_Vec2 p4 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 0.0f * size.Y));
+  // HMM_Vec2 p5 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.25f * size.Y));
+  // HMM_Vec2 p6 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.5f * size.Y));
+  // HMM_Vec2 p7 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.75f * size.Y));
+  // HMM_Vec2 p8 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 1.0f * size.Y));
+  // HMM_Vec2 p9 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
 
-  HMM_Vec2 p1l = HMM_SubV2(p1, HMM_V2(lineThickness * 0.5f, 0));
-  HMM_Vec2 p2t = HMM_SubV2(p2, HMM_V2(0, lineThickness * 0.5f));
+  // HMM_Vec2 p1l = HMM_SubV2(p1, HMM_V2(lineThickness * 0.5f, 0));
+  // HMM_Vec2 p2t = HMM_SubV2(p2, HMM_V2(0, lineThickness * 0.5f));
 
-  draw_stroked_line(ctx, p0, p1l, lineThickness, color);
-  draw_stroked_line(ctx, p1, p2t, lineThickness, color);
-  draw_stroked_line(ctx, p2, p3, lineThickness, color);
-  draw_stroked_curve(ctx, p3, p4, p5, p6, lineThickness, color);
-  draw_stroked_curve(ctx, p6, p7, p8, p9, lineThickness, color);
+  // draw_stroked_line(ctx, p0, p1l, lineThickness, color);
+  // draw_stroked_line(ctx, p1, p2t, lineThickness, color);
+  // draw_stroked_line(ctx, p2, p3, lineThickness, color);
+  // draw_stroked_curve(ctx, p3, p4, p5, p6, lineThickness, color);
+  // draw_stroked_curve(ctx, p6, p7, p8, p9, lineThickness, color);
+
+  HMM_Vec2 center =
+    panZoom(view, HMM_AddV2(box.center, HMM_V2(outline ? -1 : 1, 13)));
+  HMM_Vec2 hs = zoom(view, box.halfSize);
+
+  Box bounds = draw_text_bounds(
+    center, outline ? "\x02" : "\x01", 1, ALIGN_CENTER, ALIGN_MIDDLE,
+    hs.Y * 2.0f, view->theme.font);
+
+  draw_text(
+    ctx, bounds, outline ? "\x02" : "\x01", 1, hs.Y * 2.0f, view->theme.font,
+    color, HMM_V4(0, 0, 0, 0));
 }
 
 static void draw_and_gate(
   CircuitView *view, Context ctx, int index, bool isHovered, bool isSelected) {
   ComponentView *componentView = &view->components[index];
   // Component *component = &view->circuit.components[index];
-  HMM_Vec2 center = componentView->box.center;
-  HMM_Vec2 pos = panZoom(view, HMM_SubV2(center, componentView->box.halfSize));
-  HMM_Vec2 size = zoom(view, HMM_MulV2F(componentView->box.halfSize, 2.0f));
-
-  if (isSelected) {
-    draw_and_symbol(
-      ctx, pos, size, view->zoom * view->theme.gateThickness * 4,
-      view->theme.color.selected);
-  }
 
   if (isHovered) {
-    draw_and_symbol(
-      ctx, pos, size, view->zoom * view->theme.gateThickness * 1.5,
-      view->theme.color.hovered);
+    Box hoverBox = (Box){
+      HMM_AddV2(
+        componentView->box.center,
+        HMM_V2(view->theme.borderWidth * 2.0f, view->theme.borderWidth * 2.0f)),
+      HMM_AddV2(
+        componentView->box.halfSize,
+        HMM_V2(
+          view->theme.borderWidth * 4.0f, view->theme.borderWidth * 4.0f))};
+
+    draw_and_symbol(ctx, view, hoverBox, view->theme.color.hovered, false);
   }
 
   draw_and_symbol(
-    ctx, pos, size, view->zoom * view->theme.gateThickness,
-    view->theme.color.componentBorder);
+    ctx, view, componentView->box,
+    isSelected ? view->theme.color.selected : view->theme.color.component,
+    false);
+
+  draw_and_symbol(
+    ctx, view, componentView->box, view->theme.color.componentBorder, true);
+
+  // if (isSelected) {
+  //   draw_and_symbol(
+  //     ctx, view, pos, size, view->zoom * view->theme.gateThickness * 4,
+  //     view->theme.color.selected);
+  // }
+
+  // if (isHovered) {
+  //   draw_and_symbol(
+  //     ctx, view, pos, size, view->zoom * view->theme.gateThickness * 1.5,
+  //     view->theme.color.hovered, false);
+  // }
+
+  // draw_and_symbol(
+  //   ctx, view, pos, size, view->zoom * view->theme.gateThickness,
+  //   view->theme.color.componentBorder);
 
   // LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
   // const char *typeLabelText =

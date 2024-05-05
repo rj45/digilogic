@@ -25,4 +25,12 @@ copyright and license:
     This license is copied below, and is also available with a FAQ at:
     https://openfontlicense.org
 
+Also contained in noto_sans_regular.c is some symbols from https://github.com/pacuserra/schemalib:
+
+    MIT License
+
+    Copyright (c) 2023 pacuserra
+
+---
+
 All files in the thirdparty folder are subject to their own copyright and licenses, attached at the top of each file and/or in each git submodule folder.

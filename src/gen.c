@@ -76,73 +76,97 @@ int main(int argc, char **argv) {
   printf("  .width = %d,\n", cJSON_GetObjectItem(atlas, "width")->valueint);
   printf("  .height = %d,\n", cJSON_GetObjectItem(atlas, "height")->valueint);
 
-  cJSON *metrics = cJSON_GetObjectItem(json, "metrics");
-  if (!cJSON_IsObject(metrics)) {
-    fprintf(stderr, "Expected metrics to be an object\n");
+  cJSON *variants = cJSON_GetObjectItem(json, "variants");
+  if (!cJSON_IsArray(variants)) {
+    fprintf(stderr, "Expected variants to be an array\n");
     cJSON_free(json);
     return 1;
   }
 
-  printf(
-    "  .emSize = %ff,\n", cJSON_GetObjectItem(metrics, "emSize")->valuedouble);
-  printf(
-    "  .lineHeight = %ff,\n",
-    cJSON_GetObjectItem(metrics, "lineHeight")->valuedouble);
-  printf(
-    "  .ascender = %ff,\n",
-    cJSON_GetObjectItem(metrics, "ascender")->valuedouble);
-  printf(
-    "  .descender = %ff,\n",
-    cJSON_GetObjectItem(metrics, "descender")->valuedouble);
-  printf(
-    "  .underlineY = %ff,\n",
-    cJSON_GetObjectItem(metrics, "underlineY")->valuedouble);
-  printf(
-    "  .underlineThickness = %ff,\n",
-    cJSON_GetObjectItem(metrics, "underlineThickness")->valuedouble);
+  int numVariants = cJSON_GetArraySize(variants);
+  printf("  .numVariants = %d,\n", numVariants);
+  printf("  .variants = (const FontVariant[]){\n");
 
-  cJSON *glyphs = cJSON_GetObjectItem(json, "glyphs");
-  if (!cJSON_IsArray(glyphs)) {
-    fprintf(stderr, "Expected glyphs to be an array\n");
-    cJSON_free(json);
-    return 1;
-  }
+  for (int variant = 0; variant < numVariants; variant++) {
+    cJSON *variantJson = cJSON_GetArrayItem(variants, variant);
 
-  int numGlyphs = cJSON_GetArraySize(glyphs);
-  printf("  .numGlyphs = %d,\n", numGlyphs);
+    printf("    {\n");
 
-  printf("  .glyphs = (const FontGlyph[]){\n");
-  for (int i = 0; i < numGlyphs; i++) {
-    uint32_t unicode =
-      cJSON_GetObjectItem(cJSON_GetArrayItem(glyphs, i), "unicode")->valueint;
-    cJSON *glyph = cJSON_GetArrayItem(glyphs, i);
-    printf("    [%d] = {\n", unicode);
-    printf("      .unicode = %d,\n", unicode);
+    cJSON *metrics = cJSON_GetObjectItem(variantJson, "metrics");
+    if (!cJSON_IsObject(metrics)) {
+      fprintf(stderr, "Expected metrics to be an object\n");
+      cJSON_free(json);
+      return 1;
+    }
+
     printf(
-      "      .advance = %ff,\n",
-      cJSON_GetObjectItem(glyph, "advance")->valuedouble);
-    cJSON *planeBounds = cJSON_GetObjectItem(glyph, "planeBounds");
-    if (cJSON_IsObject(planeBounds)) {
-      float left = cJSON_GetObjectItem(planeBounds, "left")->valuedouble;
-      float top = cJSON_GetObjectItem(planeBounds, "top")->valuedouble;
-      printf(
-        "      .planeBounds = { .x = %ff, .y = %ff, .width = %ff, .height = "
-        "%ff },\n",
-        left, top,
-        cJSON_GetObjectItem(planeBounds, "right")->valuedouble - left,
-        cJSON_GetObjectItem(planeBounds, "bottom")->valuedouble - top);
+      "      .emSize = %ff,\n",
+      cJSON_GetObjectItem(metrics, "emSize")->valuedouble);
+    printf(
+      "      .lineHeight = %ff,\n",
+      cJSON_GetObjectItem(metrics, "lineHeight")->valuedouble);
+    printf(
+      "      .ascender = %ff,\n",
+      cJSON_GetObjectItem(metrics, "ascender")->valuedouble);
+    printf(
+      "      .descender = %ff,\n",
+      cJSON_GetObjectItem(metrics, "descender")->valuedouble);
+    printf(
+      "      .underlineY = %ff,\n",
+      cJSON_GetObjectItem(metrics, "underlineY")->valuedouble);
+    printf(
+      "      .underlineThickness = %ff,\n",
+      cJSON_GetObjectItem(metrics, "underlineThickness")->valuedouble);
+
+    cJSON *glyphs = cJSON_GetObjectItem(variantJson, "glyphs");
+    if (!cJSON_IsArray(glyphs)) {
+      fprintf(stderr, "Expected glyphs to be an array\n");
+      cJSON_free(json);
+      return 1;
     }
-    cJSON *atlasBounds = cJSON_GetObjectItem(glyph, "atlasBounds");
-    if (cJSON_IsObject(atlasBounds)) {
-      float left = cJSON_GetObjectItem(atlasBounds, "left")->valuedouble;
-      float top = cJSON_GetObjectItem(atlasBounds, "top")->valuedouble;
+
+    int numGlyphs = cJSON_GetArraySize(glyphs);
+    printf("      .numGlyphs = %d,\n", numGlyphs);
+
+    printf("      .glyphs = (const FontGlyph[]){\n");
+    for (int i = 0; i < numGlyphs; i++) {
+      uint32_t unicode =
+        cJSON_GetObjectItem(cJSON_GetArrayItem(glyphs, i), "unicode")->valueint;
+      cJSON *glyph = cJSON_GetArrayItem(glyphs, i);
+      printf("        [%d] = {\n", unicode);
+      printf("          .unicode = %d,\n", unicode);
       printf(
-        "      .atlasBounds = { .x = %ff, .y = %ff, .width = %ff, .height = "
-        "%ff },\n",
-        left, top,
-        cJSON_GetObjectItem(atlasBounds, "right")->valuedouble - left,
-        cJSON_GetObjectItem(atlasBounds, "bottom")->valuedouble - top);
+        "          .advance = %ff,\n",
+        cJSON_GetObjectItem(glyph, "advance")->valuedouble);
+      cJSON *planeBounds = cJSON_GetObjectItem(glyph, "planeBounds");
+      if (cJSON_IsObject(planeBounds)) {
+        float left = cJSON_GetObjectItem(planeBounds, "left")->valuedouble;
+        float top = cJSON_GetObjectItem(planeBounds, "top")->valuedouble;
+        printf(
+          "          .planeBounds = { .x = %ff, .y = %ff, .width = %ff, "
+          ".height "
+          "= "
+          "%ff },\n",
+          left, top,
+          cJSON_GetObjectItem(planeBounds, "right")->valuedouble - left,
+          cJSON_GetObjectItem(planeBounds, "bottom")->valuedouble - top);
+      }
+      cJSON *atlasBounds = cJSON_GetObjectItem(glyph, "atlasBounds");
+      if (cJSON_IsObject(atlasBounds)) {
+        float left = cJSON_GetObjectItem(atlasBounds, "left")->valuedouble;
+        float top = cJSON_GetObjectItem(atlasBounds, "top")->valuedouble;
+        printf(
+          "          .atlasBounds = { .x = %ff, .y = %ff, .width = %ff, "
+          ".height "
+          "= "
+          "%ff },\n",
+          left, top,
+          cJSON_GetObjectItem(atlasBounds, "right")->valuedouble - left,
+          cJSON_GetObjectItem(atlasBounds, "bottom")->valuedouble - top);
+      }
+      printf("        },\n");
     }
+    printf("      },\n");
     printf("    },\n");
   }
   printf("  },\n");

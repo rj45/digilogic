@@ -352,7 +352,10 @@ void draw_text(
   sgp_set_color(fgColor.R, fgColor.G, fgColor.B, fgColor.A);
 
   for (int i = 0; i < len; i++) {
-    const FontGlyph *glyph = &f->glyphs[(int)text[i]];
+    const FontGlyph *glyph = &f->variants[1].glyphs[(int)text[i]];
+    if ((int)text[i] < ' ') {
+      glyph = &f->variants[0].glyphs[(int)text[i]];
+    }
     sgp_draw_textured_rect(
       0,
       (sgp_rect){
@@ -381,8 +384,12 @@ Box draw_text_bounds(
   float width = 0;
   float height = 0;
   for (int i = 0; i < len; i++) {
-    width += f->glyphs[(int)text[i]].advance * fontSize;
-    float glyphHeight = f->glyphs[(int)text[i]].planeBounds.height * fontSize;
+    const FontGlyph *glyph = &f->variants[1].glyphs[(int)text[i]];
+    if ((int)text[i] < ' ') {
+      glyph = &f->variants[0].glyphs[(int)text[i]];
+    }
+    width += glyph->advance * fontSize;
+    float glyphHeight = glyph->planeBounds.height * fontSize;
     if (glyphHeight > height) {
       height = glyphHeight;
     }

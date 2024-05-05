@@ -38,13 +38,7 @@ typedef struct FontGlyph {
   } atlasBounds;
 } FontGlyph;
 
-typedef struct Font {
-  // atlas info
-  float distanceRange;
-  float size;
-  int width;
-  int height;
-
+typedef struct FontVariant {
   // metrics
   float emSize;
   float lineHeight;
@@ -55,6 +49,17 @@ typedef struct Font {
 
   int numGlyphs;
   const FontGlyph *glyphs;
+} FontVariant;
+
+typedef struct Font {
+  // atlas info
+  float distanceRange;
+  float size;
+  int width;
+  int height;
+
+  int numVariants;
+  const FontVariant *variants;
 
   int pngSize;
   char png[];
