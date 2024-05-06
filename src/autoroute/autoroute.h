@@ -27,7 +27,7 @@ void autoroute_free(AutoRoute *ar);
 void autoroute_update_component(AutoRoute *ar, ID id);
 void autoroute_update_wire(AutoRoute *ar, ID id);
 void autoroute_update_junction(AutoRoute *ar, ID id);
-void autoroute_route(AutoRoute *ar);
+void autoroute_route(AutoRoute *ar, bool betterRoutes);
 size_t autoroute_wire_vertices(
   AutoRoute *ar, WireID wireID, float *coords, size_t maxLen);
 void autoroute_get_junction_pos(

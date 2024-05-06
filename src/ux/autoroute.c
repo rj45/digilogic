@@ -21,7 +21,7 @@
 #include "ux.h"
 
 void ux_route(CircuitUX *ux) {
-  autoroute_route(ux->router);
+  autoroute_route(ux->router, ux->betterRoutes);
 
   float coords[1024];
 

@@ -196,12 +196,12 @@ void autoroute_update_junction(AutoRoute *ar, ID id) {
   autoroute_update_anchors(ar);
 }
 
-void autoroute_route(AutoRoute *ar) {
+void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   double start = timer_now(&ar->timer);
 
   RT_Result res = RT_graph_build(
     ar->graph, ar->anchors, arrlen(ar->anchors), ar->boxes,
-    circuit_component_len(&ar->view->circuit), true);
+    circuit_component_len(&ar->view->circuit), betterRoutes);
   if (res != RT_RESULT_SUCCESS) {
     printf("Error building graph: %d\n", res);
   }

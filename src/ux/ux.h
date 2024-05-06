@@ -217,6 +217,7 @@ typedef struct CircuitUX {
   float zoomExp;
 
   bool debugLines;
+  bool betterRoutes;
 } CircuitUX;
 
 void ux_global_init();

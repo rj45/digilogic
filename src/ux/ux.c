@@ -26,7 +26,9 @@ void ux_global_init() { autoroute_global_init(); }
 
 void ux_init(
   CircuitUX *ux, const ComponentDesc *componentDescs, FontHandle font) {
-  *ux = (CircuitUX){0};
+  *ux = (CircuitUX){
+    .betterRoutes = true,
+  };
   bv_setlen(ux->input.keysDown, KEYCODE_MENU + 1);
   bv_setlen(ux->input.keysPressed, KEYCODE_MENU + 1);
   bv_clear_all(ux->input.keysDown);

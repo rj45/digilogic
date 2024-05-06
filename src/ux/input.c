@@ -325,16 +325,16 @@ static void ux_zoom(CircuitUX *ux) {
 void ux_draw(CircuitUX *ux, Context ctx) {
   float dt = (float)ux->input.frameDuration;
   if (bv_is_set(ux->input.keysDown, KEYCODE_W)) {
-    ux->view.pan.Y -= 600.0f * dt * ux->view.zoom;
-  }
-  if (bv_is_set(ux->input.keysDown, KEYCODE_A)) {
-    ux->view.pan.X -= 600.0f * dt * ux->view.zoom;
-  }
-  if (bv_is_set(ux->input.keysDown, KEYCODE_S)) {
     ux->view.pan.Y += 600.0f * dt * ux->view.zoom;
   }
-  if (bv_is_set(ux->input.keysDown, KEYCODE_D)) {
+  if (bv_is_set(ux->input.keysDown, KEYCODE_A)) {
     ux->view.pan.X += 600.0f * dt * ux->view.zoom;
+  }
+  if (bv_is_set(ux->input.keysDown, KEYCODE_S)) {
+    ux->view.pan.Y -= 600.0f * dt * ux->view.zoom;
+  }
+  if (bv_is_set(ux->input.keysDown, KEYCODE_D)) {
+    ux->view.pan.X -= 600.0f * dt * ux->view.zoom;
   }
 
   // cmd + z or ctrl + z: undo
@@ -362,6 +362,11 @@ void ux_draw(CircuitUX *ux, Context ctx) {
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_SPACE)) {
     ux->debugLines = !ux->debugLines;
+  }
+
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_B)) {
+    ux->betterRoutes = !ux->betterRoutes;
+    printf("Better (minimal) routes: %s\n", ux->betterRoutes ? "on" : "off");
   }
 
   if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {

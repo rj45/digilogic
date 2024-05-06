@@ -90,9 +90,9 @@ static void init(void *user_data) {
   // import_digital(&app->circuit, "testdata/simple_test.dig");
   import_digital(&app->circuit, app->filename);
 
-  FILE *fp = fopen("circuit.dot", "w");
-  circuit_write_dot(&app->circuit.view.circuit, fp);
-  fclose(fp);
+  // FILE *fp = fopen("circuit.dot", "w");
+  // circuit_write_dot(&app->circuit.view.circuit, fp);
+  // fclose(fp);
 
   ux_route(&app->circuit);
 
@@ -531,7 +531,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){
-    .filename = "testdata/simple_test.dig",
+    .filename = "testdata/alu_1bit_2gatemux.dig",
   };
 
   if (argc > 1) {
