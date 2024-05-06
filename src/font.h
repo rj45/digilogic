@@ -19,52 +19,10 @@
 
 #include <stdint.h>
 
-typedef struct FontGlyph {
-  uint32_t unicode;
-  float advance;
+extern unsigned int notoSansRegularLength;
+extern const unsigned char notoSansRegular[];
 
-  struct {
-    float x;
-    float y;
-    float width;
-    float height;
-  } planeBounds;
-
-  struct {
-    float x;
-    float y;
-    float width;
-    float height;
-  } atlasBounds;
-} FontGlyph;
-
-typedef struct FontVariant {
-  // metrics
-  float emSize;
-  float lineHeight;
-  float ascender;
-  float descender;
-  float underlineY;
-  float underlineThickness;
-
-  int numGlyphs;
-  const FontGlyph *glyphs;
-} FontVariant;
-
-typedef struct Font {
-  // atlas info
-  float distanceRange;
-  float size;
-  int width;
-  int height;
-
-  int numVariants;
-  const FontVariant *variants;
-
-  int pngSize;
-  char png[];
-} Font;
-
-extern const Font notoSansRegular;
+extern unsigned int schemalibSymbolsLength;
+extern const unsigned char schemalibSymbols[];
 
 #endif // FONT_H

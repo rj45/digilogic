@@ -336,4 +336,41 @@ void autoroute_draw_debug_lines(
   }
 }
 
-void autoroute_dump_anchor_boxes(AutoRoute *ar) {}
+void autoroute_dump_anchor_boxes(AutoRoute *ar) {
+  FILE *fp = fopen("dump.rs", "w");
+  fprintf(fp, "const ANCHOR_POINTS: &[Anchor] = &[\n");
+  for (size_t i = 0; i < arrlen(ar->anchors); i++) {
+    fprintf(fp, "    Anchor {\n");
+    fprintf(
+      fp, "        position: Point { x: %d, y: %d },\n",
+      ar->anchors[i].position.x, ar->anchors[i].position.y);
+    if (ar->anchors[i].bounding_box == RT_INVALID_BOUNDING_BOX_INDEX) {
+      fprintf(fp, "        bounding_box: BoundingBoxIndex::INVALID,\n");
+    } else {
+      fprintf(
+        fp, "        bounding_box: bbi!(%d),\n", ar->anchors[i].bounding_box);
+    }
+    if (ar->anchors[i].connect_directions == RT_DIRECTIONS_ALL) {
+      fprintf(fp, "        connect_directions: Directions::ALL,\n");
+    } else {
+      fprintf(
+        fp, "        connect_directions: Directions::%s,\n",
+        ar->anchors[i].connect_directions == RT_DIRECTIONS_POS_X ? "POS_X"
+                                                                 : "NEG_X");
+    }
+    fprintf(fp, "    },\n");
+  }
+  fprintf(fp, "];\n\n");
+  fprintf(fp, "const BOUNDING_BOXES: &[BoundingBox] = &[\n");
+  for (size_t i = 0; i < circuit_component_len(&ar->view->circuit); i++) {
+    fprintf(fp, "    BoundingBox {\n");
+    fprintf(
+      fp, "        center: Point { x: %d, y: %d },\n", ar->boxes[i].center.x,
+      ar->boxes[i].center.y);
+    fprintf(fp, "        half_width: %d,\n", ar->boxes[i].half_width);
+    fprintf(fp, "        half_height: %d,\n", ar->boxes[i].half_height);
+    fprintf(fp, "    },\n");
+  }
+  fprintf(fp, "];\n");
+  fclose(fp);
+}

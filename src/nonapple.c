@@ -26,7 +26,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #define SOKOL_IMPL
-#define SGP_UNIFORM_CONTENT_SLOTS 12
 
 #include "nuklear.h"
 #include "sokol_app.h"
@@ -39,5 +38,3 @@
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
-
-#include "msdf.h"

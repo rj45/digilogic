@@ -15,8 +15,7 @@ are subject to this notice, whether they include this text or not:
    See the License for the specific language governing permissions and
    limitations under the License.
 
-The file noto_sans_regular.c, noto_sans_regular.json and noto_sans_regular.png,
-which is a reproduction of the font Noto Sans Regular, is subject to the following
+The file res/NotoSans-Regular.ttf and part of noto_sans_regular.c, is subject to the following
 copyright and license:
 
     Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)

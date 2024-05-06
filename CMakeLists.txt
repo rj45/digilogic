@@ -13,6 +13,7 @@ set(DIGILOGIC_SRCS
     src/view/view.c
     src/import/digital.c
     src/autoroute/autoroute.c
+    src/render/fons_sgp.c
     src/main.c
     src/noto_sans_regular.c
 )
@@ -184,6 +185,9 @@ corrosion_import_crate(
 set_property(TARGET digilogic PROPERTY C_STANDARD 11)
 
 file(COPY "testdata" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+
+find_package(Freetype REQUIRED)
+target_link_libraries(digilogic PUBLIC Freetype::Freetype)
 
 target_include_directories(digilogic PUBLIC "thirdparty")
 target_include_directories(digilogic PUBLIC "src")

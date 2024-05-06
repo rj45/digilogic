@@ -398,7 +398,7 @@ UTEST(View, view_draw_component_with_wires) {
   DrawCmd *cmds = NULL;
 
   view_init(&view, circuit_component_descs(), NULL);
-  ComponentID and = view_add_component(&view, COMP_AND, HMM_V2(100, 100));
+  ComponentID and = view_add_component(&view, COMP_XOR, HMM_V2(100, 100));
   ComponentID or = view_add_component(&view, COMP_OR, HMM_V2(200, 200));
 
   Component *andComp = circuit_component_ptr(&view.circuit, and);
@@ -416,31 +416,32 @@ UTEST(View, view_draw_component_with_wires) {
   view_draw(&view, (Context)&cmds);
 
   ASSERT_DRAW(
-    "stroked_line v0 v1 c0\n"
-    "stroked_line v2 v3 c0\n"
-    "stroked_line v4 v5 c0\n"
-    "stroked_curve v6 c0\n"
-    "stroked_curve v7 c0\n"
-    "text 'X1' v8 fg c0 bg c1\n"
-    "filled_circle v9 c0\n"
-    "stroked_circle v9 c2\n"
-    "filled_circle v10 c0\n"
-    "stroked_circle v10 c2\n"
-    "filled_circle v11 c0\n"
-    "stroked_circle v11 c2\n"
-    "filled_rect v12 c3\n"
-    "stroked_rect v12 c0\n"
-    "text 'OR' v13 fg c4 bg c1\n"
-    "text 'X2' v14 fg c0 bg c1\n"
-    "filled_circle v15 c0\n"
-    "stroked_circle v15 c2\n"
-    "text 'A' v16 fg c4 bg c1\n"
-    "filled_circle v17 c0\n"
-    "stroked_circle v17 c2\n"
-    "text 'B' v18 fg c4 bg c1\n"
-    "filled_circle v19 c0\n"
-    "stroked_circle v19 c2\n"
-    "text 'Y' v20 fg c4 bg c1\n",
+    "filled_rect v0 c0\n"
+    "stroked_rect v0 c2\n"
+    "text 'XOR' v1 fg c3 bg c1\n"
+    "text 'X1' v2 fg c2 bg c1\n"
+    "filled_circle v3 c2\n"
+    "stroked_circle v3 c4\n"
+    "text 'A' v4 fg c3 bg c1\n"
+    "filled_circle v5 c2\n"
+    "stroked_circle v5 c4\n"
+    "text 'B' v6 fg c3 bg c1\n"
+    "filled_circle v7 c2\n"
+    "stroked_circle v7 c4\n"
+    "text 'Y' v8 fg c3 bg c1\n"
+    "filled_rect v9 c0\n"
+    "stroked_rect v9 c2\n"
+    "text 'OR' v10 fg c3 bg c1\n"
+    "text 'X2' v11 fg c2 bg c1\n"
+    "filled_circle v12 c2\n"
+    "stroked_circle v12 c4\n"
+    "text 'A' v13 fg c3 bg c1\n"
+    "filled_circle v14 c2\n"
+    "stroked_circle v14 c4\n"
+    "text 'B' v15 fg c3 bg c1\n"
+    "filled_circle v16 c2\n"
+    "stroked_circle v16 c4\n"
+    "text 'Y' v17 fg c3 bg c1\n",
     cmds);
 
   view_free(&view);

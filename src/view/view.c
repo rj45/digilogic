@@ -384,7 +384,7 @@ static void draw_and_symbol(
   // draw_stroked_curve(ctx, p6, p7, p8, p9, lineThickness, color);
 
   HMM_Vec2 center =
-    panZoom(view, HMM_AddV2(box.center, HMM_V2(outline ? -1 : 1, 13)));
+    panZoom(view, HMM_AddV2(box.center, HMM_V2(outline ? -1 : 1, 24)));
   HMM_Vec2 hs = zoom(view, box.halfSize);
 
   Box bounds = draw_text_bounds(
@@ -403,10 +403,10 @@ static void draw_and_gate(
 
   if (isHovered) {
     Box hoverBox = (Box){
-      HMM_AddV2(
+      .center = HMM_AddV2(
         componentView->box.center,
-        HMM_V2(view->theme.borderWidth * 2.0f, view->theme.borderWidth * 2.0f)),
-      HMM_AddV2(
+        HMM_V2(view->theme.borderWidth * 1.0f, view->theme.borderWidth * 3.0f)),
+      .halfSize = HMM_AddV2(
         componentView->box.halfSize,
         HMM_V2(
           view->theme.borderWidth * 4.0f, view->theme.borderWidth * 4.0f))};
