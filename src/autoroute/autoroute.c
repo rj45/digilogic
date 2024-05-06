@@ -34,7 +34,7 @@ struct AutoRoute {
   AnchorEnds *anchorEnds;
   RT_PathRange *pathRanges;
 
-  arr(RT_Point) anchors;
+  arr(RT_Anchor) anchors;
 
   uint16_t threadCount;
   size_t vertBufferCapacity;
@@ -103,10 +103,26 @@ static void autoroute_update_anchors(AutoRoute *ar) {
     float cy = box.center.Y;
 
     HMM_Vec2 halfSize = HMM_AddV2(box.halfSize, HMM_V2(RT_PADDING, RT_PADDING));
-    RT_Point tl = (RT_Point){.x = cx - halfSize.X, .y = cy - halfSize.Y};
-    RT_Point tr = (RT_Point){.x = cx + halfSize.X, .y = cy - halfSize.Y};
-    RT_Point bl = (RT_Point){.x = cx - halfSize.X, .y = cy + halfSize.Y};
-    RT_Point br = (RT_Point){.x = cx + halfSize.X, .y = cy + halfSize.Y};
+    RT_Anchor tl = (RT_Anchor){
+      .position = {.x = cx - halfSize.X, .y = cy - halfSize.Y},
+      .connect_directions = RT_DIRECTIONS_ALL,
+      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    };
+    RT_Anchor tr = (RT_Anchor){
+      .position = {.x = cx + halfSize.X, .y = cy - halfSize.Y},
+      .connect_directions = RT_DIRECTIONS_ALL,
+      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    };
+    RT_Anchor bl = (RT_Anchor){
+      .position = {.x = cx - halfSize.X, .y = cy + halfSize.Y},
+      .connect_directions = RT_DIRECTIONS_ALL,
+      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    };
+    RT_Anchor br = (RT_Anchor){
+      .position = {.x = cx + halfSize.X, .y = cy + halfSize.Y},
+      .connect_directions = RT_DIRECTIONS_ALL,
+      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    };
 
     arrput(ar->anchors, tl);
     arrput(ar->anchors, tr);
@@ -118,9 +134,20 @@ static void autoroute_update_anchors(AutoRoute *ar) {
       Port *port = circuit_port_ptr(&ar->view->circuit, portID);
       PortView *portView = view_port_ptr(ar->view, portID);
 
-      RT_Point anchor = (RT_Point){
-        .x = cx + portView->center.X,
-        .y = cy + portView->center.Y,
+      PortDesc *portDesc =
+        &ar->view->circuit.componentDescs[comp->desc].ports[port->desc];
+      RT_Directions directions = portDesc->direction == PORT_IN
+                                   ? RT_DIRECTIONS_NEG_X
+                                   : RT_DIRECTIONS_POS_X;
+
+      RT_Anchor anchor = (RT_Anchor){
+        .bounding_box = i,
+        .position =
+          {
+            .x = cx + portView->center.X,
+            .y = cy + portView->center.Y,
+          },
+        .connect_directions = directions,
       };
       arrput(ar->anchors, anchor);
 
@@ -129,9 +156,14 @@ static void autoroute_update_anchors(AutoRoute *ar) {
   }
   for (int i = 0; i < circuit_junction_len(&ar->view->circuit); i++) {
     JunctionView *junctionView = &ar->view->junctions[i];
-    RT_Point anchor = (RT_Point){
-      .x = junctionView->pos.X,
-      .y = junctionView->pos.Y,
+    RT_Anchor anchor = (RT_Anchor){
+      .position =
+        {
+          .x = junctionView->pos.X,
+          .y = junctionView->pos.Y,
+        },
+      .connect_directions = RT_DIRECTIONS_ALL,
+      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
     };
     arrput(ar->anchors, anchor);
   }
@@ -147,8 +179,8 @@ void autoroute_update_component(AutoRoute *ar, ID id) {
         .x = compView->box.center.X,
         .y = compView->box.center.Y,
       },
-    .half_width = compView->box.halfSize.X,
-    .half_height = compView->box.halfSize.Y,
+    .half_width = (uint16_t)(compView->box.halfSize.X + RT_PADDING) - 1,
+    .half_height = (uint16_t)(compView->box.halfSize.Y + RT_PADDING) - 1,
   };
   autoroute_update_anchors(ar);
 }
@@ -277,6 +309,30 @@ void autoroute_draw_debug_lines(
           HMM_V4(0.5f, 0.5f, 0.7f, 0.5f));
       }
     }
+  }
+
+  for (uint32_t i = 0; i < circuit_component_len(&ar->view->circuit); i++) {
+    RT_BoundingBox *box = &ar->boxes[i];
+    HMM_Vec2 tl = panZoom(
+      (RT_Point){
+        .x = box->center.x - box->half_width,
+        .y = box->center.y - box->half_height,
+      },
+      zoom, pan);
+    HMM_Vec2 br = panZoom(
+      (RT_Point){
+        .x = box->center.x + box->half_width,
+        .y = box->center.y + box->half_height,
+      },
+      zoom, pan);
+    draw_stroked_line(
+      ctx, tl, HMM_V2(br.X, tl.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    draw_stroked_line(
+      ctx, HMM_V2(br.X, tl.Y), br, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    draw_stroked_line(
+      ctx, br, HMM_V2(tl.X, br.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    draw_stroked_line(
+      ctx, HMM_V2(tl.X, br.Y), tl, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
   }
 }
 
