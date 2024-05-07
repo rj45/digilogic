@@ -55,7 +55,7 @@ void view_init(
   *view = (CircuitView){
     .pan = HMM_V2(0.0f, 0.0f),
     .zoom = 1.0f,
-    .hoveredComponent = NO_COMPONENT,
+    .hovered = NO_ID,
     .selectedPort = NO_PORT,
     .hoveredPort = NO_PORT,
   };
@@ -78,7 +78,7 @@ void view_init(
 
 void view_free(CircuitView *view) {
   arrfree(view->vertices);
-  arrfree(view->selectedComponents);
+  arrfree(view->selected);
   circuit_free(&view->circuit);
 }
 
@@ -435,7 +435,7 @@ void view_draw(CircuitView *view, Context ctx) {
       view, HMM_SubV2(view->selectionBox.center, view->selectionBox.halfSize));
     HMM_Vec2 size = zoom(view, HMM_MulV2F(view->selectionBox.halfSize, 2.0f));
 
-    draw_filled_rect(ctx, pos, size, 0, view->theme.color.selected);
+    draw_filled_rect(ctx, pos, size, 0, view->theme.color.selectFill);
   }
 
   for (int i = 0; i < circuit_component_len(&view->circuit); i++) {
@@ -446,14 +446,14 @@ void view_draw(CircuitView *view, Context ctx) {
     HMM_Vec2 center = componentView->box.center;
 
     bool isSelected = false;
-    for (int j = 0; j < arrlen(view->selectedComponents); j++) {
-      if (view->selectedComponents[j] == id) {
+    for (int j = 0; j < arrlen(view->selected); j++) {
+      if (view->selected[j] == id) {
         isSelected = true;
         break;
       }
     }
 
-    bool isHovered = id == view->hoveredComponent;
+    bool isHovered = id == view->hovered;
 
     switch (desc->shape) {
     case SHAPE_DEFAULT:
@@ -541,15 +541,29 @@ void view_draw(CircuitView *view, Context ctx) {
 
   for (int i = 0; i < circuit_junction_len(&view->circuit); i++) {
     JunctionView *junctionView = &view->junctions[i];
+    JunctionID id = circuit_junction_id(&view->circuit, i);
+
+    bool isSelected = false;
+    for (int j = 0; j < arrlen(view->selected); j++) {
+      if (view->selected[j] == id) {
+        isSelected = true;
+        break;
+      }
+    }
+
+    bool isHovered = id == view->hovered;
+
+    float factor = isSelected || isHovered ? 3.0f : 1.5f;
+
     Box box = transformBox(
-      view,
-      (Box){
-        .center = junctionView->pos,
-        .halfSize = HMM_V2(
-          view->theme.wireThickness * 1.5, view->theme.wireThickness * 1.5)});
+      view, (Box){
+              .center = junctionView->pos,
+              .halfSize = HMM_V2(
+                view->theme.wireThickness * factor,
+                view->theme.wireThickness * factor)});
 
     draw_filled_circle(
       ctx, HMM_SubV2(box.center, box.halfSize), HMM_MulV2F(box.halfSize, 2.0f),
-      view->theme.color.wire);
+      isSelected ? view->theme.color.selected : view->theme.color.wire);
   }
 }

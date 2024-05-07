@@ -23,6 +23,7 @@
 
 #define MAX_ZOOM 20.0f
 #define MOUSE_FUDGE 1.5f
+#define MOUSE_JUNC_FUDGE 5.0f
 
 /* Enter this into mermaid.live:
     stateDiagram
@@ -53,24 +54,34 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool rightDown = ux->input.modifiers & MODIFIER_RMB;
   bool leftDown = ux->input.modifiers & MODIFIER_LMB;
   bool overPort = ux->view.hoveredPort != NO_PORT;
-  bool overComponent = ux->view.hoveredComponent != NO_COMPONENT;
+  bool overItem = ux->view.hovered != NO_ID;
 
   MouseDownState oldState = ux->mouseDownState;
   MouseDownState state = oldState;
   for (;;) {
     bool move = leftDown && HMM_LenV2(HMM_SubV2(worldMousePos, ux->downStart)) >
                               (10.0f * ux->view.zoom);
-    bool selected = arrlen(ux->view.selectedComponents) > 0 ||
+    bool selected = arrlen(ux->view.selected) > 0 ||
                     HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.0f;
 
     bool inSelection =
       box_intersect_point(ux->view.selectionBox, worldMousePos);
-    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
-      ComponentID id = ux->view.selectedComponents[i];
-      ComponentView *componentView = view_component_ptr(&ux->view, id);
-      if (box_intersect_point(componentView->box, worldMousePos)) {
-        inSelection = true;
-        break;
+    for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
+      ID id = ux->view.selected[i];
+      if (id_type(id) == ID_COMPONENT) {
+        ComponentView *componentView = view_component_ptr(&ux->view, id);
+        if (box_intersect_point(componentView->box, worldMousePos)) {
+          inSelection = true;
+          break;
+        }
+      } else if (id_type(id) == ID_JUNCTION) {
+        JunctionView *junctionView = view_junction_ptr(&ux->view, id);
+        if (
+          HMM_LenSqrV2(HMM_SubV2(junctionView->pos, worldMousePos)) <
+          MOUSE_JUNC_FUDGE) {
+          inSelection = true;
+          break;
+        }
       }
     }
 
@@ -83,7 +94,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           state = STATE_MOVE_SELECTION;
         } else if (overPort) {
           state = STATE_CLICK_PORT;
-        } else if (overComponent) {
+        } else if (overItem) {
           state = STATE_SELECT_ONE;
         } else {
           state = STATE_DOWN;
@@ -195,13 +206,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           if (
             state == STATE_DESELECT ||
             (ux->input.modifiers & MODIFIER_SHIFT) == 0) {
-            while (arrlen(ux->view.selectedComponents) > 0) {
+            while (arrlen(ux->view.selected) > 0) {
               ux_do(
                 ux,
                 (UndoCommand){
-                  .verb = UNDO_DESELECT_COMPONENT,
-                  .componentID = ux->view.selectedComponents
-                                   [arrlen(ux->view.selectedComponents) - 1],
+                  .verb = UNDO_DESELECT_ITEM,
+                  .itemID = ux->view.selected[arrlen(ux->view.selected) - 1],
                 });
             }
           }
@@ -210,8 +220,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         if (state == STATE_SELECT_ONE) {
           ux_do(
             ux, (UndoCommand){
-                  .verb = UNDO_SELECT_COMPONENT,
-                  .componentID = ux->view.hoveredComponent,
+                  .verb = UNDO_SELECT_ITEM,
+                  .itemID = ux->view.hovered,
                 });
         }
         break;
@@ -260,7 +270,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 }
 
 static void ux_handle_mouse(CircuitUX *ux) {
-  ux->view.hoveredComponent = NO_COMPONENT;
+  ux->view.hovered = NO_ID;
   ux->view.hoveredPort = NO_PORT;
 
   HMM_Vec2 worldMousePos =
@@ -274,7 +284,7 @@ static void ux_handle_mouse(CircuitUX *ux) {
   for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
     ComponentView *componentView = &ux->view.components[i];
     if (box_intersect_box(componentView->box, mouseBox)) {
-      ux->view.hoveredComponent = circuit_component_id(&ux->view.circuit, i);
+      ux->view.hovered = circuit_component_id(&ux->view.circuit, i);
     }
     PortID portID = ux->view.circuit.components[i].portFirst;
     while (portID != NO_PORT) {
@@ -289,6 +299,17 @@ static void ux_handle_mouse(CircuitUX *ux) {
       }
 
       portID = circuit_port_ptr(&ux->view.circuit, portID)->compNext;
+    }
+  }
+
+  for (size_t i = 0; i < circuit_junction_len(&ux->view.circuit); i++) {
+    JunctionView *junctionView = &ux->view.junctions[i];
+    Box junctionBox = {
+      .center = junctionView->pos,
+      .halfSize = HMM_V2(MOUSE_JUNC_FUDGE, MOUSE_JUNC_FUDGE),
+    };
+    if (box_intersect_box(junctionBox, mouseBox)) {
+      ux->view.hovered = circuit_junction_id(&ux->view.circuit, i);
     }
   }
 

@@ -187,15 +187,15 @@ typedef struct UndoCommand {
   enum {
     UNDO_NONE,
     UNDO_MOVE_SELECTION,
-    UNDO_SELECT_COMPONENT,
+    UNDO_SELECT_ITEM,
     UNDO_SELECT_AREA,
-    UNDO_DESELECT_COMPONENT,
+    UNDO_DESELECT_ITEM,
     UNDO_DESELECT_AREA,
   } verb;
 
   union {
     HMM_Vec2 delta;
-    ComponentID componentID;
+    ID itemID;
     Box area;
   };
 } UndoCommand;
@@ -232,6 +232,7 @@ JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position);
 WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to);
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
+void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta);
 
 void ux_draw(CircuitUX *ux, Context ctx);
 void ux_do(CircuitUX *ux, UndoCommand command);

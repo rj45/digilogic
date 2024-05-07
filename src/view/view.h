@@ -97,8 +97,8 @@ typedef struct CircuitView {
   HMM_Vec2 pan;
   float zoom;
 
-  ComponentID hoveredComponent;
-  arr(ComponentID) selectedComponents;
+  ID hovered;
+  arr(ID) selected;
 
   PortID hoveredPort;
   PortID selectedPort;

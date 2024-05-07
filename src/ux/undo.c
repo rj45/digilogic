@@ -25,9 +25,13 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   case UNDO_NONE:
     break;
   case UNDO_MOVE_SELECTION: {
-    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
-      ComponentID id = ux->view.selectedComponents[i];
-      ux_move_component(ux, id, command.delta);
+    for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
+      ID id = ux->view.selected[i];
+      if (id_type(id) == ID_COMPONENT) {
+        ux_move_component(ux, id, command.delta);
+      } else if (id_type(id) == ID_JUNCTION) {
+        ux_move_junction(ux, id, command.delta);
+      }
     }
     ux_route(ux);
     ux->view.selectionBox.center =
@@ -35,31 +39,36 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     ux->downStart = HMM_AddV2(ux->downStart, command.delta);
     break;
   }
-  case UNDO_SELECT_COMPONENT:
-    arrput(ux->view.selectedComponents, command.componentID);
+  case UNDO_SELECT_ITEM:
+    arrput(ux->view.selected, command.itemID);
     break;
   case UNDO_SELECT_AREA:
     ux->view.selectionBox = command.area;
-    arrsetlen(ux->view.selectedComponents, 0);
+    arrsetlen(ux->view.selected, 0);
     for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
       ComponentView *componentView = &ux->view.components[i];
       if (box_intersect_box(componentView->box, command.area)) {
-        arrput(
-          ux->view.selectedComponents,
-          circuit_component_id(&ux->view.circuit, i));
+        arrput(ux->view.selected, circuit_component_id(&ux->view.circuit, i));
+      }
+    }
+    for (size_t i = 0; i < circuit_junction_len(&ux->view.circuit); i++) {
+      JunctionView *junctionView = &ux->view.junctions[i];
+      Box box = (Box){.center = junctionView->pos, .halfSize = HMM_V2(5, 5)};
+      if (box_intersect_box(box, command.area)) {
+        arrput(ux->view.selected, circuit_junction_id(&ux->view.circuit, i));
       }
     }
     break;
-  case UNDO_DESELECT_COMPONENT:
-    for (size_t i = 0; i < arrlen(ux->view.selectedComponents); i++) {
-      if (ux->view.selectedComponents[i] == command.componentID) {
-        arrdel(ux->view.selectedComponents, i);
+  case UNDO_DESELECT_ITEM:
+    for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
+      if (ux->view.selected[i] == command.itemID) {
+        arrdel(ux->view.selected, i);
         break;
       }
     }
     break;
   case UNDO_DESELECT_AREA:
-    arrsetlen(ux->view.selectedComponents, 0);
+    arrsetlen(ux->view.selected, 0);
     ux->view.selectionBox = (Box){0};
     break;
   }
@@ -77,14 +86,14 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
       case UNDO_MOVE_SELECTION:
         lastCommand->delta = HMM_AddV2(lastCommand->delta, command.delta);
         return;
-      case UNDO_SELECT_COMPONENT:
-        lastCommand->componentID = command.componentID;
+      case UNDO_SELECT_ITEM:
+        lastCommand->itemID = command.itemID;
         return;
       case UNDO_SELECT_AREA:
         lastCommand->area = command.area;
         return;
-      case UNDO_DESELECT_COMPONENT:
-        if (lastCommand->componentID == command.componentID) {
+      case UNDO_DESELECT_ITEM:
+        if (lastCommand->itemID == command.itemID) {
           return;
         }
         break;
@@ -111,17 +120,17 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
     flip.verb = UNDO_MOVE_SELECTION;
     flip.delta = HMM_V2(-cmd.delta.X, -cmd.delta.Y);
     break;
-  case UNDO_SELECT_COMPONENT:
-    flip.verb = UNDO_DESELECT_COMPONENT;
-    flip.componentID = cmd.componentID;
+  case UNDO_SELECT_ITEM:
+    flip.verb = UNDO_DESELECT_ITEM;
+    flip.itemID = cmd.itemID;
     break;
   case UNDO_SELECT_AREA:
     flip.verb = UNDO_DESELECT_AREA;
     flip.area = cmd.area;
     break;
-  case UNDO_DESELECT_COMPONENT:
-    flip.verb = UNDO_SELECT_COMPONENT;
-    flip.componentID = cmd.componentID;
+  case UNDO_DESELECT_ITEM:
+    flip.verb = UNDO_SELECT_ITEM;
+    flip.itemID = cmd.itemID;
     break;
   case UNDO_DESELECT_AREA:
     flip.verb = UNDO_SELECT_AREA;
