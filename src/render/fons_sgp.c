@@ -33,6 +33,11 @@
 #define FONS_USE_FREETYPE
 #define FONTSTASH_IMPLEMENTATION
 
+#ifdef _WIN32
+// for MAX_PATH and CP_UTF8
+#include <windows.h>
+#endif
+
 #include "assert.h"
 #include "fons_sgp.h"
 #include "sokol_gfx.h"
