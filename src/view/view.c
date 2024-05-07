@@ -26,7 +26,7 @@ void theme_init(Theme *theme, FontHandle font) {
   *theme = (Theme){
     .portSpacing = 20.0f,
     .componentWidth = 55.0f,
-    .portWidth = 15.0f,
+    .portWidth = 7.0f,
     .borderWidth = 1.0f,
     .componentRadius = 5.0f,
     .wireThickness = 2.0f,
@@ -38,7 +38,7 @@ void theme_init(Theme *theme, FontHandle font) {
       {
         .component = HMM_V4(0.5f, 0.5f, 0.5f, 1.0f),
         .componentBorder = HMM_V4(0.8f, 0.8f, 0.8f, 1.0f),
-        .port = HMM_V4(0.8f, 0.8f, 0.8f, 1.0f),
+        .port = HMM_V4(0.3f, 0.6f, 0.3f, 1.0f),
         .portBorder = HMM_V4(0.3f, 0.3f, 0.3f, 1.0f),
         .wire = HMM_V4(0.3f, 0.6f, 0.3f, 1.0f),
         .hovered = HMM_V4(0.6f, 0.6f, 0.6f, 1.0f),
@@ -143,12 +143,17 @@ ComponentID view_add_component(
   }
   view_augment_label(view, typeLabelID, typeLabelBounds);
 
+  // kludge to make the name label appear at the right place on gate shapes
+  float nameY = -(height / 2) + labelPadding;
+  if (desc->shape != SHAPE_DEFAULT) {
+    nameY += height / 5;
+  }
+
   LabelID nameLabelID = component->nameLabel;
   const char *nameLabelText = circuit_label_text(&view->circuit, nameLabelID);
   Box nameLabelBounds = draw_text_bounds(
-    HMM_V2(0, -(height / 2) - labelPadding), nameLabelText,
-    strlen(nameLabelText), ALIGN_CENTER, ALIGN_BOTTOM,
-    view->theme.labelFontSize, view->theme.font);
+    HMM_V2(0, nameY), nameLabelText, strlen(nameLabelText), ALIGN_CENTER,
+    ALIGN_BOTTOM, view->theme.labelFontSize, view->theme.font);
   view_augment_label(view, nameLabelID, nameLabelBounds);
 
   componentView->box.halfSize = HMM_V2(width / 2, height / 2);
@@ -354,52 +359,50 @@ static void draw_chip(
     view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
 }
 
-static void draw_and_symbol(
-  Context ctx, CircuitView *view, Box box, HMM_Vec4 color, bool outline) {
-  // M 0.5 1                -- move to
-  // L 0 1                  -- line to
-  // L 0 0                  -- line to
-  // L 0.5 0                -- line to
-  // C 0.75 0 1 0.25 1 0.5  -- curve to
-  // C 1 0.75 0.75 1 0.5 1  -- curve to
-  // z                      -- close path
-  // HMM_Vec2 p0 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
-  // HMM_Vec2 p1 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 1.0f * size.Y));
-  // HMM_Vec2 p2 = HMM_AddV2(pos, HMM_V2(0.0f * size.X, 0.0f * size.Y));
-  // HMM_Vec2 p3 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 0.0f * size.Y));
-  // HMM_Vec2 p4 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 0.0f * size.Y));
-  // HMM_Vec2 p5 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.25f * size.Y));
-  // HMM_Vec2 p6 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.5f * size.Y));
-  // HMM_Vec2 p7 = HMM_AddV2(pos, HMM_V2(1.0f * size.X, 0.75f * size.Y));
-  // HMM_Vec2 p8 = HMM_AddV2(pos, HMM_V2(0.75f * size.X, 1.0f * size.Y));
-  // HMM_Vec2 p9 = HMM_AddV2(pos, HMM_V2(0.5f * size.X, 1.0f * size.Y));
+typedef struct Symbol {
+  const char *text;
+  HMM_Vec2 offset;
+  float scale;
+} Symbol;
 
-  // HMM_Vec2 p1l = HMM_SubV2(p1, HMM_V2(lineThickness * 0.5f, 0));
-  // HMM_Vec2 p2t = HMM_SubV2(p2, HMM_V2(0, lineThickness * 0.5f));
+const Symbol symbolSolid[] = {
+  [SHAPE_DEFAULT] = {.text = "", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SHAPE_AND] = {.text = "\x01", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SHAPE_OR] = {.text = "\x03", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SHAPE_XOR] = {.text = "\x05", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SHAPE_NOT] = {.text = "\x07", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
+};
 
-  // draw_stroked_line(ctx, p0, p1l, lineThickness, color);
-  // draw_stroked_line(ctx, p1, p2t, lineThickness, color);
-  // draw_stroked_line(ctx, p2, p3, lineThickness, color);
-  // draw_stroked_curve(ctx, p3, p4, p5, p6, lineThickness, color);
-  // draw_stroked_curve(ctx, p6, p7, p8, p9, lineThickness, color);
+const Symbol symbolOutline[] = {
+  [SHAPE_DEFAULT] = {.text = "", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
+  [SHAPE_AND] = {.text = "\x02", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
+  [SHAPE_OR] = {.text = "\x04", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
+  [SHAPE_XOR] = {.text = "\x06", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SHAPE_NOT] = {.text = "\x08", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
+};
 
-  HMM_Vec2 center =
-    panZoom(view, HMM_AddV2(box.center, HMM_V2(outline ? -1 : 1, 24)));
-  HMM_Vec2 hs = zoom(view, box.halfSize);
+static void draw_symbol(
+  Context ctx, CircuitView *view, Box box, HMM_Vec4 color, ShapeType shape,
+  bool outline) {
+
+  const Symbol symbol = outline ? symbolOutline[shape] : symbolSolid[shape];
+
+  HMM_Vec2 center = panZoom(view, HMM_AddV2(box.center, symbol.offset));
+  HMM_Vec2 hs = zoom(view, HMM_MulV2F(box.halfSize, symbol.scale));
 
   Box bounds = draw_text_bounds(
-    center, outline ? "\x02" : "\x01", 1, ALIGN_CENTER, ALIGN_MIDDLE,
-    hs.Y * 2.0f, view->theme.font);
+    center, symbol.text, 1, ALIGN_CENTER, ALIGN_MIDDLE, hs.Height * 2.0f,
+    view->theme.font);
 
   draw_text(
-    ctx, bounds, outline ? "\x02" : "\x01", 1, hs.Y * 2.0f, view->theme.font,
-    color, HMM_V4(0, 0, 0, 0));
+    ctx, bounds, symbol.text, 1, hs.Height * 2.0f, view->theme.font, color,
+    HMM_V4(0, 0, 0, 0));
 }
 
-static void draw_and_gate(
-  CircuitView *view, Context ctx, int index, bool isHovered, bool isSelected) {
+static void draw_gate(
+  CircuitView *view, Context ctx, int index, ShapeType shape, bool isHovered,
+  bool isSelected) {
   ComponentView *componentView = &view->components[index];
-  // Component *component = &view->circuit.components[index];
 
   if (isHovered) {
     Box hoverBox = (Box){
@@ -411,42 +414,17 @@ static void draw_and_gate(
         HMM_V2(
           view->theme.borderWidth * 4.0f, view->theme.borderWidth * 4.0f))};
 
-    draw_and_symbol(ctx, view, hoverBox, view->theme.color.hovered, false);
+    draw_symbol(ctx, view, hoverBox, view->theme.color.hovered, shape, false);
   }
 
-  draw_and_symbol(
+  draw_symbol(
     ctx, view, componentView->box,
     isSelected ? view->theme.color.selected : view->theme.color.component,
-    false);
+    shape, false);
 
-  draw_and_symbol(
-    ctx, view, componentView->box, view->theme.color.componentBorder, true);
-
-  // if (isSelected) {
-  //   draw_and_symbol(
-  //     ctx, view, pos, size, view->zoom * view->theme.gateThickness * 4,
-  //     view->theme.color.selected);
-  // }
-
-  // if (isHovered) {
-  //   draw_and_symbol(
-  //     ctx, view, pos, size, view->zoom * view->theme.gateThickness * 1.5,
-  //     view->theme.color.hovered, false);
-  // }
-
-  // draw_and_symbol(
-  //   ctx, view, pos, size, view->zoom * view->theme.gateThickness,
-  //   view->theme.color.componentBorder);
-
-  // LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
-  // const char *typeLabelText =
-  //   circuit_label_text(&view->circuit, component->typeLabel);
-  // Box typeLabelBounds =
-  //   transformBox(view, box_translate(typeLabel->bounds, center));
-  // draw_text(
-  //   ctx, typeLabelBounds, typeLabelText, strlen(typeLabelText),
-  //   view->theme.labelFontSize * view->zoom, view->theme.font,
-  //   view->theme.color.labelColor, HMM_V4(0, 0, 0, 0));
+  draw_symbol(
+    ctx, view, componentView->box, view->theme.color.componentBorder, shape,
+    true);
 }
 
 void view_draw(CircuitView *view, Context ctx) {
@@ -481,11 +459,9 @@ void view_draw(CircuitView *view, Context ctx) {
     case SHAPE_DEFAULT:
       draw_chip(view, ctx, i, isHovered, isSelected);
       break;
-    case SHAPE_AND:
-      draw_and_gate(view, ctx, i, isHovered, isSelected);
-      break;
     default:
-      assert(0);
+      draw_gate(view, ctx, i, desc->shape, isHovered, isSelected);
+      break;
     }
 
     LabelView *nameLabel = view_label_ptr(view, component->nameLabel);
@@ -565,14 +541,15 @@ void view_draw(CircuitView *view, Context ctx) {
 
   for (int i = 0; i < circuit_junction_len(&view->circuit); i++) {
     JunctionView *junctionView = &view->junctions[i];
-    HMM_Vec2 pos = panZoom(view, junctionView->pos);
+    Box box = transformBox(
+      view,
+      (Box){
+        .center = junctionView->pos,
+        .halfSize = HMM_V2(
+          view->theme.wireThickness * 1.5, view->theme.wireThickness * 1.5)});
+
     draw_filled_circle(
-      ctx,
-      HMM_SubV2(
-        pos,
-        HMM_V2(
-          view->theme.wireThickness * 1.5, view->theme.wireThickness * 1.5)),
-      HMM_V2(view->theme.wireThickness * 3, view->theme.wireThickness * 3),
+      ctx, HMM_SubV2(box.center, box.halfSize), HMM_MulV2F(box.halfSize, 2.0f),
       view->theme.color.wire);
   }
 }

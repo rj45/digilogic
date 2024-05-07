@@ -66,6 +66,7 @@ const ComponentDesc *circuit_component_descs() {
         .typeName = "OR",
         .numPorts = 3,
         .namePrefix = 'X',
+        .shape = SHAPE_OR,
         .ports = orPorts,
       },
     [COMP_XOR] =
@@ -73,6 +74,7 @@ const ComponentDesc *circuit_component_descs() {
         .typeName = "XOR",
         .numPorts = 3,
         .namePrefix = 'X',
+        .shape = SHAPE_XOR,
         .ports = xorPorts,
       },
     [COMP_NOT] =
@@ -80,6 +82,7 @@ const ComponentDesc *circuit_component_descs() {
         .typeName = "NOT",
         .numPorts = 2,
         .namePrefix = 'X',
+        .shape = SHAPE_NOT,
         .ports = notPorts,
       },
     [COMP_INPUT] =
