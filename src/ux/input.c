@@ -16,6 +16,7 @@
 
 #include "autoroute/autoroute.h"
 #include "core/core.h"
+#include "handmade_math.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -223,7 +224,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
                   .verb = UNDO_SELECT_ITEM,
                   .itemID = ux->view.hovered,
                 });
+          ux->selectionCenter = ux_calc_selection_center(ux);
         }
+        break;
+
+      case STATE_SELECT_AREA:
+        ux->selectionCenter = ux_calc_selection_center(ux);
         break;
 
       default:
@@ -241,11 +247,17 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   switch (state) {
   case STATE_MOVE_SELECTION: {
     HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
-    ux_do(
-      ux, (UndoCommand){
-            .verb = UNDO_MOVE_SELECTION,
-            .delta = delta,
-          });
+    HMM_Vec2 oldCenter = ux->selectionCenter;
+    HMM_Vec2 newCenter = HMM_AddV2(oldCenter, delta);
+    if (HMM_LenSqrV2(delta) > 0.01f) {
+      ux_do(
+        ux, (UndoCommand){
+              .verb = UNDO_MOVE_SELECTION,
+              .oldCenter = oldCenter,
+              .newCenter = newCenter,
+              .snap = (ux->input.modifiers & MODIFIER_CTRL) == 0,
+            });
+    }
 
     break;
   }

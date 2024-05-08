@@ -130,3 +130,19 @@ void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta) {
     printf("  Could not find wire for junction %x\n", id);
   }
 }
+
+HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
+  HMM_Vec2 center = HMM_V2(0, 0);
+  for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
+    ID id = ux->view.selected[i];
+    if (id_type(id) == ID_COMPONENT) {
+      ComponentView *componentView = view_component_ptr(&ux->view, id);
+      center = HMM_AddV2(center, componentView->box.center);
+    } else if (id_type(id) == ID_JUNCTION) {
+      JunctionView *junctionView = view_junction_ptr(&ux->view, id);
+      center = HMM_AddV2(center, junctionView->pos);
+    }
+  }
+  center = HMM_DivV2F(center, (float)arrlen(ux->view.selected));
+  return center;
+}

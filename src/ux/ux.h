@@ -194,10 +194,15 @@ typedef struct UndoCommand {
   } verb;
 
   union {
-    HMM_Vec2 delta;
+    struct {
+      HMM_Vec2 oldCenter;
+      HMM_Vec2 newCenter;
+    };
     ID itemID;
     Box area;
   };
+
+  bool snap;
 } UndoCommand;
 
 typedef void AvoidRouter;
@@ -213,6 +218,7 @@ typedef struct CircuitUX {
   MouseDownState mouseDownState;
 
   HMM_Vec2 downStart;
+  HMM_Vec2 selectionCenter;
 
   float zoomExp;
 
@@ -233,6 +239,9 @@ WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to);
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
 void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta);
+
+HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter);
+HMM_Vec2 ux_calc_selection_center(CircuitUX *ux);
 
 void ux_draw(CircuitUX *ux, Context ctx);
 void ux_do(CircuitUX *ux, UndoCommand command);

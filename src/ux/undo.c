@@ -15,6 +15,7 @@
 */
 
 #include "core/core.h"
+#include "handmade_math.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -25,18 +26,29 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   case UNDO_NONE:
     break;
   case UNDO_MOVE_SELECTION: {
+    HMM_Vec2 initialDelta = HMM_SubV2(command.newCenter, command.oldCenter);
+    HMM_Vec2 newCenter = command.newCenter;
+    HMM_Vec2 delta = initialDelta;
+    if (arrlen(ux->view.selected) == 1 && command.snap) {
+      newCenter = ux_calc_snap(ux, command.newCenter);
+    }
+
+    HMM_Vec2 currentCenter = ux_calc_selection_center(ux);
+    delta = HMM_SubV2(newCenter, currentCenter);
+
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
       ID id = ux->view.selected[i];
       if (id_type(id) == ID_COMPONENT) {
-        ux_move_component(ux, id, command.delta);
+        ux_move_component(ux, id, delta);
       } else if (id_type(id) == ID_JUNCTION) {
-        ux_move_junction(ux, id, command.delta);
+        ux_move_junction(ux, id, delta);
       }
     }
     ux_route(ux);
     ux->view.selectionBox.center =
-      HMM_AddV2(ux->view.selectionBox.center, command.delta);
-    ux->downStart = HMM_AddV2(ux->downStart, command.delta);
+      HMM_AddV2(ux->view.selectionBox.center, initialDelta);
+    ux->downStart = HMM_AddV2(ux->downStart, initialDelta);
+    ux->selectionCenter = command.newCenter;
     break;
   }
   case UNDO_SELECT_ITEM:
@@ -84,7 +96,7 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
       case UNDO_NONE:
         return;
       case UNDO_MOVE_SELECTION:
-        lastCommand->delta = HMM_AddV2(lastCommand->delta, command.delta);
+        lastCommand->newCenter = command.newCenter;
         return;
       case UNDO_SELECT_ITEM:
         lastCommand->itemID = command.itemID;
@@ -118,7 +130,9 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
     break;
   case UNDO_MOVE_SELECTION:
     flip.verb = UNDO_MOVE_SELECTION;
-    flip.delta = HMM_V2(-cmd.delta.X, -cmd.delta.Y);
+    HMM_Vec2 tmp = cmd.oldCenter;
+    flip.oldCenter = cmd.newCenter;
+    flip.newCenter = tmp;
     break;
   case UNDO_SELECT_ITEM:
     flip.verb = UNDO_DESELECT_ITEM;

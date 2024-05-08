@@ -8,6 +8,7 @@ set(DIGILOGIC_SRCS
     src/core/smap.c
     src/ux/ux.c
     src/ux/input.c
+    src/ux/snap.c
     src/ux/undo.c
     src/ux/autoroute.c
     src/view/view.c

@@ -1,6 +1,6 @@
 
 HEADERS = src/core/core.h src/font.h src/view/view.h src/ux/ux.h src/shaders/alphaonly.h src/import/import.h src/autoroute/autoroute.h src/render/fons_sgp.h $(THIRDPARTY)
-SRCS = src/core/circuit.c src/ux/ux.c src/ux/input.c src/ux/undo.c src/ux/autoroute.c src/view/view.c src/import/digital.c src/autoroute/autoroute.c src/core/timer.c src/core/smap.c
+SRCS = src/core/circuit.c src/ux/ux.c src/ux/input.c src/ux/snap.c src/ux/undo.c src/ux/autoroute.c src/view/view.c src/import/digital.c src/autoroute/autoroute.c src/core/timer.c src/core/smap.c
 THIRDPARTY = $(wildcard thirdparty/*.h)
 THIRDPARTY_LIBS = thirdparty/routing/target/release/libdigilogic_routing.a
 MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/noto_sans_regular.c src/render/fons_sgp.c
