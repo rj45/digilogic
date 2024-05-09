@@ -1,4 +1,4 @@
-All files in the `src` folder (with the exception of noto_sans_regular.c)
+All files in the `src` folder (with the exception of noto_sans_regular.c and render/polyline.c)
 are subject to this notice, whether they include this text or not:
 
    Copyright 2024 Ryan "rj45" Sanche
@@ -29,6 +29,20 @@ Also contained in noto_sans_regular.c is some symbols from https://github.com/pa
     MIT License
 
     Copyright (c) 2023 pacuserra
+
+In the src folder, render/polyline.c (and .h) is based on PolyLine2D github.com/CrushedPixel/Polyline2D:
+
+    MIT License
+
+    Copyright © 2019 Marius Metzger (CrushedPixel)
+    Copyright © 2024 Ryan "rj45" Sanche
+
+Also in that folder, render/fons_sgp.c (and .h) is based on sokol_fontstash.h:
+
+    zlib/libpng license
+
+    Copyright (c) 2018 Andre Weissflog
+    Copyright (c) 2024 Ryan "rj45" Sanche
 
 ---
 

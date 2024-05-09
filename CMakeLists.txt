@@ -15,6 +15,7 @@ set(DIGILOGIC_SRCS
     src/import/digital.c
     src/autoroute/autoroute.c
     src/render/fons_sgp.c
+    src/render/polyline.c
     src/main.c
     src/noto_sans_regular.c
 )
