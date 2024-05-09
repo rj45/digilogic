@@ -50,14 +50,10 @@
 #define LOG_TAG "main"
 #include "common/log.h"
 
+#include "render/render.h"
+
 #define FONT_ATLAS_WIDTH 1024
 #define FONT_ATLAS_HEIGHT 1024
-
-typedef struct FonsFont {
-  FONScontext *fsctx;
-  int mainFont;
-  int iconFont;
-} FonsFont;
 
 typedef struct my_app_t {
   CircuitUX circuit;
@@ -66,6 +62,8 @@ typedef struct my_app_t {
 
   FONScontext *fsctx;
   FonsFont fonsFont;
+
+  Draw draw;
 
   float pzoom;
 } my_app_t;
@@ -125,6 +123,8 @@ static void init(void *user_data) {
 
   ux_init(&app->circuit, circuit_component_descs(), (FontHandle)&app->fonsFont);
 
+  draw_init(&app->draw, app->fsctx);
+
   // ComponentID and = ux_add_component(&app->circuit, COMP_AND, HMM_V2(100,
   // 100)); ComponentID or = ux_add_component(&app->circuit, COMP_OR,
   // HMM_V2(300, 200)); ComponentID not = ux_add_component(&app->circuit,
@@ -164,6 +164,8 @@ static void init(void *user_data) {
 
 void cleanup(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
+
+  draw_free(&app->draw);
 
   ux_free(&app->circuit);
 
@@ -228,7 +230,7 @@ static void canvas(struct nk_context *ctx, my_app_t *app) {
         nk_rgb(0x22, 0x29, 0x33))) {
     app->circuit.input.frameDuration = sapp_frame_duration();
 
-    ux_draw(&app->circuit, &canvas);
+    ux_draw(&app->circuit, &app->draw);
 
     app->circuit.input.scroll = HMM_V2(0, 0);
     app->circuit.input.mouseDelta = HMM_V2(0, 0);
@@ -236,6 +238,7 @@ static void canvas(struct nk_context *ctx, my_app_t *app) {
   canvas_end(ctx, &canvas);
 }
 
+#if 0
 void draw_filled_rect(
   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius, HMM_Vec4 color) {
   struct nk_canvas *canvas = (struct nk_canvas *)ctx;
@@ -390,6 +393,7 @@ Box draw_text_bounds(
 
   return (Box){.center = center, .halfSize = halfSize};
 }
+#endif
 
 void frame(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
