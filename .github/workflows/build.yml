@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+
+  build-windows:
+    name: Build windows binary
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup cmake
+      uses: lukka/get-cmake@latest
+    - name: setup vcpkg
+      uses: lukka/run-vcpkg@v11
+    - name: generate cmake
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+    - name: build
+      run: cmake --build build --config Release
+    - uses: thedoctor0/zip-release@0.7.5
+      with:
+        type: 'zip'
+        filename: 'digilogic_win64_${{ github.ref_name }}.zip'
+        directory: 'build/'
+        path: 'digilogic.exe'
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: 'build/digilogic_win64_${{ github.ref_name }}.zip'
+        allowUpdates: true
+
