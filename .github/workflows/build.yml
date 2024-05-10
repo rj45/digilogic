@@ -21,7 +21,7 @@ jobs:
     - name: setup vcpkg
       uses: lukka/run-vcpkg@v11
     - name: generate cmake
-      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=${{VCPKG_ROOT}}/scripts/buildsystems/vcpkg.cmake
     - name: build
       run: cmake --build build --config Release
     - uses: thedoctor0/zip-release@0.7.5
