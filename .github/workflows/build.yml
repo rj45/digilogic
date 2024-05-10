@@ -36,4 +36,5 @@ jobs:
       with:
         artifacts: 'build/Release/digilogic_windows_x64_${{ github.ref_name }}.zip'
         allowUpdates: true
+        generateReleaseNotes: true
 
