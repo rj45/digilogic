@@ -13,16 +13,18 @@
 
 ## Building
 
-You'll need rust via rustup, and cmake. Windows you'll need MSVC.
+You'll need rust via rustup, and cmake. Windows you'll need MSVC. You need FreeType too.
 
 ### Mac
+
+(You can also follow the linux instructions to avoid XCode and use make.)
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
 mkdir build
 cd build
-cmake -G Xcode ..
+cmake .. -G Xcode -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
 
@@ -30,14 +32,14 @@ cmake --build . --config Release
 
 You need to install FreeType somehow and then pass the path to cmake.
 
-This might be potential source: https://github.com/ubawurinna/freetype-windows-binaries
+This might be potential a source: https://github.com/ubawurinna/freetype-windows-binaries
 
 MSVC is also required, as well as cmake.
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
-cmake -B build -DFREETYPE_DIR=<path_to_freetype>
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DFREETYPE_DIR=<path_to_freetype>
 cmake --build build --config Release
 build\Release\digilogic.exe
 ```

@@ -175,10 +175,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Corrosion)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(RUST_PROFILE "release")
+else()
+    set(RUST_PROFILE "dev")
+endif()
+
 # will make targets for each crate in the Cargo.toml
 corrosion_import_crate(
     MANIFEST_PATH thirdparty/routing/Cargo.toml
-    PROFILE release
+    PROFILE ${RUST_PROFILE}
 )
 
 #####################################
