@@ -16,7 +16,8 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
     steps:
     - uses: actions/checkout@v4
-      submodules: true
+      with:
+        submodules: true
     - name: setup cmake
       uses: lukka/get-cmake@latest
     - name: setup vcpkg
