@@ -29,11 +29,11 @@ jobs:
     - uses: thedoctor0/zip-release@0.7.5
       with:
         type: 'zip'
-        filename: 'digilogic_win64_${{ github.ref_name }}.zip'
-        directory: 'build/'
+        filename: 'digilogic_windows_x64_${{ github.ref_name }}.zip'
+        directory: 'build/Release/'
         path: 'digilogic.exe'
     - uses: ncipollo/release-action@v1
       with:
-        artifacts: 'build/digilogic_win64_${{ github.ref_name }}.zip'
+        artifacts: 'build/Release/digilogic_windows_x64_${{ github.ref_name }}.zip'
         allowUpdates: true
 
