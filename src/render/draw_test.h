@@ -14,28 +14,13 @@
    limitations under the License.
 */
 
-#include "core/core.h"
-#include "utest.h"
+#ifndef DRAW_TEST_H
+#define DRAW_TEST_H
 
-#include "ux.h"
+#include "draw.h"
 
-UTEST(CircuitUX, init) {
-  CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+DrawContext *draw_create();
+void draw_free(DrawContext *draw);
+char *draw_get_build_string(DrawContext *draw);
 
-  ASSERT_EQ(circuit_component_len(&ux.view.circuit), 0);
-
-  ux_free(&ux);
-}
-
-UTEST(CircuitUX, add_component) {
-  CircuitUX ux;
-
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
-  ComponentID id = ux_add_component(&ux, COMP_AND, HMM_V2(0, 0));
-
-  ASSERT_EQ(circuit_component_len(&ux.view.circuit), 1);
-  ASSERT_NE(id, 0);
-
-  ux_free(&ux);
-}
+#endif // DRAW_TEST_H

@@ -21,8 +21,7 @@
 #include "render/polyline.h"
 #include "view/view.h"
 
-typedef void *Context;
-typedef void *FontHandle;
+#include "render/draw.h"
 
 typedef struct FonsFont {
   FONScontext *fsctx;
@@ -30,47 +29,21 @@ typedef struct FonsFont {
   int iconFont;
 } FonsFont;
 
-// typedef enum VertAlign {
-//   ALIGN_TOP,
-//   ALIGN_MIDDLE,
-//   ALIGN_BOTTOM,
-// } VertAlign;
-
-// typedef enum HorizAlign {
-//   ALIGN_LEFT,
-//   ALIGN_CENTER,
-//   ALIGN_RIGHT,
-// } HorizAlign;
-
-typedef struct Draw {
+typedef struct DrawContext {
   PolyLiner *polyliner;
   FONScontext *fontstash;
-} Draw;
 
-void draw_init(Draw *draw, FONScontext *fontstash);
-void draw_free(Draw *draw);
+  HMM_Vec2 pan;
+  float zoom;
+} DrawContext;
+
+void draw_init(DrawContext *draw, FONScontext *fontstash);
+void draw_free(DrawContext *draw);
 
 HMM_Vec2 draw_screen_to_world(HMM_Vec2 screenPos);
 
-// void draw_filled_rect(
-//   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius, HMM_Vec4
-//   color);
-// void draw_stroked_rect(
-//   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius,
-//   float line_thickness, HMM_Vec4 color);
-// void draw_filled_circle(
-//   Context ctx, HMM_Vec2 position, HMM_Vec2 size, HMM_Vec4 color);
-// void draw_stroked_circle(
-//   Context ctx, HMM_Vec2 position, HMM_Vec2 size, float line_thickness,
-//   HMM_Vec4 color);
-// void draw_stroked_line(
-//   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
-//   HMM_Vec4 color);
-// void draw_text(
-//   Context ctx, Box rect, const char *text, int len, float fontSize,
-//   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
-// Box draw_text_bounds(
-//   HMM_Vec2 pos, const char *text, int len, HorizAlign horz, VertAlign vert,
-//   float fontSize, FontHandle font);
+void draw_text(
+  DrawContext *draw, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
 
 #endif // RENDER_H

@@ -69,7 +69,7 @@ typedef struct my_app_t {
   FONScontext *fsctx;
   FonsFont fonsFont;
 
-  Draw draw;
+  DrawContext draw;
 
   float pzoom;
 
@@ -153,11 +153,13 @@ static void init(void *user_data) {
     .iconFont = iconFont,
   };
 
-  ux_init(&app->circuit, circuit_component_descs(), (FontHandle)&app->fonsFont);
-
   draw_init(&app->draw, app->fsctx);
 
-  app->pzoom = app->circuit.view.zoom;
+  ux_init(
+    &app->circuit, circuit_component_descs(), &app->draw,
+    (FontHandle)&app->fonsFont);
+
+  app->pzoom = draw_get_zoom(&app->draw);
 }
 
 void cleanup(void *user_data) {
@@ -198,9 +200,9 @@ void frame(void *user_data) {
 
   my_app_t *app = (my_app_t *)user_data;
 
-  if (app->pzoom != app->circuit.view.zoom) {
+  if (app->pzoom != draw_get_zoom(&app->draw)) {
     // on zoom change, reset the font atlas
-    app->pzoom = app->circuit.view.zoom;
+    app->pzoom = draw_get_zoom(&app->draw);
     fonsResetAtlas(app->fsctx, FONT_ATLAS_WIDTH, FONT_ATLAS_HEIGHT);
   }
 
@@ -237,7 +239,7 @@ void frame(void *user_data) {
   }
 
   app->circuit.input.frameDuration = sapp_frame_duration();
-  ux_draw(&app->circuit, &app->draw);
+  ux_draw(&app->circuit);
   app->circuit.input.scroll = HMM_V2(0, 0);
   app->circuit.input.mouseDelta = HMM_V2(0, 0);
 
@@ -273,7 +275,7 @@ void frame(void *user_data) {
       1 / stm_sec(avgFrameInterval), stats.num_draw, stats.num_append_buffer);
 
     Box box = draw_text_bounds(
-      HMM_V2(0, 0), buff, strlen(buff), ALIGN_LEFT, ALIGN_TOP, 12.0,
+      &app->draw, HMM_V2(0, 0), buff, strlen(buff), ALIGN_LEFT, ALIGN_TOP, 12.0,
       &app->fonsFont);
     draw_text(
       &app->draw, box, buff, strlen(buff), 16.0, &app->fonsFont,

@@ -17,6 +17,7 @@
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "handmade_math.h"
+#include "render/draw.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -61,7 +62,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   MouseDownState state = oldState;
   for (;;) {
     bool move = leftDown && HMM_LenV2(HMM_SubV2(worldMousePos, ux->downStart)) >
-                              (10.0f * ux->view.zoom);
+                              (10.0f * draw_get_zoom(ux->view.drawCtx));
     bool selected = arrlen(ux->view.selected) > 0 ||
                     HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.0f;
 
@@ -271,7 +272,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   case STATE_PAN: {
     HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
     ux->downStart = worldMousePos;
-    ux->view.pan = HMM_AddV2(ux->view.pan, delta);
+    draw_add_pan(ux->view.drawCtx, delta);
     break;
   }
   default:
@@ -285,8 +286,9 @@ static void ux_handle_mouse(CircuitUX *ux) {
   ux->view.hovered = NO_ID;
   ux->view.hoveredPort = NO_PORT;
 
-  HMM_Vec2 worldMousePos =
-    HMM_DivV2F(HMM_SubV2(ux->input.mousePos, ux->view.pan), ux->view.zoom);
+  HMM_Vec2 worldMousePos = HMM_DivV2F(
+    HMM_SubV2(ux->input.mousePos, draw_get_pan(ux->view.drawCtx)),
+    draw_get_zoom(ux->view.drawCtx));
 
   Box mouseBox = {
     .center = worldMousePos,
@@ -337,37 +339,41 @@ static void ux_zoom(CircuitUX *ux) {
     ux->zoomExp = MAX_ZOOM;
   }
   float newZoom = powf(1.1f, ux->zoomExp);
-  float oldZoom = ux->view.zoom;
-  ux->view.zoom = newZoom;
+  float oldZoom = draw_get_zoom(ux->view.drawCtx);
+  draw_set_zoom(ux->view.drawCtx, newZoom);
 
   // figure out where the mouse was in "world coords" with the old zoom
-  HMM_Vec2 originalMousePos =
-    HMM_DivV2F(HMM_SubV2(ux->input.mousePos, ux->view.pan), oldZoom);
+  HMM_Vec2 originalMousePos = HMM_DivV2F(
+    HMM_SubV2(ux->input.mousePos, draw_get_pan(ux->view.drawCtx)), oldZoom);
 
   // figure out where the mouse is in "world coords" with the new zoom
-  HMM_Vec2 newMousePos =
-    HMM_DivV2F(HMM_SubV2(ux->input.mousePos, ux->view.pan), newZoom);
+  HMM_Vec2 newMousePos = HMM_DivV2F(
+    HMM_SubV2(ux->input.mousePos, draw_get_pan(ux->view.drawCtx)), newZoom);
 
   // figure out the correction to the pan so that the zoom is centred on the
   // mouse position
   HMM_Vec2 correction =
     HMM_MulV2F(HMM_SubV2(newMousePos, originalMousePos), newZoom);
-  ux->view.pan = HMM_AddV2(ux->view.pan, correction);
+  draw_add_pan(ux->view.drawCtx, correction);
 }
 
-void ux_draw(CircuitUX *ux, Context ctx) {
+void ux_draw(CircuitUX *ux) {
   float dt = (float)ux->input.frameDuration;
+  HMM_Vec2 panDelta = HMM_V2(0, 0);
   if (bv_is_set(ux->input.keysDown, KEYCODE_W)) {
-    ux->view.pan.Y += 600.0f * dt * ux->view.zoom;
+    panDelta.Y += 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_A)) {
-    ux->view.pan.X += 600.0f * dt * ux->view.zoom;
+    panDelta.X += 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_S)) {
-    ux->view.pan.Y -= 600.0f * dt * ux->view.zoom;
+    panDelta.Y -= 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_D)) {
-    ux->view.pan.X -= 600.0f * dt * ux->view.zoom;
+    panDelta.X -= 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
+  }
+  if (panDelta.X != 0 || panDelta.Y != 0) {
+    draw_add_pan(ux->view.drawCtx, panDelta);
   }
 
   // cmd + z or ctrl + z: undo
@@ -412,9 +418,11 @@ void ux_draw(CircuitUX *ux, Context ctx) {
 
   ux_handle_mouse(ux);
 
-  view_draw(&ux->view, ctx);
+  view_draw(&ux->view);
 
   if (ux->debugLines) {
-    autoroute_draw_debug_lines(ux->router, ctx, ux->view.zoom, ux->view.pan);
+    autoroute_draw_debug_lines(
+      ux->router, ux->view.drawCtx, draw_get_zoom(ux->view.drawCtx),
+      draw_get_pan(ux->view.drawCtx));
   }
 }

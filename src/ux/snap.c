@@ -25,7 +25,7 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
   HMM_Vec2 oldCenter;
   HMM_Vec2 halfSize;
 
-  float snapDistance = SNAP_DISTANCE / ux->view.zoom;
+  float snapDistance = SNAP_DISTANCE / draw_get_zoom(ux->view.drawCtx);
 
   if (id_type(selected) == ID_COMPONENT) {
     ComponentView *component = view_component_ptr(&ux->view, selected);
@@ -47,7 +47,8 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
   float bottom = movedCenter.Y + halfSize.Y;
   float right = movedCenter.X + halfSize.X;
 
-  float snapDistanceThreshold = SNAP_DISTANCE_THRESHOLD / ux->view.zoom;
+  float snapDistanceThreshold =
+    SNAP_DISTANCE_THRESHOLD / draw_get_zoom(ux->view.drawCtx);
   for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
     ComponentView *component = &ux->view.components[i];
     if (circuit_component_id(&ux->view.circuit, i) == selected) {

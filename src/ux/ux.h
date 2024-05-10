@@ -230,7 +230,8 @@ typedef struct CircuitUX {
 void ux_global_init();
 
 void ux_init(
-  CircuitUX *ux, const ComponentDesc *componentDescs, FontHandle font);
+  CircuitUX *ux, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  FontHandle font);
 void ux_free(CircuitUX *ux);
 ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);
@@ -244,7 +245,7 @@ void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta);
 HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter);
 HMM_Vec2 ux_calc_selection_center(CircuitUX *ux);
 
-void ux_draw(CircuitUX *ux, Context ctx);
+void ux_draw(CircuitUX *ux);
 void ux_do(CircuitUX *ux, UndoCommand command);
 UndoCommand ux_undo(CircuitUX *ux);
 UndoCommand ux_redo(CircuitUX *ux);

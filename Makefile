@@ -4,7 +4,7 @@ SRCS = src/core/circuit.c src/ux/ux.c src/ux/input.c src/ux/snap.c src/ux/undo.c
 THIRDPARTY = $(wildcard thirdparty/*.h)
 THIRDPARTY_LIBS = thirdparty/routing/target/release/libdigilogic_routing.a
 MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/assets.c src/render/fons_sgp.c src/render/polyline.c src/render/draw.c
-TEST_SRCS = $(SRCS) src/test.c src/ux/ux_test.c src/view/view_test.c src/core/core_test.c
+TEST_SRCS = $(SRCS) src/test.c src/ux/ux_test.c src/view/view_test.c src/core/core_test.c src/render/draw_test.c
 
 CFLAGS = -std=c11 -DSOKOL_METAL -I thirdparty -I src -Wall -Werror \
 	-DDEBUG -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
