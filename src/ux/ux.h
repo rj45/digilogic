@@ -224,6 +224,7 @@ typedef struct CircuitUX {
 
   bool debugLines;
   bool betterRoutes;
+  bool showFPS;
 } CircuitUX;
 
 void ux_global_init();

@@ -15,14 +15,13 @@
 */
 
 #include "core/core.h"
-#include "font.h"
 #include "utest.h"
 
 #include "ux.h"
 
 UTEST(CircuitUX, init) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), (FontHandle)&notoSansRegular);
+  ux_init(&ux, circuit_component_descs(), NULL);
 
   ASSERT_EQ(circuit_component_len(&ux.view.circuit), 0);
 
@@ -32,7 +31,7 @@ UTEST(CircuitUX, init) {
 UTEST(CircuitUX, add_component) {
   CircuitUX ux;
 
-  ux_init(&ux, circuit_component_descs(), (FontHandle)&notoSansRegular);
+  ux_init(&ux, circuit_component_descs(), NULL);
   ComponentID id = ux_add_component(&ux, COMP_AND, HMM_V2(0, 0));
 
   ASSERT_EQ(circuit_component_len(&ux.view.circuit), 1);

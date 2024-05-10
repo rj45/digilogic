@@ -18,7 +18,7 @@ set(DIGILOGIC_SRCS
     src/render/polyline.c
     src/render/draw.c
     src/main.c
-    src/noto_sans_regular.c
+    src/assets.c
 )
 
 
@@ -186,8 +186,6 @@ corrosion_import_crate(
 #####################################
 
 set_property(TARGET digilogic PROPERTY C_STANDARD 11)
-
-file(COPY "testdata" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 
 find_package(Freetype REQUIRED)
 target_link_libraries(digilogic PUBLIC Freetype::Freetype)

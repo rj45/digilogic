@@ -24,9 +24,12 @@
 #define NK_IMPLEMENTATION
 #define MSDF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
+#define STRPOOL_IMPLEMENTATION
+#define ASSETSYS_IMPLEMENTATION
 
 #define SOKOL_IMPL
 
+#include "assetsys.h"
 #include "nuklear.h"
 #include "sokol_app.h"
 #include "sokol_gfx.h"
@@ -34,7 +37,9 @@
 #include "sokol_gp.h"
 #include "sokol_log.h"
 #include "sokol_nuklear.h"
+#include "sokol_time.h"
 #include "stb_image.h"
+#include "strpool.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"

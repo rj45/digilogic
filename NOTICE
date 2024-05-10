@@ -15,8 +15,7 @@ are subject to this notice, whether they include this text or not:
    See the License for the specific language governing permissions and
    limitations under the License.
 
-The file res/NotoSans-Regular.ttf and part of noto_sans_regular.c, is subject to the following
-copyright and license:
+The file res/NotoSans-Regular.ttf is subject to the following copyright and license:
 
     Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
 
@@ -24,7 +23,7 @@ copyright and license:
     This license is copied below, and is also available with a FAQ at:
     https://openfontlicense.org
 
-Also contained in noto_sans_regular.c is some symbols from https://github.com/pacuserra/schemalib:
+Also res/symbols.ttf has some symbols from https://github.com/pacuserra/schemalib:
 
     MIT License
 

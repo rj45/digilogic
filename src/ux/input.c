@@ -402,6 +402,10 @@ void ux_draw(CircuitUX *ux, Context ctx) {
     printf("Better (minimal) routes: %s\n", ux->betterRoutes ? "on" : "off");
   }
 
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_F3)) {
+    ux->showFPS = true;
+  }
+
   if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {
     ux_zoom(ux);
   }

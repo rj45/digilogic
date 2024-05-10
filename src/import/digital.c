@@ -20,6 +20,9 @@
 #include "ux/ux.h"
 #include "view/view.h"
 
+#define LOG_LEVEL LL_INFO
+#include "log.h"
+
 #define DEBUG_PRINT(...)
 #include "lxml.h"
 #define STBDS_ASSERT assert
@@ -124,7 +127,7 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
   bool changed = true;
   while (changed) {
     changed = false;
-    printf("Merge round\n");
+    log_debug("Merge round");
     for (int i = 0; i < arrlen(digWires); i++) {
       DigWire *digWire = &digWires[i];
       if (!digWire->valid) {
@@ -158,7 +161,7 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
             if (
               otherEnd->pos.x == end->pos.x && otherEnd->pos.y == end->pos.y) {
               // merge the two wires keeping the far ends of each
-              printf(
+              log_debug(
                 "  Merged %d and %d at %d, %d\n", i, otherIndex, end->pos.x,
                 end->pos.y);
 
@@ -196,7 +199,7 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
   }
 }
 
-void import_digital(CircuitUX *ux, const char *filename) {
+void import_digital(CircuitUX *ux, char *buffer) {
   arr(uint32_t) stack = 0;
   arr(PortID) inPorts = 0;
   arr(PortID) outPorts = 0;
@@ -206,35 +209,33 @@ void import_digital(CircuitUX *ux, const char *filename) {
 
   DigWireHash *digWireEnds = 0;
 
-  printf("Loading %s\n", filename);
-
   hmdefault(digWireEnds, 0);
 
   LXMLDocument doc;
-  if (!LXMLDocument_load(&doc, filename)) {
-    printf("Failed to load %s\n", filename);
+  if (!LXMLDocument_load_memory(&doc, buffer)) {
+    log_error("Failed to load XML");
     return;
   }
 
   LXMLNode *root = doc.root;
   if (!root) {
-    printf("No root node\n");
+    log_debug("No root node");
     goto fail;
   }
 
   LXMLNode *circuit = find_node(root, "circuit");
   if (!circuit) {
-    printf("No circuit node\n");
+    log_debug("No circuit node");
     goto fail;
   }
 
   LXMLNode *wires = find_node(circuit, "wires");
   if (!wires) {
-    printf("No wires node\n");
+    log_debug("No wires node");
     goto fail;
   }
 
-  printf("Loading wires\n");
+  log_debug("Loading wires");
 
   // load all the wires into digWires
   for (int i = 0; i < wires->children.size; i++) {
@@ -242,13 +243,13 @@ void import_digital(CircuitUX *ux, const char *filename) {
     if (strcmp(wire->tag, "wire") == 0) {
       LXMLNode *p1 = find_node(wire, "p1");
       if (!p1) {
-        printf("No p1 node\n");
+        log_debug("No p1 node");
         goto fail;
       }
 
       LXMLNode *p2 = find_node(wire, "p2");
       if (!p2) {
-        printf("No p2 node\n");
+        log_debug("No p2 node");
         goto fail;
       }
 
@@ -264,7 +265,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
           } else if (strcmp(attr->key, "y") == 0) {
             positions[j].y = atoi(attr->value);
           } else {
-            printf("Unknown attribute %s\n", attr->key);
+            log_debug("Unknown attribute %s\n", attr->key);
             goto fail;
           }
         }
@@ -297,11 +298,11 @@ void import_digital(CircuitUX *ux, const char *filename) {
     }
   }
 
-  printf("Loading components\n");
+  log_debug("Loading components");
 
   LXMLNode *visualElements = find_node(circuit, "visualElements");
   if (!visualElements) {
-    printf("No visualElements node\n");
+    log_debug("No visualElements node");
     goto fail;
   }
 
@@ -310,7 +311,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
     if (strcmp(visualElement->tag, "visualElement") == 0) {
       LXMLNode *typeNameNode = find_node(visualElement, "elementName");
       if (!typeNameNode) {
-        printf("No elementName node\n");
+        log_debug("No elementName node");
         goto fail;
       }
 
@@ -323,13 +324,13 @@ void import_digital(CircuitUX *ux, const char *filename) {
         }
       }
       if (descID == (ComponentDescID)-1) {
-        printf("Unknown component type %s\n", typeName);
+        log_debug("Unknown component type %s\n", typeName);
         goto fail;
       }
 
       LXMLNode *positionNode = find_node(visualElement, "pos");
       if (!positionNode) {
-        printf("No pos node\n");
+        log_debug("No pos node");
         goto fail;
       }
 
@@ -345,7 +346,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         }
       }
 
-      printf("Adding component %s at %d, %d\n", typeName, x, y);
+      log_debug("Adding component %s at %d, %d\n", typeName, x, y);
       ComponentID componentID = ux_add_component(ux, descID, HMM_V2(x, y));
 
       // digital's components are placed relative to the first port
@@ -359,14 +360,14 @@ void import_digital(CircuitUX *ux, const char *filename) {
         ux, componentID, HMM_SubV2(HMM_V2(0, 0), portView->center));
 
       HMM_Vec2 portPos = HMM_AddV2(compView->box.center, portView->center);
-      printf("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
+      log_debug("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
 
       const ComponentDesc *desc = &ux->view.circuit.componentDescs[descID];
       switch (descID) {
       case COMP_INPUT:
       case COMP_OUTPUT: {
         PortID portID = firstPort;
-        printf("Adding port %s at %d, %d\n", desc->ports[0].name, x, y);
+        log_debug("Adding port %s at %d, %d\n", desc->ports[0].name, x, y);
         replace_wire_end_with_port(
           digWires, digWireEnds, portID, (IVec2){x, y}, descID == COMP_OUTPUT);
         break;
@@ -390,7 +391,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
           } else {
             nextInput.y += 40;
           }
-          printf(
+          log_debug(
             "Adding port %s at %d, %d\n", desc->ports[j].name, pos.x, pos.y);
           replace_wire_end_with_port(
             digWires, digWireEnds, portID, pos,
@@ -402,7 +403,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         break;
       }
       default:
-        printf("Unknown component type %d\n", descID);
+        log_debug("Unknown component type %d\n", descID);
         assert(0);
         break;
       }
@@ -415,7 +416,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
     for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
       DigWire *digWire = &digWires[digWireEnds[i].value[j]];
       if (!digWire->valid) {
-        printf(
+        log_debug(
           "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
           digWireEnds[i].key.y);
         allValid = false;
@@ -441,7 +442,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         }
       }
       if (!found) {
-        printf("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        log_debug("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
         allValid = false;
       }
     }
@@ -456,7 +457,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
     for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
       DigWire *digWire = &digWires[digWireEnds[i].value[j]];
       if (!digWire->valid) {
-        printf(
+        log_debug(
           "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
           digWireEnds[i].key.y);
         allValid = false;
@@ -482,7 +483,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         }
       }
       if (!found) {
-        printf("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        log_debug("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
         allValid = false;
       }
     }
@@ -501,7 +502,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
           digWire->ends[j].pos.x == digWireEnds[i].key.x &&
           digWire->ends[j].pos.y == digWireEnds[i].key.y &&
           digWire->ends[j].type == WIRE) {
-          printf(
+          log_debug(
             "Trimming free floating wire at %d, %d\n", digWire->ends[j].pos.x,
             digWire->ends[j].pos.y);
           digWire->valid = false;
@@ -524,7 +525,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
     for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
       DigWire *digWire = &digWires[digWireEnds[i].value[j]];
       if (!digWire->valid) {
-        printf(
+        log_debug(
           "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
           digWireEnds[i].key.y);
         allValid = false;
@@ -550,7 +551,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
         }
       }
       if (!found) {
-        printf("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        log_debug("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
         allValid = false;
       }
     }
@@ -560,7 +561,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
   // figure out where the junctions are
   for (int i = 0; i < hmlen(digWireEnds); i++) {
     if (arrlen(digWireEnds[i].value) > 2) {
-      printf(
+      log_debug(
         "Junction at %d, %d\n", digWireEnds[i].key.x, digWireEnds[i].key.y);
 
       JunctionID junctionID =
@@ -634,7 +635,7 @@ void import_digital(CircuitUX *ux, const char *filename) {
     }
 
     NetID netID = ux_add_net(ux);
-    printf("Net %d\n", netID);
+    log_debug("Net %d\n", netID);
     for (int j = 0; j < arrlen(netWires); j++) {
       DigWire *digWire = &digWires[netWires[j]];
       ID ends[2] = {0, 0};
@@ -649,35 +650,36 @@ void import_digital(CircuitUX *ux, const char *filename) {
         WireEnd tmp = digWire->ends[0];
         digWire->ends[0] = digWire->ends[1];
         digWire->ends[1] = tmp;
-        printf("  Swapped\n");
+        log_debug("  Swapped");
       }
 
-      printf("  Connecting ");
+      log_debug("  Connecting ");
       for (int k = 0; k < 2; k++) {
         WireEnd *end = &digWire->ends[k];
         switch (end->type) {
         case IN_PORT:
         case OUT_PORT:
           ends[k] = end->port;
-          printf("%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
+          log_debug(
+            "%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
           break;
         case JUNCTION:
           ends[k] = end->junc;
-          printf("junction %d ", end->junc);
+          log_debug("junction %d ", end->junc);
           break;
         case WIRE:
           ends[k] = NO_ID;
-          printf("wire %d, %d ", end->pos.x, end->pos.y);
+          log_debug("wire %d, %d ", end->pos.x, end->pos.y);
           skip = true;
           break;
         }
       }
       if (skip) {
-        printf("  --> skipping\n");
+        log_debug("  --> skipping");
         allValid = false;
         continue;
       }
-      printf("\n");
+      log_debug("");
       ux_add_wire(ux, netID, ends[0], ends[1]);
     }
     assert(allValid);

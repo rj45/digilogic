@@ -22,6 +22,8 @@
 
 #include "ux.h"
 
+#include "log.h"
+
 void ux_global_init() { autoroute_global_init(); }
 
 void ux_init(
@@ -32,6 +34,7 @@ void ux_init(
   bv_setlen(ux->input.keysDown, KEYCODE_MENU + 1);
   bv_setlen(ux->input.keysPressed, KEYCODE_MENU + 1);
   bv_clear_all(ux->input.keysDown);
+  bv_clear_all(ux->input.keysPressed);
   view_init(&ux->view, componentDescs, font);
   ux->router = autoroute_create(&ux->view);
 }
@@ -67,7 +70,7 @@ void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
   ComponentView *componentView = view_component_ptr(&ux->view, id);
   componentView->box.center = HMM_AddV2(componentView->box.center, delta);
 
-  printf("Move updating component %x\n", id);
+  log_debug("Move updating component %x\n", id);
   autoroute_update_component(ux->router, id);
   PortID portID = circuit_component_ptr(&ux->view.circuit, id)->portFirst;
   while (portID) {
@@ -81,18 +84,18 @@ void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
       while (wireID) {
         Wire *wire = circuit_wire_ptr(&ux->view.circuit, wireID);
         if (wire->from == portID || wire->to == portID) {
-          printf("  Move updating wire %x\n", wireID);
+          log_debug("  Move updating wire %x\n", wireID);
           autoroute_update_wire(ux->router, wireID);
           found = true;
         }
         wireID = wire->next;
       }
     } else {
-      printf("  Port %x has no net\n", portID);
+      log_debug("  Port %x has no net\n", portID);
     }
 
     if (!found) {
-      printf("  Could not find wire for port %x\n", portID);
+      log_debug("  Could not find wire for port %x\n", portID);
     }
 
     portID = port->compNext;
@@ -103,7 +106,7 @@ void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta) {
   JunctionView *junctionView = view_junction_ptr(&ux->view, id);
   junctionView->pos = HMM_AddV2(junctionView->pos, delta);
 
-  printf("Move updating junction %x\n", id);
+  log_debug("Move updating junction %x\n", id);
   autoroute_update_junction(ux->router, id);
 
   Junction *junction = circuit_junction_ptr(&ux->view.circuit, id);
@@ -116,18 +119,18 @@ void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta) {
     while (wireID) {
       Wire *wire = circuit_wire_ptr(&ux->view.circuit, wireID);
       if (wire->from == id || wire->to == id) {
-        printf("  Move updating wire %x\n", wireID);
+        log_debug("  Move updating wire %x\n", wireID);
         autoroute_update_wire(ux->router, wireID);
         found = true;
       }
       wireID = wire->next;
     }
   } else {
-    printf("  Junction %x has no net\n", id);
+    log_debug("  Junction %x has no net\n", id);
   }
 
   if (!found) {
-    printf("  Could not find wire for junction %x\n", id);
+    log_debug("  Could not find wire for junction %x\n", id);
   }
 }
 

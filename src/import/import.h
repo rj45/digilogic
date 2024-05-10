@@ -19,6 +19,6 @@
 
 #include "ux/ux.h"
 
-void import_digital(CircuitUX *ux, const char *filename);
+void import_digital(CircuitUX *ux, char *buffer);
 
 #endif // IMPORT_H

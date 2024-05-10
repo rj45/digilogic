@@ -19,6 +19,9 @@
 #include "routing/routing.h"
 #include "view/view.h"
 
+#define LOG_LEVEL LL_INFO
+#include "log.h"
+
 #define RT_PADDING 10.0f
 
 typedef struct AnchorEnds {
@@ -235,7 +238,7 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     ar->graph, ar->anchors, arrlen(ar->anchors), ar->boxes,
     circuit_component_len(&ar->view->circuit), betterRoutes);
   if (res != RT_RESULT_SUCCESS) {
-    printf("Error building graph: %d\n", res);
+    log_error("Error building graph: %d", res);
   }
   assert(res == RT_RESULT_SUCCESS);
 
@@ -248,8 +251,8 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
 
   double pathFind = timer_now(&ar->timer);
 
-  printf(
-    "Graph build: %f, Path find: %f\n", graphBuild - start,
+  log_info(
+    "Graph build: %f, Path find: %f", graphBuild - start,
     pathFind - graphBuild);
 }
 

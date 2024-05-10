@@ -19,10 +19,7 @@
 
 #include <stdint.h>
 
-extern unsigned int notoSansRegularLength;
-extern const unsigned char notoSansRegular[];
-
-extern unsigned int schemalibSymbolsLength;
-extern const unsigned char schemalibSymbols[];
+extern unsigned int assets_zip_len;
+extern const unsigned char assets_zip[];
 
 #endif // FONT_H

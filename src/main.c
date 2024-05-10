@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include <stdint.h>
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -22,7 +23,6 @@
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_INCLUDE_STANDARD_VARARGS
 
-#include "font.h"
 #include "ux/ux.h"
 #include "view/view.h"
 #include <stdio.h>
@@ -32,10 +32,11 @@
 
 #include "handmade_math.h"
 
+#include "assets.h"
 #include "core/core.h"
-#include "font.h"
 #include "import/import.h"
 
+#include "assetsys.h"
 #include "nuklear.h"
 #include "sokol_app.h"
 #include "sokol_gfx.h"
@@ -43,14 +44,15 @@
 #include "sokol_gp.h"
 #include "sokol_log.h"
 #include "sokol_nuklear.h"
+#include "sokol_time.h"
 #include "stb_image.h"
 
 #include "render/fons_sgp.h"
 
-#define LOG_TAG "main"
-#include "common/log.h"
-
 #include "render/render.h"
+
+#define LOG_LEVEL LL_DEBUG
+#include "log.h"
 
 #define FONT_ATLAS_WIDTH 1024
 #define FONT_ATLAS_HEIGHT 1024
@@ -60,12 +62,23 @@ typedef struct my_app_t {
 
   const char *filename;
 
+  bool loaded;
+
+  assetsys_t *assetsys;
+
   FONScontext *fsctx;
   FonsFont fonsFont;
 
   Draw draw;
 
   float pzoom;
+
+  uint64_t lastDrawTime;
+
+  uint64_t frameIntervals[60];
+  int frameIntervalIndex;
+
+  uint64_t frameIntervalTime;
 } my_app_t;
 
 static void fons_error(void *user_ptr, int error, int val) {
@@ -88,7 +101,10 @@ static void init(void *user_data) {
   }
 
   // initialize Sokol GP
-  sgp_desc sgpdesc = {0};
+  sgp_desc sgpdesc = {
+    .sample_count = 4,
+    .max_vertices = 1024 * 1024,
+  };
   sgp_setup(&sgpdesc);
   if (!sgp_is_valid()) {
     fprintf(
@@ -96,6 +112,8 @@ static void init(void *user_data) {
       sgp_get_error_message(sgp_get_last_error()));
     exit(1);
   }
+
+  sg_enable_frame_stats();
 
   snk_setup(&(snk_desc_t){
     .max_vertices = 64 * 1024, .logger.func = slog_func, .sample_count = 4});
@@ -109,12 +127,26 @@ static void init(void *user_data) {
 
   fonsSetErrorCallback(app->fsctx, fons_error, app);
 
-  int mainFont = fonsAddFontMem(
-    app->fsctx, "sans", (unsigned char *)notoSansRegular, notoSansRegularLength,
-    0);
-  int iconFont = fonsAddFontMem(
-    app->fsctx, "icons", (unsigned char *)schemalibSymbols,
-    schemalibSymbolsLength, 0);
+  app->assetsys = assetsys_create(0);
+  assetsys_mount_from_memory(app->assetsys, assets_zip, assets_zip_len, "/");
+
+  assetsys_file_t file;
+  assetsys_file(app->assetsys, "/assets/NotoSans-Regular.ttf", &file);
+  int mainFontSize = assetsys_file_size(app->assetsys, file);
+  unsigned char *mainFontData = malloc(mainFontSize);
+  assetsys_file_load(
+    app->assetsys, file, &mainFontSize, mainFontData, mainFontSize);
+  int mainFont =
+    fonsAddFontMem(app->fsctx, "sans", mainFontData, mainFontSize, 1);
+
+  assetsys_file(app->assetsys, "/assets/symbols.ttf", &file);
+  int symbolsFontSize = assetsys_file_size(app->assetsys, file);
+  unsigned char *symbolsFontData = malloc(symbolsFontSize);
+  assetsys_file_load(
+    app->assetsys, file, &symbolsFontSize, symbolsFontData, symbolsFontSize);
+  int iconFont =
+    fonsAddFontMem(app->fsctx, "icons", symbolsFontData, symbolsFontSize, 1);
+
   app->fonsFont = (FonsFont){
     .fsctx = app->fsctx,
     .mainFont = mainFont,
@@ -124,40 +156,6 @@ static void init(void *user_data) {
   ux_init(&app->circuit, circuit_component_descs(), (FontHandle)&app->fonsFont);
 
   draw_init(&app->draw, app->fsctx);
-
-  // ComponentID and = ux_add_component(&app->circuit, COMP_AND, HMM_V2(100,
-  // 100)); ComponentID or = ux_add_component(&app->circuit, COMP_OR,
-  // HMM_V2(300, 200)); ComponentID not = ux_add_component(&app->circuit,
-  // COMP_NOT, HMM_V2(200, 150));
-
-  // ux_add_net(
-  //   &app->circuit, view_port_start(&app->circuit.view, and) + 2,
-  //   view_port_start(&app->circuit.view, not ));
-
-  // ux_add_net(
-  //   &app->circuit, view_port_start(&app->circuit.view, not ) + 1,
-  //   view_port_start(&app->circuit.view, or));
-
-  // ux_add_net(
-  //   &app->circuit, view_port_start(&app->circuit.view, and),
-  //   view_port_start(&app->circuit.view, or) + 2);
-
-  // ux_add_net(
-  //   &app->circuit, view_port_start(&app->circuit.view, and) + 1,
-  //   view_port_start(&app->circuit.view, or) + 1);
-
-  // import_digital(&app->circuit, "testdata/alu_1bit_2inpgate.dig");
-  // import_digital(&app->circuit, "testdata/alu_1bit_2gatemux.dig");
-  // import_digital(&app->circuit, "testdata/simple_test.dig");
-  import_digital(&app->circuit, app->filename);
-
-  // FILE *fp = fopen("circuit.dot", "w");
-  // circuit_write_dot(&app->circuit.view.circuit, fp);
-  // fclose(fp);
-
-  ux_route(&app->circuit);
-
-  // autoroute_dump_anchor_boxes(app->circuit.router);
 
   app->pzoom = app->circuit.view.zoom;
 }
@@ -177,227 +175,28 @@ void cleanup(void *user_data) {
   free(app);
 }
 
-struct nk_canvas {
-  struct my_app_t *app;
-  struct nk_command_buffer *painter;
-  struct nk_vec2 item_spacing;
-  struct nk_vec2 panel_padding;
-  struct nk_style_item window_background;
-};
+void load_file(my_app_t *app, const char *filename) {
+  assetsys_file_t file;
+  assetsys_file(app->assetsys, filename, &file);
+  int fileSize = assetsys_file_size(app->assetsys, file);
+  char *buffer = malloc(fileSize + 1);
+  assetsys_file_load(app->assetsys, file, &fileSize, buffer, fileSize);
+  buffer[fileSize] = 0;
 
-static nk_bool canvas_begin(
-  struct nk_context *ctx, struct nk_canvas *canvas, nk_flags flags, int x,
-  int y, int width, int height, struct nk_color background_color) {
-  /* save style properties which will be overwritten */
-  canvas->panel_padding = ctx->style.window.padding;
-  canvas->item_spacing = ctx->style.window.spacing;
-  canvas->window_background = ctx->style.window.fixed_background;
+  log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  /* use the complete window space and set background */
-  ctx->style.window.spacing = nk_vec2(0, 0);
-  ctx->style.window.padding = nk_vec2(0, 0);
-  ctx->style.window.fixed_background = nk_style_item_color(background_color);
+  import_digital(&app->circuit, buffer);
+  ux_route(&app->circuit);
 
-  /* create/update window and set position + size */
-  if (!nk_begin(
-        ctx, "Canvas", nk_rect(x, y, width, height),
-        NK_WINDOW_NO_SCROLLBAR | flags))
-    return nk_false;
+  // autoroute_dump_anchor_boxes(app->circuit.router);
 
-  /* allocate the complete window space for drawing */
-  {
-    struct nk_rect total_space;
-    total_space = nk_window_get_content_region(ctx);
-    nk_layout_row_dynamic(ctx, total_space.h, 1);
-    nk_widget(&total_space, ctx);
-    canvas->painter = nk_window_get_canvas(ctx);
-  }
-
-  return nk_true;
+  app->loaded = true;
 }
-
-static void canvas_end(struct nk_context *ctx, struct nk_canvas *canvas) {
-  nk_end(ctx);
-  ctx->style.window.spacing = canvas->panel_padding;
-  ctx->style.window.padding = canvas->item_spacing;
-  ctx->style.window.fixed_background = canvas->window_background;
-}
-
-static void canvas(struct nk_context *ctx, my_app_t *app) {
-  struct nk_canvas canvas = {.app = app};
-  if (canvas_begin(
-        ctx, &canvas, 0, 0, 0, sapp_width(), sapp_height(),
-        nk_rgb(0x22, 0x29, 0x33))) {
-    app->circuit.input.frameDuration = sapp_frame_duration();
-
-    ux_draw(&app->circuit, &app->draw);
-
-    app->circuit.input.scroll = HMM_V2(0, 0);
-    app->circuit.input.mouseDelta = HMM_V2(0, 0);
-  }
-  canvas_end(ctx, &canvas);
-}
-
-#if 0
-void draw_filled_rect(
-  Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius, HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-
-  nk_fill_rect(
-    canvas->painter, nk_rect(position.X, position.Y, size.X, size.Y), radius,
-    nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_stroked_rect(
-  Context ctx, HMM_Vec2 position, HMM_Vec2 size, float radius,
-  float line_thickness, HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_stroke_rect(
-    canvas->painter, nk_rect(position.X, position.Y, size.X, size.Y), radius,
-    line_thickness, nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_filled_circle(
-  Context ctx, HMM_Vec2 position, HMM_Vec2 size, HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_fill_circle(
-    canvas->painter, nk_rect(position.X, position.Y, size.X, size.Y),
-    nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_stroked_circle(
-  Context ctx, HMM_Vec2 position, HMM_Vec2 size, float line_thickness,
-  HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_stroke_circle(
-    canvas->painter, nk_rect(position.X, position.Y, size.X, size.Y),
-    line_thickness, nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_stroked_arc(
-  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
-  float line_thickness, HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_stroke_arc(
-    canvas->painter, position.X, position.Y, radius, aMin, aMax, line_thickness,
-    nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_filled_arc(
-  Context ctx, HMM_Vec2 position, float radius, float aMin, float aMax,
-  HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_fill_arc(
-    canvas->painter, position.X, position.Y, radius, aMin, aMax,
-    nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_stroked_curve(
-  Context ctx, HMM_Vec2 a, HMM_Vec2 ctrl0, HMM_Vec2 ctrl1, HMM_Vec2 b,
-  float line_thickness, HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_stroke_curve(
-    canvas->painter, a.X, a.Y, ctrl0.X, ctrl0.Y, ctrl1.X, ctrl1.Y, b.X, b.Y,
-    line_thickness, nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_stroked_line(
-  Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
-  HMM_Vec4 color) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  nk_stroke_line(
-    canvas->painter, start.X, start.Y, end.X, end.Y, line_thickness,
-    nk_rgba_f(color.R, color.G, color.B, color.A));
-}
-
-void draw_text(
-  Context ctx, Box rect, const char *text, int len, float fontSize,
-  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
-  struct nk_canvas *canvas = (struct nk_canvas *)ctx;
-  (void)canvas;
-  FonsFont *f = (FonsFont *)font;
-  FONScontext *fsctx = f->fsctx;
-
-  // top left corner of rect
-  HMM_Vec2 dot = box_top_left(rect);
-
-  // position dot in bottom left corner of rect
-  dot.Y += rect.halfSize.Y * 2;
-
-  fonsPushState(fsctx);
-  fonsSetSize(fsctx, fontSize);
-  fonsSetColor(
-    fsctx, fsgp_rgba(
-             (uint8_t)(fgColor.R * 255.0f), (uint8_t)(fgColor.G * 255.0f),
-             (uint8_t)(fgColor.B * 255.0f), (uint8_t)(fgColor.A * 255.0f)));
-  fonsSetAlign(fsctx, FONS_ALIGN_LEFT | FONS_ALIGN_BOTTOM);
-  if (len > 0 && text[0] < ' ') {
-    fonsSetFont(fsctx, f->iconFont);
-  } else {
-    fonsSetFont(fsctx, f->mainFont);
-  }
-
-  fonsDrawText(fsctx, dot.X, dot.Y, text, text + len);
-
-  fonsPopState(fsctx);
-}
-
-Box draw_text_bounds(
-  HMM_Vec2 pos, const char *text, int len, HorizAlign horz, VertAlign vert,
-  float fontSize, FontHandle font) {
-  FonsFont *f = (FonsFont *)font;
-  FONScontext *fsctx = f->fsctx;
-
-  fonsPushState(fsctx);
-  int align = 0;
-  switch (horz) {
-  case ALIGN_LEFT:
-    align |= FONS_ALIGN_LEFT;
-    break;
-  case ALIGN_CENTER:
-    align |= FONS_ALIGN_CENTER;
-    break;
-  case ALIGN_RIGHT:
-    align |= FONS_ALIGN_RIGHT;
-    break;
-  }
-  switch (vert) {
-  case ALIGN_TOP:
-    align |= FONS_ALIGN_TOP;
-    break;
-  case ALIGN_MIDDLE:
-    align |= FONS_ALIGN_MIDDLE;
-    break;
-  case ALIGN_BOTTOM:
-    align |= FONS_ALIGN_BOTTOM;
-    break;
-  }
-  fonsSetAlign(fsctx, align);
-  fonsSetSize(fsctx, fontSize);
-
-  if (len > 0 && text[0] < ' ') {
-    fonsSetFont(fsctx, f->iconFont);
-  } else {
-    fonsSetFont(fsctx, f->mainFont);
-  }
-
-  float bounds[4];
-
-  fonsTextBounds(fsctx, pos.X, pos.Y, text, text + len, bounds);
-
-  fonsPopState(fsctx);
-
-  HMM_Vec2 halfSize =
-    HMM_V2((bounds[2] - bounds[0]) / 2.0f, (bounds[3] - bounds[1]) / 2.0f);
-  HMM_Vec2 center = HMM_V2(bounds[0] + halfSize.X, bounds[1] + halfSize.Y);
-
-  return (Box){.center = center, .halfSize = halfSize};
-}
-#endif
 
 void frame(void *user_data) {
+  uint64_t frameStart = stm_now();
+
   my_app_t *app = (my_app_t *)user_data;
-  (void)app;
 
   if (app->pzoom != app->circuit.view.zoom) {
     // on zoom change, reset the font atlas
@@ -406,12 +205,41 @@ void frame(void *user_data) {
   }
 
   struct nk_context *ctx = snk_new_frame();
-  (void)ctx;
 
   int width = sapp_width(), height = sapp_height();
   sgp_begin(width, height);
+  sgp_set_blend_mode(SGP_BLENDMODE_BLEND);
 
-  canvas(ctx, app);
+  if (!app->loaded) {
+    if (nk_begin(
+          ctx, "Load example file",
+          nk_rect(
+            (float)width / 3, (float)height / 3, (float)width / 3,
+            (float)height / 3),
+          NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
+      struct nk_vec2 min = nk_window_get_content_region_min(ctx);
+      struct nk_vec2 max = nk_window_get_content_region_max(ctx);
+      float height = ((max.y - min.y) / 3) - 5;
+      nk_layout_row_dynamic(ctx, height, 1);
+      if (nk_button_label(ctx, "Load small sized test circuit")) {
+        load_file(app, "/assets/testdata/simple_test.dig");
+      }
+
+      if (nk_button_label(ctx, "Load medium sized test circuit")) {
+        load_file(app, "/assets/testdata/alu_1bit_2gatemux.dig");
+      }
+
+      if (nk_button_label(ctx, "Load large sized test circuit")) {
+        load_file(app, "/assets/testdata/alu_1bit_2inpgate.dig");
+      }
+    }
+    nk_end(ctx);
+  }
+
+  app->circuit.input.frameDuration = sapp_frame_duration();
+  ux_draw(&app->circuit, &app->draw);
+  app->circuit.input.scroll = HMM_V2(0, 0);
+  app->circuit.input.mouseDelta = HMM_V2(0, 0);
 
   sg_pass pass = {
     .action =
@@ -427,12 +255,44 @@ void frame(void *user_data) {
   fsgp_flush(app->fsctx);
 
   snk_render(sapp_width(), sapp_height());
+
+  sg_frame_stats stats = sg_query_frame_stats();
+
+  uint64_t avgFrameInterval = 0.0;
+  for (int i = 0; i < 60; i++) {
+    avgFrameInterval += app->frameIntervals[i];
+  }
+  avgFrameInterval /= 60;
+
+  char buff[256];
+  if (app->circuit.showFPS) {
+    snprintf(
+      buff, sizeof(buff),
+      "Draw time: %1.2f Frame interval: %.2f FPS: %.2f Draws: %d Appends %d",
+      stm_ms(app->lastDrawTime), stm_ms(avgFrameInterval),
+      1 / stm_sec(avgFrameInterval), stats.num_draw, stats.num_append_buffer);
+
+    Box box = draw_text_bounds(
+      HMM_V2(0, 0), buff, strlen(buff), ALIGN_LEFT, ALIGN_TOP, 12.0,
+      &app->fonsFont);
+    draw_text(
+      &app->draw, box, buff, strlen(buff), 16.0, &app->fonsFont,
+      HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
+  }
+
   sgp_flush();
   sgp_end();
   sg_end_pass();
   sg_commit();
 
   bv_clear_all(app->circuit.input.keysPressed);
+
+  uint64_t frameInterval = stm_laptime(&app->frameIntervalTime);
+
+  app->frameIntervals[app->frameIntervalIndex] = frameInterval;
+  app->frameIntervalIndex = (app->frameIntervalIndex + 1) % 60;
+
+  app->lastDrawTime = stm_since(frameStart);
 }
 
 void event(const sapp_event *event, void *user_data) {
@@ -502,6 +362,7 @@ void handler(int sig) {
 
 sapp_desc sokol_main(int argc, char *argv[]) {
   ux_global_init();
+  stm_setup();
 
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){
@@ -519,8 +380,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 #endif
 
   return (sapp_desc){
-    .width = 1024,
-    .height = 768,
+    .width = 1280,
+    .height = 720,
     .user_data = app,
     .init_userdata_cb = init,
     .frame_userdata_cb = frame,

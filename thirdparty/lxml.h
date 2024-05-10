@@ -191,29 +191,7 @@ static TagType parse_attributes(
   return TAG_START;
 }
 
-/** bool LXMLDocument_load(LXMLDocument* doc, const char* path)
- *
- */
-int LXMLDocument_load(LXMLDocument *doc, const char *path) {
-  DEBUG_PRINT("opening file %s \n", path);
-  FILE *file = fopen(path, "r");
-  if (!file) {
-    fprintf(stderr, "Failed to open file '%s' \n", path);
-    return FALSE;
-  }
-
-  // Find size of file
-  fseek(file, 0, SEEK_END);
-  int size = ftell(file);
-  fseek(file, 0, SEEK_SET);
-
-  // Create a buffer to fill with the data of the document
-  char *buffer = (char *)malloc(sizeof(char) * size + 1);
-  // Read the document into the buffer
-  fread(buffer, 1, size, file);
-  fclose(file);
-  buffer[size] = '\0';
-
+int LXMLDocument_load_memory(LXMLDocument *doc, char *buffer) {
   doc->root = LXMLNode_new(NULL);
 
   // Lexical Analysis
@@ -335,10 +313,38 @@ int LXMLDocument_load(LXMLDocument *doc, const char *path) {
     }
   }
 
+  return TRUE;
+}
+
+/** bool LXMLDocument_load(LXMLDocument* doc, const char* path)
+ *
+ */
+int LXMLDocument_load(LXMLDocument *doc, const char *path) {
+  DEBUG_PRINT("opening file %s \n", path);
+  FILE *file = fopen(path, "r");
+  if (!file) {
+    fprintf(stderr, "Failed to open file '%s' \n", path);
+    return FALSE;
+  }
+
+  // Find size of file
+  fseek(file, 0, SEEK_END);
+  int size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  // Create a buffer to fill with the data of the document
+  char *buffer = (char *)malloc(sizeof(char) * size + 1);
+  // Read the document into the buffer
+  fread(buffer, 1, size, file);
+  fclose(file);
+  buffer[size] = '\0';
+
+  int ret = LXMLDocument_load_memory(doc, buffer);
+
   // Free the initial buffer
   free(buffer);
   // if we succeeded, return true
-  return TRUE;
+  return ret;
 }
 
 static void node_out(FILE *file, LXMLNode *node, int indent, int times) {
