@@ -113,8 +113,58 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 
     if(USE_WAYLAND)
+        if(NOT DEFINED WAYLAND_SCANNER_EXECUTABLE)
+            find_program(WAYLAND_SCANNER_EXECUTABLE NAMES wayland-scanner)
+        endif()
+
+        # todo: make this less hard-coded
+        add_custom_command(
+            OUTPUT  xdg-shell-protocol.h
+            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} client-header
+                    < /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml
+                    > ${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.h
+        )
+        add_custom_command(
+            OUTPUT  xdg-shell-protocol.c
+            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} private-code
+                    < /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml
+                    > ${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c
+        )
+
+        add_custom_command(
+            OUTPUT  pointer-constraints-unstable-v1-protocol.h
+            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} client-header
+                    < /usr/share/wayland-protocols/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml
+                    > ${CMAKE_CURRENT_BINARY_DIR}/pointer-constraints-unstable-v1-protocol.h
+        )
+        add_custom_command(
+            OUTPUT  pointer-constraints-unstable-v1-protocol.c
+            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} private-code
+                    < /usr/share/wayland-protocols/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml
+                    > ${CMAKE_CURRENT_BINARY_DIR}/pointer-constraints-unstable-v1-protocol.c
+        )
+
+        add_custom_command(
+            OUTPUT  relative-pointer-unstable-v1-protocol.h
+            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} client-header
+                    < /usr/share/wayland-protocols/unstable/relative-pointer/relative-pointer-unstable-v1.xml
+                    > ${CMAKE_CURRENT_BINARY_DIR}/relative-pointer-unstable-v1-protocol.h
+        )
+        add_custom_command(
+            OUTPUT  relative-pointer-unstable-v1-protocol.c
+            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} private-code
+                    < /usr/share/wayland-protocols/unstable/relative-pointer/relative-pointer-unstable-v1.xml
+                    > ${CMAKE_CURRENT_BINARY_DIR}/relative-pointer-unstable-v1-protocol.c
+        )
+
+        include_directories(
+            ${CMAKE_CURRENT_BINARY_DIR}
+        )
+
+        target_include_directories(digilogic PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
         target_compile_definitions(digilogic PUBLIC "SOKOL_DISABLE_X11")
-        target_compile_definitions(digilogic PUBLIC "SOKOL_CUSTOM")
+        target_compile_definitions(digilogic PUBLIC "SOKOL_LINUX_CUSTOM")
         target_link_libraries(digilogic PUBLIC
             "wayland-client"
             "wayland-cursor"

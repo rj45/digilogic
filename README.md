@@ -46,19 +46,32 @@ cmake --build build --config Release
 build\Release\digilogic.exe
 ```
 
-### Linux
+### Linux X11 (Xorg)
 
-*Note: linux is currently untested. I do have a linux box, so this will be fixed eventually.*
+You will need FreeType, cmake and build essentials installed. You may also need dev libraries for X11.
 
-You will need FreeType, cmake and build essentials installed. You may also need dev libraries for X1.
-
-X11 is the default, but Wayland is also possible with `-DUSE_WAYLAND=1` on the cmake line below. Note that Wayland support is experimental.
+Note: Older versions of FreeType may cause font rendering issues, need to investigate if there is a fix.
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
 mkdir build
 cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+./digilogic
+```
+
+### Linux Wayland
+
+Note: Wayland support is experimental. Most things should work. But there is no window decorations on gnome. You can move the window around by holding `ALT` and dragging it.
+
+You will need FreeType, cmake and build essentials installed. You may also need dev libraries for Wayland.
+
+```sh
+git clone --recurse-submodules https://github.com/rj45/digilogic.git
+cd digilogic
+mkdir build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_WAYLAND=1
 make
 ./digilogic
 ```
