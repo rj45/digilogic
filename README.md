@@ -63,7 +63,7 @@ make
 
 ### Linux Wayland
 
-Note: Wayland support is experimental. Most things should work. But there is no window decorations on gnome. You can move the window around by holding `ALT` and dragging it.
+Note: For gnome, I recommend using Xwayland and compiling for X11 rather than native wayland. This will give you window decorations. If you don't use gnome, then you won't have this problem and Wayland will work fine for you.
 
 You will need FreeType, cmake and build essentials installed. You may also need dev libraries for Wayland.
 

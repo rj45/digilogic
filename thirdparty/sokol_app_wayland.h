@@ -815,12 +815,12 @@ _sapp_wl_scroll_event(bool is_vertical_axis, double value, uint32_t modifiers) {
       // My mouse: value is +/-15 per click scrolling 75 lines
       // (per ImGui docs for MouseWheel: 1 unit = 5 lines of text)
       // For 3 lines per click, multiply by 3/75 = 1/25
-      scroll /= 25.0f;
+      // scroll /= 25.0f;
       _sapp.event.scroll_y = scroll;
     } else {
       // My mouse: value is +/-7 per click scrolling 27 columns
       // For ~5 columns per click, multiply by 5/27 ~= 1/5
-      scroll /= 5.0f;
+      // scroll /= 5.0f;
       _sapp.event.scroll_x = scroll;
     }
     _sapp.event.modifiers = modifiers;
