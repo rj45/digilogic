@@ -1,10 +1,12 @@
 # digilogic
 
-- Initially (MVP) just a circuit diagram editor for iOS and Mac
+- Initially (MVP) just a circuit diagram editor
 - With the following features:
     - Wire auto-routing
     - Alignment based snapping (rather than grid based)
     - First class dark mode support
+    - Cross platform (Windows, Mac, Linux, iOS, Android)
+    - Native C (with some Rust), and light weight
 - Inspirations:
     - Issie (github.com/tomcl/issie)
     - Digital Logic Sim (github.com/SebLague/Digital-Logic-Sim)
