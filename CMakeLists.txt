@@ -4,7 +4,6 @@ project(digilogic LANGUAGES C)
 set(DIGILOGIC_SRCS
     src/main.c
     src/core/circuit.c
-    src/core/timer.c
     src/core/smap.c
     src/ux/ux.c
     src/ux/input.c
@@ -121,8 +120,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_compile_definitions(digilogic PUBLIC "SOKOL_DISABLE_WAYLAND")
         target_link_libraries(digilogic PUBLIC
             "X11"
-            "Xcursor"
             "Xi"
+            "Xcursor"
             "GL"
         )
         if (USE_EGL)

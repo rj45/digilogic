@@ -495,45 +495,4 @@ arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result);
 /** Get the value of a specific bit in the bitvector. */
 #define bv_val(bv, i) bv_is_set(bv, i) >> ((i) & BV_MASK(bv))
 
-////////////////////////////////////////////////////////////////////////////////
-// Timer
-////////////////////////////////////////////////////////////////////////////////
-
-#if defined(__APPLE__)
-#include <mach/mach_time.h>
-#elif defined(_WIN32)
-#include <windows.h>
-#else
-#include <time.h>
-#endif
-
-typedef struct Timer {
-#if defined(__APPLE__)
-  struct {
-    mach_timebase_info_data_t timebase;
-    uint64_t start;
-  } mach;
-#elif defined(__EMSCRIPTEN__)
-  // empty
-#elif defined(_WIN32)
-  struct {
-    LARGE_INTEGER freq;
-    LARGE_INTEGER start;
-  } win;
-#else // Linux, Android, ...
-#ifdef CLOCK_MONOTONIC
-#define TIMER_CLOCK_MONOTONIC CLOCK_MONOTONIC
-#else
-// on some embedded platforms, CLOCK_MONOTONIC isn't defined
-#define TIMER_CLOCK_MONOTONIC (1)
-#endif
-  struct {
-    uint64_t start;
-  } posix;
-#endif
-} Timer;
-
-void timer_init(Timer *ts);
-double timer_now(Timer *ts);
-
 #endif // CORE_H

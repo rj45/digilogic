@@ -14,10 +14,13 @@
    limitations under the License.
 */
 
+#include "sokol_time.h"
+
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "routing/routing.h"
 #include "view/view.h"
+#include <stdint.h>
 
 #define LOG_LEVEL LL_INFO
 #include "log.h"
@@ -44,8 +47,6 @@ struct AutoRoute {
   RT_Graph *graph;
 
   arr(RT_VertexBuffer) vertexBuffers;
-
-  Timer timer;
 };
 
 void autoroute_global_init() {
@@ -84,8 +85,6 @@ AutoRoute *autoroute_create(CircuitView *view) {
         .vertex_count = 0,
       }));
   }
-
-  timer_init(&ar->timer);
 
   return ar;
 }
@@ -232,7 +231,7 @@ void autoroute_update_junction(AutoRoute *ar, ID id) {
 }
 
 void autoroute_route(AutoRoute *ar, bool betterRoutes) {
-  double start = timer_now(&ar->timer);
+  uint64_t start = stm_now();
 
   RT_Result res = RT_graph_build(
     ar->graph, ar->anchors, arrlen(ar->anchors), ar->boxes,
@@ -242,18 +241,18 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   }
   assert(res == RT_RESULT_SUCCESS);
 
-  double graphBuild = timer_now(&ar->timer);
+  uint64_t graphBuild = stm_since(start);
+  uint64_t pathFindStart = stm_now();
 
   res = RT_graph_find_paths(
     ar->graph, ar->paths, ar->pathRanges, circuit_wire_len(&ar->view->circuit),
     ar->vertexBuffers, ar->vertBufferCapacity);
   assert(res == RT_RESULT_SUCCESS);
 
-  double pathFind = timer_now(&ar->timer);
+  uint64_t pathFind = stm_since(pathFindStart);
 
   log_info(
-    "Graph build: %f, Path find: %f", graphBuild - start,
-    pathFind - graphBuild);
+    "Graph build: %fms, Path find: %fms", stm_ms(graphBuild), stm_ms(pathFind));
 }
 
 size_t autoroute_wire_vertices(
