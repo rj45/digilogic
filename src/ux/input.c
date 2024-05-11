@@ -229,10 +229,6 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         }
         break;
 
-      case STATE_SELECT_AREA:
-        ux->selectionCenter = ux_calc_selection_center(ux);
-        break;
-
       default:
         break;
       }
@@ -262,13 +258,21 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
     break;
   }
-  case STATE_SELECT_AREA:
+  case STATE_SELECT_AREA: {
+    Box area = box_from_tlbr(ux->downStart, worldMousePos);
+    if (arrlen(ux->view.selected) > 0) {
+      ux->selectionCenter = ux_calc_selection_center(ux);
+    } else {
+      ux->selectionCenter = area.center;
+    }
+
     ux_do(
       ux, (UndoCommand){
             .verb = UNDO_SELECT_AREA,
-            .area = box_from_tlbr(ux->downStart, worldMousePos),
+            .area = area,
           });
     break;
+  }
   case STATE_PAN: {
     HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
     ux->downStart = worldMousePos;

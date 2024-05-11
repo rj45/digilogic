@@ -175,6 +175,10 @@ void autoroute_update_component(AutoRoute *ar, ID id) {
   ComponentView *compView = view_component_ptr(ar->view, id);
   RT_BoundingBox *box =
     &ar->boxes[circuit_component_index(&ar->view->circuit, id)];
+  assert(!isnan(compView->box.center.X));
+  assert(!isnan(compView->box.center.Y));
+  assert(!isnan(compView->box.halfSize.X));
+  assert(!isnan(compView->box.halfSize.Y));
   *box = (RT_BoundingBox){
     .center =
       {

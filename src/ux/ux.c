@@ -69,9 +69,12 @@ WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to) {
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
   ComponentView *componentView = view_component_ptr(&ux->view, id);
+  assert(!isnan(delta.X));
+  assert(!isnan(delta.Y));
+
   componentView->box.center = HMM_AddV2(componentView->box.center, delta);
 
-  log_debug("Move updating component %x\n", id);
+  log_debug("Move updating component %x", id);
   autoroute_update_component(ux->router, id);
   PortID portID = circuit_component_ptr(&ux->view.circuit, id)->portFirst;
   while (portID) {
@@ -85,18 +88,18 @@ void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
       while (wireID) {
         Wire *wire = circuit_wire_ptr(&ux->view.circuit, wireID);
         if (wire->from == portID || wire->to == portID) {
-          log_debug("  Move updating wire %x\n", wireID);
+          log_debug("  Move updating wire %x", wireID);
           autoroute_update_wire(ux->router, wireID);
           found = true;
         }
         wireID = wire->next;
       }
     } else {
-      log_debug("  Port %x has no net\n", portID);
+      log_debug("  Port %x has no net", portID);
     }
 
     if (!found) {
-      log_debug("  Could not find wire for port %x\n", portID);
+      log_debug("  Could not find wire for port %x", portID);
     }
 
     portID = port->compNext;
@@ -137,6 +140,7 @@ void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta) {
 
 HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
   HMM_Vec2 center = HMM_V2(0, 0);
+  assert(arrlen(ux->view.selected) > 0);
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
     if (id_type(id) == ID_COMPONENT) {
