@@ -63,7 +63,7 @@ make
 
 ### Linux Wayland
 
-Note: For gnome, I recommend using Xwayland and compiling for X11 rather than native wayland. This will give you window decorations. If you don't use gnome, then you won't have this problem and Wayland will work fine for you.
+Note: For Gnome, I recommend using Xwayland and compiling for X11 rather than native Wayland. This will give you window decorations. If you don't use Gnome, then you won't have this problem and Wayland will work fine for you. I welcome contributions to get libdecor working for Gnome+Wayland.
 
 You will need FreeType, cmake and build essentials installed. You may also need dev libraries for Wayland.
 
