@@ -18,6 +18,9 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
+#define SOKOL_IMPL
+#include "sokol_time.h"
+
 #include "utest.h"
 
 UTEST_STATE();

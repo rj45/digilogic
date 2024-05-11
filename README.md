@@ -50,7 +50,9 @@ build\Release\digilogic.exe
 
 *Note: linux is currently untested. I do have a linux box, so this will be fixed eventually.*
 
-You will need FreeType, cmake and build essentials installed. You may also need dev libraries for X11 or Wayland. Wayland is the default, but X11 is also possible with `-DUSE_X11=1` on the cmake line below.
+You will need FreeType, cmake and build essentials installed. You may also need dev libraries for X1.
+
+X11 is the default, but Wayland is also possible with `-DUSE_WAYLAND=1` on the cmake line below. Note that Wayland support is experimental.
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git

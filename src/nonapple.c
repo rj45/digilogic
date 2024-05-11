@@ -29,9 +29,14 @@
 
 #define SOKOL_IMPL
 
+#ifdef SOKOL_LINUX_CUSTOM
+#include "sokol_app_wayland.h"
+#else
+#include "sokol_app.h"
+#endif
+
 #include "assetsys.h"
 #include "nuklear.h"
-#include "sokol_app.h"
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
 #include "sokol_gp.h"

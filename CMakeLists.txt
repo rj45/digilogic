@@ -102,10 +102,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         "src/nonapple.c"
     )
 
-    target_link_libraries(digilogic PUBLIC
-        "GL"
-    )
-
     if (USE_GLES)
         target_compile_definitions(digilogic PUBLIC "SOKOL_GLES3")
     else()
@@ -116,7 +112,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_compile_definitions(digilogic PUBLIC "SOKOL_FORCE_EGL")
     endif()
 
-    if(USE_X11)
+    if(USE_WAYLAND)
+        target_compile_definitions(digilogic PUBLIC "SOKOL_DISABLE_X11")
+        target_compile_definitions(digilogic PUBLIC "SOKOL_CUSTOM")
+        target_link_libraries(digilogic PUBLIC
+            "wayland-client"
+            "wayland-cursor"
+            "wayland-egl"
+            "xkbcommon"
+            "GL"
+            "EGL"
+        )
+    else() # use X11 (default)
         target_compile_definitions(digilogic PUBLIC "SOKOL_DISABLE_WAYLAND")
         target_link_libraries(digilogic PUBLIC
             "X11"
@@ -129,15 +136,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
                 "EGL"
             )
         endif()
-    else() # use wayland (default)
-        target_compile_definitions(digilogic PUBLIC "SOKOL_DISABLE_X11")
-        target_link_libraries(digilogic PUBLIC
-            "wayland-client"
-            "wayland-cursor"
-            "wayland-egl"
-            "xkbcommon"
-            "EGL"
-        )
     endif()
 endif()
 

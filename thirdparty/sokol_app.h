@@ -50,6 +50,8 @@
     On Linux, SOKOL_GLCORE33 can use either GLX or EGL.
     GLX is default, set SOKOL_FORCE_EGL to override.
 
+    To roll your own linux backend (e.g. wayland, GLFW, or SDL) see #define SOKOL_LINUX_CUSTOM
+
     For example code, see https://github.com/floooh/sokol-samples/tree/master/sapp
 
     Portions of the Windows and Linux GL initialization, event-, icon- etc... code
@@ -1993,8 +1995,13 @@ inline void sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
 #elif defined(__linux__) || defined(__unix__)
     /* Linux */
     #define _SAPP_LINUX (1)
+    #if defined(SOKOL_LINUX_CUSTOM)
+        #define _SAPP_LINUX_CUSTOM
+    #else
+        #define _SAPP_LINUX_X11
+    #endif
     #if defined(SOKOL_GLCORE33)
-        #if !defined(SOKOL_FORCE_EGL)
+        #if defined(_SAPP_LINUX_X11) && !defined(SOKOL_FORCE_EGL)
             #define _SAPP_GLX (1)
         #endif
         #define GL_GLEXT_PROTOTYPES
@@ -2134,19 +2141,21 @@ inline void sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #include <GLES3/gl3.h>
 #elif defined(_SAPP_LINUX)
     #define GL_GLEXT_PROTOTYPES
-    #include <X11/Xlib.h>
-    #include <X11/Xutil.h>
-    #include <X11/XKBlib.h>
-    #include <X11/keysym.h>
-    #include <X11/Xresource.h>
-    #include <X11/Xatom.h>
-    #include <X11/extensions/XInput2.h>
-    #include <X11/Xcursor/Xcursor.h>
-    #include <X11/cursorfont.h> /* XC_* font cursors */
-    #include <X11/Xmd.h> /* CARD32 */
-    #if !defined(_SAPP_GLX)
-        #include <EGL/egl.h>
-    #endif
+    #if defined(_SAPP_LINUX_X11)
+        #include <X11/Xlib.h>
+        #include <X11/Xutil.h>
+        #include <X11/XKBlib.h>
+        #include <X11/keysym.h>
+        #include <X11/Xresource.h>
+        #include <X11/Xatom.h>
+        #include <X11/extensions/XInput2.h>
+        #include <X11/Xcursor/Xcursor.h>
+        #include <X11/cursorfont.h> /* XC_* font cursors */
+        #include <X11/Xmd.h> /* CARD32 */
+        #if !defined(_SAPP_GLX)
+            #include <EGL/egl.h>
+        #endif
+    #endif // _SAPP_LINUX_X11
     #include <dlfcn.h> /* dlopen, dlsym, dlclose */
     #include <limits.h> /* LONG_MAX */
     #include <pthread.h>    /* only used a linker-guard, search for _sapp_linux_run() and see first comment */
@@ -2654,7 +2663,7 @@ typedef struct {
 
 #endif // _SAPP_ANDROID
 
-#if defined(_SAPP_LINUX)
+#if defined(_SAPP_LINUX_X11)
 
 #define _SAPP_X11_XDND_VERSION (5)
 
@@ -2804,7 +2813,7 @@ typedef struct {
 } _sapp_egl_t;
 
 #endif // _SAPP_GLX
-#endif // _SAPP_LINUX
+#endif // _SAPP_LINUX_X11
 
 #if defined(_SAPP_ANY_GL)
 typedef struct {
@@ -2881,7 +2890,7 @@ typedef struct {
         #endif
     #elif defined(_SAPP_ANDROID)
         _sapp_android_t android;
-    #elif defined(_SAPP_LINUX)
+    #elif defined(_SAPP_LINUX_X11)
         _sapp_x11_t x11;
         #if defined(_SAPP_GLX)
             _sapp_glx_t glx;
@@ -8721,6 +8730,7 @@ void ANativeActivity_onCreate(ANativeActivity* activity, void* saved_state, size
 // >>linux
 #if defined(_SAPP_LINUX)
 
+#if defined(_SAPP_LINUX_X11)
 /* see GLFW's xkb_unicode.c */
 static const struct _sapp_x11_codepair {
   uint16_t keysym;
@@ -10575,7 +10585,9 @@ _SOKOL_PRIVATE int32_t _sapp_x11_keysym_to_unicode(KeySym keysym) {
     return -1;
 }
 
-_SOKOL_PRIVATE bool _sapp_x11_parse_dropped_files_list(const char* src) {
+#endif // _SAPP_LINUX_X11
+
+_SOKOL_PRIVATE bool _sapp_linux_parse_dropped_files_list(const char* src) {
     SOKOL_ASSERT(src);
     SOKOL_ASSERT(_sapp.drop.buffer);
 
@@ -10652,6 +10664,8 @@ _SOKOL_PRIVATE bool _sapp_x11_parse_dropped_files_list(const char* src) {
         return true;
     }
 }
+
+#if defined(_SAPP_LINUX_X11)
 
 // XLib manual says keycodes are in the range [8, 255] inclusive.
 // https://tronche.com/gui/x/xlib/input/keyboard-encoding.html
@@ -10912,7 +10926,7 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
                                                                 event->xselection.target,
                                                                 (unsigned char**) &data);
                 if (_sapp.drop.enabled && result) {
-                    if (_sapp_x11_parse_dropped_files_list(data)) {
+                    if (_sapp_linux_parse_dropped_files_list(data)) {
                         _sapp.mouse.dx = 0.0f;
                         _sapp.mouse.dy = 0.0f;
                         if (_sapp_events_enabled()) {
@@ -11158,6 +11172,16 @@ _SOKOL_PRIVATE void _sapp_linux_run(const sapp_desc* desc) {
     XCloseDisplay(_sapp.x11.display);
     _sapp_discard_state();
 }
+#elif defined(_SAPP_LINUX_CUSTOM)
+_SOKOL_PRIVATE void _sapp_linux_run(const sapp_desc* desc);
+_SOKOL_PRIVATE void _sapp_linux_toggle_fullscreen(void);
+_SOKOL_PRIVATE void _sapp_linux_update_cursor(sapp_mouse_cursor cursor, bool shown);
+_SOKOL_PRIVATE void _sapp_linux_lock_mouse(bool lock);
+_SOKOL_PRIVATE void _sapp_linux_update_window_title(void);
+_SOKOL_PRIVATE void _sapp_linux_set_icon(const sapp_icon_desc* icon_desc, int num_images);
+_SOKOL_PRIVATE void _sapp_linux_set_clipboard_string(const char* str);
+_SOKOL_PRIVATE const char* _sapp_linux_get_clipboard_string(void);
+#endif /* _SAPP_LINUX_X11 */
 
 #if !defined(SOKOL_NO_ENTRY)
 int main(int argc, char* argv[]) {
@@ -11282,7 +11306,7 @@ SOKOL_API_IMPL const void* sapp_egl_get_display(void) {
     SOKOL_ASSERT(_sapp.valid);
     #if defined(_SAPP_ANDROID)
         return _sapp.android.display;
-    #elif defined(_SAPP_LINUX) && !defined(_SAPP_GLX)
+    #elif defined(_SAPP_LINUX_X11) && !defined(_SAPP_GLX)
         return _sapp.egl.display;
     #else
         return 0;
@@ -11293,7 +11317,7 @@ SOKOL_API_IMPL const void* sapp_egl_get_context(void) {
     SOKOL_ASSERT(_sapp.valid);
     #if defined(_SAPP_ANDROID)
         return _sapp.android.context;
-    #elif defined(_SAPP_LINUX) && !defined(_SAPP_GLX)
+    #elif defined(_SAPP_LINUX_X11) && !defined(_SAPP_GLX)
         return _sapp.egl.context;
     #else
         return 0;
@@ -11323,8 +11347,10 @@ SOKOL_API_IMPL void sapp_toggle_fullscreen(void) {
     _sapp_macos_toggle_fullscreen();
     #elif defined(_SAPP_WIN32)
     _sapp_win32_toggle_fullscreen();
-    #elif defined(_SAPP_LINUX)
+    #elif defined(_SAPP_LINUX_X11)
     _sapp_x11_toggle_fullscreen();
+    #elif defined(_SAPP_LINUX_CUSTOM)
+    _sapp_linux_toggle_fullscreen();
     #endif
 }
 
@@ -11335,8 +11361,10 @@ SOKOL_API_IMPL void sapp_show_mouse(bool show) {
         _sapp_macos_update_cursor(_sapp.mouse.current_cursor, show);
         #elif defined(_SAPP_WIN32)
         _sapp_win32_update_cursor(_sapp.mouse.current_cursor, show, false);
-        #elif defined(_SAPP_LINUX)
+        #elif defined(_SAPP_LINUX_X11)
         _sapp_x11_update_cursor(_sapp.mouse.current_cursor, show);
+        #elif defined(_SAPP_LINUX_CUSTOM)
+        _sapp_linux_update_cursor(_sapp.mouse.current_cursor, show);
         #elif defined(_SAPP_EMSCRIPTEN)
         _sapp_emsc_update_cursor(_sapp.mouse.current_cursor, show);
         #endif
@@ -11355,8 +11383,10 @@ SOKOL_API_IMPL void sapp_lock_mouse(bool lock) {
     _sapp_emsc_lock_mouse(lock);
     #elif defined(_SAPP_WIN32)
     _sapp_win32_lock_mouse(lock);
-    #elif defined(_SAPP_LINUX)
+    #elif defined(_SAPP_LINUX_X11)
     _sapp_x11_lock_mouse(lock);
+    #elif defined(_SAPP_LINUX_CUSTOM)
+    _sapp_linux_lock_mouse(lock);
     #else
     _sapp.mouse.locked = lock;
     #endif
@@ -11373,8 +11403,10 @@ SOKOL_API_IMPL void sapp_set_mouse_cursor(sapp_mouse_cursor cursor) {
         _sapp_macos_update_cursor(cursor, _sapp.mouse.shown);
         #elif defined(_SAPP_WIN32)
         _sapp_win32_update_cursor(cursor, _sapp.mouse.shown, false);
-        #elif defined(_SAPP_LINUX)
+        #elif defined(_SAPP_LINUX_X11)
         _sapp_x11_update_cursor(cursor, _sapp.mouse.shown);
+        #elif defined(_SAPP_LINUX_CUSTOM)
+        _sapp_linux_update_cursor(cursor, _sapp.mouse.shown);
         #elif defined(_SAPP_EMSCRIPTEN)
         _sapp_emsc_update_cursor(cursor, _sapp.mouse.shown);
         #endif
@@ -11414,6 +11446,8 @@ SOKOL_API_IMPL void sapp_set_clipboard_string(const char* str) {
         _sapp_emsc_set_clipboard_string(str);
     #elif defined(_SAPP_WIN32)
         _sapp_win32_set_clipboard_string(str);
+    #elif defined(_SAPP_LINUX_CUSTOM)
+        _sapp_linux_set_clipboard_string(str);
     #else
         /* not implemented */
     #endif
@@ -11430,6 +11464,8 @@ SOKOL_API_IMPL const char* sapp_get_clipboard_string(void) {
         return _sapp.clipboard.buffer;
     #elif defined(_SAPP_WIN32)
         return _sapp_win32_get_clipboard_string();
+    #elif defined(_SAPP_LINUX_CUSTOM)
+        return _sapp_linux_get_clipboard_string();
     #else
         /* not implemented */
         return _sapp.clipboard.buffer;
@@ -11443,8 +11479,10 @@ SOKOL_API_IMPL void sapp_set_window_title(const char* title) {
         _sapp_macos_update_window_title();
     #elif defined(_SAPP_WIN32)
         _sapp_win32_update_window_title();
-    #elif defined(_SAPP_LINUX)
+    #elif defined(_SAPP_LINUX_X11)
         _sapp_x11_update_window_title();
+    #elif defined(_SAPP_LINUX_CUSTOM)
+        _sapp_linux_update_window_title();
     #endif
 }
 
@@ -11469,8 +11507,10 @@ SOKOL_API_IMPL void sapp_set_icon(const sapp_icon_desc* desc) {
         _sapp_macos_set_icon(desc, num_images);
     #elif defined(_SAPP_WIN32)
         _sapp_win32_set_icon(desc, num_images);
-    #elif defined(_SAPP_LINUX)
+    #elif defined(_SAPP_LINUX_X11)
         _sapp_x11_set_icon(desc, num_images);
+    #elif defined(_SAPP_LINUX_CUSTOM)
+        _sapp_linux_set_icon(desc, num_images);
     #elif defined(_SAPP_EMSCRIPTEN)
         _sapp_emsc_set_icon(desc, num_images);
     #endif
