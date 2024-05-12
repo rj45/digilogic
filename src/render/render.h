@@ -19,7 +19,9 @@
 
 #include "render/fons_sgp.h"
 #include "render/polyline.h"
-#include "view/view.h"
+
+#include "sokol_gfx.h"
+#include "sokol_gp.h"
 
 #include "render/draw.h"
 
@@ -35,12 +37,14 @@ typedef struct DrawContext {
 
   HMM_Vec2 pan;
   float zoom;
+
+  sgp_mat2x3 transform;
 } DrawContext;
 
 void draw_init(DrawContext *draw, FONScontext *fontstash);
 void draw_free(DrawContext *draw);
-
-HMM_Vec2 draw_screen_to_world(HMM_Vec2 screenPos);
+void draw_begin_frame(DrawContext *draw);
+void draw_end_frame(DrawContext *draw);
 
 void draw_text(
   DrawContext *draw, Box rect, const char *text, int len, float fontSize,

@@ -212,6 +212,8 @@ void frame(void *user_data) {
   sgp_begin(width, height);
   sgp_set_blend_mode(SGP_BLENDMODE_BLEND);
 
+  ux_update(&app->circuit);
+
   if (!app->loaded) {
     if (nk_begin(
           ctx, "Load example file",
@@ -238,10 +240,12 @@ void frame(void *user_data) {
     nk_end(ctx);
   }
 
+  draw_begin_frame(&app->draw);
   app->circuit.input.frameDuration = sapp_frame_duration();
   ux_draw(&app->circuit);
   app->circuit.input.scroll = HMM_V2(0, 0);
   app->circuit.input.mouseDelta = HMM_V2(0, 0);
+  draw_end_frame(&app->draw);
 
   sg_pass pass = {
     .action =

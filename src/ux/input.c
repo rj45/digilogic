@@ -275,7 +275,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   }
   case STATE_PAN: {
     HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
-    ux->downStart = worldMousePos;
+    ux->downStart = HMM_SubV2(worldMousePos, delta);
     draw_add_pan(ux->view.drawCtx, delta);
     break;
   }
@@ -343,16 +343,16 @@ static void ux_zoom(CircuitUX *ux) {
     ux->zoomExp = MAX_ZOOM;
   }
   float newZoom = powf(1.1f, ux->zoomExp);
-  float oldZoom = draw_get_zoom(ux->view.drawCtx);
-  draw_set_zoom(ux->view.drawCtx, newZoom);
 
   // figure out where the mouse was in "world coords" with the old zoom
-  HMM_Vec2 originalMousePos = HMM_DivV2F(
-    HMM_SubV2(ux->input.mousePos, draw_get_pan(ux->view.drawCtx)), oldZoom);
+  HMM_Vec2 originalMousePos =
+    draw_screen_to_world(ux->view.drawCtx, ux->input.mousePos);
+
+  draw_set_zoom(ux->view.drawCtx, newZoom);
 
   // figure out where the mouse is in "world coords" with the new zoom
-  HMM_Vec2 newMousePos = HMM_DivV2F(
-    HMM_SubV2(ux->input.mousePos, draw_get_pan(ux->view.drawCtx)), newZoom);
+  HMM_Vec2 newMousePos =
+    draw_screen_to_world(ux->view.drawCtx, ux->input.mousePos);
 
   // figure out the correction to the pan so that the zoom is centred on the
   // mouse position
@@ -361,7 +361,7 @@ static void ux_zoom(CircuitUX *ux) {
   draw_add_pan(ux->view.drawCtx, correction);
 }
 
-void ux_draw(CircuitUX *ux) {
+void ux_update(CircuitUX *ux) {
   float dt = (float)ux->input.frameDuration;
   HMM_Vec2 panDelta = HMM_V2(0, 0);
   if (bv_is_set(ux->input.keysDown, KEYCODE_W)) {
@@ -421,7 +421,9 @@ void ux_draw(CircuitUX *ux) {
   }
 
   ux_handle_mouse(ux);
+}
 
+void ux_draw(CircuitUX *ux) {
   view_draw(&ux->view);
 
   if (ux->debugLines) {

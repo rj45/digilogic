@@ -14,12 +14,12 @@
    limitations under the License.
 */
 
-#ifndef FONT_H
-#define FONT_H
+#ifndef ASSETS_H
+#define ASSETS_H
 
 #include <stdint.h>
 
 extern unsigned int assets_zip_len;
 extern const unsigned char assets_zip[];
 
-#endif // FONT_H
+#endif // ASSETS_H

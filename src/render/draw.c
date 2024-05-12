@@ -24,11 +24,10 @@
 #include "sokol_gfx.h"
 #include "sokol_gp.h"
 
-static inline sgp_vec2 mat2x3_vec2_mul(const sgp_mat2x3 *m, const sgp_vec2 *v) {
-  sgp_vec2 u = {
-    m->v[0][0] * v->x + m->v[0][1] * v->y + m->v[0][2],
-    m->v[1][0] * v->x + m->v[1][1] * v->y + m->v[1][2]};
-  return u;
+static inline HMM_Vec2 mat2x3_vec2_mul(const sgp_mat2x3 *m, HMM_Vec2 v) {
+  return HMM_V2(
+    m->v[0][0] * v.X + m->v[0][1] * v.Y + m->v[0][2],
+    m->v[1][0] * v.X + m->v[1][1] * v.Y + m->v[1][2]);
 }
 
 // static inline sgp_vec2
@@ -71,28 +70,59 @@ void draw_init(DrawContext *draw, FONScontext *fontstash) {
     .pan = HMM_V2(0.0f, 0.0f),
     .zoom = 1.0f,
     .fontstash = fontstash,
-    .polyliner = pl_create()};
+    .polyliner = pl_create(),
+    .transform =
+      (sgp_mat2x3){
+        .v =
+          {
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+          },
+      },
+  };
 }
 
 void draw_free(DrawContext *draw) { pl_free(draw->polyliner); }
 
-HMM_Vec2 draw_screen_to_world(HMM_Vec2 screenPos) {
-  sgp_mat2x3 xform = sgp_query_state()->transform;
+HMM_Vec2 draw_screen_to_world(DrawContext *draw, HMM_Vec2 screenPos) {
+  sgp_mat2x3 xform = draw->transform;
   sgp_mat2x3 inv = mat2x3_invert(&xform);
-  sgp_vec2 screen = {screenPos.X, screenPos.Y};
-  sgp_vec2 world = mat2x3_vec2_mul(&inv, &screen);
-  return HMM_V2(world.x, world.y);
+  return mat2x3_vec2_mul(&inv, screenPos);
 }
 
-void draw_set_zoom(DrawContext *draw, float zoom) { draw->zoom = zoom; }
+HMM_Vec2 draw_world_to_screen(DrawContext *draw, HMM_Vec2 worldPos) {
+  sgp_mat2x3 xform = draw->transform;
+  return mat2x3_vec2_mul(&xform, worldPos);
+}
+
+void draw_set_zoom(DrawContext *draw, float zoom) {
+  draw->zoom = zoom;
+
+  draw_begin_frame(draw);
+  draw->transform = sgp_query_state()->transform;
+  draw_end_frame(draw);
+}
 
 void draw_add_pan(DrawContext *draw, HMM_Vec2 pan) {
   draw->pan = HMM_AddV2(draw->pan, pan);
+
+  draw_begin_frame(draw);
+  draw->transform = sgp_query_state()->transform;
+  draw_end_frame(draw);
 }
 
 HMM_Vec2 draw_get_pan(DrawContext *draw) { return draw->pan; }
 
 float draw_get_zoom(DrawContext *draw) { return draw->zoom; }
+
+void draw_begin_frame(DrawContext *draw) {
+  sgp_push_transform();
+  sgp_reset_transform();
+  sgp_translate(draw->pan.X, draw->pan.Y);
+  sgp_scale(draw->zoom, draw->zoom);
+}
+
+void draw_end_frame(DrawContext *draw) { sgp_pop_transform(); }
 
 void draw_filled_rect(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
@@ -145,13 +175,19 @@ void draw_text(
   FONScontext *fsctx = f->fsctx;
 
   // top left corner of rect
-  HMM_Vec2 dot = box_top_left(rect);
+  HMM_Vec2 dot = draw_world_to_screen(draw, box_top_left(rect));
 
   // position dot in bottom left corner of rect
-  dot.Y += rect.halfSize.Y * 2;
+  dot.Y += rect.halfSize.Y * draw->zoom * 2;
+
+  // already transformed, so reset the current transform
+  // this is done so that the text is scaled by font size rather than
+  // getting blurry
+  sgp_push_transform();
+  sgp_reset_transform();
 
   fonsPushState(fsctx);
-  fonsSetSize(fsctx, fontSize);
+  fonsSetSize(fsctx, fontSize * draw->zoom);
   fonsSetColor(
     fsctx, fsgp_rgba(
              (uint8_t)(fgColor.R * 255.0f), (uint8_t)(fgColor.G * 255.0f),
@@ -165,48 +201,32 @@ void draw_text(
 
   fonsDrawText(fsctx, dot.X, dot.Y, text, text + len);
 
+  sgp_pop_transform();
+
   fonsPopState(fsctx);
-}
-
-static HMM_Vec2 panZoom(DrawContext *draw, HMM_Vec2 position) {
-  return HMM_AddV2(HMM_MulV2F(position, draw->zoom), draw->pan);
-}
-
-static HMM_Vec2 zoom(DrawContext *draw, HMM_Vec2 size) {
-  return HMM_MulV2F(size, draw->zoom);
-}
-
-static Box transformBox(DrawContext *draw, Box box) {
-  HMM_Vec2 center = panZoom(draw, box.center);
-  HMM_Vec2 halfSize = zoom(draw, box.halfSize);
-  return (Box){.center = center, .halfSize = halfSize};
 }
 
 void draw_chip(DrawContext *draw, Theme *theme, Box box, DrawFlags flags) {
   HMM_Vec2 center = box.center;
-  HMM_Vec2 pos = panZoom(draw, HMM_SubV2(center, box.halfSize));
-  HMM_Vec2 size = zoom(draw, HMM_MulV2F(box.halfSize, 2.0f));
+  HMM_Vec2 pos = HMM_SubV2(center, box.halfSize);
+  HMM_Vec2 size = HMM_MulV2F(box.halfSize, 2.0f);
 
   if (flags & DRAW_HOVERED) {
     draw_filled_rect(
       draw,
       HMM_SubV2(
-        pos, HMM_V2(
-               theme->borderWidth * draw->zoom * 2.0f,
-               theme->borderWidth * draw->zoom * 2.0f)),
+        pos, HMM_V2(theme->borderWidth * 2.0f, theme->borderWidth * 2.0f)),
       HMM_AddV2(
-        size, HMM_V2(
-                theme->borderWidth * draw->zoom * 4.0f,
-                theme->borderWidth * draw->zoom * 4.0f)),
-      draw->zoom * theme->componentRadius, theme->color.hovered);
+        size, HMM_V2(theme->borderWidth * 4.0f, theme->borderWidth * 4.0f)),
+      theme->componentRadius, theme->color.hovered);
   }
 
   draw_filled_rect(
-    draw, pos, size, draw->zoom * theme->componentRadius,
+    draw, pos, size, theme->componentRadius,
     (flags & DRAW_SELECTED) ? theme->color.selected : theme->color.component);
   draw_stroked_rect(
-    draw, pos, size, draw->zoom * theme->componentRadius,
-    draw->zoom * theme->borderWidth, theme->color.componentBorder);
+    draw, pos, size, theme->componentRadius, theme->borderWidth,
+    theme->color.componentBorder);
 }
 
 typedef struct Symbol {
@@ -237,8 +257,8 @@ static void draw_symbol(
 
   const Symbol symbol = outline ? symbolOutline[shape] : symbolSolid[shape];
 
-  HMM_Vec2 center = panZoom(draw, HMM_AddV2(box.center, symbol.offset));
-  HMM_Vec2 hs = zoom(draw, HMM_MulV2F(box.halfSize, symbol.scale));
+  HMM_Vec2 center = HMM_AddV2(box.center, symbol.offset);
+  HMM_Vec2 hs = HMM_MulV2F(box.halfSize, symbol.scale);
 
   Box bounds = draw_text_bounds(
     draw, center, symbol.text, 1, ALIGN_CENTER, ALIGN_MIDDLE, hs.Height * 2.0f,
@@ -279,34 +299,30 @@ void draw_component_shape(
 void draw_port(
   DrawContext *draw, Theme *theme, HMM_Vec2 center, DrawFlags flags) {
   float portWidth = theme->portWidth;
-  HMM_Vec2 portPosition = panZoom(
-    draw, HMM_SubV2(center, HMM_V2(portWidth / 2.0f, portWidth / 2.0f)));
-  HMM_Vec2 portSize = zoom(draw, HMM_V2(portWidth, portWidth));
+  HMM_Vec2 portPosition =
+    HMM_SubV2(center, HMM_V2(portWidth / 2.0f, portWidth / 2.0f));
+  HMM_Vec2 portSize = HMM_V2(portWidth, portWidth);
 
   if (flags & DRAW_HOVERED) {
     draw_filled_circle(
       draw,
       HMM_SubV2(
-        portPosition, HMM_V2(
-                        theme->borderWidth * draw->zoom * 2.0f,
-                        theme->borderWidth * draw->zoom * 2.0f)),
+        portPosition,
+        HMM_V2(theme->borderWidth * 2.0f, theme->borderWidth * 2.0f)),
       HMM_AddV2(
-        portSize, HMM_V2(
-                    theme->borderWidth * draw->zoom * 4.0f,
-                    theme->borderWidth * draw->zoom * 4.0f)),
+        portSize, HMM_V2(theme->borderWidth * 4.0f, theme->borderWidth * 4.0f)),
       theme->color.hovered);
   }
 
   draw_filled_circle(draw, portPosition, portSize, theme->color.port);
   draw_stroked_circle(
-    draw, portPosition, portSize, draw->zoom * theme->borderWidth,
-    theme->color.portBorder);
+    draw, portPosition, portSize, theme->borderWidth, theme->color.portBorder);
 }
 
 void draw_selection_box(
   DrawContext *draw, Theme *theme, Box box, DrawFlags flags) {
-  HMM_Vec2 pos = panZoom(draw, HMM_SubV2(box.center, box.halfSize));
-  HMM_Vec2 size = zoom(draw, HMM_MulV2F(box.halfSize, 2.0f));
+  HMM_Vec2 pos = HMM_SubV2(box.center, box.halfSize);
+  HMM_Vec2 size = HMM_MulV2F(box.halfSize, 2.0f);
 
   draw_filled_rect(draw, pos, size, 0, theme->color.selectFill);
 }
@@ -318,12 +334,12 @@ void draw_wire(
     return;
   }
 
-  HMM_Vec2 pos = panZoom(draw, verts[0]);
+  HMM_Vec2 pos = verts[0];
 
   for (int i = 1; i < numVerts; i++) {
-    HMM_Vec2 vertex = panZoom(draw, verts[i]);
+    HMM_Vec2 vertex = verts[i];
     draw_stroked_line(
-      draw, pos, vertex, draw->zoom * theme->wireThickness, theme->color.wire);
+      draw, pos, vertex, theme->wireThickness, theme->color.wire);
     pos = vertex;
   }
 }
@@ -332,14 +348,11 @@ void draw_junction(
   DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
   float factor = flags ? 3.0f : 1.5f;
 
-  Box box = transformBox(
-    draw, (Box){
-            .center = pos,
-            .halfSize = HMM_V2(
-              theme->wireThickness * factor, theme->wireThickness * factor)});
+  HMM_Vec2 halfSize =
+    HMM_V2(theme->wireThickness * factor, theme->wireThickness * factor);
 
   draw_filled_circle(
-    draw, HMM_SubV2(box.center, box.halfSize), HMM_MulV2F(box.halfSize, 2.0f),
+    draw, HMM_SubV2(pos, halfSize), HMM_MulV2F(halfSize, 2.0f),
     (flags & DRAW_SELECTED) ? theme->color.selected : theme->color.wire);
 }
 
@@ -347,11 +360,9 @@ void draw_label(
   DrawContext *draw, Theme *theme, Box box, const char *text,
   DrawLabelType type, DrawFlags flags) {
 
-  Box typeLabelBounds = transformBox(draw, box);
   draw_text(
-    draw, typeLabelBounds, text, strlen(text),
-    theme->labelFontSize * draw->zoom, theme->font, theme->color.labelColor,
-    HMM_V4(0, 0, 0, 0));
+    draw, box, text, strlen(text), theme->labelFontSize, theme->font,
+    theme->color.labelColor, HMM_V4(0, 0, 0, 0));
 }
 
 Box draw_text_bounds(

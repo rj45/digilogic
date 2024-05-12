@@ -245,6 +245,7 @@ void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta);
 HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter);
 HMM_Vec2 ux_calc_selection_center(CircuitUX *ux);
 
+void ux_update(CircuitUX *ux);
 void ux_draw(CircuitUX *ux);
 void ux_do(CircuitUX *ux, UndoCommand command);
 UndoCommand ux_undo(CircuitUX *ux);
