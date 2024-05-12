@@ -62,7 +62,9 @@ void draw_add_pan(DrawContext *draw, HMM_Vec2 pan);
 HMM_Vec2 draw_get_pan(DrawContext *draw);
 float draw_get_zoom(DrawContext *draw);
 HMM_Vec2 draw_screen_to_world(DrawContext *draw, HMM_Vec2 screenPos);
+HMM_Vec2 draw_scale_screen_to_world(DrawContext *draw, HMM_Vec2 dirvec);
 HMM_Vec2 draw_world_to_screen(DrawContext *draw, HMM_Vec2 worldPos);
+HMM_Vec2 draw_scale_world_to_screen(DrawContext *draw, HMM_Vec2 dirvec);
 
 void draw_component_shape(
   DrawContext *draw, Theme *theme, Box box, ShapeType shape, DrawFlags flags);

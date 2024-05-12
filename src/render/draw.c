@@ -30,13 +30,10 @@ static inline HMM_Vec2 mat2x3_vec2_mul(const sgp_mat2x3 *m, HMM_Vec2 v) {
     m->v[1][0] * v.X + m->v[1][1] * v.Y + m->v[1][2]);
 }
 
-// static inline sgp_vec2
-// mat2x3_vec2_scale(const sgp_mat2x3 *m, const sgp_vec2 *v) {
-//   sgp_vec2 u = {
-//     m->v[0][0] * v->x + m->v[0][1] * v->y,
-//     m->v[1][0] * v->x + m->v[1][1] * v->y};
-//   return u;
-// }
+static inline HMM_Vec2 mat2x3_vec2_scale(const sgp_mat2x3 *m, HMM_Vec2 v) {
+  return HMM_V2(
+    m->v[0][0] * v.X + m->v[0][1] * v.Y, m->v[1][0] * v.X + m->v[1][1] * v.Y);
+}
 
 static inline float mat2x3_det(const sgp_mat2x3 *m) {
   return m->v[0][0] * m->v[1][1] - m->v[0][1] * m->v[1][0];
@@ -90,9 +87,20 @@ HMM_Vec2 draw_screen_to_world(DrawContext *draw, HMM_Vec2 screenPos) {
   return mat2x3_vec2_mul(&inv, screenPos);
 }
 
+HMM_Vec2 draw_scale_screen_to_world(DrawContext *draw, HMM_Vec2 dirvec) {
+  sgp_mat2x3 xform = draw->transform;
+  sgp_mat2x3 inv = mat2x3_invert(&xform);
+  return mat2x3_vec2_scale(&inv, dirvec);
+}
+
 HMM_Vec2 draw_world_to_screen(DrawContext *draw, HMM_Vec2 worldPos) {
   sgp_mat2x3 xform = draw->transform;
   return mat2x3_vec2_mul(&xform, worldPos);
+}
+
+HMM_Vec2 draw_scale_world_to_screen(DrawContext *draw, HMM_Vec2 dirvec) {
+  sgp_mat2x3 xform = draw->transform;
+  return mat2x3_vec2_scale(&xform, dirvec);
 }
 
 void draw_set_zoom(DrawContext *draw, float zoom) {

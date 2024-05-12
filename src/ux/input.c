@@ -362,19 +362,21 @@ void ux_update(CircuitUX *ux) {
   float dt = (float)ux->input.frameDuration;
   HMM_Vec2 panDelta = HMM_V2(0, 0);
   if (bv_is_set(ux->input.keysDown, KEYCODE_W)) {
-    panDelta.Y += 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
+    panDelta.Y += 600.0f * dt;
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_A)) {
-    panDelta.X += 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
+    panDelta.X += 600.0f * dt;
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_S)) {
-    panDelta.Y -= 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
+    panDelta.Y -= 600.0f * dt;
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_D)) {
-    panDelta.X -= 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
+    panDelta.X -= 600.0f * dt;
   }
   if (panDelta.X != 0 || panDelta.Y != 0) {
-    draw_add_pan(ux->view.drawCtx, panDelta);
+    HMM_Vec2 adjustedDelta =
+      draw_scale_screen_to_world(ux->view.drawCtx, panDelta);
+    draw_add_pan(ux->view.drawCtx, adjustedDelta);
   }
 
   // cmd + z or ctrl + z: undo
