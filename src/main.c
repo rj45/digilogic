@@ -340,7 +340,6 @@ void event(const sapp_event *event, void *user_data) {
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
     app->circuit.input.scroll = HMM_AddV2(
       app->circuit.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
-
     break;
   }
   default:

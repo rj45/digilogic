@@ -33,8 +33,7 @@ size_t autoroute_wire_vertices(
 void autoroute_get_junction_pos(
   AutoRoute *ar, JunctionID junctionID, float *x, float *y);
 
-void autoroute_draw_debug_lines(
-  AutoRoute *ar, void *ctx, float zoom, HMM_Vec2 pan);
+void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx);
 void autoroute_dump_anchor_boxes(AutoRoute *ar);
 
 #endif // AUTOROUTE_H

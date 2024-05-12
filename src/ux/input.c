@@ -275,7 +275,6 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   }
   case STATE_PAN: {
     HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
-    ux->downStart = HMM_SubV2(worldMousePos, delta);
     draw_add_pan(ux->view.drawCtx, delta);
     break;
   }
@@ -290,9 +289,8 @@ static void ux_handle_mouse(CircuitUX *ux) {
   ux->view.hovered = NO_ID;
   ux->view.hoveredPort = NO_PORT;
 
-  HMM_Vec2 worldMousePos = HMM_DivV2F(
-    HMM_SubV2(ux->input.mousePos, draw_get_pan(ux->view.drawCtx)),
-    draw_get_zoom(ux->view.drawCtx));
+  HMM_Vec2 worldMousePos =
+    draw_screen_to_world(ux->view.drawCtx, ux->input.mousePos);
 
   Box mouseBox = {
     .center = worldMousePos,
@@ -356,8 +354,7 @@ static void ux_zoom(CircuitUX *ux) {
 
   // figure out the correction to the pan so that the zoom is centred on the
   // mouse position
-  HMM_Vec2 correction =
-    HMM_MulV2F(HMM_SubV2(newMousePos, originalMousePos), newZoom);
+  HMM_Vec2 correction = HMM_SubV2(newMousePos, originalMousePos);
   draw_add_pan(ux->view.drawCtx, correction);
 }
 
@@ -365,16 +362,16 @@ void ux_update(CircuitUX *ux) {
   float dt = (float)ux->input.frameDuration;
   HMM_Vec2 panDelta = HMM_V2(0, 0);
   if (bv_is_set(ux->input.keysDown, KEYCODE_W)) {
-    panDelta.Y += 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
+    panDelta.Y += 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_A)) {
-    panDelta.X += 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
+    panDelta.X += 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_S)) {
-    panDelta.Y -= 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
+    panDelta.Y -= 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
   }
   if (bv_is_set(ux->input.keysDown, KEYCODE_D)) {
-    panDelta.X -= 600.0f * dt * draw_get_zoom(ux->view.drawCtx);
+    panDelta.X -= 600.0f * dt; // * (1 / draw_get_zoom(ux->view.drawCtx));
   }
   if (panDelta.X != 0 || panDelta.Y != 0) {
     draw_add_pan(ux->view.drawCtx, panDelta);
@@ -427,8 +424,6 @@ void ux_draw(CircuitUX *ux) {
   view_draw(&ux->view);
 
   if (ux->debugLines) {
-    autoroute_draw_debug_lines(
-      ux->router, ux->view.drawCtx, draw_get_zoom(ux->view.drawCtx),
-      draw_get_pan(ux->view.drawCtx));
+    autoroute_draw_debug_lines(ux->router, ux->view.drawCtx);
   }
 }

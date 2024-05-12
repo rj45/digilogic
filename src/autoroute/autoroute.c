@@ -286,12 +286,7 @@ void draw_stroked_line(
   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color);
 
-static HMM_Vec2 panZoom(RT_Point position, float zoom, HMM_Vec2 pan) {
-  return HMM_AddV2(HMM_MulV2F(HMM_V2(position.x, position.y), zoom), pan);
-}
-
-void autoroute_draw_debug_lines(
-  AutoRoute *ar, void *ctx, float zoom, HMM_Vec2 pan) {
+void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx) {
   const RT_Node *nodes;
   size_t nodeCount;
 
@@ -311,7 +306,7 @@ void autoroute_draw_debug_lines(
       if (neighbors[j] < nodeCount) {
         RT_Point p2 = nodes[neighbors[j]].position;
         draw_stroked_line(
-          ctx, panZoom(p1, zoom, pan), panZoom(p2, zoom, pan), 1,
+          ctx, HMM_V2(p1.x, p1.y), HMM_V2(p2.x, p2.y), 1,
           HMM_V4(0.5f, 0.5f, 0.7f, 0.5f));
       }
     }
@@ -319,18 +314,10 @@ void autoroute_draw_debug_lines(
 
   for (uint32_t i = 0; i < circuit_component_len(&ar->view->circuit); i++) {
     RT_BoundingBox *box = &ar->boxes[i];
-    HMM_Vec2 tl = panZoom(
-      (RT_Point){
-        .x = box->center.x - box->half_width,
-        .y = box->center.y - box->half_height,
-      },
-      zoom, pan);
-    HMM_Vec2 br = panZoom(
-      (RT_Point){
-        .x = box->center.x + box->half_width,
-        .y = box->center.y + box->half_height,
-      },
-      zoom, pan);
+    HMM_Vec2 tl =
+      HMM_V2(box->center.x - box->half_width, box->center.y - box->half_height);
+    HMM_Vec2 br =
+      HMM_V2(box->center.x + box->half_width, box->center.y + box->half_height);
     draw_stroked_line(
       ctx, tl, HMM_V2(br.X, tl.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
     draw_stroked_line(

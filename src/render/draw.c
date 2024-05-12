@@ -118,8 +118,8 @@ float draw_get_zoom(DrawContext *draw) { return draw->zoom; }
 void draw_begin_frame(DrawContext *draw) {
   sgp_push_transform();
   sgp_reset_transform();
-  sgp_translate(draw->pan.X, draw->pan.Y);
   sgp_scale(draw->zoom, draw->zoom);
+  sgp_translate(draw->pan.X, draw->pan.Y);
 }
 
 void draw_end_frame(DrawContext *draw) { sgp_pop_transform(); }
