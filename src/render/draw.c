@@ -368,9 +368,14 @@ void draw_label(
   DrawContext *draw, Theme *theme, Box box, const char *text,
   DrawLabelType type, DrawFlags flags) {
 
+  HMM_Vec4 color = theme->color.labelColor;
+  if (type == LABEL_COMPONENT_NAME) {
+    color = theme->color.nameColor;
+  }
+
   draw_text(
-    draw, box, text, strlen(text), theme->labelFontSize, theme->font,
-    theme->color.labelColor, HMM_V4(0, 0, 0, 0));
+    draw, box, text, strlen(text), theme->labelFontSize, theme->font, color,
+    HMM_V4(0, 0, 0, 0));
 }
 
 Box draw_text_bounds(

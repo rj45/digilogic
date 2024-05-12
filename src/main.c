@@ -253,7 +253,7 @@ void frame(void *user_data) {
         .colors[0] =
           {.load_action = SG_LOADACTION_CLEAR,
            .store_action = SG_STOREACTION_STORE,
-           .clear_value = {0.0f, 0.0f, 0.0f, 1.0f}},
+           .clear_value = {0.08f, 0.1f, 0.12f, 1.0f}},
       },
     .swapchain = sglue_swapchain()};
   sg_begin_pass(&pass);
