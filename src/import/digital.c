@@ -656,7 +656,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
     }
     for (int j = 0; j < arrlen(waypoints); j++) {
       log_debug("  * Waypoint %f %f", waypoints[j].X, waypoints[j].Y);
-      // ux_add_waypoint(ux, netID, waypoints[j]);
+      ux_add_waypoint(ux, netID, waypoints[j]);
     }
     for (int j = 0; j < arrlen(outPorts); j++) {
       log_debug("  * Out port %d", outPorts[j]);
