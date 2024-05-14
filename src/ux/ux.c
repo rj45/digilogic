@@ -22,6 +22,7 @@
 
 #include "ux.h"
 
+#define LOG_LEVEL LL_INFO
 #include "log.h"
 
 void ux_global_init() { autoroute_global_init(); }
@@ -53,17 +54,24 @@ ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position) {
   return id;
 }
 
-NetID ux_add_net(CircuitUX *ux) { return view_add_net(&ux->view); }
-
-JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position) {
-  JunctionID id = view_add_junction(&ux->view, position);
-  autoroute_update_junction(ux->router, id);
+NetID ux_add_net(CircuitUX *ux) {
+  NetID id = view_add_net(&ux->view);
+  autoroute_update_net(ux->router, id);
   return id;
 }
 
-WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to) {
-  WireID id = view_add_wire(&ux->view, net, from, to);
-  autoroute_update_wire(ux->router, id);
+EndpointID
+ux_add_endpoint(CircuitUX *ux, NetID net, PortID port, HMM_Vec2 position) {
+  log_debug("Adding endpoint to net %x", net);
+  EndpointID id = view_add_endpoint(&ux->view, net, port, position);
+  autoroute_update_endpoint(ux->router, id);
+  return id;
+}
+
+WaypointID ux_add_waypoint(CircuitUX *ux, NetID net, HMM_Vec2 position) {
+  log_debug("Adding waypoint to net %x", net);
+  WaypointID id = view_add_waypoint(&ux->view, net, position);
+  autoroute_update_waypoint(ux->router, id);
   return id;
 }
 
@@ -76,66 +84,30 @@ void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
 
   log_debug("Move updating component %x", id);
   autoroute_update_component(ux->router, id);
+
   PortID portID = circuit_component_ptr(&ux->view.circuit, id)->portFirst;
   while (portID) {
     Port *port = circuit_port_ptr(&ux->view.circuit, portID);
+    PortView *portView = view_port_ptr(&ux->view, portID);
 
-    // todo: this is slow, maybe store wireID instead of netID on port?
-    bool found = false;
-    NetID netID = port->net;
-    if (netID != NO_NET) {
-      WireID wireID = circuit_net_ptr(&ux->view.circuit, netID)->wireFirst;
-      while (wireID) {
-        Wire *wire = circuit_wire_ptr(&ux->view.circuit, wireID);
-        if (wire->from == portID || wire->to == portID) {
-          log_debug("  Move updating wire %x", wireID);
-          autoroute_update_wire(ux->router, wireID);
-          found = true;
-        }
-        wireID = wire->next;
-      }
-    } else {
-      log_debug("  Port %x has no net", portID);
-    }
+    HMM_Vec2 pos = HMM_AddV2(componentView->box.center, portView->center);
 
-    if (!found) {
-      log_debug("  Could not find wire for port %x", portID);
+    if (port->endpoint != NO_ENDPOINT) {
+      EndpointView *endpointView = view_endpoint_ptr(&ux->view, port->endpoint);
+      endpointView->pos = pos;
+
+      autoroute_update_endpoint(ux->router, port->endpoint);
     }
 
     portID = port->compNext;
   }
 }
 
-void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta) {
-  JunctionView *junctionView = view_junction_ptr(&ux->view, id);
-  junctionView->pos = HMM_AddV2(junctionView->pos, delta);
+void ux_move_waypoint(CircuitUX *ux, WaypointID id, HMM_Vec2 delta) {
+  WaypointView *waypointView = view_waypoint_ptr(&ux->view, id);
+  waypointView->pos = HMM_AddV2(waypointView->pos, delta);
 
-  log_debug("Move updating junction %x\n", id);
-  autoroute_update_junction(ux->router, id);
-
-  Junction *junction = circuit_junction_ptr(&ux->view.circuit, id);
-
-  // todo: this is slow, maybe store wireID instead of netID on port?
-  bool found = false;
-  NetID netID = junction->net;
-  if (netID != NO_NET) {
-    WireID wireID = circuit_net_ptr(&ux->view.circuit, netID)->wireFirst;
-    while (wireID) {
-      Wire *wire = circuit_wire_ptr(&ux->view.circuit, wireID);
-      if (wire->from == id || wire->to == id) {
-        log_debug("  Move updating wire %x\n", wireID);
-        autoroute_update_wire(ux->router, wireID);
-        found = true;
-      }
-      wireID = wire->next;
-    }
-  } else {
-    log_debug("  Junction %x has no net\n", id);
-  }
-
-  if (!found) {
-    log_debug("  Could not find wire for junction %x\n", id);
-  }
+  autoroute_update_waypoint(ux->router, id);
 }
 
 HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
@@ -146,9 +118,9 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
     if (id_type(id) == ID_COMPONENT) {
       ComponentView *componentView = view_component_ptr(&ux->view, id);
       center = HMM_AddV2(center, componentView->box.center);
-    } else if (id_type(id) == ID_JUNCTION) {
-      JunctionView *junctionView = view_junction_ptr(&ux->view, id);
-      center = HMM_AddV2(center, junctionView->pos);
+    } else if (id_type(id) == ID_WAYPOINT) {
+      WaypointView *waypointView = view_waypoint_ptr(&ux->view, id);
+      center = HMM_AddV2(center, waypointView->pos);
     }
   }
   center = HMM_DivV2F(center, (float)arrlen(ux->view.selected));

@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "handmade_math.h"
 #include "sokol_time.h"
 
 #include "autoroute/autoroute.h"
@@ -35,18 +36,25 @@ typedef struct AnchorEnds {
 struct AutoRoute {
   CircuitView *view;
 
-  RT_PathDef *paths;
+  RT_Net *nets;
+  RT_Endpoint *endpoints;
+  RT_Waypoint *waypoints;
+
   RT_BoundingBox *boxes;
   AnchorEnds *anchorEnds;
-  RT_PathRange *pathRanges;
 
   arr(RT_Anchor) anchors;
+
+  arr(RT_Point) portPoints;
+  arr(uint32_t) portPointStarts;
+  arr(uint16_t) pathLengths;
+  arr(uint32_t) pathLengthStarts;
 
   uint16_t threadCount;
   size_t vertBufferCapacity;
   RT_Graph *graph;
 
-  arr(RT_VertexBuffer) vertexBuffers;
+  // arr(RT_VertexBuffer) vertexBuffers;
 };
 
 void autoroute_global_init() {
@@ -65,9 +73,13 @@ AutoRoute *autoroute_create(CircuitView *view) {
     &view->circuit.sm.components, (void **)&ar->anchorEnds,
     sizeof(*ar->anchorEnds));
   smap_add_synced_array(
-    &view->circuit.sm.wires, (void **)&ar->paths, sizeof(*ar->paths));
+    &view->circuit.sm.nets, (void **)&ar->nets, sizeof(*ar->nets));
   smap_add_synced_array(
-    &view->circuit.sm.wires, (void **)&ar->pathRanges, sizeof(*ar->pathRanges));
+    &view->circuit.sm.endpoints, (void **)&ar->endpoints,
+    sizeof(*ar->endpoints));
+  smap_add_synced_array(
+    &view->circuit.sm.waypoints, (void **)&ar->waypoints,
+    sizeof(*ar->waypoints));
 
   RT_Result res = RT_get_thread_count(&ar->threadCount);
   assert(res == RT_RESULT_SUCCESS);
@@ -77,20 +89,30 @@ AutoRoute *autoroute_create(CircuitView *view) {
 
   ar->vertBufferCapacity = 1024;
 
-  for (size_t i = 0; i < ar->threadCount; i++) {
-    arrput(
-      ar->vertexBuffers,
-      ((struct RT_VertexBuffer){
-        .vertices = malloc(ar->vertBufferCapacity * sizeof(RT_Vertex)),
-        .vertex_count = 0,
-      }));
-  }
+  // for (size_t i = 0; i < ar->threadCount; i++) {
+  //   arrput(
+  //     ar->vertexBuffers,
+  //     ((struct RT_VertexBuffer){
+  //       .vertices = malloc(ar->vertBufferCapacity * sizeof(RT_Vertex)),
+  //       .vertex_count = 0,
+  //     }));
+  // }
 
   return ar;
 }
 
 void autoroute_free(AutoRoute *ar) {
   arrfree(ar->anchors);
+  arrfree(ar->portPointStarts);
+  arrfree(ar->portPoints);
+  arrfree(ar->pathLengths);
+  arrfree(ar->pathLengthStarts);
+  // for (size_t i = 0; i < arrlen(ar->vertexBuffers); i++) {
+  //   free(ar->vertexBuffers[i].vertices);
+  // }
+  // arrfree(ar->vertexBuffers);
+  RT_Result res = RT_graph_free(ar->graph);
+  assert(res == RT_RESULT_SUCCESS);
   free(ar);
 }
 
@@ -153,16 +175,23 @@ static void autoroute_update_anchors(AutoRoute *ar) {
       };
       arrput(ar->anchors, anchor);
 
+      if (port->endpoint != NO_ENDPOINT) {
+        RT_Endpoint *endpoint = &ar->endpoints[circuit_endpoint_index(
+          &ar->view->circuit, port->endpoint)];
+        assert(endpoint->position.x == anchor.position.x);
+        assert(endpoint->position.y == anchor.position.y);
+      }
+
       portID = port->compNext;
     }
   }
-  for (int i = 0; i < circuit_junction_len(&ar->view->circuit); i++) {
-    JunctionView *junctionView = &ar->view->junctions[i];
+  for (int i = 0; i < circuit_waypoint_len(&ar->view->circuit); i++) {
+    WaypointView *waypointView = &ar->view->waypoints[i];
     RT_Anchor anchor = (RT_Anchor){
       .position =
         {
-          .x = junctionView->pos.X,
-          .y = junctionView->pos.Y,
+          .x = waypointView->pos.X,
+          .y = waypointView->pos.Y,
         },
       .connect_directions = RT_DIRECTIONS_ALL,
       .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
@@ -171,7 +200,7 @@ static void autoroute_update_anchors(AutoRoute *ar) {
   }
 }
 
-void autoroute_update_component(AutoRoute *ar, ID id) {
+void autoroute_update_component(AutoRoute *ar, ComponentID id) {
   ComponentView *compView = view_component_ptr(ar->view, id);
   RT_BoundingBox *box =
     &ar->boxes[circuit_component_index(&ar->view->circuit, id)];
@@ -188,54 +217,93 @@ void autoroute_update_component(AutoRoute *ar, ID id) {
     .half_width = (uint16_t)(compView->box.halfSize.X + RT_PADDING) - 1,
     .half_height = (uint16_t)(compView->box.halfSize.Y + RT_PADDING) - 1,
   };
-  autoroute_update_anchors(ar);
+  log_debug(
+    "Updating component %d to %f %f", id, compView->box.center.X,
+    compView->box.center.Y);
 }
 
-void autoroute_update_wire(AutoRoute *ar, ID id) {
-  Wire *wire = circuit_wire_ptr(&ar->view->circuit, id);
-  RT_PathDef *path = &ar->paths[circuit_wire_index(&ar->view->circuit, id)];
-  ID ends[2] = {wire->from, wire->to};
-  RT_Point points[2];
-  for (int i = 0; i < 2; i++) {
-    switch (id_type(ends[i])) {
-    case ID_NONE:
-      break;
-    case ID_PORT: {
-      PortView *portView = view_port_ptr(ar->view, ends[i]);
-      Port *port = circuit_port_ptr(&ar->view->circuit, ends[i]);
-
-      ComponentView *compView = view_component_ptr(ar->view, port->component);
-      points[i] = (RT_Point){
-        .x = compView->box.center.X + portView->center.X,
-        .y = compView->box.center.Y + portView->center.Y,
-      };
-    } break;
-    case ID_JUNCTION: {
-      JunctionView *junctionView = view_junction_ptr(ar->view, ends[i]);
-      points[i] = (RT_Point){
-        .x = junctionView->pos.X,
-        .y = junctionView->pos.Y,
-      };
-    } break;
-    default:
-      assert(0);
-    }
+void autoroute_update_net(AutoRoute *ar, NetID id) {
+  Net *net = circuit_net_ptr(&ar->view->circuit, id);
+  RT_Net *rtNet = &ar->nets[circuit_net_index(&ar->view->circuit, id)];
+  rtNet->first_endpoint = RT_INVALID_ENDPOINT_INDEX;
+  if (net->endpointFirst != NO_ENDPOINT) {
+    rtNet->first_endpoint =
+      circuit_endpoint_index(&ar->view->circuit, net->endpointFirst);
   }
-  *path = (RT_PathDef){
-    .start = points[0],
-    .end = points[1],
-  };
-  ar->pathRanges[circuit_wire_index(&ar->view->circuit, id)] =
-    (RT_PathRange){0};
+  rtNet->first_waypoint = RT_INVALID_WAYPOINT_INDEX;
+  if (net->waypointFirst != NO_WAYPOINT) {
+    rtNet->first_waypoint =
+      circuit_waypoint_index(&ar->view->circuit, net->waypointFirst);
+  }
+  log_debug("Updating net %x", id);
 }
 
-void autoroute_update_junction(AutoRoute *ar, ID id) {
-  // todo: do something faster
-  autoroute_update_anchors(ar);
+void autoroute_update_endpoint(AutoRoute *ar, EndpointID id) {
+  Endpoint *endpoint = circuit_endpoint_ptr(&ar->view->circuit, id);
+  EndpointView *endpointView = view_endpoint_ptr(ar->view, id);
+
+  RT_Endpoint *rtEndpoint =
+    &ar->endpoints[circuit_endpoint_index(&ar->view->circuit, id)];
+
+  rtEndpoint->next = RT_INVALID_ENDPOINT_INDEX;
+  if (endpoint->next != NO_ENDPOINT) {
+    rtEndpoint->next =
+      circuit_endpoint_index(&ar->view->circuit, endpoint->next);
+  }
+
+  if (endpoint->prev != NO_ENDPOINT) {
+    RT_Endpoint *prevEndpoint = &ar->endpoints[circuit_endpoint_index(
+      &ar->view->circuit, endpoint->prev)];
+    prevEndpoint->next = circuit_endpoint_index(&ar->view->circuit, id);
+  }
+
+  log_debug(
+    "Setting endpoint %d to %f %f", id, endpointView->pos.X,
+    endpointView->pos.Y);
+  rtEndpoint->position = (RT_Point){
+    .x = endpointView->pos.X,
+    .y = endpointView->pos.Y,
+  };
+  autoroute_update_net(ar, endpoint->net);
+}
+
+void autoroute_update_waypoint(AutoRoute *ar, WaypointID id) {
+  Waypoint *waypoint = circuit_waypoint_ptr(&ar->view->circuit, id);
+  WaypointView *waypointView = view_waypoint_ptr(ar->view, id);
+
+  RT_Waypoint *rtWaypoint =
+    &ar->waypoints[circuit_waypoint_index(&ar->view->circuit, id)];
+
+  rtWaypoint->next = RT_INVALID_WAYPOINT_INDEX;
+  if (waypoint->next != NO_WAYPOINT) {
+    rtWaypoint->next =
+      circuit_waypoint_index(&ar->view->circuit, waypoint->next);
+  }
+
+  if (waypoint->prev != NO_ENDPOINT) {
+    RT_Waypoint *prevWaypoint = &ar->waypoints[circuit_waypoint_index(
+      &ar->view->circuit, waypoint->prev)];
+    prevWaypoint->next = circuit_waypoint_index(&ar->view->circuit, id);
+  }
+
+  rtWaypoint->position = (RT_Point){
+    .x = waypointView->pos.X,
+    .y = waypointView->pos.Y,
+  };
+  log_debug(
+    "Setting waypoint %x to %f %f", id, waypointView->pos.X,
+    waypointView->pos.Y);
+  autoroute_update_net(ar, waypoint->net);
 }
 
 void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   uint64_t start = stm_now();
+
+  autoroute_update_anchors(ar);
+
+  assert(arrlen(ar->anchors) > 0);
+  assert(ar->boxes != NULL);
+  assert(circuit_component_len(&ar->view->circuit) > 0);
 
   RT_Result res = RT_graph_build(
     ar->graph, ar->anchors, arrlen(ar->anchors), ar->boxes,
@@ -248,9 +316,84 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   uint64_t graphBuild = stm_since(start);
   uint64_t pathFindStart = stm_now();
 
-  res = RT_graph_find_paths(
-    ar->graph, ar->paths, ar->pathRanges, circuit_wire_len(&ar->view->circuit),
-    ar->vertexBuffers, ar->vertBufferCapacity);
+  if (arrlen(ar->view->vertices) == 0) {
+    arrsetlen(ar->view->vertices, 1024);
+  }
+  if (arrlen(ar->view->wires) == 0) {
+    arrsetlen(ar->view->wires, 1024);
+  }
+
+  memset(ar->view->wires, 0, arrlen(ar->view->wires) * sizeof(RT_WireView));
+
+  assert(ar->endpoints);
+  assert(ar->waypoints);
+  assert(ar->graph);
+  assert(ar->view->wires);
+  assert(ar->view->vertices);
+
+  // todo: remove this checking code
+  for (int netIdx = 0; netIdx < circuit_net_len(&ar->view->circuit); netIdx++) {
+    RT_Net *net = &ar->nets[netIdx];
+    assert(net->first_endpoint != RT_INVALID_ENDPOINT_INDEX);
+    int count = 0;
+    RT_Point prevPoint = ar->endpoints[net->first_endpoint].position;
+    int dist = 0;
+    RT_EndpointIndex endpointIdx = net->first_endpoint;
+    while (endpointIdx != RT_INVALID_ENDPOINT_INDEX) {
+      count++;
+      dist += HMM_ABS(prevPoint.x - ar->endpoints[endpointIdx].position.x) +
+              HMM_ABS(prevPoint.y - ar->endpoints[endpointIdx].position.y);
+      prevPoint = ar->endpoints[endpointIdx].position;
+      endpointIdx = ar->endpoints[endpointIdx].next;
+    }
+    assert(count > 1);
+    assert(dist > 0);
+  }
+
+  for (;;) {
+    res = RT_graph_connect_nets(
+      ar->graph, (RT_Slice_Net){ar->nets, circuit_net_len(&ar->view->circuit)},
+      (RT_Slice_Endpoint){
+        ar->endpoints, circuit_endpoint_len(&ar->view->circuit)},
+      (RT_Slice_Waypoint){
+        ar->waypoints, circuit_waypoint_len(&ar->view->circuit)},
+      (RT_MutSlice_Vertex){
+        (RT_Vertex *)ar->view->vertices,
+        arrlen(ar->view->vertices),
+      },
+      (RT_MutSlice_WireView){
+        (RT_WireView *)ar->view->wires,
+        arrlen(ar->view->wires),
+      },
+      (RT_MutSlice_NetView){
+        (RT_NetView *)ar->view->nets,
+        circuit_net_len(&ar->view->circuit),
+      });
+    switch (res) {
+    case RT_RESULT_SUCCESS:
+      break;
+    case RT_RESULT_NULL_POINTER_ERROR:
+      log_error("Null pointer error");
+      break;
+    case RT_RESULT_INVALID_OPERATION_ERROR:
+      log_error("Invalid operation error");
+      break;
+    case RT_RESULT_UNINITIALIZED_ERROR:
+      log_error("Uninitialized error");
+      break;
+    case RT_RESULT_INVALID_ARGUMENT_ERROR:
+      log_error("Invalid argument error");
+      break;
+    case RT_RESULT_VERTEX_BUFFER_OVERFLOW_ERROR:
+
+      arrsetlen(ar->view->vertices, arrlen(ar->view->vertices) * 2);
+      continue;
+    case RT_RESULT_WIRE_VIEW_BUFFER_OVERFLOW_ERROR:
+      arrsetlen(ar->view->wires, arrlen(ar->view->wires) * 2);
+      continue;
+    }
+    break;
+  }
   assert(res == RT_RESULT_SUCCESS);
 
   uint64_t pathFind = stm_since(pathFindStart);
@@ -259,26 +402,19 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     "Graph build: %fms, Path find: %fms", stm_ms(graphBuild), stm_ms(pathFind));
 }
 
-size_t autoroute_wire_vertices(
-  AutoRoute *ar, WireID wireID, float *coords, size_t maxLen) {
-
-  int index = circuit_wire_index(&ar->view->circuit, wireID);
-  RT_PathRange *range = &ar->pathRanges[index];
-  RT_VertexBuffer *vb = &ar->vertexBuffers[range->vertex_buffer_index];
-
-  // todo: this copy could be avoided
-  memcpy(
-    coords, &vb->vertices[range->vertex_offset],
-    range->vertex_count * sizeof(RT_Vertex));
-
-  return (sizeof(RT_Vertex) * range->vertex_count) / sizeof(float);
-}
-
-void autoroute_get_junction_pos(
-  AutoRoute *ar, JunctionID junctionID, float *x, float *y) {
-  JunctionView *junctionView = view_junction_ptr(ar->view, junctionID);
-  *x = junctionView->pos.X;
-  *y = junctionView->pos.Y;
+size_t autoroute_get_net_port_vertices(
+  AutoRoute *ar, int netIndex, int portIndex, HMM_Vec2 **vertices) {
+  // RT_Net *net = &ar->nets[netIndex];
+  // size_t length = net->path_lengths[portIndex];
+  // size_t offset = 0;
+  // for (int i = 0; i < portIndex; i++) {
+  //   offset += net->path_lengths[i];
+  // }
+  // *vertices =
+  //   (HMM_Vec2 *)ar->vertexBuffers[net->vertex_buffer_index].vertices +
+  //   offset;
+  // return length;
+  return 0;
 }
 
 typedef void *Context;
@@ -362,6 +498,26 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
       ar->boxes[i].center.y);
     fprintf(fp, "        half_width: %d,\n", ar->boxes[i].half_width);
     fprintf(fp, "        half_height: %d,\n", ar->boxes[i].half_height);
+    fprintf(fp, "    },\n");
+  }
+  fprintf(fp, "];\n");
+  fprintf(fp, "const PORTS: &[Port] = &[\n");
+  for (size_t i = 0; i < circuit_port_len(&ar->view->circuit); i++) {
+    Port *port = &ar->view->circuit.ports[i];
+    ComponentView *compView = view_component_ptr(ar->view, port->component);
+    fprintf(fp, "    Port {\n");
+    if (port->net == NO_NET) {
+      fprintf(fp, "        NetIndex: NetIndex::INVALID,\n");
+    } else {
+      fprintf(
+        fp, "        NetIndex: ni!(%d),\n",
+        circuit_net_index(&ar->view->circuit, port->net));
+    }
+    PortView *portView = &ar->view->ports[i];
+    fprintf(
+      fp, "        position: Point { x: %d, y: %d },\n",
+      (int)(compView->box.center.X + portView->center.X),
+      (int)(compView->box.center.Y + portView->center.Y));
     fprintf(fp, "    },\n");
   }
   fprintf(fp, "];\n");

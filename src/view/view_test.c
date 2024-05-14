@@ -85,7 +85,9 @@ UTEST(View, view_draw_component_with_wires) {
   PortID to = orComp->portFirst;
 
   NetID net = view_add_net(&view);
-  view_add_wire(&view, net, from, to);
+  view_add_endpoint(&view, net, from, HMM_V2(0, 0));
+  view_add_endpoint(&view, net, to, HMM_V2(0, 0));
+  view_direct_wire_nets(&view);
 
   view_draw(&view);
 
@@ -100,7 +102,7 @@ UTEST(View, view_draw_component_with_wires) {
     "port(v7, -)\n"
     "port(v8, -)\n"
     "port(v9, -)\n"
-    "wire(-)\n",
+    "wire(v4, v7, -)\n",
     draw_get_build_string(draw));
 
   view_free(&view);

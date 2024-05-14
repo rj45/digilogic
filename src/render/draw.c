@@ -364,6 +364,19 @@ void draw_junction(
     (flags & DRAW_SELECTED) ? theme->color.selected : theme->color.wire);
 }
 
+void draw_waypoint(
+  DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
+  float factor = flags ? 4.0f : 2.0f;
+
+  HMM_Vec2 halfSize =
+    HMM_V2(theme->wireThickness * factor, theme->wireThickness * factor);
+
+  draw_stroked_circle(
+    draw, HMM_SubV2(pos, halfSize), HMM_MulV2F(halfSize, 2.0f),
+    theme->wireThickness,
+    (flags & DRAW_SELECTED) ? theme->color.selected : theme->color.wire);
+}
+
 void draw_label(
   DrawContext *draw, Theme *theme, Box box, const char *text,
   DrawLabelType type, DrawFlags flags) {

@@ -32,9 +32,9 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
     oldCenter = component->box.center;
     halfSize = component->box.halfSize;
 
-  } else if (id_type(selected) == ID_JUNCTION) {
-    JunctionView *junction = view_junction_ptr(&ux->view, selected);
-    oldCenter = junction->pos;
+  } else if (id_type(selected) == ID_WAYPOINT) {
+    WaypointView *waypoint = view_waypoint_ptr(&ux->view, selected);
+    oldCenter = waypoint->pos;
     halfSize = HMM_V2(0, 0);
   } else {
     return newCenter;

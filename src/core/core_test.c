@@ -167,17 +167,17 @@ UTEST(Circuit, add_net_with_ports) {
   PortID portID1 = comp->portFirst;
   PortID portID2 = circuit_port_ptr(&circuit, portID1)->compNext;
   NetID net = circuit_add_net(&circuit);
-  WireID id = circuit_add_wire(&circuit, net, portID1, portID2);
+  EndpointID epID1 = circuit_add_endpoint(&circuit, net, portID1);
+  EndpointID epID2 = circuit_add_endpoint(&circuit, net, portID2);
+
   ASSERT_EQ(circuit_net_index(&circuit, net), 0);
   ASSERT_EQ(circuit_net_len(&circuit), 1);
-  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->from, portID1);
-  ASSERT_EQ(circuit_port_ptr(&circuit, portID1)->net, net);
-  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->to, portID2);
-  ASSERT_EQ(circuit_port_ptr(&circuit, portID2)->net, net);
-  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->next, NO_WIRE);
-  ASSERT_EQ(circuit_wire_ptr(&circuit, id)->prev, NO_WIRE);
-  ASSERT_EQ(circuit_net_ptr(&circuit, net)->wireFirst, id);
-  ASSERT_EQ(circuit_net_ptr(&circuit, net)->wireLast, id);
+  ASSERT_EQ(circuit_endpoint_len(&circuit), 2);
+  ASSERT_EQ(circuit_endpoint_ptr(&circuit, epID1)->port, portID1);
+  ASSERT_EQ(circuit_endpoint_ptr(&circuit, epID2)->port, portID2);
+  ASSERT_EQ(circuit_endpoint_ptr(&circuit, epID1)->net, net);
+  ASSERT_EQ(circuit_endpoint_ptr(&circuit, epID2)->net, net);
+  // todo add more checks for the linked lists
   circuit_free(&circuit);
 }
 

@@ -7,7 +7,7 @@ MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/assets.c src/render/fons_sgp.c sr
 TEST_SRCS = $(SRCS) src/test.c src/ux/ux_test.c src/view/view_test.c src/core/core_test.c src/render/draw_test.c
 
 CFLAGS = -std=c11 -DSOKOL_METAL -I thirdparty -I src -Wall -Werror \
-	-DDEBUG -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
+	-DDEBUG -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer  \
 	`pkg-config --cflags freetype2`
 LIBFLAGS = -fobjc-arc -framework Metal -framework Cocoa -framework MetalKit -framework Quartz \
 	-Lthirdparty/routing/target/release -ldigilogic_routing \

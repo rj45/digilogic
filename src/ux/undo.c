@@ -40,8 +40,8 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
       ID id = ux->view.selected[i];
       if (id_type(id) == ID_COMPONENT) {
         ux_move_component(ux, id, delta);
-      } else if (id_type(id) == ID_JUNCTION) {
-        ux_move_junction(ux, id, delta);
+      } else if (id_type(id) == ID_WAYPOINT) {
+        ux_move_waypoint(ux, id, delta);
       }
     }
     ux_route(ux);
@@ -63,11 +63,11 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
         arrput(ux->view.selected, circuit_component_id(&ux->view.circuit, i));
       }
     }
-    for (size_t i = 0; i < circuit_junction_len(&ux->view.circuit); i++) {
-      JunctionView *junctionView = &ux->view.junctions[i];
-      Box box = (Box){.center = junctionView->pos, .halfSize = HMM_V2(5, 5)};
+    for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
+      WaypointView *waypointView = &ux->view.waypoints[i];
+      Box box = (Box){.center = waypointView->pos, .halfSize = HMM_V2(5, 5)};
       if (box_intersect_box(box, command.area)) {
-        arrput(ux->view.selected, circuit_junction_id(&ux->view.circuit, i));
+        arrput(ux->view.selected, circuit_waypoint_id(&ux->view.circuit, i));
       }
     }
     break;

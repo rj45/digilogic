@@ -115,13 +115,14 @@ void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
   smap_init(&circuit->sm.nets, ID_NET);
   smap_add_synced_array(
     &circuit->sm.nets, (void **)&circuit->nets, sizeof(*circuit->nets));
-  smap_init(&circuit->sm.junctions, ID_JUNCTION);
+  smap_init(&circuit->sm.waypoints, ID_WAYPOINT);
   smap_add_synced_array(
-    &circuit->sm.junctions, (void **)&circuit->junctions,
-    sizeof(*circuit->junctions));
-  smap_init(&circuit->sm.wires, ID_WIRE);
+    &circuit->sm.waypoints, (void **)&circuit->waypoints,
+    sizeof(*circuit->waypoints));
+  smap_init(&circuit->sm.endpoints, ID_ENDPOINT);
   smap_add_synced_array(
-    &circuit->sm.wires, (void **)&circuit->wires, sizeof(*circuit->wires));
+    &circuit->sm.endpoints, (void **)&circuit->endpoints,
+    sizeof(*circuit->endpoints));
   smap_init(&circuit->sm.labels, ID_LABEL);
   smap_add_synced_array(
     &circuit->sm.labels, (void **)&circuit->labels, sizeof(*circuit->labels));
@@ -131,8 +132,8 @@ void circuit_free(Circuit *circuit) {
   smap_free(&circuit->sm.components);
   smap_free(&circuit->sm.ports);
   smap_free(&circuit->sm.nets);
-  smap_free(&circuit->sm.junctions);
-  smap_free(&circuit->sm.wires);
+  smap_free(&circuit->sm.waypoints);
+  smap_free(&circuit->sm.endpoints);
   smap_free(&circuit->sm.labels);
   arrfree(circuit->text);
   hmfree(circuit->nextName);
@@ -200,86 +201,50 @@ ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc) {
 NetID circuit_add_net(Circuit *circuit) {
   NetID id = smap_alloc(&circuit->sm.nets);
   Net *net = circuit_net_ptr(circuit, id);
-  *net = (Net){
-    .portFirst = NO_PORT,
-    .portLast = NO_PORT,
-    .label = NO_LABEL,
-    .wireFirst = NO_WIRE,
-    .wireLast = NO_WIRE};
+  *net = (Net){0};
 
   return id;
 }
 
-JunctionID circuit_add_junction(Circuit *circuit) {
-  JunctionID id = smap_alloc(&circuit->sm.junctions);
-  Junction *junction = circuit_junction_ptr(circuit, id);
-  *junction =
-    (Junction){.net = NO_NET, .next = NO_JUNCTION, .prev = NO_JUNCTION};
+WaypointID circuit_add_waypoint(Circuit *circuit, NetID netID) {
+  WaypointID id = smap_alloc(&circuit->sm.waypoints);
+  Waypoint *waypoint = circuit_waypoint_ptr(circuit, id);
+  *waypoint = (Waypoint){.net = netID};
+
+  assert(netID != NO_NET);
+  Net *net = circuit_net_ptr(circuit, netID);
+  if (net->waypointFirst == NO_ENDPOINT) {
+    net->waypointFirst = id;
+  }
+  if (net->waypointLast != NO_ENDPOINT) {
+    circuit_waypoint_ptr(circuit, net->waypointLast)->next = id;
+  }
+  waypoint->prev = net->waypointLast;
+  net->waypointLast = id;
   return id;
 }
 
-WireID circuit_add_wire(Circuit *circuit, NetID netID, ID from, ID to) {
-  WireID id = smap_alloc(&circuit->sm.wires);
-  Wire *wire = circuit_wire_ptr(circuit, id);
-  *wire = (Wire){
-    .net = netID, .from = from, .to = to, .next = NO_WIRE, .prev = NO_WIRE};
+EndpointID circuit_add_endpoint(Circuit *circuit, NetID netID, PortID portID) {
+  EndpointID id = smap_alloc(&circuit->sm.endpoints);
+  Endpoint *endpoint = circuit_endpoint_ptr(circuit, id);
+  if (!smap_has(&circuit->sm.ports, portID)) {
+    portID = NO_PORT;
+  }
+  *endpoint = (Endpoint){.net = netID, .port = portID};
+
+  circuit_port_ptr(circuit, portID)->endpoint = id;
 
   assert(netID != NO_NET);
 
   Net *net = circuit_net_ptr(circuit, netID);
-  if (net->wireFirst == NO_WIRE) {
-    net->wireFirst = id;
+  if (net->endpointFirst == NO_ENDPOINT) {
+    net->endpointFirst = id;
   }
-  if (net->wireLast != NO_WIRE) {
-    circuit_wire_ptr(circuit, net->wireLast)->next = id;
+  if (net->endpointLast != NO_ENDPOINT) {
+    circuit_endpoint_ptr(circuit, net->endpointLast)->next = id;
   }
-  wire->prev = net->wireLast;
-  net->wireLast = id;
-
-  ID ends[2] = {from, to};
-
-  for (int i = 0; i < 2; i++) {
-    switch (id_type(ends[i])) {
-    case ID_NONE:
-      break;
-    case ID_PORT: {
-      PortID portID = ends[i];
-      Port *port = circuit_port_ptr(circuit, portID);
-      assert(port->net == NO_NET || port->net == netID);
-      if (port->net == NO_NET) {
-        port->net = netID;
-        if (net->portFirst == NO_PORT) {
-          net->portFirst = portID;
-        }
-        if (net->portLast != NO_PORT) {
-          circuit_port_ptr(circuit, net->portLast)->netNext = portID;
-        }
-        port->netPrev = net->portLast;
-        net->portLast = portID;
-      }
-      break;
-    }
-    case ID_JUNCTION: {
-      JunctionID juncID = ends[i];
-      Junction *junction = circuit_junction_ptr(circuit, juncID);
-      assert(junction->net == NO_NET || junction->net == netID);
-      if (junction->net == NO_NET) {
-        junction->net = netID;
-        if (net->junctionFirst == NO_PORT) {
-          net->junctionFirst = juncID;
-        }
-        if (net->junctionLast != NO_PORT) {
-          circuit_junction_ptr(circuit, net->junctionLast)->next = juncID;
-        }
-        junction->prev = net->junctionLast;
-        net->junctionLast = juncID;
-      }
-      break;
-    }
-    default:
-      assert(0);
-    }
-  }
+  endpoint->prev = net->endpointLast;
+  net->endpointLast = id;
 
   return id;
 }
@@ -304,8 +269,6 @@ LabelID circuit_add_label(Circuit *circuit, const char *text) {
     }
   }
 
-  // char *found =
-  // memmem(circuit->text, arrlen(circuit->text), text, strlen(text) + 1);
   if (found) {
     label->textOffset = found - circuit->text;
   } else {
@@ -347,44 +310,47 @@ void circuit_write_dot(Circuit *circuit, FILE *file) {
 
   fprintf(file, "\n");
 
-  for (JunctionID i = 0; i < circuit_junction_len(circuit); i++) {
-    fprintf(file, "  j%d [shape=\"point\"];\n", i);
-  }
-
-  fprintf(file, "\n");
-
   int floatPoint = 0;
+  char startEndpointText[256];
 
-  for (WireID i = 0; i < circuit_wire_len(circuit); i++) {
-    Wire wire = circuit->wires[i];
+  for (int netIndex = 0; netIndex < circuit_net_len(circuit); netIndex++) {
+    Net *net = &circuit->nets[netIndex];
+    EndpointID startEndpointID = net->endpointFirst;
+    while (startEndpointID != NO_ENDPOINT) {
+      Endpoint *startEndpoint = circuit_endpoint_ptr(circuit, startEndpointID);
 
-    fprintf(file, "  ");
+      if (startEndpoint->port != NO_PORT) {
+        Port *port = circuit_port_ptr(circuit, startEndpoint->port);
+        snprintf(
+          startEndpointText, 256, "c%d:p%d",
+          circuit_component_index(circuit, port->component), port->desc);
+      } else {
+        snprintf(startEndpointText, 256, "f%d", floatPoint++);
+      }
 
-    for (int j = 0; j < 2; j++) {
-      ID end = j == 0 ? wire.from : wire.to;
-      switch (id_type(end)) {
-      case ID_NONE:
-        fprintf(file, "f%d[shape=\"point\"]", floatPoint);
-        floatPoint++;
-        break;
-      case ID_JUNCTION:
-        fprintf(file, "j%d", circuit_junction_index(circuit, end));
-        break;
-      case ID_PORT: {
-        Port *port = circuit_port_ptr(circuit, end);
-        fprintf(
-          file, "c%d:p%d", circuit_component_index(circuit, port->component),
-          port->desc);
-        break;
+      EndpointID endEndpointID = net->endpointFirst;
+      while (endEndpointID != NO_ENDPOINT && endEndpointID != startEndpointID) {
+        Endpoint *endEndpoint = circuit_endpoint_ptr(circuit, startEndpointID);
+        endEndpointID = endEndpoint->next;
       }
-      default:
-        assert(0);
+      if (endEndpointID == startEndpointID) {
+        Endpoint *endEndpoint = circuit_endpoint_ptr(circuit, startEndpointID);
+        endEndpointID = endEndpoint->next;
       }
-      if (j == 0) {
-        fprintf(file, " -- ");
+      while (endEndpointID != NO_ENDPOINT) {
+        Endpoint *endEndpoint = circuit_endpoint_ptr(circuit, startEndpointID);
+        if (endEndpoint->port != NO_PORT) {
+          Port *port = circuit_port_ptr(circuit, endEndpoint->port);
+          fprintf(
+            file, "  %s -- c%d:p%d;", startEndpointText,
+            circuit_component_index(circuit, port->component), port->desc);
+        } else {
+          fprintf(file, "  %s -- f%d", startEndpointText, floatPoint++);
+        }
+        endEndpointID = endEndpoint->next;
       }
+      startEndpointID = startEndpoint->next;
     }
-    fprintf(file, ";\n");
   }
 
   fprintf(file, "}\n");

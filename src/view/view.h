@@ -20,6 +20,12 @@
 #include "core/core.h"
 #include "render/draw.h"
 
+typedef uint32_t VertexIndex;
+#define NO_VERTEX UINT32_MAX
+
+typedef uint32_t WireIndex;
+#define NO_VERTEX UINT32_MAX
+
 typedef struct PortView {
   // postion of center of port relative to the component
   HMM_Vec2 center;
@@ -29,18 +35,27 @@ typedef struct ComponentView {
   Box box;
 } ComponentView;
 
-typedef struct WireView {
-  VertexID vertexStart;
-  VertexID vertexEnd;
-} WireView;
-
-typedef struct JunctionView {
+typedef struct EndpointView {
   HMM_Vec2 pos;
-} JunctionView;
+} EndpointView;
+
+typedef struct WaypointView {
+  HMM_Vec2 pos;
+} WaypointView;
 
 typedef struct LabelView {
   Box bounds;
 } LabelView;
+
+typedef struct NetView {
+  WireIndex wireOffset;
+  uint32_t wireCount;
+  VertexIndex vertexOffset;
+} NetView;
+
+typedef struct Wire {
+  uint16_t vertexCount;
+} Wire;
 
 typedef struct CircuitView {
   Circuit circuit;
@@ -49,10 +64,12 @@ typedef struct CircuitView {
 
   ComponentView *components;
   PortView *ports;
-  WireView *wires;
-  JunctionView *junctions;
+  NetView *nets;
+  EndpointView *endpoints;
+  WaypointView *waypoints;
   LabelView *labels;
 
+  arr(Wire) wires;
   arr(HMM_Vec2) vertices;
 
   ID hovered;
@@ -68,10 +85,12 @@ typedef struct CircuitView {
   (&(view)->components[circuit_component_index(&(view)->circuit, id)])
 #define view_port_ptr(view, id)                                                \
   (&(view)->ports[circuit_port_index(&(view)->circuit, id)])
-#define view_wire_ptr(view, id)                                                \
-  (&(view)->wires[circuit_wire_index(&(view)->circuit, id)])
-#define view_junction_ptr(view, id)                                            \
-  (&(view)->junctions[circuit_junction_index(&(view)->circuit, id)])
+#define view_net_ptr(view, id)                                                 \
+  (&(view)->nets[circuit_net_index(&(view)->circuit, id)])
+#define view_endpoint_ptr(view, id)                                            \
+  (&(view)->endpoints[circuit_endpoint_index(&(view)->circuit, id)])
+#define view_waypoint_ptr(view, id)                                            \
+  (&(view)->waypoints[circuit_waypoint_index(&(view)->circuit, id)])
 #define view_label_ptr(view, id)                                               \
   (&(view)->labels[circuit_label_index(&(view)->circuit, id)])
 
@@ -84,14 +103,15 @@ void view_free(CircuitView *view);
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position);
 NetID view_add_net(CircuitView *view);
-JunctionID view_add_junction(CircuitView *view, HMM_Vec2 position);
-WireID view_add_wire(CircuitView *view, NetID net, ID from, ID to);
+EndpointID
+view_add_endpoint(CircuitView *view, NetID net, PortID port, HMM_Vec2 position);
+WaypointID view_add_waypoint(CircuitView *view, NetID net, HMM_Vec2 position);
 
-void view_add_vertex(CircuitView *view, WireID wire, HMM_Vec2 vertex);
-void view_rem_vertex(CircuitView *view, WireID wire);
-void view_fix_wire_end_vertices(CircuitView *view, WireID wire);
-void view_set_vertex(
-  CircuitView *view, WireID wire, VertexID index, HMM_Vec2 pos);
+// wires all endpoints in the net together in a star pattern,
+// mainly only useful in tests
+void view_direct_wire_nets(CircuitView *view);
+
+void view_fix_wire_end_vertices(CircuitView *view, WireIndex wire);
 void view_draw(CircuitView *view);
 
 LabelID view_add_label(CircuitView *view, const char *text, Box bounds);

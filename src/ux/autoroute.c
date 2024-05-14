@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "core/core.h"
 #include "stb_ds.h"
 #include "view/view.h"
 
@@ -22,38 +23,37 @@
 
 void ux_route(CircuitUX *ux) {
   autoroute_route(ux->router, ux->betterRoutes);
+  // Circuit *circuit = &ux->view.circuit;
+  // for (int i = 0; i < circuit_net_len(circuit); i++) {
+  //   Net *net = &circuit->nets[i];
 
-  float coords[1024];
+  //   int portIndex = 0;
+  //   PortID portID = net->portFirst;
+  //   while (portID != NO_PORT) {
+  //     Port *port = circuit_port_ptr(circuit, portID);
 
-  for (int i = 0; i < circuit_wire_len(&ux->view.circuit); i++) {
-    WireView *wireView = &ux->view.wires[i];
-    WireID id = circuit_wire_id(&ux->view.circuit, i);
+  //     WireID wireID = port->wire;
+  //     if (port->wire == NO_WIRE) {
+  //       wireID =
+  //         circuit_add_wire(circuit, circuit_net_id(circuit, i), portID,
+  //         NO_ID);
+  //     }
+  //     WireView *wireView = view_wire_ptr(&ux->view, wireID);
+  //     HMM_Vec2 *vertices = NULL;
+  //     size_t length =
+  //       autoroute_get_net_port_vertices(ux->router, i, portIndex, &vertices);
+  //     while ((wireView->vertexEnd - wireView->vertexStart) > length) {
+  //       view_rem_vertex(&ux->view, wireID);
+  //     }
+  //     while ((wireView->vertexEnd - wireView->vertexStart) < length) {
+  //       view_add_vertex(&ux->view, wireID, HMM_V2(0, 0));
+  //     }
+  //     memcpy(
+  //       ux->view.vertices + wireView->vertexStart, vertices,
+  //       length * sizeof(HMM_Vec2));
 
-    size_t len = autoroute_wire_vertices(
-      ux->router, id, coords, sizeof(coords) / sizeof(coords[0]));
-    len /= 2;
-
-    int curSize = wireView->vertexEnd - wireView->vertexStart;
-
-    while (curSize < len) {
-      view_add_vertex(&ux->view, id, HMM_V2(0, 0));
-      curSize++;
-    }
-    while (curSize > len) {
-      view_rem_vertex(&ux->view, id);
-      curSize--;
-    }
-    for (int j = 0; j < len; j++) {
-      view_set_vertex(
-        &ux->view, id, j, HMM_V2(coords[j * 2], coords[j * 2 + 1]));
-    }
-    view_fix_wire_end_vertices(&ux->view, id);
-  }
-
-  for (int i = 0; i < circuit_junction_len(&ux->view.circuit); i++) {
-    JunctionView *junctionView = &ux->view.junctions[i];
-    JunctionID id = circuit_junction_id(&ux->view.circuit, i);
-    autoroute_get_junction_pos(
-      ux->router, id, &junctionView->pos.X, &junctionView->pos.Y);
-  }
+  //     portID = port->netNext;
+  //     portIndex++;
+  //   }
+  // }
 }

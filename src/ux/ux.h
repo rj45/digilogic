@@ -236,11 +236,12 @@ void ux_free(CircuitUX *ux);
 ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position);
 NetID ux_add_net(CircuitUX *circuit);
-JunctionID ux_add_junction(CircuitUX *ux, HMM_Vec2 position);
-WireID ux_add_wire(CircuitUX *ux, NetID net, ID from, ID to);
+EndpointID
+ux_add_endpoint(CircuitUX *ux, NetID net, PortID port, HMM_Vec2 position);
+WaypointID ux_add_waypoint(CircuitUX *ux, NetID net, HMM_Vec2 position);
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta);
-void ux_move_junction(CircuitUX *ux, JunctionID id, HMM_Vec2 delta);
+void ux_move_waypoint(CircuitUX *ux, WaypointID id, HMM_Vec2 delta);
 
 HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter);
 HMM_Vec2 ux_calc_selection_center(CircuitUX *ux);

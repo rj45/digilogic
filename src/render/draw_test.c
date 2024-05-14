@@ -162,6 +162,18 @@ void draw_wire(
   }
 }
 
+void draw_waypoint(
+  DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
+  char buff[256];
+  snprintf(
+    buff, 256, "waypoint(v%d, %s)\n", find_vert(draw, pos), draw_flags(flags));
+
+  int len = strlen(buff);
+  for (int i = 0; i < len; i++) {
+    arrput(draw->buildString, buff[i]);
+  }
+}
+
 void draw_junction(
   DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
   char buff[256];

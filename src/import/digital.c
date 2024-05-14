@@ -20,7 +20,7 @@
 #include "ux/ux.h"
 #include "view/view.h"
 
-#define LOG_LEVEL LL_INFO
+#define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
 #define DEBUG_PRINT(...)
@@ -54,10 +54,10 @@ typedef struct IVec2 {
 typedef struct WireEnd {
   IVec2 pos;
   bool visited;
-  enum { IN_PORT, OUT_PORT, WIRE, JUNCTION } type;
+  enum { IN_PORT, OUT_PORT, WIRE, WAYPOINT } type;
   union {
     PortID port;
-    JunctionID junc;
+    WaypointID waypoint;
     IVec2 farSide;
   };
 } WireEnd;
@@ -92,7 +92,7 @@ void replace_wire_end_with_port(
   arr(DigWire) digWires, DigWireHash *digWireEnds, PortID port, IVec2 pos,
   bool in) {
   arr(uint32_t) ends = hmget(digWireEnds, pos);
-  assert(arrlen(ends) == 1); // junction on pin not supported yet
+  assert(arrlen(ends) == 1); // waypoint on pin not supported yet
   for (int i = 0; i < arrlen(ends); i++) {
     DigWire *digWire = &digWires[ends[i]];
     for (int j = 0; j < 2; j++) {
@@ -203,6 +203,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
   arr(uint32_t) stack = 0;
   arr(PortID) inPorts = 0;
   arr(PortID) outPorts = 0;
+  arr(HMM_Vec2) waypoints = 0;
   arr(uint32_t) netWires = 0;
 
   arr(DigWire) digWires = 0;
@@ -558,14 +559,15 @@ void import_digital(CircuitUX *ux, char *buffer) {
   }
   assert(allValid);
 
-  // figure out where the junctions are
+  // figure out where the waypoints are
   for (int i = 0; i < hmlen(digWireEnds); i++) {
     if (arrlen(digWireEnds[i].value) > 2) {
       log_debug(
-        "Junction at %d, %d\n", digWireEnds[i].key.x, digWireEnds[i].key.y);
+        "Waypoint at %d, %d\n", digWireEnds[i].key.x, digWireEnds[i].key.y);
 
-      JunctionID junctionID =
-        ux_add_junction(ux, HMM_V2(digWireEnds[i].key.x, digWireEnds[i].key.y));
+      // WaypointID waypointID =
+      //   ux_add_waypoint(ux, HMM_V2(digWireEnds[i].key.x,
+      //   digWireEnds[i].key.y));
       bool valid = true;
       for (int j = 0; j < arrlen(digWireEnds[i].value); j++) {
         DigWire *digWire = &digWires[digWireEnds[i].value[j]];
@@ -584,8 +586,8 @@ void import_digital(CircuitUX *ux, char *buffer) {
           if (
             digWire->ends[k].pos.x == digWireEnds[i].key.x &&
             digWire->ends[k].pos.y == digWireEnds[i].key.y) {
-            digWire->ends[k].type = JUNCTION;
-            digWire->ends[k].junc = junctionID;
+            digWire->ends[k].type = WAYPOINT;
+            // digWire->ends[k].waypoint = waypointID;
           }
         }
       }
@@ -628,64 +630,91 @@ void import_digital(CircuitUX *ux, char *buffer) {
           break;
         case WIRE:
           break;
-        case JUNCTION:
+        case WAYPOINT: {
+          bool found = false;
+          for (int l = 0; l < arrlen(waypoints); l++) {
+            if (waypoints[l].X == end->pos.x && waypoints[l].Y == end->pos.y) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            arrput(waypoints, HMM_V2(end->pos.x, end->pos.y));
+          }
           break;
+        }
         }
       }
     }
 
     NetID netID = ux_add_net(ux);
-    log_debug("Net %d\n", netID);
-    for (int j = 0; j < arrlen(netWires); j++) {
-      DigWire *digWire = &digWires[netWires[j]];
-      ID ends[2] = {0, 0};
-      if (!digWire->valid) {
-        continue;
-      }
-      bool skip = false;
+    log_debug("Net %d", netID);
 
-      if (
-        digWire->ends[1].type == PORT_OUT || digWire->ends[0].type == PORT_IN) {
-        // swap the ends
-        WireEnd tmp = digWire->ends[0];
-        digWire->ends[0] = digWire->ends[1];
-        digWire->ends[1] = tmp;
-        log_debug("  Swapped");
-      }
-
-      log_debug("  Connecting ");
-      for (int k = 0; k < 2; k++) {
-        WireEnd *end = &digWire->ends[k];
-        switch (end->type) {
-        case IN_PORT:
-        case OUT_PORT:
-          ends[k] = end->port;
-          log_debug(
-            "%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
-          break;
-        case JUNCTION:
-          ends[k] = end->junc;
-          log_debug("junction %d ", end->junc);
-          break;
-        case WIRE:
-          ends[k] = NO_ID;
-          log_debug("wire %d, %d ", end->pos.x, end->pos.y);
-          skip = true;
-          break;
-        }
-      }
-      if (skip) {
-        log_debug("  --> skipping");
-        allValid = false;
-        continue;
-      }
-      log_debug("");
-      ux_add_wire(ux, netID, ends[0], ends[1]);
+    for (int j = 0; j < arrlen(inPorts); j++) {
+      log_debug("  * In port %d", inPorts[j]);
+      ux_add_endpoint(ux, netID, inPorts[j], HMM_V2(0, 0));
     }
-    assert(allValid);
+    for (int j = 0; j < arrlen(waypoints); j++) {
+      log_debug("  * Waypoint %f %f", waypoints[j].X, waypoints[j].Y);
+      ux_add_waypoint(ux, netID, waypoints[j]);
+    }
+    for (int j = 0; j < arrlen(outPorts); j++) {
+      log_debug("  * Out port %d", outPorts[j]);
+      ux_add_endpoint(ux, netID, outPorts[j], HMM_V2(0, 0));
+    }
+
+    // for (int j = 0; j < arrlen(netWires); j++) {
+    //   DigWire *digWire = &digWires[netWires[j]];
+    //   ID ends[2] = {0, 0};
+    //   if (!digWire->valid) {
+    //     continue;
+    //   }
+    //   bool skip = false;
+
+    //   if (
+    //     digWire->ends[1].type == PORT_OUT || digWire->ends[0].type ==
+    //     PORT_IN) {
+    //     // swap the ends
+    //     WireEnd tmp = digWire->ends[0];
+    //     digWire->ends[0] = digWire->ends[1];
+    //     digWire->ends[1] = tmp;
+    //     log_debug("  Swapped");
+    //   }
+
+    //   log_debug("  Connecting ");
+    //   for (int k = 0; k < 2; k++) {
+    //     WireEnd *end = &digWire->ends[k];
+    //     switch (end->type) {
+    //     case IN_PORT:
+    //     case OUT_PORT:
+    //       ends[k] = end->port;
+    //       log_debug(
+    //         "%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
+    //       break;
+    //     case WAYPOINT:
+    //       ends[k] = ux_add_waypoint(ux, netID, HMM_V2(end->pos.x,
+    //       end->pos.y)); log_debug("waypoint %d ", ends[k]); break;
+    //     case WIRE:
+    //       ends[k] = NO_ID;
+    //       log_debug("wire %d, %d ", end->pos.x, end->pos.y);
+    //       skip = true;
+    //       break;
+    //     }
+    //   }
+    // if (skip) {
+    //   log_debug("  --> skipping");
+    //   allValid = false;
+    //   continue;
+    // }
+    // log_debug("");
+
+    // ux_add_wire(ux, netID, ends[0], ends[1]);
+    // }
+    // assert(allValid);
 
     arrsetlen(inPorts, 0);
     arrsetlen(outPorts, 0);
+    arrsetlen(waypoints, 0);
     arrsetlen(netWires, 0);
   }
 
@@ -694,6 +723,7 @@ fail:
   arrfree(inPorts);
   arrfree(outPorts);
   arrfree(netWires);
+  arrfree(waypoints);
   arrfree(digWires);
   for (int i = 0; i < hmlen(digWireEnds); i++) {
     arrfree(digWireEnds[i].value);

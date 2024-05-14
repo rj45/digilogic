@@ -77,6 +77,8 @@ void draw_wire(
   DrawFlags flags);
 void draw_junction(
   DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags);
+void draw_waypoint(
+  DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags);
 void draw_label(
   DrawContext *draw, Theme *theme, Box box, const char *text,
   DrawLabelType type, DrawFlags flags);

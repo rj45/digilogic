@@ -25,7 +25,7 @@
 
 #define MAX_ZOOM 20.0f
 #define MOUSE_FUDGE 1.5f
-#define MOUSE_JUNC_FUDGE 5.0f
+#define MOUSE_WP_FUDGE 5.0f
 
 /* Enter this into mermaid.live:
     stateDiagram
@@ -76,11 +76,11 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           inSelection = true;
           break;
         }
-      } else if (id_type(id) == ID_JUNCTION) {
-        JunctionView *junctionView = view_junction_ptr(&ux->view, id);
+      } else if (id_type(id) == ID_WAYPOINT) {
+        WaypointView *waypointView = view_waypoint_ptr(&ux->view, id);
         if (
-          HMM_LenSqrV2(HMM_SubV2(junctionView->pos, worldMousePos)) <
-          MOUSE_JUNC_FUDGE) {
+          HMM_LenSqrV2(HMM_SubV2(waypointView->pos, worldMousePos)) <
+          MOUSE_WP_FUDGE) {
           inSelection = true;
           break;
         }
@@ -318,14 +318,14 @@ static void ux_handle_mouse(CircuitUX *ux) {
     }
   }
 
-  for (size_t i = 0; i < circuit_junction_len(&ux->view.circuit); i++) {
-    JunctionView *junctionView = &ux->view.junctions[i];
-    Box junctionBox = {
-      .center = junctionView->pos,
-      .halfSize = HMM_V2(MOUSE_JUNC_FUDGE, MOUSE_JUNC_FUDGE),
+  for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
+    WaypointView *waypointView = &ux->view.waypoints[i];
+    Box waypointBox = {
+      .center = waypointView->pos,
+      .halfSize = HMM_V2(MOUSE_WP_FUDGE, MOUSE_WP_FUDGE),
     };
-    if (box_intersect_box(junctionBox, mouseBox)) {
-      ux->view.hovered = circuit_junction_id(&ux->view.circuit, i);
+    if (box_intersect_box(waypointBox, mouseBox)) {
+      ux->view.hovered = circuit_waypoint_id(&ux->view.circuit, i);
     }
   }
 

@@ -348,26 +348,17 @@ void event(const sapp_event *event, void *user_data) {
   }
 }
 
-#ifdef __APPLE__
-#include <execinfo.h>
-#include <signal.h>
-#include <unistd.h>
-
-void handler(int sig) {
-  void *array[150];
-  size_t size;
-
-  size = backtrace(array, 150);
-
-  fprintf(stderr, "Error: signal %d:\n", sig);
-  backtrace_symbols_fd(array, size, STDERR_FILENO);
-  exit(1);
-}
+#ifndef _WIN32
+#include "stacktrace.h"
 #endif
 
 sapp_desc sokol_main(int argc, char *argv[]) {
   ux_global_init();
   stm_setup();
+
+#ifndef _WIN32
+  init_exceptions(argv[0]);
+#endif
 
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){
@@ -377,12 +368,6 @@ sapp_desc sokol_main(int argc, char *argv[]) {
   if (argc > 1) {
     app->filename = argv[1];
   }
-
-#ifdef __APPLE__
-  signal(SIGSEGV, handler);
-  signal(SIGABRT, handler);
-  signal(SIGTRAP, handler);
-#endif
 
   return (sapp_desc){
     .width = 1280,

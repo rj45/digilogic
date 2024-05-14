@@ -48,8 +48,8 @@ typedef enum IDType {
   ID_COMPONENT,
   ID_PORT,
   ID_NET,
-  ID_WIRE,
-  ID_JUNCTION,
+  ID_ENDPOINT,
+  ID_WAYPOINT,
   ID_LABEL,
 } IDType;
 
@@ -161,17 +161,14 @@ typedef ID NetID;
 typedef ID PortID;
 #define NO_PORT NO_ID
 
-typedef ID VertexID;
-#define NO_VERTEX NO_ID
+typedef ID EndpointID;
+#define NO_ENDPOINT NO_ID
+
+typedef ID WaypointID;
+#define NO_WAYPOINT NO_ID
 
 typedef ID LabelID;
 #define NO_LABEL NO_ID
-
-typedef ID WireID;
-#define NO_WIRE NO_ID
-
-typedef ID JunctionID;
-#define NO_JUNCTION NO_ID
 
 typedef enum PortDirection {
   PORT_IN,
@@ -221,42 +218,42 @@ typedef struct Port {
   // the net the port is connected to.
   NetID net;
 
+  // the endpoint the port is connected to.
+  // ports must have an endpoint.
+  EndpointID endpoint;
+
   // linked list of all ports connected to the same net
   PortID netNext;
   PortID netPrev;
 } Port;
 
-typedef struct Wire {
+typedef struct Endpoint {
   NetID net;
 
-  ID from;
-  ID to;
+  // optional port connected to this endpoint
+  // endpoints do not need to have a port.
+  PortID port;
 
-  // linked list of all wires in the net
-  WireID next;
-  WireID prev;
-} Wire;
+  EndpointID next;
+  EndpointID prev;
+} Endpoint;
 
-typedef struct Junction {
+typedef struct Waypoint {
   NetID net;
 
-  // linked list of all junctions in the net
-  JunctionID next;
-  JunctionID prev;
-} Junction;
+  // linked list of all waypoints in the net
+  WaypointID next;
+  WaypointID prev;
+} Waypoint;
 
 typedef struct Net {
-  // head and tail of the linked list of ports connected to this net
-  PortID portFirst;
-  PortID portLast;
+  // head and tail of the linked list of endpoints connected to this net
+  EndpointID endpointFirst;
+  EndpointID endpointLast;
 
-  // head and tail of the linked list of wires in this net
-  WireID wireFirst;
-  WireID wireLast;
-
-  // head and tail of the linked list of junctions in this net
-  JunctionID junctionFirst;
-  JunctionID junctionLast;
+  // head and tail of the linked list of waypoints in this net
+  WaypointID waypointFirst;
+  WaypointID waypointLast;
 
   LabelID label;
 } Net;
@@ -270,8 +267,8 @@ typedef struct Circuit {
     SparseMap components;
     SparseMap ports;
     SparseMap nets;
-    SparseMap wires;
-    SparseMap junctions;
+    SparseMap endpoints;
+    SparseMap waypoints;
     SparseMap labels;
   } sm;
 
@@ -280,8 +277,8 @@ typedef struct Circuit {
   Component *components;
   Port *ports;
   Net *nets;
-  Wire *wires;
-  Junction *junctions;
+  Endpoint *endpoints;
+  Waypoint *waypoints;
   Label *labels;
 
   arr(char) text;
@@ -312,19 +309,21 @@ typedef struct Circuit {
 #define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
 #define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
 
-#define circuit_wire_index(circuit, id) (smap_index(&(circuit)->sm.wires, (id)))
-#define circuit_wire_ptr(circuit, id)                                          \
-  (&(circuit)->wires[circuit_wire_index(circuit, id)])
-#define circuit_wire_len(circuit) (smap_len(&(circuit)->sm.wires))
-#define circuit_wire_id(circuit, index) (smap_id(&(circuit)->sm.wires, (index)))
+#define circuit_endpoint_index(circuit, id)                                    \
+  (smap_index(&(circuit)->sm.endpoints, (id)))
+#define circuit_endpoint_ptr(circuit, id)                                      \
+  (&(circuit)->endpoints[circuit_endpoint_index(circuit, id)])
+#define circuit_endpoint_len(circuit) (smap_len(&(circuit)->sm.endpoints))
+#define circuit_endpoint_id(circuit, index)                                    \
+  (smap_id(&(circuit)->sm.endpoints, (index)))
 
-#define circuit_junction_index(circuit, id)                                    \
-  (smap_index(&(circuit)->sm.junctions, (id)))
-#define circuit_junction_ptr(circuit, id)                                      \
-  (&(circuit)->junctions[circuit_junction_index(circuit, id)])
-#define circuit_junction_len(circuit) (smap_len(&(circuit)->sm.junctions))
-#define circuit_junction_id(circuit, index)                                    \
-  (smap_id(&(circuit)->sm.junctions, (index)))
+#define circuit_waypoint_index(circuit, id)                                    \
+  (smap_index(&(circuit)->sm.waypoints, (id)))
+#define circuit_waypoint_ptr(circuit, id)                                      \
+  (&(circuit)->waypoints[circuit_waypoint_index(circuit, id)])
+#define circuit_waypoint_len(circuit) (smap_len(&(circuit)->sm.waypoints))
+#define circuit_waypoint_id(circuit, index)                                    \
+  (smap_id(&(circuit)->sm.waypoints, (index)))
 
 #define circuit_label_index(circuit, id)                                       \
   (smap_index(&(circuit)->sm.labels, (id)))
@@ -339,8 +338,8 @@ void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
 ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc);
 NetID circuit_add_net(Circuit *circuit);
-JunctionID circuit_add_junction(Circuit *circuit);
-WireID circuit_add_wire(Circuit *circuit, NetID net, ID from, ID to);
+EndpointID circuit_add_endpoint(Circuit *circuit, NetID net, PortID port);
+WaypointID circuit_add_waypoint(Circuit *circuit, NetID);
 
 LabelID circuit_add_label(Circuit *circuit, const char *text);
 const char *circuit_label_text(Circuit *circuit, LabelID id);
