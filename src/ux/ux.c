@@ -44,6 +44,9 @@ void ux_init(
 void ux_free(CircuitUX *ux) {
   view_free(&ux->view);
   bv_free(ux->input.keysDown);
+  bv_free(ux->input.keysPressed);
+  arrfree(ux->undoStack);
+  arrfree(ux->redoStack);
   autoroute_free(ux->router);
 }
 

@@ -107,6 +107,7 @@ void LXMLNode_free(LXMLNode *node);
 // LXMLAttribute* LXMLAttribute_new(LXMLNode* parent);
 void LXMLAttribute_free(LXMLAttribute *attribute);
 void LXMLAttributeList_init(LXMLAttributeList *list);
+void LXMLAttributeList_free(LXMLAttributeList *list);
 void LXMLAttributeList_add(LXMLAttributeList *list, LXMLAttribute *attribute);
 void LXMLNodeList_init(LXMLNodeList *list);
 void LXMLNodeList_free(LXMLNodeList *list);
@@ -193,6 +194,8 @@ static TagType parse_attributes(
 
 int LXMLDocument_load_memory(LXMLDocument *doc, char *buffer) {
   doc->root = LXMLNode_new(NULL);
+  doc->encoding = NULL;
+  doc->version = NULL;
 
   // Lexical Analysis
   char lex[256];
@@ -216,6 +219,9 @@ int LXMLDocument_load_memory(LXMLDocument *doc, char *buffer) {
         }
         // Allocate a copy of the lex buffer contents to the inner text of the
         // current node
+        if (current_node->inner_text != NULL) {
+          free(current_node->inner_text);
+        }
         current_node->inner_text = strdup(lex);
         DEBUG_PRINT("Contents of lex: %s \n", lex);
         DEBUG_PRINT("Contents of lext coppied to inner text\n");
@@ -277,8 +283,11 @@ int LXMLDocument_load_memory(LXMLDocument *doc, char *buffer) {
           lexi = 0;
           LXMLNode *desc = LXMLNode_new(NULL);
           parse_attributes(buffer, &i, lex, &lexi, desc);
-          doc->version = LXMLNode_attribute_value(desc, "version");
-          doc->encoding = LXMLNode_attribute_value(desc, "encoding");
+          if (LXMLNode_attribute_value(desc, "version")) {
+            doc->version = strdup(LXMLNode_attribute_value(desc, "version"));
+          }
+          doc->encoding = strdup(LXMLNode_attribute_value(desc, "encoding"));
+          LXMLNode_free(desc);
           continue;
         }
       }
@@ -432,7 +441,15 @@ int LXMLDocument_write(LXMLDocument *doc, const char *path, int indent) {
   return TRUE;
 }
 
-void LXMLDocument_free(LXMLDocument *doc) { LXMLNode_free(doc->root); }
+void LXMLDocument_free(LXMLDocument *doc) {
+  if (doc->version) {
+    free(doc->version);
+  }
+  if (doc->encoding) {
+    free(doc->encoding);
+  }
+  LXMLNode_free(doc->root);
+}
 
 /** LXMLNode* LXMLNode_new(LXMLNode* parent)
  * Allocates a new node with a pointer to the partent node and null contents
@@ -459,6 +476,7 @@ void LXMLNode_free(LXMLNode *node) {
   DEBUG_PRINT("Entered free of node %s \n", node->tag);
   DEBUG_PRINT("Freeing children of node %s \n", node->tag);
   LXMLNodeList_free(&node->children);
+  LXMLAttributeList_free(&node->attributes);
   if (node->tag) {
     free(node->tag);
   }
@@ -491,7 +509,14 @@ void LXMLAttributeList_add(LXMLAttributeList *list, LXMLAttribute *attribute) {
 
 /** void LXMLAttributeList_free(LXMLAttributeList* list)
  */
-void LXMLAttributeList_free(LXMLAttributeList *list) {}
+void LXMLAttributeList_free(LXMLAttributeList *list) {
+  for (int i = 0; i < list->size; i++) {
+    LXMLAttribute_free(&list->data[i]);
+  }
+  if (list->data) {
+    free(list->data);
+  }
+}
 
 /** void LXMLNodeList_init(LXMLNodeList* list)
  */
@@ -510,7 +535,9 @@ void LXMLNodeList_free(LXMLNodeList *list) {
     for (int index = 0; index < list->size; index++) {
       LXMLNode_free(list->data[index]);
     }
+    free(list->data);
   }
+
   list->size = 0;
   list->heap_size = 0;
 }
@@ -548,6 +575,15 @@ char *LXMLNode_attribute_value(LXMLNode *node, char *key) {
     }
   }
   return NULL;
+}
+
+void LXMLAttribute_free(LXMLAttribute *attribute) {
+  if (attribute->key) {
+    free(attribute->key);
+  }
+  if (attribute->value) {
+    free(attribute->value);
+  }
 }
 
 /** LXMLNode* LXMLNodeList_at(LXMLNodeList* list, int index);

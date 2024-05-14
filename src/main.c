@@ -170,6 +170,8 @@ void cleanup(void *user_data) {
 
   fsgp_destroy(app->fsctx);
 
+  assetsys_destroy(app->assetsys);
+
   snk_shutdown();
   sgp_shutdown();
   sg_shutdown();
@@ -187,6 +189,8 @@ void load_file(my_app_t *app, const char *filename) {
   log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
   import_digital(&app->circuit, buffer);
+  free(buffer);
+
   ux_route(&app->circuit);
 
   // autoroute_dump_anchor_boxes(app->circuit.router);
