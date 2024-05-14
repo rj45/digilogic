@@ -247,21 +247,6 @@ void frame(void *user_data) {
   app->circuit.input.mouseDelta = HMM_V2(0, 0);
   draw_end_frame(&app->draw);
 
-  sg_pass pass = {
-    .action =
-      {
-        .colors[0] =
-          {.load_action = SG_LOADACTION_CLEAR,
-           .store_action = SG_STOREACTION_STORE,
-           .clear_value = {0.08f, 0.1f, 0.12f, 1.0f}},
-      },
-    .swapchain = sglue_swapchain()};
-  sg_begin_pass(&pass);
-
-  fsgp_flush(app->fsctx);
-
-  snk_render(sapp_width(), sapp_height());
-
   sg_frame_stats stats = sg_query_frame_stats();
 
   uint64_t avgFrameInterval = 0.0;
@@ -281,10 +266,25 @@ void frame(void *user_data) {
     Box box = draw_text_bounds(
       &app->draw, HMM_V2(0, 0), buff, strlen(buff), ALIGN_LEFT, ALIGN_TOP, 12.0,
       &app->fonsFont);
-    draw_text(
+    draw_screen_text(
       &app->draw, box, buff, strlen(buff), 16.0, &app->fonsFont,
       HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
   }
+
+  sg_pass pass = {
+    .action =
+      {
+        .colors[0] =
+          {.load_action = SG_LOADACTION_CLEAR,
+           .store_action = SG_STOREACTION_STORE,
+           .clear_value = {0.08f, 0.1f, 0.12f, 1.0f}},
+      },
+    .swapchain = sglue_swapchain()};
+  sg_begin_pass(&pass);
+
+  fsgp_flush(app->fsctx);
+
+  snk_render(sapp_width(), sapp_height());
 
   sgp_flush();
   sgp_end();

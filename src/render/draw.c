@@ -179,8 +179,11 @@ void draw_stroked_line(
 void draw_text(
   DrawContext *draw, Box rect, const char *text, int len, float fontSize,
   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
-  FonsFont *f = (FonsFont *)font;
-  FONScontext *fsctx = f->fsctx;
+
+  Box xformedBox = (Box){
+    .center = draw_world_to_screen(draw, rect.center),
+    .halfSize = draw_scale_world_to_screen(draw, rect.halfSize),
+  };
 
   // top left corner of rect
   HMM_Vec2 dot = draw_world_to_screen(draw, box_top_left(rect));
@@ -193,6 +196,23 @@ void draw_text(
   // getting blurry
   sgp_push_transform();
   sgp_reset_transform();
+
+  draw_screen_text(
+    draw, xformedBox, text, len, fontSize, font, fgColor, bgColor);
+  sgp_pop_transform();
+}
+
+void draw_screen_text(
+  DrawContext *draw, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {
+  FonsFont *f = (FonsFont *)font;
+  FONScontext *fsctx = f->fsctx;
+
+  // top left corner of rect
+  HMM_Vec2 dot = box_top_left(rect);
+
+  // position dot in bottom left corner of rect
+  dot.Y += rect.halfSize.Y * 2;
 
   fonsPushState(fsctx);
   fonsSetSize(fsctx, fontSize * draw->zoom);
@@ -208,8 +228,6 @@ void draw_text(
   }
 
   fonsDrawText(fsctx, dot.X, dot.Y, text, text + len);
-
-  sgp_pop_transform();
 
   fonsPopState(fsctx);
 }
@@ -366,7 +384,7 @@ void draw_junction(
 
 void draw_waypoint(
   DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
-  float factor = flags ? 4.0f : 2.0f;
+  float factor = flags ? 4.0f : 3.0f;
 
   HMM_Vec2 halfSize =
     HMM_V2(theme->wireThickness * factor, theme->wireThickness * factor);
@@ -374,7 +392,8 @@ void draw_waypoint(
   draw_stroked_circle(
     draw, HMM_SubV2(pos, halfSize), HMM_MulV2F(halfSize, 2.0f),
     theme->wireThickness,
-    (flags & DRAW_SELECTED) ? theme->color.selected : theme->color.wire);
+    (flags & DRAW_SELECTED) ? theme->color.selected
+                            : HMM_V4(0.6f, 0.3f, 0.5f, 1.0f));
 }
 
 void draw_label(

@@ -49,5 +49,8 @@ void draw_end_frame(DrawContext *draw);
 void draw_text(
   DrawContext *draw, Box rect, const char *text, int len, float fontSize,
   FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
+void draw_screen_text(
+  DrawContext *draw, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
 
 #endif // RENDER_H
