@@ -216,7 +216,25 @@ Box draw_text_bounds(
   };
 }
 
+HMM_Vec2 draw_screen_to_world(DrawContext *draw, HMM_Vec2 screenPos) {
+  return screenPos;
+}
+
+HMM_Vec2 draw_scale_screen_to_world(DrawContext *draw, HMM_Vec2 dirvec) {
+  return dirvec;
+}
+
+HMM_Vec2 draw_world_to_screen(DrawContext *draw, HMM_Vec2 worldPos) {
+  return worldPos;
+}
+
+HMM_Vec2 draw_scale_world_to_screen(DrawContext *draw, HMM_Vec2 dirvec) {
+  return dirvec;
+}
+
 // todo: remove this when autoroute doesn't need it anymore
 void draw_stroked_line(
   DrawContext *draw, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color) {}
+void draw_filled_circle(
+  DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, HMM_Vec4 color) {}

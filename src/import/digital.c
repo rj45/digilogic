@@ -57,7 +57,6 @@ typedef struct WireEnd {
   enum { IN_PORT, OUT_PORT, WIRE, WAYPOINT } type;
   union {
     PortID port;
-    WaypointID waypoint;
     IVec2 farSide;
   };
 } WireEnd;
@@ -72,21 +71,6 @@ typedef struct {
   IVec2 key;
   arr(uint32_t) value;
 } DigWireHash;
-
-// static int compare_x_then_y(const void *va, const void *vb) {
-//   WireEnd *a = (WireEnd *)va;
-//   WireEnd *b = (WireEnd *)vb;
-//   if (a->pos.x < b->pos.x) {
-//     return -1;
-//   } else if (a->pos.x > b->pos.x) {
-//     return 1;
-//   } else if (a->pos.y < b->pos.y) {
-//     return -1;
-//   } else if (a->pos.y > b->pos.y) {
-//     return 1;
-//   }
-//   return 0;
-// }
 
 void replace_wire_end_with_port(
   arr(DigWire) digWires, DigWireHash *digWireEnds, PortID port, IVec2 pos,
@@ -113,16 +97,11 @@ void remove_from_hash(DigWireHash *digWireEnds, IVec2 pos, uint32_t index) {
       break;
     }
   }
-  // if (arrlen(ends) == 0) {
-  //   arrfree(ends);
-  //   hmdel(digWireEnds, pos);
-  // } else {
+
   hmput(digWireEnds, pos, ends);
-  // }
 }
 
 static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
-
   // simplify wires by merging neighbouring wires
   bool changed = true;
   while (changed) {
@@ -184,17 +163,8 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
               break;
             }
           }
-          // if (changed) {
-          //   break;
-          // }
         }
-        // if (changed) {
-        //   break;
-        // }
       }
-      // if (changed) {
-      //   break;
-      // }
     }
   }
 }
@@ -587,7 +557,6 @@ void import_digital(CircuitUX *ux, char *buffer) {
             digWire->ends[k].pos.x == digWireEnds[i].key.x &&
             digWire->ends[k].pos.y == digWireEnds[i].key.y) {
             digWire->ends[k].type = WAYPOINT;
-            // digWire->ends[k].waypoint = waypointID;
           }
         }
       }
@@ -662,55 +631,6 @@ void import_digital(CircuitUX *ux, char *buffer) {
       log_debug("  * Out port %d", outPorts[j]);
       ux_add_endpoint(ux, netID, outPorts[j], HMM_V2(0, 0));
     }
-
-    // for (int j = 0; j < arrlen(netWires); j++) {
-    //   DigWire *digWire = &digWires[netWires[j]];
-    //   ID ends[2] = {0, 0};
-    //   if (!digWire->valid) {
-    //     continue;
-    //   }
-    //   bool skip = false;
-
-    //   if (
-    //     digWire->ends[1].type == PORT_OUT || digWire->ends[0].type ==
-    //     PORT_IN) {
-    //     // swap the ends
-    //     WireEnd tmp = digWire->ends[0];
-    //     digWire->ends[0] = digWire->ends[1];
-    //     digWire->ends[1] = tmp;
-    //     log_debug("  Swapped");
-    //   }
-
-    //   log_debug("  Connecting ");
-    //   for (int k = 0; k < 2; k++) {
-    //     WireEnd *end = &digWire->ends[k];
-    //     switch (end->type) {
-    //     case IN_PORT:
-    //     case OUT_PORT:
-    //       ends[k] = end->port;
-    //       log_debug(
-    //         "%s port %d ", end->type == IN_PORT ? "in" : "out", end->port);
-    //       break;
-    //     case WAYPOINT:
-    //       ends[k] = ux_add_waypoint(ux, netID, HMM_V2(end->pos.x,
-    //       end->pos.y)); log_debug("waypoint %d ", ends[k]); break;
-    //     case WIRE:
-    //       ends[k] = NO_ID;
-    //       log_debug("wire %d, %d ", end->pos.x, end->pos.y);
-    //       skip = true;
-    //       break;
-    //     }
-    //   }
-    // if (skip) {
-    //   log_debug("  --> skipping");
-    //   allValid = false;
-    //   continue;
-    // }
-    // log_debug("");
-
-    // ux_add_wire(ux, netID, ends[0], ends[1]);
-    // }
-    // assert(allValid);
 
     arrsetlen(inPorts, 0);
     arrsetlen(outPorts, 0);

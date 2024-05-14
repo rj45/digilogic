@@ -402,21 +402,6 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     "Graph build: %fms, Path find: %fms", stm_ms(graphBuild), stm_ms(pathFind));
 }
 
-size_t autoroute_get_net_port_vertices(
-  AutoRoute *ar, int netIndex, int portIndex, HMM_Vec2 **vertices) {
-  // RT_Net *net = &ar->nets[netIndex];
-  // size_t length = net->path_lengths[portIndex];
-  // size_t offset = 0;
-  // for (int i = 0; i < portIndex; i++) {
-  //   offset += net->path_lengths[i];
-  // }
-  // *vertices =
-  //   (HMM_Vec2 *)ar->vertexBuffers[net->vertex_buffer_index].vertices +
-  //   offset;
-  // return length;
-  return 0;
-}
-
 typedef void *Context;
 void draw_stroked_line(
   Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,

@@ -198,7 +198,7 @@ void draw_text(
   sgp_reset_transform();
 
   draw_screen_text(
-    draw, xformedBox, text, len, fontSize, font, fgColor, bgColor);
+    draw, xformedBox, text, len, fontSize * draw->zoom, font, fgColor, bgColor);
   sgp_pop_transform();
 }
 
@@ -215,7 +215,7 @@ void draw_screen_text(
   dot.Y += rect.halfSize.Y * 2;
 
   fonsPushState(fsctx);
-  fonsSetSize(fsctx, fontSize * draw->zoom);
+  fonsSetSize(fsctx, fontSize);
   fonsSetColor(
     fsctx, fsgp_rgba(
              (uint8_t)(fgColor.R * 255.0f), (uint8_t)(fgColor.G * 255.0f),

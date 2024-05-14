@@ -126,3 +126,5 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
   center = HMM_DivV2F(center, (float)arrlen(ux->view.selected));
   return center;
 }
+
+void ux_route(CircuitUX *ux) { autoroute_route(ux->router, ux->betterRoutes); }

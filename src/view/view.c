@@ -449,18 +449,10 @@ void view_draw(CircuitView *view) {
     VertexIndex vertexOffset = netView->vertexOffset;
     assert(vertexOffset < arrlen(view->vertices));
 
-    // printf(
-    //   "Net %d: wires %d -> %d\n", netIdx, netView->wireOffset,
-    //   netView->wireOffset + netView->wireCount);
-
     for (int wireIdx = netView->wireOffset;
          wireIdx < netView->wireOffset + netView->wireCount; wireIdx++) {
       assert(wireIdx < arrlen(view->wires));
       Wire *wire = &view->wires[wireIdx];
-
-      // printf(
-      //   "Drawing wires: %d vertices, %d offset\n", wire->vertexCount,
-      //   vertexOffset);
 
       if (wireIdx != netView->wireOffset) {
         draw_junction(
@@ -475,11 +467,6 @@ void view_draw(CircuitView *view) {
         view->drawCtx, &view->theme, view->vertices + vertexOffset,
         wire->vertexCount, flags);
       vertexOffset += wire->vertexCount;
-      // if (wireIdx != netView->wireOffset) {
-      //   draw_junction(
-      //     view->drawCtx, &view->theme,
-      //     view->vertices[vertexOffset + wire->vertexCount], 0);
-      // }
     }
 
     for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {

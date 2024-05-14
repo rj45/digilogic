@@ -24,7 +24,6 @@
 #define NK_INCLUDE_STANDARD_VARARGS
 
 #include "ux/ux.h"
-#include "view/view.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -54,8 +53,8 @@
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
-#define FONT_ATLAS_WIDTH 1024
-#define FONT_ATLAS_HEIGHT 1024
+#define FONT_ATLAS_WIDTH 1536
+#define FONT_ATLAS_HEIGHT 1536
 
 typedef struct my_app_t {
   CircuitUX circuit;

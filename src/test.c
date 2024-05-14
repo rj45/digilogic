@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-// #include "ux/ux.h"
+#include "ux/ux.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -33,6 +33,6 @@ int main(int argc, const char *const argv[]) {
 #ifndef _WIN32
   init_exceptions((char *)argv[0]);
 #endif
-  // ux_global_init();
+  ux_global_init();
   return utest_main(argc, argv);
 }
