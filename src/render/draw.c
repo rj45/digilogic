@@ -362,10 +362,16 @@ void draw_wire(
 
   HMM_Vec2 pos = verts[0];
 
+  HMM_Vec4 color = theme->color.wire;
+  float thickness = theme->wireThickness;
+  if (flags & DRAW_DEBUG) {
+    color = HMM_V4(1.0f, 0.0f, 0.0f, 1.0f);
+    thickness *= 2.0f;
+  }
+
   for (int i = 1; i < numVerts; i++) {
     HMM_Vec2 vertex = verts[i];
-    draw_stroked_line(
-      draw, pos, vertex, theme->wireThickness, theme->color.wire);
+    draw_stroked_line(draw, pos, vertex, thickness, color);
     pos = vertex;
   }
 }

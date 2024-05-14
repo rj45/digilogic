@@ -21,6 +21,7 @@ typedef enum HorizAlign {
 typedef enum DrawFlags {
   DRAW_HOVERED = 1 << 0,
   DRAW_SELECTED = 1 << 1,
+  DRAW_DEBUG = 1 << 2,
 } DrawFlags;
 
 typedef enum DrawLabelType {

@@ -326,7 +326,7 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   memset(ar->view->wires, 0, arrlen(ar->view->wires) * sizeof(RT_WireView));
 
   assert(ar->endpoints);
-  assert(ar->waypoints);
+  // assert(ar->waypoints);
   assert(ar->graph);
   assert(ar->view->wires);
   assert(ar->view->vertices);

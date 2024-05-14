@@ -79,6 +79,8 @@ typedef struct CircuitView {
   PortID selectedPort;
 
   Box selectionBox;
+
+  bool debugMode;
 } CircuitView;
 
 #define view_component_ptr(view, id)                                           \

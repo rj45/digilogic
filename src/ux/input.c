@@ -406,6 +406,7 @@ void ux_update(CircuitUX *ux) {
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_SPACE)) {
     ux->debugLines = !ux->debugLines;
+    ux->view.debugMode = ux->debugLines;
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_B)) {

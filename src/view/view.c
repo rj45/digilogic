@@ -462,14 +462,24 @@ void view_draw(CircuitView *view) {
       //   "Drawing wires: %d vertices, %d offset\n", wire->vertexCount,
       //   vertexOffset);
 
-      draw_wire(
-        view->drawCtx, &view->theme, view->vertices + vertexOffset,
-        wire->vertexCount, 0);
-      vertexOffset += wire->vertexCount;
       if (wireIdx != netView->wireOffset) {
         draw_junction(
-          view->drawCtx, &view->theme, view->vertices[vertexOffset - 1], 0);
+          view->drawCtx, &view->theme, view->vertices[vertexOffset], 0);
       }
+      DrawFlags flags = 0;
+      if (wireIdx == netView->wireOffset && view->debugMode) {
+        flags |= DRAW_DEBUG;
+      }
+
+      draw_wire(
+        view->drawCtx, &view->theme, view->vertices + vertexOffset,
+        wire->vertexCount, flags);
+      vertexOffset += wire->vertexCount;
+      // if (wireIdx != netView->wireOffset) {
+      //   draw_junction(
+      //     view->drawCtx, &view->theme,
+      //     view->vertices[vertexOffset + wire->vertexCount], 0);
+      // }
     }
 
     for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
