@@ -28,33 +28,17 @@
 
 #define RT_PADDING 10.0f
 
-typedef struct AnchorEnds {
-  uint32_t start;
-  uint32_t end;
-} AnchorEnds;
-
 struct AutoRoute {
   CircuitView *view;
 
   RT_Net *nets;
   RT_Endpoint *endpoints;
   RT_Waypoint *waypoints;
-
   RT_BoundingBox *boxes;
-  AnchorEnds *anchorEnds;
 
   arr(RT_Anchor) anchors;
 
-  arr(RT_Point) portPoints;
-  arr(uint32_t) portPointStarts;
-  arr(uint16_t) pathLengths;
-  arr(uint32_t) pathLengthStarts;
-
-  uint16_t threadCount;
-  size_t vertBufferCapacity;
   RT_Graph *graph;
-
-  // arr(RT_VertexBuffer) vertexBuffers;
 };
 
 void autoroute_global_init() {
@@ -70,9 +54,6 @@ AutoRoute *autoroute_create(CircuitView *view) {
   smap_add_synced_array(
     &view->circuit.sm.components, (void **)&ar->boxes, sizeof(*ar->boxes));
   smap_add_synced_array(
-    &view->circuit.sm.components, (void **)&ar->anchorEnds,
-    sizeof(*ar->anchorEnds));
-  smap_add_synced_array(
     &view->circuit.sm.nets, (void **)&ar->nets, sizeof(*ar->nets));
   smap_add_synced_array(
     &view->circuit.sm.endpoints, (void **)&ar->endpoints,
@@ -81,36 +62,15 @@ AutoRoute *autoroute_create(CircuitView *view) {
     &view->circuit.sm.waypoints, (void **)&ar->waypoints,
     sizeof(*ar->waypoints));
 
-  RT_Result res = RT_get_thread_count(&ar->threadCount);
+  RT_Result res = RT_graph_new(&ar->graph);
   assert(res == RT_RESULT_SUCCESS);
-
-  res = RT_graph_new(&ar->graph);
-  assert(res == RT_RESULT_SUCCESS);
-
-  ar->vertBufferCapacity = 1024;
-
-  // for (size_t i = 0; i < ar->threadCount; i++) {
-  //   arrput(
-  //     ar->vertexBuffers,
-  //     ((struct RT_VertexBuffer){
-  //       .vertices = malloc(ar->vertBufferCapacity * sizeof(RT_Vertex)),
-  //       .vertex_count = 0,
-  //     }));
-  // }
 
   return ar;
 }
 
 void autoroute_free(AutoRoute *ar) {
   arrfree(ar->anchors);
-  arrfree(ar->portPointStarts);
-  arrfree(ar->portPoints);
-  arrfree(ar->pathLengths);
-  arrfree(ar->pathLengthStarts);
-  // for (size_t i = 0; i < arrlen(ar->vertexBuffers); i++) {
-  //   free(ar->vertexBuffers[i].vertices);
-  // }
-  // arrfree(ar->vertexBuffers);
+
   RT_Result res = RT_graph_free(ar->graph);
   assert(res == RT_RESULT_SUCCESS);
   free(ar);
