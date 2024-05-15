@@ -366,7 +366,7 @@ void event(const sapp_event *event, void *user_data) {
   (void)app;
 
   if (snk_handle_event(event)) {
-    // return;
+    return;
   }
 
   switch (event->type) {
