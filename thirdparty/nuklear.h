@@ -10617,6 +10617,11 @@ nk_draw_list_add_image(struct nk_draw_list *list, struct nk_image texture,
             nk_vec2(rect.x + rect.w, rect.y + rect.h),
             nk_vec2(0.0f, 0.0f), nk_vec2(1.0f, 1.0f),color);
 }
+
+float pixel_snap(float x) {
+  return (float)((int)(x + 0.5f));
+}
+
 NK_API void
 nk_draw_list_add_text(struct nk_draw_list *list, const struct nk_user_font *font,
     struct nk_rect rect, const char *text, int len, float font_height,
@@ -10657,7 +10662,9 @@ nk_draw_list_add_text(struct nk_draw_list *list, const struct nk_user_font *font
         gy = rect.y + g.offset.y;
         gw = g.width; gh = g.height;
         char_width = g.xadvance;
-        nk_draw_list_push_rect_uv(list, nk_vec2(gx,gy), nk_vec2(gx + gw, gy+ gh),
+        float sgx = pixel_snap(gx);
+        float sgy = pixel_snap(gy);
+        nk_draw_list_push_rect_uv(list, nk_vec2(sgx,sgy), nk_vec2(sgx + gw, sgy+ gh),
             g.uv[0], g.uv[1], fg);
 
         /* offset next glyph */

@@ -454,10 +454,6 @@ void view_draw(CircuitView *view) {
       assert(wireIdx < arrlen(view->wires));
       Wire *wire = &view->wires[wireIdx];
 
-      if (wireIdx != netView->wireOffset) {
-        draw_junction(
-          view->drawCtx, &view->theme, view->vertices[vertexOffset], 0);
-      }
       DrawFlags flags = 0;
       if (wireIdx == netView->wireOffset && view->debugMode) {
         flags |= DRAW_DEBUG;
@@ -466,6 +462,13 @@ void view_draw(CircuitView *view) {
       draw_wire(
         view->drawCtx, &view->theme, view->vertices + vertexOffset,
         wire->vertexCount, flags);
+
+      if (wireIdx != netView->wireOffset) {
+        draw_junction(
+          view->drawCtx, &view->theme,
+          view->vertices[vertexOffset + wire->vertexCount - 1], 0);
+      }
+
       vertexOffset += wire->vertexCount;
     }
   }

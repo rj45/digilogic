@@ -40,7 +40,7 @@ static void nuklear_fontstash_query_glyph(
   FONScontext *fsctx = nufons->fsctx;
 
   FONStextIter iter;
-  FONSquad quad1, quad2;
+  FONSquad quad1, quad2, quad2solo;
 
   fonsPushState(fsctx);
   fonsClearState(fsctx);
@@ -55,13 +55,15 @@ static void nuklear_fontstash_query_glyph(
   fonsTextIterNext(fsctx, &iter, &quad1);
   if (next_codepoint) {
     fonsTextIterNext(fsctx, &iter, &quad2);
+    fonsTextIterInit(fsctx, &iter, 0, 0, text + 1, text + 2);
+    fonsTextIterNext(fsctx, &iter, &quad2solo);
   }
   fonsPopState(fsctx);
 
   glyph->width = quad1.x1 - quad1.x0;
   glyph->height = quad1.y1 - quad1.y0;
   if (next_codepoint) {
-    glyph->xadvance = quad2.x0 - quad1.x0;
+    glyph->xadvance = quad2.x0 - (quad1.x0 + quad2solo.x0);
   } else {
     glyph->xadvance = quad1.x1 - quad1.x0;
   }

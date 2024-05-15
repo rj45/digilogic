@@ -24,8 +24,8 @@ test: $(TEST_SRCS) $(HEADERS) $(THIRDPARTY_LIBS)
 digilogic: $(MAIN_SRCS) $(HEADERS) $(THIRDPARTY_LIBS) $(THIRDPARTY_SRCS)
 	gcc $(CFLAGS) $(LIBFLAGS) $(MAIN_SRCS) $(THIRDPARTY_SRCS) -rdynamic  -o digilogic
 
-gen: src/gen.c thirdparty/cjson.c
-	gcc $(CFLAGS) $(LIBFLAGS) src/gen.c thirdparty/cjson.c -o gen
+gen: src/gen.c
+	gcc $(CFLAGS) $(LIBFLAGS) src/gen.c  -o gen
 
 thirdparty/routing/target/release/libdigilogic_routing.a:
 	cd thirdparty/routing && cargo build --release
