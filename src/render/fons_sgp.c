@@ -43,7 +43,7 @@
 #include "sokol_gfx.h"
 #include "sokol_gp.h"
 
-#include "shaders/alphaonly.h"
+// #include "shaders/alphaonly.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // IMPLEMENTATION
@@ -51,12 +51,15 @@
 
 typedef struct _fsgp_t {
   fsgp_desc_t desc;
-  sg_shader shd;
-  sg_pipeline pip;
+  // sg_shader shd;
+  // sg_pipeline pip;
   sg_image img;
   sg_sampler smp;
   int cur_width, cur_height;
   bool img_dirty;
+
+  uint8_t *img_buffer;
+  size_t img_buffer_size;
 
   sgp_vertex verts[FONS_VERTEX_COUNT];
 } _fsgp_t;
@@ -98,21 +101,21 @@ static int _fsgp_render_create(void *user_ptr, int width, int height) {
   assert(user_ptr && (width > 8) && (height > 8));
   _fsgp_t *fsgp = (_fsgp_t *)user_ptr;
 
-  // sokol_gp compatible shader which treats RED channel as alpha
-  if (fsgp->shd.id == SG_INVALID_ID) {
-    fsgp->shd =
-      sg_make_shader(alphaonly_program_shader_desc(sg_query_backend()));
-  }
+  // // sokol_gp compatible shader which treats RED channel as alpha
+  // if (fsgp->shd.id == SG_INVALID_ID) {
+  //   fsgp->shd =
+  //     sg_make_shader(alphaonly_program_shader_desc(sg_query_backend()));
+  // }
 
-  // sokol_gp pipeline object
-  if (fsgp->pip.id == SG_INVALID_ID) {
-    sgp_pipeline_desc pip_desc;
-    _fsgp_clear(&pip_desc, sizeof(pip_desc));
-    pip_desc.shader = fsgp->shd;
-    pip_desc.has_vs_color = true;
-    pip_desc.blend_mode = SGP_BLENDMODE_BLEND;
-    fsgp->pip = sgp_make_pipeline(&pip_desc);
-  }
+  // // sokol_gp pipeline object
+  // if (fsgp->pip.id == SG_INVALID_ID) {
+  //   sgp_pipeline_desc pip_desc;
+  //   _fsgp_clear(&pip_desc, sizeof(pip_desc));
+  //   pip_desc.shader = fsgp->shd;
+  //   pip_desc.has_vs_color = true;
+  //   pip_desc.blend_mode = SGP_BLENDMODE_BLEND;
+  //   fsgp->pip = sgp_make_pipeline(&pip_desc);
+  // }
 
   // a sampler object
   if (fsgp->smp.id == SG_INVALID_ID) {
@@ -138,12 +141,18 @@ static int _fsgp_render_create(void *user_ptr, int width, int height) {
   img_desc.width = fsgp->cur_width;
   img_desc.height = fsgp->cur_height;
   img_desc.usage = SG_USAGE_DYNAMIC;
-  img_desc.pixel_format = SG_PIXELFORMAT_R8;
+  img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
   fsgp->img = sg_make_image(&img_desc);
   return 1;
 }
 
 static int _fsgp_render_resize(void *user_ptr, int width, int height) {
+  _fsgp_t *fsgp = (_fsgp_t *)user_ptr;
+  if (
+    (width == fsgp->cur_width) && (height == fsgp->cur_height) &&
+    (fsgp->img.id != SG_INVALID_ID)) {
+    return 1;
+  }
   return _fsgp_render_create(user_ptr, width, height);
 }
 
@@ -164,7 +173,7 @@ static void _fsgp_render_draw(
 
   sgp_set_image(0, fsgp->img);
   sgp_set_sampler(0, fsgp->smp);
-  sgp_set_pipeline(fsgp->pip);
+  // sgp_set_pipeline(fsgp->pip);
 
   for (int i = 0; i < nverts; i++) {
     fsgp->verts[i].position.x = verts[2 * i + 0];
@@ -175,7 +184,7 @@ static void _fsgp_render_draw(
   }
 
   sgp_draw(SG_PRIMITIVETYPE_TRIANGLES, fsgp->verts, nverts);
-  sgp_reset_pipeline();
+  // sgp_reset_pipeline();
   sgp_reset_sampler(0);
   sgp_reset_image(0);
 }
@@ -191,14 +200,14 @@ static void _fsgp_render_delete(void *user_ptr) {
     sg_destroy_sampler(fsgp->smp);
     fsgp->smp.id = SG_INVALID_ID;
   }
-  if (fsgp->pip.id != SG_INVALID_ID) {
-    sg_destroy_pipeline(fsgp->pip);
-    fsgp->pip.id = SG_INVALID_ID;
-  }
-  if (fsgp->shd.id != SG_INVALID_ID) {
-    sg_destroy_shader(fsgp->shd);
-    fsgp->shd.id = SG_INVALID_ID;
-  }
+  // if (fsgp->pip.id != SG_INVALID_ID) {
+  //   sg_destroy_pipeline(fsgp->pip);
+  //   fsgp->pip.id = SG_INVALID_ID;
+  // }
+  // if (fsgp->shd.id != SG_INVALID_ID) {
+  //   sg_destroy_shader(fsgp->shd);
+  //   fsgp->shd.id = SG_INVALID_ID;
+  // }
 }
 
 #define _fsgp_def(val, def) (((val) == 0) ? (def) : (val))
@@ -209,6 +218,13 @@ static fsgp_desc_t _fsgp_desc_defaults(const fsgp_desc_t *desc) {
   res.width = _fsgp_def(res.width, 512);
   res.height = _fsgp_def(res.height, 512);
   return res;
+}
+
+void fsgp_query_texture(FONScontext *ctx, sg_image *img, sg_sampler *smp) {
+  assert(ctx && ctx->params.userPtr);
+  _fsgp_t *fsgp = (_fsgp_t *)ctx->params.userPtr;
+  *img = fsgp->img;
+  *smp = fsgp->smp;
 }
 
 FONScontext *fsgp_create(const fsgp_desc_t *desc) {
@@ -238,18 +254,44 @@ void fsgp_destroy(FONScontext *ctx) {
   _fsgp_t *fsgp = (_fsgp_t *)ctx->params.userPtr;
   fonsDeleteInternal(ctx);
   const fsgp_allocator_t allocator = fsgp->desc.allocator;
+  _fsgp_free(&allocator, fsgp->img_buffer);
   _fsgp_free(&allocator, fsgp);
 }
 
 void fsgp_flush(FONScontext *ctx) {
   assert(ctx && ctx->params.userPtr);
   _fsgp_t *fsgp = (_fsgp_t *)ctx->params.userPtr;
+  fons__flush(ctx);
   if (fsgp->img_dirty) {
     fsgp->img_dirty = false;
+    // todo: this is slow, but doesn't require
+    // any modifications to fontstash.h
+    if (
+      !fsgp->img_buffer ||
+      fsgp->img_buffer_size <
+        (size_t)(fsgp->cur_width * fsgp->cur_height * sizeof(uint32_t))) {
+      if (fsgp->img_buffer) {
+        _fsgp_free(&fsgp->desc.allocator, fsgp->img_buffer);
+      }
+      fsgp->img_buffer_size =
+        (size_t)(fsgp->cur_width * fsgp->cur_height * sizeof(uint32_t));
+      fsgp->img_buffer =
+        (uint8_t *)_fsgp_malloc(&fsgp->desc.allocator, fsgp->img_buffer_size);
+      printf(
+        "fsgp_flush: created new img_buffer of size %d %d\n", fsgp->cur_width,
+        fsgp->cur_height);
+    }
+
+    uint8_t *ptr = ctx->texData;
+    for (int i = 0; i < fsgp->cur_width * fsgp->cur_height; i++) {
+      ((uint32_t *)fsgp->img_buffer)[i] = (((uint32_t)*ptr) << 24) | 0xFFFFFF;
+      ptr++;
+    }
+
     sg_image_data data;
     _fsgp_clear(&data, sizeof(data));
-    data.subimage[0][0].ptr = ctx->texData;
-    data.subimage[0][0].size = (size_t)(fsgp->cur_width * fsgp->cur_height);
+    data.subimage[0][0].ptr = fsgp->img_buffer;
+    data.subimage[0][0].size = fsgp->img_buffer_size;
     sg_update_image(fsgp->img, &data);
   }
 }

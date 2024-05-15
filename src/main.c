@@ -16,11 +16,10 @@
 
 #include <stdint.h>
 #define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
 #define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_SOFTWARE_FONT
 
 #include "ui/ui.h"
 #include <stdio.h>
@@ -41,19 +40,21 @@
 #include "sokol_glue.h"
 #include "sokol_gp.h"
 #include "sokol_log.h"
-#include "sokol_nuklear.h"
 #include "sokol_time.h"
 #include "stb_image.h"
 
 #include "render/fons_sgp.h"
+#include "render/sokol_nuklear.h"
+
+#include "render/fons_nuklear.h"
 
 #include "render/render.h"
 
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
-#define FONT_ATLAS_WIDTH 1536
-#define FONT_ATLAS_HEIGHT 1536
+#define FONT_ATLAS_WIDTH 2048
+#define FONT_ATLAS_HEIGHT 2048
 
 #define UI_FONT_SIZE 20
 
@@ -69,11 +70,7 @@ typedef struct my_app_t {
   FONScontext *fsctx;
   FonsFont fonsFont;
 
-  struct nk_font *latin;
-  struct nk_font_atlas atlas;
-  sg_image font_img;
-  sg_sampler font_smp;
-  snk_image_t default_font;
+  struct nk_user_font nkFont;
 
   DrawContext draw;
 
@@ -90,7 +87,24 @@ typedef struct my_app_t {
 static void fons_error(void *user_ptr, int error, int val) {
   my_app_t *app = (my_app_t *)user_ptr;
   (void)app;
-  fprintf(stderr, "FONS error: %d %d\n", error, val);
+
+  switch (error) {
+  case FONS_ATLAS_FULL:
+    log_error("FONS_ATLAS_FULL: Fontstash atlas full: %d\n", val);
+    break;
+  case FONS_SCRATCH_FULL:
+    log_error("FONS_SCRATCH_FULL: Fontstash scratch full: %d\n", val);
+    break;
+  case FONS_STATES_OVERFLOW:
+    log_error("FONS_STATES_OVERFLOW: Fontstash state overflow: %d\n", val);
+    break;
+  case FONS_STATES_UNDERFLOW:
+    log_error("FONS_STATES_UNDERFLOW: Fonstash state underflow: %d\n", val);
+    break;
+  default:
+    log_error("Unknown fonstash error: %d %d\n", error, val);
+    break;
+  }
 }
 
 static void init(void *user_data) {
@@ -120,13 +134,6 @@ static void init(void *user_data) {
   }
 
   sg_enable_frame_stats();
-
-  snk_setup(&(snk_desc_t){
-    .max_vertices = 64 * 1024,
-    .logger.func = slog_func,
-    .sample_count = 4,
-    .no_default_font = true,
-  });
 
   app->fsctx = fsgp_create(
     &(fsgp_desc_t){.width = FONT_ATLAS_WIDTH, .height = FONT_ATLAS_HEIGHT});
@@ -163,42 +170,13 @@ static void init(void *user_data) {
     .iconFont = iconFont,
   };
 
-  struct nk_font_config cfg_latin = nk_font_config(UI_FONT_SIZE);
-  cfg_latin.range = nk_font_default_glyph_ranges();
-  cfg_latin.oversample_h = cfg_latin.oversample_v = 4;
-  cfg_latin.pixel_snap = false;
-
-  app->font_smp = sg_make_sampler(&(sg_sampler_desc){
-    .min_filter = SG_FILTER_LINEAR,
-    .mag_filter = SG_FILTER_LINEAR,
-    .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
-    .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
-    .label = "sokol-nuklear-font-sampler",
+  snk_setup(&(snk_desc_t){
+    .max_vertices = 64 * 1024,
+    .logger.func = slog_func,
+    .sample_count = 4,
   });
 
-  nk_font_atlas_init_default(&app->atlas);
-  nk_font_atlas_begin(&app->atlas);
-  int font_width = 0, font_height = 0;
-  app->latin = nk_font_atlas_add_from_memory(
-    &app->atlas, (void *)mainFontData, mainFontSize, UI_FONT_SIZE, &cfg_latin);
-  const void *pixels = nk_font_atlas_bake(
-    &app->atlas, &font_width, &font_height, NK_FONT_ATLAS_RGBA32);
-  assert((font_width > 0) && (font_height > 0));
-  app->font_img = sg_make_image(&(sg_image_desc){
-    .width = font_width,
-    .height = font_height,
-    .pixel_format = SG_PIXELFORMAT_RGBA8,
-    .data.subimage[0][0] =
-      {.ptr = pixels,
-       .size = (size_t)(font_width * font_height) * sizeof(uint32_t)},
-    .label = "sokol-nuklear-font"});
-  app->default_font = snk_make_image(&(snk_image_desc_t){
-    .image = app->font_img,
-    .sampler = app->font_smp,
-  });
-  nk_font_atlas_end(&app->atlas, snk_nkhandle(app->default_font), 0);
-  nk_font_atlas_cleanup(&app->atlas);
-  snk_set_atlas(&app->atlas);
+  nuklear_fontstash_init(&app->nkFont, app->fsctx, mainFont, UI_FONT_SIZE);
 
   draw_init(&app->draw, app->fsctx);
 
@@ -216,8 +194,7 @@ void cleanup(void *user_data) {
 
   ui_free(&app->circuit);
 
-  sg_destroy_sampler(app->font_smp);
-  sg_destroy_image(app->font_img);
+  nuklear_fontstash_free(&app->nkFont);
 
   fsgp_destroy(app->fsctx);
 
@@ -261,8 +238,7 @@ void frame(void *user_data) {
   }
 
   struct nk_context *ctx = snk_new_frame();
-
-  nk_style_set_font(ctx, &app->latin->handle);
+  nk_style_set_font(ctx, &app->nkFont);
 
   int width = sapp_width(), height = sapp_height();
   sgp_begin(width, height);

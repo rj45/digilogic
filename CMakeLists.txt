@@ -14,6 +14,8 @@ set(DIGILOGIC_SRCS
     src/import/digital.c
     src/autoroute/autoroute.c
     src/render/fons_sgp.c
+    src/render/sokol_nuklear.c
+    src/render/fons_nuklear.c
     src/render/polyline.c
     src/render/draw.c
     src/main.c

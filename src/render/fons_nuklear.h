@@ -14,36 +14,31 @@
    limitations under the License.
 */
 
+#ifndef FONS_NUKLEAR_H
+#define FONS_NUKLEAR_H
+
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
 #define NK_INCLUDE_STANDARD_VARARGS
 #define NK_INCLUDE_SOFTWARE_FONT
-#define NK_IMPLEMENTATION
-#define MSDF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STRPOOL_IMPLEMENTATION
-#define ASSETSYS_IMPLEMENTATION
 
-#define SOKOL_IMPL
-
-#ifdef SOKOL_LINUX_CUSTOM
-#include "sokol_app_wayland.h"
-#else
-#include "sokol_app.h"
-#endif
-
-#include "assetsys.h"
+#include "fontstash.h"
 #include "nuklear.h"
+
+#include "sokol_app.h"
 #include "sokol_gfx.h"
-#include "sokol_glue.h"
-#include "sokol_gp.h"
-#include "sokol_log.h"
-#include "sokol_time.h"
-#include "stb_image.h"
-#include "strpool.h"
 
 #include "render/sokol_nuklear.h"
 
-#define STB_DS_IMPLEMENTATION
-#include "stb_ds.h"
+typedef struct nuklear_fonstash_font {
+  FONScontext *fsctx;
+  int font;
+} nuklear_fonstash_font;
+
+void nuklear_fontstash_init(
+  struct nk_user_font *font, FONScontext *fsctx, int fontNum, float height);
+
+void nuklear_fontstash_free(struct nk_user_font *font);
+
+#endif // FONS_NUKLEAR_H

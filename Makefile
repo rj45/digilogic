@@ -3,7 +3,7 @@ HEADERS = src/core/core.h src/assets.h src/view/view.h src/ux/ux.h src/shaders/a
 SRCS = src/core/circuit.c src/ux/ux.c src/ux/input.c src/ux/snap.c src/ux/undo.c src/view/view.c src/import/digital.c src/autoroute/autoroute.c src/core/smap.c
 THIRDPARTY = $(wildcard thirdparty/*.h)
 THIRDPARTY_LIBS = thirdparty/routing/target/release/libdigilogic_routing.a
-MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/assets.c src/render/fons_sgp.c src/render/polyline.c src/render/draw.c src/ui/ui.c
+MAIN_SRCS = $(SRCS) src/main.c src/apple.m src/assets.c src/render/fons_sgp.c src/render/sokol_nuklear.c src/render/fons_nuklear.c src/render/polyline.c src/render/draw.c src/ui/ui.c
 TEST_SRCS = $(SRCS) src/test.c src/ux/ux_test.c src/view/view_test.c src/core/core_test.c src/render/draw_test.c
 
 CFLAGS = -std=c11 -DSOKOL_METAL -I thirdparty -I src -Wall -Werror \
