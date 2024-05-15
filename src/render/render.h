@@ -39,6 +39,11 @@ typedef struct DrawContext {
   float zoom;
 
   sgp_mat2x3 transform;
+
+  int lineVertices;
+  int filledRects;
+  int strokedRects;
+  int texts;
 } DrawContext;
 
 void draw_init(DrawContext *draw, FONScontext *fontstash);

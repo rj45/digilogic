@@ -103,20 +103,29 @@ HMM_Vec2 draw_scale_world_to_screen(DrawContext *draw, HMM_Vec2 dirvec) {
   return mat2x3_vec2_scale(&xform, dirvec);
 }
 
+void draw_push_transform(DrawContext *draw) {
+  sgp_push_transform();
+  sgp_reset_transform();
+  sgp_scale(draw->zoom, draw->zoom);
+  sgp_translate(draw->pan.X, draw->pan.Y);
+}
+
+void draw_pop_transform(DrawContext *draw) { sgp_pop_transform(); }
+
 void draw_set_zoom(DrawContext *draw, float zoom) {
   draw->zoom = zoom;
 
-  draw_begin_frame(draw);
+  draw_push_transform(draw);
   draw->transform = sgp_query_state()->transform;
-  draw_end_frame(draw);
+  draw_pop_transform(draw);
 }
 
 void draw_add_pan(DrawContext *draw, HMM_Vec2 pan) {
   draw->pan = HMM_AddV2(draw->pan, pan);
 
-  draw_begin_frame(draw);
+  draw_push_transform(draw);
   draw->transform = sgp_query_state()->transform;
-  draw_end_frame(draw);
+  draw_pop_transform(draw);
 }
 
 HMM_Vec2 draw_get_pan(DrawContext *draw) { return draw->pan; }
@@ -124,19 +133,22 @@ HMM_Vec2 draw_get_pan(DrawContext *draw) { return draw->pan; }
 float draw_get_zoom(DrawContext *draw) { return draw->zoom; }
 
 void draw_begin_frame(DrawContext *draw) {
-  sgp_push_transform();
-  sgp_reset_transform();
-  sgp_scale(draw->zoom, draw->zoom);
-  sgp_translate(draw->pan.X, draw->pan.Y);
+  draw->strokedRects = 0;
+  draw->filledRects = 0;
+  draw->lineVertices = 0;
+  draw->texts = 0;
+
+  draw_push_transform(draw);
 }
 
-void draw_end_frame(DrawContext *draw) { sgp_pop_transform(); }
+void draw_end_frame(DrawContext *draw) { draw_pop_transform(draw); }
 
 void draw_filled_rect(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
   HMM_Vec4 color) {
   sgp_set_color(color.R, color.G, color.B, color.A);
   sgp_draw_filled_rect(position.X, position.Y, size.X, size.Y);
+  draw->filledRects += 1;
 }
 
 void draw_stroked_rect(
@@ -151,6 +163,7 @@ void draw_stroked_rect(
   pl_lineto(draw->polyliner, HMM_V2(position.X + size.X, position.Y + size.Y));
   pl_lineto(draw->polyliner, HMM_V2(position.X, position.Y + size.Y));
   pl_finish(draw->polyliner);
+  draw->strokedRects += 1;
 }
 
 void draw_filled_circle(
@@ -174,6 +187,8 @@ void draw_stroked_line(
   pl_start(draw->polyliner, start);
   pl_lineto(draw->polyliner, end);
   pl_finish(draw->polyliner);
+
+  draw->lineVertices += 2;
 }
 
 void draw_text(
@@ -230,6 +245,8 @@ void draw_screen_text(
   fonsDrawText(fsctx, dot.X, dot.Y, text, text + len);
 
   fonsPopState(fsctx);
+
+  draw->texts++;
 }
 
 void draw_chip(DrawContext *draw, Theme *theme, Box box, DrawFlags flags) {

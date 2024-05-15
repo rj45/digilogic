@@ -26,6 +26,7 @@
 #define MAX_ZOOM 20.0f
 #define MOUSE_FUDGE 1.5f
 #define MOUSE_WP_FUDGE 5.0f
+#define MOVE_THRESHOLD 5.0f
 
 /* Enter this into mermaid.live:
     stateDiagram
@@ -61,8 +62,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   MouseDownState oldState = ux->mouseDownState;
   MouseDownState state = oldState;
   for (;;) {
-    bool move = leftDown && HMM_LenV2(HMM_SubV2(worldMousePos, ux->downStart)) >
-                              (10.0f * draw_get_zoom(ux->view.drawCtx));
+    bool move =
+      leftDown && HMM_LenV2(HMM_SubV2(worldMousePos, ux->downStart)) >
+                    (MOVE_THRESHOLD / draw_get_zoom(ux->view.drawCtx));
     bool selected = arrlen(ux->view.selected) > 0 ||
                     HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.0f;
 

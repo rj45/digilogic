@@ -431,6 +431,7 @@ typedef struct snk_desc_t {
     snk_logger_t logger;                // optional log function override
 } snk_desc_t;
 
+SOKOL_NUKLEAR_API_DECL void snk_set_atlas(struct nk_font_atlas* atlas);
 SOKOL_NUKLEAR_API_DECL void snk_setup(const snk_desc_t* desc);
 SOKOL_NUKLEAR_API_DECL struct nk_context* snk_new_frame(void);
 SOKOL_NUKLEAR_API_DECL void snk_render(int width, int height);
@@ -2064,6 +2065,12 @@ static snk_desc_t _snk_desc_defaults(const snk_desc_t* desc) {
 // ██       ██████  ██████  ███████ ██  ██████
 //
 // >>public
+
+SOKOL_API_IMPL void snk_set_atlas(struct nk_font_atlas* atlas) {
+    SOKOL_ASSERT(atlas);
+    _snuklear.atlas = *atlas;
+} 
+
 SOKOL_API_IMPL void snk_setup(const snk_desc_t* desc) {
     SOKOL_ASSERT(desc);
     _snk_clear(&_snuklear, sizeof(_snuklear));

@@ -468,24 +468,23 @@ void view_draw(CircuitView *view) {
         wire->vertexCount, flags);
       vertexOffset += wire->vertexCount;
     }
+  }
+  for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
+    WaypointView *waypointView = &view->waypoints[i];
+    WaypointID id = circuit_waypoint_id(&view->circuit, i);
+    DrawFlags flags = 0;
 
-    for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
-      WaypointView *waypointView = &view->waypoints[i];
-      WaypointID id = circuit_waypoint_id(&view->circuit, i);
-      DrawFlags flags = 0;
-
-      for (int j = 0; j < arrlen(view->selected); j++) {
-        if (view->selected[j] == id) {
-          flags |= DRAW_SELECTED;
-          break;
-        }
+    for (int j = 0; j < arrlen(view->selected); j++) {
+      if (view->selected[j] == id) {
+        flags |= DRAW_SELECTED;
+        break;
       }
-
-      if (id == view->hovered) {
-        flags |= DRAW_HOVERED;
-      }
-
-      draw_waypoint(view->drawCtx, &view->theme, waypointView->pos, flags);
     }
+
+    if (id == view->hovered) {
+      flags |= DRAW_HOVERED;
+    }
+
+    draw_waypoint(view->drawCtx, &view->theme, waypointView->pos, flags);
   }
 }

@@ -20,10 +20,9 @@
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
 #define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
 #define NK_INCLUDE_STANDARD_VARARGS
 
-#include "ux/ux.h"
+#include "ui/ui.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -56,8 +55,10 @@
 #define FONT_ATLAS_WIDTH 1536
 #define FONT_ATLAS_HEIGHT 1536
 
+#define UI_FONT_SIZE 20
+
 typedef struct my_app_t {
-  CircuitUX circuit;
+  CircuitUI circuit;
 
   const char *filename;
 
@@ -67,6 +68,12 @@ typedef struct my_app_t {
 
   FONScontext *fsctx;
   FonsFont fonsFont;
+
+  struct nk_font *latin;
+  struct nk_font_atlas atlas;
+  sg_image font_img;
+  sg_sampler font_smp;
+  snk_image_t default_font;
 
   DrawContext draw;
 
@@ -115,7 +122,11 @@ static void init(void *user_data) {
   sg_enable_frame_stats();
 
   snk_setup(&(snk_desc_t){
-    .max_vertices = 64 * 1024, .logger.func = slog_func, .sample_count = 4});
+    .max_vertices = 64 * 1024,
+    .logger.func = slog_func,
+    .sample_count = 4,
+    .no_default_font = true,
+  });
 
   app->fsctx = fsgp_create(
     &(fsgp_desc_t){.width = FONT_ATLAS_WIDTH, .height = FONT_ATLAS_HEIGHT});
@@ -152,9 +163,46 @@ static void init(void *user_data) {
     .iconFont = iconFont,
   };
 
+  struct nk_font_config cfg_latin = nk_font_config(UI_FONT_SIZE);
+  cfg_latin.range = nk_font_default_glyph_ranges();
+  cfg_latin.oversample_h = cfg_latin.oversample_v = 2;
+  cfg_latin.pixel_snap = true;
+
+  app->font_smp = sg_make_sampler(&(sg_sampler_desc){
+    .min_filter = SG_FILTER_LINEAR,
+    .mag_filter = SG_FILTER_LINEAR,
+    .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+    .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+    .label = "sokol-nuklear-font-sampler",
+  });
+
+  nk_font_atlas_init_default(&app->atlas);
+  nk_font_atlas_begin(&app->atlas);
+  int font_width = 0, font_height = 0;
+  app->latin = nk_font_atlas_add_from_memory(
+    &app->atlas, (void *)mainFontData, mainFontSize, UI_FONT_SIZE, &cfg_latin);
+  const void *pixels = nk_font_atlas_bake(
+    &app->atlas, &font_width, &font_height, NK_FONT_ATLAS_RGBA32);
+  assert((font_width > 0) && (font_height > 0));
+  app->font_img = sg_make_image(&(sg_image_desc){
+    .width = font_width,
+    .height = font_height,
+    .pixel_format = SG_PIXELFORMAT_RGBA8,
+    .data.subimage[0][0] =
+      {.ptr = pixels,
+       .size = (size_t)(font_width * font_height) * sizeof(uint32_t)},
+    .label = "sokol-nuklear-font"});
+  app->default_font = snk_make_image(&(snk_image_desc_t){
+    .image = app->font_img,
+    .sampler = app->font_smp,
+  });
+  nk_font_atlas_end(&app->atlas, snk_nkhandle(app->default_font), 0);
+  nk_font_atlas_cleanup(&app->atlas);
+  snk_set_atlas(&app->atlas);
+
   draw_init(&app->draw, app->fsctx);
 
-  ux_init(
+  ui_init(
     &app->circuit, circuit_component_descs(), &app->draw,
     (FontHandle)&app->fonsFont);
 
@@ -166,7 +214,10 @@ void cleanup(void *user_data) {
 
   draw_free(&app->draw);
 
-  ux_free(&app->circuit);
+  ui_free(&app->circuit);
+
+  sg_destroy_sampler(app->font_smp);
+  sg_destroy_image(app->font_img);
 
   fsgp_destroy(app->fsctx);
 
@@ -188,12 +239,12 @@ void load_file(my_app_t *app, const char *filename) {
 
   log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  import_digital(&app->circuit, buffer);
+  import_digital(&app->circuit.ux, buffer);
   free(buffer);
 
-  ux_route(&app->circuit);
+  ux_route(&app->circuit.ux);
 
-  // autoroute_dump_anchor_boxes(app->circuit.router);
+  // autoroute_dump_anchor_boxes(app->circuit.ux.router);
 
   app->loaded = true;
 }
@@ -211,11 +262,13 @@ void frame(void *user_data) {
 
   struct nk_context *ctx = snk_new_frame();
 
+  nk_style_set_font(ctx, &app->latin->handle);
+
   int width = sapp_width(), height = sapp_height();
   sgp_begin(width, height);
   sgp_set_blend_mode(SGP_BLENDMODE_BLEND);
 
-  ux_update(&app->circuit);
+  ui_update(&app->circuit, ctx, width, height);
 
   if (!app->loaded) {
     if (nk_begin(
@@ -226,7 +279,7 @@ void frame(void *user_data) {
           NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
       struct nk_vec2 min = nk_window_get_content_region_min(ctx);
       struct nk_vec2 max = nk_window_get_content_region_max(ctx);
-      float height = ((max.y - min.y) / 3) - 5;
+      float height = ((max.y - min.y) / 3) - 6;
       nk_layout_row_dynamic(ctx, height, 1);
       if (nk_button_label(ctx, "Load small sized test circuit")) {
         load_file(app, "/assets/testdata/simple_test.dig");
@@ -244,10 +297,10 @@ void frame(void *user_data) {
   }
 
   draw_begin_frame(&app->draw);
-  app->circuit.input.frameDuration = sapp_frame_duration();
-  ux_draw(&app->circuit);
-  app->circuit.input.scroll = HMM_V2(0, 0);
-  app->circuit.input.mouseDelta = HMM_V2(0, 0);
+  app->circuit.ux.input.frameDuration = sapp_frame_duration();
+  ui_draw(&app->circuit);
+  app->circuit.ux.input.scroll = HMM_V2(0, 0);
+  app->circuit.ux.input.mouseDelta = HMM_V2(0, 0);
   draw_end_frame(&app->draw);
 
   sg_frame_stats stats = sg_query_frame_stats();
@@ -259,18 +312,21 @@ void frame(void *user_data) {
   avgFrameInterval /= 60;
 
   char buff[256];
-  if (app->circuit.showFPS) {
+  if (app->circuit.ux.showFPS) {
     snprintf(
       buff, sizeof(buff),
-      "Draw time: %1.2f Frame interval: %.2f FPS: %.2f Draws: %d Appends %d",
+      "Draw time: %1.2f Frame interval: %.2f FPS: %.2f Draws: %d Pipelines: %d "
+      "LineVerts: %d FilledRects: %d StrokedRects: %d Texts: %d",
       stm_ms(app->lastDrawTime), stm_ms(avgFrameInterval),
-      1 / stm_sec(avgFrameInterval), stats.num_draw, stats.num_append_buffer);
+      1 / stm_sec(avgFrameInterval), stats.num_draw, stats.num_apply_pipeline,
+      app->draw.lineVertices, app->draw.filledRects, app->draw.strokedRects,
+      app->draw.texts);
 
     Box box = draw_text_bounds(
-      &app->draw, HMM_V2(0, 0), buff, strlen(buff), ALIGN_LEFT, ALIGN_TOP, 12.0,
-      &app->fonsFont);
+      &app->draw, HMM_V2(0, height), buff, strlen(buff), ALIGN_LEFT,
+      ALIGN_BOTTOM, 12.0, &app->fonsFont);
     draw_screen_text(
-      &app->draw, box, buff, strlen(buff), 16.0, &app->fonsFont,
+      &app->draw, box, buff, strlen(buff), 25.0, &app->fonsFont,
       HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
   }
 
@@ -287,14 +343,15 @@ void frame(void *user_data) {
 
   fsgp_flush(app->fsctx);
 
+  sgp_flush();
+
   snk_render(sapp_width(), sapp_height());
 
-  sgp_flush();
   sgp_end();
   sg_end_pass();
   sg_commit();
 
-  bv_clear_all(app->circuit.input.keysPressed);
+  bv_clear_all(app->circuit.ux.input.keysPressed);
 
   uint64_t frameInterval = stm_laptime(&app->frameIntervalTime);
 
@@ -314,35 +371,35 @@ void event(const sapp_event *event, void *user_data) {
 
   switch (event->type) {
   case SAPP_EVENTTYPE_KEY_DOWN:
-    bv_set(app->circuit.input.keysDown, event->key_code);
-    bv_set(app->circuit.input.keysPressed, event->key_code);
-    app->circuit.input.modifiers = event->modifiers;
+    bv_set(app->circuit.ux.input.keysDown, event->key_code);
+    bv_set(app->circuit.ux.input.keysPressed, event->key_code);
+    app->circuit.ux.input.modifiers = event->modifiers;
     if (event->key_code == SAPP_KEYCODE_ESCAPE) {
       sapp_request_quit();
     }
     break;
 
   case SAPP_EVENTTYPE_KEY_UP:
-    bv_clear(app->circuit.input.keysDown, event->key_code);
-    app->circuit.input.modifiers = event->modifiers;
+    bv_clear(app->circuit.ux.input.keysDown, event->key_code);
+    app->circuit.ux.input.modifiers = event->modifiers;
     break;
 
   case SAPP_EVENTTYPE_MOUSE_DOWN:
   case SAPP_EVENTTYPE_MOUSE_UP:
-    app->circuit.input.modifiers = event->modifiers;
+    app->circuit.ux.input.modifiers = event->modifiers;
     break;
 
   case SAPP_EVENTTYPE_MOUSE_MOVE: {
     HMM_Vec2 mousePos = HMM_V2(event->mouse_x, event->mouse_y);
-    app->circuit.input.mouseDelta = HMM_AddV2(
-      app->circuit.input.mouseDelta,
-      HMM_SubV2(app->circuit.input.mousePos, mousePos));
-    app->circuit.input.mousePos = mousePos;
+    app->circuit.ux.input.mouseDelta = HMM_AddV2(
+      app->circuit.ux.input.mouseDelta,
+      HMM_SubV2(app->circuit.ux.input.mousePos, mousePos));
+    app->circuit.ux.input.mousePos = mousePos;
     break;
   }
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
-    app->circuit.input.scroll = HMM_AddV2(
-      app->circuit.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
+    app->circuit.ux.input.scroll = HMM_AddV2(
+      app->circuit.ux.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
     break;
   }
   default:
