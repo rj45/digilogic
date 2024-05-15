@@ -165,8 +165,8 @@ static void init(void *user_data) {
 
   struct nk_font_config cfg_latin = nk_font_config(UI_FONT_SIZE);
   cfg_latin.range = nk_font_default_glyph_ranges();
-  cfg_latin.oversample_h = cfg_latin.oversample_v = 2;
-  cfg_latin.pixel_snap = true;
+  cfg_latin.oversample_h = cfg_latin.oversample_v = 4;
+  cfg_latin.pixel_snap = false;
 
   app->font_smp = sg_make_sampler(&(sg_sampler_desc){
     .min_filter = SG_FILTER_LINEAR,
