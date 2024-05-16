@@ -45,6 +45,7 @@ void ui_update(
       }
       if (nk_menu_item_label(ctx, "Save", NK_TEXT_LEFT)) {
         printf("Save\n");
+        save_circuit_file(ui, "circuit.json");
       }
       if (nk_menu_item_label(ctx, "Quit", NK_TEXT_LEFT)) {
         sapp_request_quit();

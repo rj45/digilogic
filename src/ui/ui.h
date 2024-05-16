@@ -45,4 +45,6 @@ void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height);
 void ui_draw(CircuitUI *ui);
 
+bool save_circuit_file(CircuitUI *ui, const char *filename);
+
 #endif // UI_H

@@ -20,6 +20,7 @@ set(DIGILOGIC_SRCS
     src/render/draw.c
     src/main.c
     src/assets.c
+    thirdparty/yyjson.c
 )
 
 
