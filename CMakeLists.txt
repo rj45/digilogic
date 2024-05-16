@@ -10,6 +10,7 @@ set(DIGILOGIC_SRCS
     src/ux/snap.c
     src/ux/undo.c
     src/ui/ui.c
+    src/ui/loadsave.c
     src/view/view.c
     src/import/digital.c
     src/autoroute/autoroute.c
