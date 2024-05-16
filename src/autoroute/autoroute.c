@@ -266,8 +266,10 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   assert(circuit_component_len(&ar->view->circuit) > 0);
 
   RT_Result res = RT_graph_build(
-    ar->graph, ar->anchors, arrlen(ar->anchors), ar->boxes,
-    circuit_component_len(&ar->view->circuit), betterRoutes);
+    ar->graph, (RT_Slice_Anchor){ar->anchors, arrlen(ar->anchors)},
+    (RT_Slice_BoundingBox){
+      ar->boxes, circuit_component_len(&ar->view->circuit)},
+    betterRoutes);
   if (res != RT_RESULT_SUCCESS) {
     log_error("Error building graph: %d", res);
   }
@@ -373,14 +375,13 @@ void draw_filled_circle(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, HMM_Vec4 color);
 
 void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx) {
-  const RT_Node *nodes;
-  size_t nodeCount;
+  RT_Slice_Node nodes;
 
-  RT_Result res = RT_graph_get_nodes(ar->graph, &nodes, &nodeCount);
+  RT_Result res = RT_graph_get_nodes(ar->graph, &nodes);
   assert(res == RT_RESULT_SUCCESS);
 
-  for (size_t i = 0; i < nodeCount; i++) {
-    const RT_Node *node = &nodes[i];
+  for (size_t i = 0; i < nodes.len; i++) {
+    const RT_Node *node = &nodes.ptr[i];
     RT_Point p1 = node->position;
     RT_NodeIndex neighbors[4] = {
       node->neighbors.pos_x,
@@ -392,8 +393,8 @@ void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx) {
       ctx, HMM_V2((float)p1.x - 1.5, (float)p1.y - 1.5), HMM_V2(3, 3),
       HMM_V4(0.5f, 1.0f, 1.0f, 0.5f));
     for (size_t j = 0; j < 4; j++) {
-      if (neighbors[j] < nodeCount) {
-        RT_Point p2 = nodes[neighbors[j]].position;
+      if (neighbors[j] < nodes.len) {
+        RT_Point p2 = nodes.ptr[neighbors[j]].position;
         draw_stroked_line(
           ctx, HMM_V2(p1.x, p1.y), HMM_V2(p2.x, p2.y), 0.5,
           HMM_V4(0.5f, 0.5f, 0.7f, 0.5f));
