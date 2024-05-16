@@ -323,14 +323,13 @@ void import_digital(CircuitUX *ux, char *buffer) {
       // digital's components are placed relative to the first port
       Component *component =
         circuit_component_ptr(&ux->view.circuit, componentID);
-      ComponentView *compView = view_component_ptr(&ux->view, componentID);
 
       PortID firstPort = component->portFirst;
-      PortView *portView = view_port_ptr(&ux->view, firstPort);
+      Port *port = circuit_port_ptr(&ux->view.circuit, firstPort);
       ux_move_component(
-        ux, componentID, HMM_SubV2(HMM_V2(0, 0), portView->center));
+        ux, componentID, HMM_SubV2(HMM_V2(0, 0), port->position));
 
-      HMM_Vec2 portPos = HMM_AddV2(compView->box.center, portView->center);
+      HMM_Vec2 portPos = HMM_AddV2(component->box.center, port->position);
       log_debug("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
 
       const ComponentDesc *desc = &ux->view.circuit.componentDescs[descID];

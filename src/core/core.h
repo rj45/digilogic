@@ -82,9 +82,15 @@ typedef int8_t Gen;
 
 struct SparseMap;
 
+typedef struct SmapDestructor {
+  void *user;
+  void (*fn)(void *user, ID id, void *ptr);
+} SmapDestructor;
+
 typedef struct SyncedArray {
   void **ptr;
   uint32_t elemSize;
+  SmapDestructor destructor;
 } SyncedArray;
 
 typedef struct SparseMap {
@@ -112,7 +118,8 @@ typedef struct SparseMap {
 void smap_init(SparseMap *smap, IDType type);
 void smap_free(SparseMap *smap);
 
-void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize);
+void smap_add_synced_array(
+  SparseMap *smap, void **ptr, uint32_t elemSize, SmapDestructor *destructor);
 
 ID smap_alloc(SparseMap *smap);
 void smap_del(SparseMap *smap, ID id);
@@ -132,219 +139,6 @@ static inline int smap_index(SparseMap *smap, ID id) {
 static inline ID smap_id(SparseMap *smap, int index) {
   return smap->ids[index];
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Circuit
-////////////////////////////////////////////////////////////////////////////////
-
-// default ComponentDescIDs for the built-in components
-enum {
-  COMP_NONE,
-  COMP_AND,
-  COMP_OR,
-  COMP_XOR,
-  COMP_NOT,
-  COMP_INPUT,
-  COMP_OUTPUT,
-};
-
-typedef uint32_t ComponentDescID;
-
-typedef uint32_t PortDescID;
-
-typedef uint32_t ComponentID;
-#define NO_COMPONENT ((ComponentID) - 1)
-
-typedef ID NetID;
-#define NO_NET NO_ID
-
-typedef ID PortID;
-#define NO_PORT NO_ID
-
-typedef ID EndpointID;
-#define NO_ENDPOINT NO_ID
-
-typedef ID WaypointID;
-#define NO_WAYPOINT NO_ID
-
-typedef ID LabelID;
-#define NO_LABEL NO_ID
-
-typedef enum PortDirection {
-  PORT_IN,
-  PORT_OUT,
-  PORT_INOUT,
-} PortDirection;
-
-typedef struct PortDesc {
-  PortDirection direction;
-  int number;
-  const char *name;
-} PortDesc;
-
-typedef enum ShapeType {
-  SHAPE_DEFAULT,
-  SHAPE_AND,
-  SHAPE_OR,
-  SHAPE_XOR,
-  SHAPE_NOT,
-} ShapeType;
-
-typedef struct ComponentDesc {
-  const char *typeName;
-  int numPorts;
-  char namePrefix;
-  ShapeType shape;
-  PortDesc *ports;
-} ComponentDesc;
-
-typedef struct Component {
-  ComponentDescID desc;
-  PortID portFirst;
-  PortID portLast;
-  LabelID typeLabel;
-  LabelID nameLabel;
-} Component;
-
-typedef struct Port {
-  ComponentID component;
-  PortDescID desc; // index into the component's port descriptions
-  LabelID label;
-
-  // linked list of all ports in the component
-  PortID compNext;
-  PortID compPrev;
-
-  // the net the port is connected to.
-  NetID net;
-
-  // the endpoint the port is connected to.
-  // ports must have an endpoint.
-  EndpointID endpoint;
-
-  // linked list of all ports connected to the same net
-  PortID netNext;
-  PortID netPrev;
-} Port;
-
-typedef struct Endpoint {
-  NetID net;
-
-  // optional port connected to this endpoint
-  // endpoints do not need to have a port.
-  PortID port;
-
-  EndpointID next;
-  EndpointID prev;
-} Endpoint;
-
-typedef struct Waypoint {
-  NetID net;
-
-  // linked list of all waypoints in the net
-  WaypointID next;
-  WaypointID prev;
-} Waypoint;
-
-typedef struct Net {
-  // head and tail of the linked list of endpoints connected to this net
-  EndpointID endpointFirst;
-  EndpointID endpointLast;
-
-  // head and tail of the linked list of waypoints in this net
-  WaypointID waypointFirst;
-  WaypointID waypointLast;
-
-  LabelID label;
-} Net;
-
-typedef struct Label {
-  uint32_t textOffset;
-} Label;
-
-typedef struct Circuit {
-  struct {
-    SparseMap components;
-    SparseMap ports;
-    SparseMap nets;
-    SparseMap endpoints;
-    SparseMap waypoints;
-    SparseMap labels;
-  } sm;
-
-  const ComponentDesc *componentDescs;
-
-  Component *components;
-  Port *ports;
-  Net *nets;
-  Endpoint *endpoints;
-  Waypoint *waypoints;
-  Label *labels;
-
-  arr(char) text;
-
-  struct {
-    char key;
-    uint32_t value;
-  } *nextName;
-} Circuit;
-
-#define circuit_component_index(circuit, id)                                   \
-  (smap_index(&(circuit)->sm.components, (id)))
-#define circuit_component_ptr(circuit, id)                                     \
-  (&(circuit)->components[circuit_component_index(circuit, id)])
-#define circuit_component_len(circuit) (smap_len(&(circuit)->sm.components))
-#define circuit_component_id(circuit, index)                                   \
-  (smap_id(&(circuit)->sm.components, (index)))
-
-#define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
-#define circuit_port_ptr(circuit, id)                                          \
-  (&(circuit)->ports[circuit_port_index(circuit, id)])
-#define circuit_port_len(circuit) (smap_len(&(circuit)->sm.ports))
-#define circuit_port_id(circuit, index) (smap_id(&(circuit)->sm.ports, (index)))
-
-#define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
-#define circuit_net_ptr(circuit, id)                                           \
-  (&(circuit)->nets[circuit_net_index(circuit, id)])
-#define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
-#define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
-
-#define circuit_endpoint_index(circuit, id)                                    \
-  (smap_index(&(circuit)->sm.endpoints, (id)))
-#define circuit_endpoint_ptr(circuit, id)                                      \
-  (&(circuit)->endpoints[circuit_endpoint_index(circuit, id)])
-#define circuit_endpoint_len(circuit) (smap_len(&(circuit)->sm.endpoints))
-#define circuit_endpoint_id(circuit, index)                                    \
-  (smap_id(&(circuit)->sm.endpoints, (index)))
-
-#define circuit_waypoint_index(circuit, id)                                    \
-  (smap_index(&(circuit)->sm.waypoints, (id)))
-#define circuit_waypoint_ptr(circuit, id)                                      \
-  (&(circuit)->waypoints[circuit_waypoint_index(circuit, id)])
-#define circuit_waypoint_len(circuit) (smap_len(&(circuit)->sm.waypoints))
-#define circuit_waypoint_id(circuit, index)                                    \
-  (smap_id(&(circuit)->sm.waypoints, (index)))
-
-#define circuit_label_index(circuit, id)                                       \
-  (smap_index(&(circuit)->sm.labels, (id)))
-#define circuit_label_ptr(circuit, id)                                         \
-  (&(circuit)->labels[circuit_label_index(circuit, id)])
-#define circuit_label_len(circuit) (smap_len(&(circuit)->sm.labels))
-#define circuit_label_id(circuit, index)                                       \
-  (smap_id(&(circuit)->sm.labels, (index)))
-
-const ComponentDesc *circuit_component_descs();
-void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
-void circuit_free(Circuit *circuit);
-ComponentID circuit_add_component(Circuit *circuit, ComponentDescID desc);
-NetID circuit_add_net(Circuit *circuit);
-EndpointID circuit_add_endpoint(Circuit *circuit, NetID net, PortID port);
-WaypointID circuit_add_waypoint(Circuit *circuit, NetID);
-
-LabelID circuit_add_label(Circuit *circuit, const char *text);
-const char *circuit_label_text(Circuit *circuit, LabelID id);
-
-void circuit_write_dot(Circuit *circuit, FILE *file);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bounding Boxes
@@ -409,6 +203,249 @@ static inline Box box_union(Box a, Box b) {
     .Y = HMM_MAX(a.center.Y + a.halfSize.Y, b.center.Y + b.halfSize.Y)};
   return box_from_tlbr(tl, br);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Circuit
+////////////////////////////////////////////////////////////////////////////////
+
+// default ComponentDescIDs for the built-in components
+enum {
+  COMP_NONE,
+  COMP_AND,
+  COMP_OR,
+  COMP_XOR,
+  COMP_NOT,
+  COMP_INPUT,
+  COMP_OUTPUT,
+};
+
+typedef uint32_t ComponentDescID;
+
+typedef uint32_t PortDescID;
+
+typedef uint32_t ComponentID;
+#define NO_COMPONENT ((ComponentID) - 1)
+
+typedef ID NetID;
+#define NO_NET NO_ID
+
+typedef ID PortID;
+#define NO_PORT NO_ID
+
+typedef ID EndpointID;
+#define NO_ENDPOINT NO_ID
+
+typedef ID WaypointID;
+#define NO_WAYPOINT NO_ID
+
+typedef ID LabelID;
+#define NO_LABEL NO_ID
+
+typedef uint32_t VertexIndex;
+#define NO_VERTEX UINT32_MAX
+
+typedef uint32_t WireIndex;
+#define NO_VERTEX UINT32_MAX
+
+typedef enum PortDirection {
+  PORT_IN,
+  PORT_OUT,
+  PORT_INOUT,
+} PortDirection;
+
+typedef struct PortDesc {
+  PortDirection direction;
+  int number;
+  const char *name;
+} PortDesc;
+
+typedef enum ShapeType {
+  SHAPE_DEFAULT,
+  SHAPE_AND,
+  SHAPE_OR,
+  SHAPE_XOR,
+  SHAPE_NOT,
+} ShapeType;
+
+typedef struct ComponentDesc {
+  const char *typeName;
+  int numPorts;
+  char namePrefix;
+  ShapeType shape;
+  PortDesc *ports;
+} ComponentDesc;
+
+typedef struct Component {
+  Box box;
+
+  ComponentDescID desc;
+
+  PortID portFirst;
+  PortID portLast;
+
+  LabelID typeLabel;
+  LabelID nameLabel;
+} Component;
+
+typedef struct Port {
+  HMM_Vec2 position;
+
+  ComponentID component;
+  PortDescID desc; // index into the component's port descriptions
+  LabelID label;
+
+  // linked list of all ports in the component
+  PortID compNext;
+  PortID compPrev;
+
+  // the net the port is connected to.
+  NetID net;
+
+  // the endpoint the port is connected to.
+  // ports must have an endpoint.
+  EndpointID endpoint;
+
+  // linked list of all ports connected to the same net
+  PortID netNext;
+  PortID netPrev;
+} Port;
+
+typedef struct Endpoint {
+  HMM_Vec2 position;
+
+  NetID net;
+
+  // optional port connected to this endpoint
+  // endpoints do not need to have a port.
+  PortID port;
+
+  EndpointID next;
+  EndpointID prev;
+} Endpoint;
+
+typedef struct Waypoint {
+  HMM_Vec2 position;
+
+  NetID net;
+
+  // linked list of all waypoints in the net
+  WaypointID next;
+  WaypointID prev;
+} Waypoint;
+
+typedef struct Net {
+  // head and tail of the linked list of endpoints connected to this net
+  EndpointID endpointFirst;
+  EndpointID endpointLast;
+
+  // head and tail of the linked list of waypoints in this net
+  WaypointID waypointFirst;
+  WaypointID waypointLast;
+
+  LabelID label;
+
+  WireIndex wireOffset;
+  uint32_t wireCount;
+  VertexIndex vertexOffset;
+} Net;
+
+typedef struct Wire {
+  uint16_t vertexCount;
+} Wire;
+
+typedef struct Label {
+  Box box;
+  uint32_t textOffset;
+} Label;
+
+typedef struct Circuit {
+  struct {
+    SparseMap components;
+    SparseMap ports;
+    SparseMap nets;
+    SparseMap endpoints;
+    SparseMap waypoints;
+    SparseMap labels;
+  } sm;
+
+  const ComponentDesc *componentDescs;
+
+  Component *components;
+  Port *ports;
+  Net *nets;
+  Endpoint *endpoints;
+  Waypoint *waypoints;
+  Label *labels;
+
+  arr(char) text;
+
+  struct {
+    char key;
+    uint32_t value;
+  } *nextName;
+
+  arr(Wire) wires;
+  arr(HMM_Vec2) vertices;
+} Circuit;
+
+#define circuit_component_index(circuit, id)                                   \
+  (smap_index(&(circuit)->sm.components, (id)))
+#define circuit_component_ptr(circuit, id)                                     \
+  (&(circuit)->components[circuit_component_index(circuit, id)])
+#define circuit_component_len(circuit) (smap_len(&(circuit)->sm.components))
+#define circuit_component_id(circuit, index)                                   \
+  (smap_id(&(circuit)->sm.components, (index)))
+
+#define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
+#define circuit_port_ptr(circuit, id)                                          \
+  (&(circuit)->ports[circuit_port_index(circuit, id)])
+#define circuit_port_len(circuit) (smap_len(&(circuit)->sm.ports))
+#define circuit_port_id(circuit, index) (smap_id(&(circuit)->sm.ports, (index)))
+
+#define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
+#define circuit_net_ptr(circuit, id)                                           \
+  (&(circuit)->nets[circuit_net_index(circuit, id)])
+#define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
+#define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
+
+#define circuit_endpoint_index(circuit, id)                                    \
+  (smap_index(&(circuit)->sm.endpoints, (id)))
+#define circuit_endpoint_ptr(circuit, id)                                      \
+  (&(circuit)->endpoints[circuit_endpoint_index(circuit, id)])
+#define circuit_endpoint_len(circuit) (smap_len(&(circuit)->sm.endpoints))
+#define circuit_endpoint_id(circuit, index)                                    \
+  (smap_id(&(circuit)->sm.endpoints, (index)))
+
+#define circuit_waypoint_index(circuit, id)                                    \
+  (smap_index(&(circuit)->sm.waypoints, (id)))
+#define circuit_waypoint_ptr(circuit, id)                                      \
+  (&(circuit)->waypoints[circuit_waypoint_index(circuit, id)])
+#define circuit_waypoint_len(circuit) (smap_len(&(circuit)->sm.waypoints))
+#define circuit_waypoint_id(circuit, index)                                    \
+  (smap_id(&(circuit)->sm.waypoints, (index)))
+
+#define circuit_label_index(circuit, id)                                       \
+  (smap_index(&(circuit)->sm.labels, (id)))
+#define circuit_label_ptr(circuit, id)                                         \
+  (&(circuit)->labels[circuit_label_index(circuit, id)])
+#define circuit_label_len(circuit) (smap_len(&(circuit)->sm.labels))
+#define circuit_label_id(circuit, index)                                       \
+  (smap_id(&(circuit)->sm.labels, (index)))
+
+const ComponentDesc *circuit_component_descs();
+void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
+void circuit_free(Circuit *circuit);
+ComponentID circuit_add_component(
+  Circuit *circuit, ComponentDescID desc, HMM_Vec2 position);
+NetID circuit_add_net(Circuit *circuit);
+EndpointID circuit_add_endpoint(
+  Circuit *circuit, NetID net, PortID port, HMM_Vec2 position);
+WaypointID circuit_add_waypoint(Circuit *circuit, NetID, HMM_Vec2 position);
+
+LabelID circuit_add_label(Circuit *circuit, const char *text);
+const char *circuit_label_text(Circuit *circuit, LabelID id);
+
+void circuit_write_dot(Circuit *circuit, FILE *file);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bounding Volume Hierarchy

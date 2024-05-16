@@ -79,11 +79,11 @@ WaypointID ux_add_waypoint(CircuitUX *ux, NetID net, HMM_Vec2 position) {
 }
 
 void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
-  ComponentView *componentView = view_component_ptr(&ux->view, id);
+  Component *component = circuit_component_ptr(&ux->view.circuit, id);
   assert(!isnan(delta.X));
   assert(!isnan(delta.Y));
 
-  componentView->box.center = HMM_AddV2(componentView->box.center, delta);
+  component->box.center = HMM_AddV2(component->box.center, delta);
 
   log_debug("Move updating component %x", id);
   autoroute_update_component(ux->router, id);
@@ -91,13 +91,13 @@ void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
   PortID portID = circuit_component_ptr(&ux->view.circuit, id)->portFirst;
   while (portID) {
     Port *port = circuit_port_ptr(&ux->view.circuit, portID);
-    PortView *portView = view_port_ptr(&ux->view, portID);
 
-    HMM_Vec2 pos = HMM_AddV2(componentView->box.center, portView->center);
+    HMM_Vec2 pos = HMM_AddV2(component->box.center, port->position);
 
     if (port->endpoint != NO_ENDPOINT) {
-      EndpointView *endpointView = view_endpoint_ptr(&ux->view, port->endpoint);
-      endpointView->pos = pos;
+      Endpoint *endpoint =
+        circuit_endpoint_ptr(&ux->view.circuit, port->endpoint);
+      endpoint->position = pos;
 
       autoroute_update_endpoint(ux->router, port->endpoint);
     }
@@ -107,8 +107,8 @@ void ux_move_component(CircuitUX *ux, ComponentID id, HMM_Vec2 delta) {
 }
 
 void ux_move_waypoint(CircuitUX *ux, WaypointID id, HMM_Vec2 delta) {
-  WaypointView *waypointView = view_waypoint_ptr(&ux->view, id);
-  waypointView->pos = HMM_AddV2(waypointView->pos, delta);
+  Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
+  waypoint->position = HMM_AddV2(waypoint->position, delta);
 
   autoroute_update_waypoint(ux->router, id);
 }
@@ -119,11 +119,11 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
     if (id_type(id) == ID_COMPONENT) {
-      ComponentView *componentView = view_component_ptr(&ux->view, id);
-      center = HMM_AddV2(center, componentView->box.center);
+      Component *component = circuit_component_ptr(&ux->view.circuit, id);
+      center = HMM_AddV2(center, component->box.center);
     } else if (id_type(id) == ID_WAYPOINT) {
-      WaypointView *waypointView = view_waypoint_ptr(&ux->view, id);
-      center = HMM_AddV2(center, waypointView->pos);
+      Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
+      center = HMM_AddV2(center, waypoint->position);
     }
   }
   center = HMM_DivV2F(center, (float)arrlen(ux->view.selected));

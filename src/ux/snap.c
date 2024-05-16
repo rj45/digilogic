@@ -28,13 +28,13 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
   float snapDistance = SNAP_DISTANCE / draw_get_zoom(ux->view.drawCtx);
 
   if (id_type(selected) == ID_COMPONENT) {
-    ComponentView *component = view_component_ptr(&ux->view, selected);
+    Component *component = circuit_component_ptr(&ux->view.circuit, selected);
     oldCenter = component->box.center;
     halfSize = component->box.halfSize;
 
   } else if (id_type(selected) == ID_WAYPOINT) {
-    WaypointView *waypoint = view_waypoint_ptr(&ux->view, selected);
-    oldCenter = waypoint->pos;
+    Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, selected);
+    oldCenter = waypoint->position;
     halfSize = HMM_V2(0, 0);
   } else {
     return newCenter;
@@ -50,7 +50,7 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
   float snapDistanceThreshold =
     SNAP_DISTANCE_THRESHOLD / draw_get_zoom(ux->view.drawCtx);
   for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-    ComponentView *component = &ux->view.components[i];
+    Component *component = &ux->view.circuit.components[i];
     if (circuit_component_id(&ux->view.circuit, i) == selected) {
       continue;
     }

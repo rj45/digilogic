@@ -58,14 +58,14 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     ux->view.selectionBox = command.area;
     arrsetlen(ux->view.selected, 0);
     for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-      ComponentView *componentView = &ux->view.components[i];
-      if (box_intersect_box(componentView->box, command.area)) {
+      Component *component = &ux->view.circuit.components[i];
+      if (box_intersect_box(component->box, command.area)) {
         arrput(ux->view.selected, circuit_component_id(&ux->view.circuit, i));
       }
     }
     for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
-      WaypointView *waypointView = &ux->view.waypoints[i];
-      Box box = (Box){.center = waypointView->pos, .halfSize = HMM_V2(5, 5)};
+      Waypoint *waypoint = &ux->view.circuit.waypoints[i];
+      Box box = (Box){.center = waypoint->position, .halfSize = HMM_V2(5, 5)};
       if (box_intersect_box(box, command.area)) {
         arrput(ux->view.selected, circuit_waypoint_id(&ux->view.circuit, i));
       }

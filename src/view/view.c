@@ -61,47 +61,26 @@ void view_init(
     .hoveredPort = NO_PORT,
   };
   circuit_init(&view->circuit, componentDescs);
-  smap_add_synced_array(
-    &view->circuit.sm.components, (void **)&view->components,
-    sizeof(*view->components));
-  smap_add_synced_array(
-    &view->circuit.sm.ports, (void **)&view->ports, sizeof(*view->ports));
-  smap_add_synced_array(
-    &view->circuit.sm.nets, (void **)&view->nets, sizeof(*view->nets));
-  smap_add_synced_array(
-    &view->circuit.sm.endpoints, (void **)&view->endpoints,
-    sizeof(*view->endpoints));
-  smap_add_synced_array(
-    &view->circuit.sm.waypoints, (void **)&view->waypoints,
-    sizeof(*view->waypoints));
-  smap_add_synced_array(
-    &view->circuit.sm.labels, (void **)&view->labels, sizeof(*view->labels));
 
   theme_init(&view->theme, font);
 }
 
 void view_free(CircuitView *view) {
-  arrfree(view->wires);
-  arrfree(view->vertices);
   arrfree(view->selected);
   circuit_free(&view->circuit);
 }
 
 void view_augment_label(CircuitView *view, LabelID id, Box bounds) {
-  int index = circuit_label_index(&view->circuit, id);
-  LabelView labelView = {.bounds = bounds};
-  view->labels[index] = labelView;
+  Label *label = circuit_label_ptr(&view->circuit, id);
+  label->box = bounds;
 }
 
 ComponentID view_add_component(
   CircuitView *view, ComponentDescID descID, HMM_Vec2 position) {
-  ComponentID id = circuit_add_component(&view->circuit, descID);
+  ComponentID id = circuit_add_component(&view->circuit, descID, position);
 
   Component *component = circuit_component_ptr(&view->circuit, id);
   const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
-
-  ComponentView *componentView = view_component_ptr(view, id);
-  *componentView = (ComponentView){.box.center = position};
 
   float labelPadding = view->theme.labelPadding;
   float width = view->theme.componentWidth;
@@ -161,7 +140,7 @@ ComponentID view_add_component(
     ALIGN_CENTER, ALIGN_BOTTOM, view->theme.labelFontSize, view->theme.font);
   view_augment_label(view, nameLabelID, nameLabelBounds);
 
-  componentView->box.halfSize = HMM_V2(width / 2, height / 2);
+  component->box.halfSize = HMM_V2(width / 2, height / 2);
 
   // figure out the position of each port
   float leftInc = (height) / (numInputPorts + 1);
@@ -172,27 +151,25 @@ ComponentID view_add_component(
 
   portID = component->portFirst;
   for (int j = 0; j < desc->numPorts; j++) {
-    PortView *portView = view_port_ptr(view, portID);
-    *portView = (PortView){0};
+    Port *port = circuit_port_ptr(&view->circuit, portID);
 
     HMM_Vec2 labelPos = HMM_V2(0, 0);
     HorizAlign horz = ALIGN_CENTER;
 
     if (desc->ports[j].direction == PORT_IN) {
-      portView->center = HMM_V2(-width / 2 + borderWidth / 2, leftY);
+      port->position = HMM_V2(-width / 2 + borderWidth / 2, leftY);
       leftY += leftInc;
 
       labelPos = HMM_V2(labelPadding + view->theme.portWidth / 2, 0);
       horz = ALIGN_LEFT;
     } else if (desc->ports[j].direction != PORT_IN) {
-      portView->center = HMM_V2(width / 2 - borderWidth / 2, rightY);
+      port->position = HMM_V2(width / 2 - borderWidth / 2, rightY);
       rightY += rightInc;
 
       labelPos = HMM_V2(-labelPadding - view->theme.portWidth / 2, 0);
       horz = ALIGN_RIGHT;
     }
 
-    Port *port = circuit_port_ptr(&view->circuit, portID);
     LabelID labelID = port->label;
     const char *labelText = circuit_label_text(&view->circuit, labelID);
     Box labelBounds = draw_text_bounds(
@@ -212,37 +189,30 @@ NetID view_add_net(CircuitView *view) {
 }
 
 EndpointID
-view_add_endpoint(CircuitView *view, NetID net, PortID port, HMM_Vec2 pos) {
-  EndpointID id = circuit_add_endpoint(&view->circuit, net, port);
-  EndpointView *endpointView = view_endpoint_ptr(view, id);
+view_add_endpoint(CircuitView *view, NetID net, PortID portID, HMM_Vec2 pos) {
+  EndpointID id = circuit_add_endpoint(&view->circuit, net, portID, pos);
+  Endpoint *endpoint = circuit_endpoint_ptr(&view->circuit, id);
 
   HMM_Vec2 position = pos;
-  if (port != NO_PORT) {
-    PortView *portView = view_port_ptr(view, port);
-    ComponentView *componentView = view_component_ptr(
-      view, circuit_port_ptr(&view->circuit, port)->component);
-    position = HMM_AddV2(componentView->box.center, portView->center);
+  if (portID != NO_PORT) {
+    Port *port = circuit_port_ptr(&view->circuit, portID);
+    Component *component =
+      circuit_component_ptr(&view->circuit, port->component);
+    position = HMM_AddV2(component->box.center, port->position);
   }
 
-  *endpointView = (EndpointView){.pos = position};
+  endpoint->position = position;
   return id;
 }
 
 WaypointID view_add_waypoint(CircuitView *view, NetID net, HMM_Vec2 position) {
-  WaypointID id = circuit_add_waypoint(&view->circuit, net);
-  WaypointView *waypointView = view_waypoint_ptr(view, id);
-  *waypointView = (WaypointView){.pos = position};
-  return id;
-}
-
-void view_fix_wire_end_vertices(CircuitView *view, WireIndex wire) {
-  // todo: implement
+  return circuit_add_waypoint(&view->circuit, net, position);
 }
 
 LabelID view_add_label(CircuitView *view, const char *text, Box bounds) {
   LabelID id = circuit_add_label(&view->circuit, text);
-  LabelView *labelView = view_label_ptr(view, id);
-  *labelView = (LabelView){.bounds = bounds};
+  Label *label = circuit_label_ptr(&view->circuit, id);
+  label->box = bounds;
   return id;
 }
 
@@ -261,24 +231,22 @@ const char *view_label_text(CircuitView *view, LabelID id) {
 
 // mainly for tests
 void view_direct_wire_nets(CircuitView *view) {
-  arrsetlen(view->wires, 0);
-  arrsetlen(view->vertices, 0);
+  arrsetlen(view->circuit.wires, 0);
+  arrsetlen(view->circuit.vertices, 0);
   int wireOffset = 0;
   int vertexOffset = 0;
   arr(HMM_Vec2) waypoints = NULL;
   for (int i = 0; i < circuit_net_len(&view->circuit); i++) {
-    NetView *netView = &view->nets[i];
     Net *net = &view->circuit.nets[i];
-    netView->wireCount = 0;
-    netView->wireOffset = wireOffset;
-    netView->vertexOffset = vertexOffset;
+    net->wireCount = 0;
+    net->wireOffset = wireOffset;
+    net->vertexOffset = vertexOffset;
 
     arrsetlen(waypoints, 0);
     WaypointID waypointID = net->waypointFirst;
     while (waypointID != NO_WAYPOINT) {
       Waypoint *waypoint = circuit_waypoint_ptr(&view->circuit, waypointID);
-      WaypointView *waypointView = view_waypoint_ptr(view, waypointID);
-      arrput(waypoints, waypointView->pos);
+      arrput(waypoints, waypoint->position);
       waypointID = waypoint->next;
     }
 
@@ -288,8 +256,7 @@ void view_direct_wire_nets(CircuitView *view) {
     while (endpointID != NO_ENDPOINT) {
       Endpoint *endpoint = circuit_endpoint_ptr(&view->circuit, endpointID);
       endpointCount++;
-      EndpointView *endpointView = view_endpoint_ptr(view, endpointID);
-      centroid = HMM_AddV2(centroid, endpointView->pos);
+      centroid = HMM_AddV2(centroid, endpoint->position);
       endpointID = endpoint->next;
     }
     if (endpointCount > 0) {
@@ -306,12 +273,12 @@ void view_direct_wire_nets(CircuitView *view) {
       Wire wire = {
         .vertexCount = arrlen(waypoints),
       };
-      arrput(view->wires, wire);
+      arrput(view->circuit.wires, wire);
       wireOffset++;
-      netView->wireCount++;
+      net->wireCount++;
       for (int j = 0; j < arrlen(waypoints); j++) {
         // add the vertices
-        arrput(view->vertices, waypoints[j]);
+        arrput(view->circuit.vertices, waypoints[j]);
         vertexOffset++;
       }
     }
@@ -320,22 +287,21 @@ void view_direct_wire_nets(CircuitView *view) {
       Wire wire = {
         .vertexCount = endpointCount,
       };
-      arrput(view->wires, wire);
+      arrput(view->circuit.wires, wire);
       wireOffset++;
-      netView->wireCount++;
+      net->wireCount++;
     }
 
     endpointID = net->endpointFirst;
     while (endpointID != NO_ENDPOINT) {
       Endpoint *endpoint = circuit_endpoint_ptr(&view->circuit, endpointID);
-      EndpointView *endpointView = view_endpoint_ptr(view, endpointID);
 
       Port *port = circuit_port_ptr(&view->circuit, endpoint->port);
-      PortView *portView = view_port_ptr(view, endpoint->port);
-      ComponentView *componentView = view_component_ptr(view, port->component);
-      HMM_Vec2 pos = HMM_AddV2(componentView->box.center, portView->center);
+      Component *component =
+        circuit_component_ptr(&view->circuit, port->component);
+      HMM_Vec2 pos = HMM_AddV2(component->box.center, port->position);
 
-      endpointView->pos = pos;
+      endpoint->position = pos;
 
       if (endpointCount > 2) {
         // find the closest waypoint
@@ -353,14 +319,14 @@ void view_direct_wire_nets(CircuitView *view) {
         Wire wire = {
           .vertexCount = 2,
         };
-        arrput(view->wires, wire);
+        arrput(view->circuit.wires, wire);
         wireOffset++;
-        netView->wireCount++;
-        arrput(view->vertices, waypoint);
+        net->wireCount++;
+        arrput(view->circuit.vertices, waypoint);
         vertexOffset++;
       }
 
-      arrput(view->vertices, pos);
+      arrput(view->circuit.vertices, pos);
       vertexOffset++;
 
       endpointID = endpoint->next;
@@ -377,10 +343,9 @@ void view_draw(CircuitView *view) {
 
   for (int i = 0; i < circuit_component_len(&view->circuit); i++) {
     ComponentID id = circuit_component_id(&view->circuit, i);
-    ComponentView *componentView = &view->components[i];
     Component *component = &view->circuit.components[i];
     const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
-    HMM_Vec2 center = componentView->box.center;
+    HMM_Vec2 center = component->box.center;
 
     DrawFlags flags = 0;
 
@@ -396,31 +361,30 @@ void view_draw(CircuitView *view) {
     }
 
     draw_component_shape(
-      view->drawCtx, &view->theme, componentView->box, desc->shape, flags);
+      view->drawCtx, &view->theme, component->box, desc->shape, flags);
 
     if (desc->shape == SHAPE_DEFAULT) {
-      LabelView *typeLabel = view_label_ptr(view, component->typeLabel);
+      Label *typeLabel =
+        circuit_label_ptr(&view->circuit, component->typeLabel);
       const char *typeLabelText =
         circuit_label_text(&view->circuit, component->typeLabel);
       draw_label(
-        view->drawCtx, &view->theme, box_translate(typeLabel->bounds, center),
+        view->drawCtx, &view->theme, box_translate(typeLabel->box, center),
         typeLabelText, LABEL_COMPONENT_TYPE, 0);
     }
 
-    LabelView *nameLabel = view_label_ptr(view, component->nameLabel);
+    Label *nameLabel = circuit_label_ptr(&view->circuit, component->nameLabel);
     const char *nameLabelText =
       circuit_label_text(&view->circuit, component->nameLabel);
     draw_label(
-      view->drawCtx, &view->theme, box_translate(nameLabel->bounds, center),
+      view->drawCtx, &view->theme, box_translate(nameLabel->box, center),
       nameLabelText, LABEL_COMPONENT_NAME, 0);
 
     PortID portID = component->portFirst;
     while (portID != NO_PORT) {
-      PortView *portView = view_port_ptr(view, portID);
       Port *port = circuit_port_ptr(&view->circuit, portID);
 
-      HMM_Vec2 portPosition =
-        HMM_AddV2(componentView->box.center, portView->center);
+      HMM_Vec2 portPosition = HMM_AddV2(component->box.center, port->position);
 
       DrawFlags portFlags = 0;
       if (portID == view->hoveredPort) {
@@ -429,11 +393,11 @@ void view_draw(CircuitView *view) {
       draw_port(view->drawCtx, &view->theme, portPosition, portFlags);
 
       if (desc->shape == SHAPE_DEFAULT) {
-        LabelView *labelView = view_label_ptr(view, port->label);
+        Label *label = circuit_label_ptr(&view->circuit, port->label);
         const char *labelText = circuit_label_text(&view->circuit, port->label);
 
         Box labelBounds =
-          box_translate(labelView->bounds, HMM_AddV2(center, portView->center));
+          box_translate(label->box, HMM_AddV2(center, port->position));
         draw_label(
           view->drawCtx, &view->theme, labelBounds, labelText, LABEL_PORT,
           portFlags);
@@ -444,36 +408,36 @@ void view_draw(CircuitView *view) {
   }
 
   for (int netIdx = 0; netIdx < circuit_net_len(&view->circuit); netIdx++) {
-    NetView *netView = &view->nets[netIdx];
+    Net *net = &view->circuit.nets[netIdx];
 
-    VertexIndex vertexOffset = netView->vertexOffset;
-    assert(vertexOffset < arrlen(view->vertices));
+    VertexIndex vertexOffset = net->vertexOffset;
+    assert(vertexOffset < arrlen(view->circuit.vertices));
 
-    for (int wireIdx = netView->wireOffset;
-         wireIdx < netView->wireOffset + netView->wireCount; wireIdx++) {
-      assert(wireIdx < arrlen(view->wires));
-      Wire *wire = &view->wires[wireIdx];
+    for (int wireIdx = net->wireOffset;
+         wireIdx < net->wireOffset + net->wireCount; wireIdx++) {
+      assert(wireIdx < arrlen(view->circuit.wires));
+      Wire *wire = &view->circuit.wires[wireIdx];
 
       DrawFlags flags = 0;
-      if (wireIdx == netView->wireOffset && view->debugMode) {
+      if (wireIdx == net->wireOffset && view->debugMode) {
         flags |= DRAW_DEBUG;
       }
 
       draw_wire(
-        view->drawCtx, &view->theme, view->vertices + vertexOffset,
+        view->drawCtx, &view->theme, view->circuit.vertices + vertexOffset,
         wire->vertexCount, flags);
 
-      if (wireIdx != netView->wireOffset) {
+      if (wireIdx != net->wireOffset) {
         draw_junction(
           view->drawCtx, &view->theme,
-          view->vertices[vertexOffset + wire->vertexCount - 1], 0);
+          view->circuit.vertices[vertexOffset + wire->vertexCount - 1], 0);
       }
 
       vertexOffset += wire->vertexCount;
     }
   }
   for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
-    WaypointView *waypointView = &view->waypoints[i];
+    Waypoint *waypoint = &view->circuit.waypoints[i];
     WaypointID id = circuit_waypoint_id(&view->circuit, i);
     DrawFlags flags = 0;
 
@@ -488,6 +452,6 @@ void view_draw(CircuitView *view) {
       flags |= DRAW_HOVERED;
     }
 
-    draw_waypoint(view->drawCtx, &view->theme, waypointView->pos, flags);
+    draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
   }
 }

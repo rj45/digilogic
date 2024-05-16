@@ -35,10 +35,20 @@ void smap_free(SparseMap *smap) {
   arrfree(smap->freeList);
 }
 
-void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize) {
+static void smap_default_destructor(void *user, ID id, void *ptr) {}
+
+static SmapDestructor defaultDestructor = {
+  .user = NULL,
+  .fn = smap_default_destructor,
+};
+
+void smap_add_synced_array(
+  SparseMap *smap, void **ptr, uint32_t elemSize, SmapDestructor *destructor) {
+  SmapDestructor d = destructor ? *destructor : defaultDestructor;
   SyncedArray syncedArray = {
     .ptr = ptr,
     .elemSize = elemSize,
+    .destructor = d,
   };
   arrput(smap->syncedArrays, syncedArray);
 }

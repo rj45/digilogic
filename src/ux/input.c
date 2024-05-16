@@ -73,15 +73,15 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
       ID id = ux->view.selected[i];
       if (id_type(id) == ID_COMPONENT) {
-        ComponentView *componentView = view_component_ptr(&ux->view, id);
-        if (box_intersect_point(componentView->box, worldMousePos)) {
+        Component *component = circuit_component_ptr(&ux->view.circuit, id);
+        if (box_intersect_point(component->box, worldMousePos)) {
           inSelection = true;
           break;
         }
       } else if (id_type(id) == ID_WAYPOINT) {
-        WaypointView *waypointView = view_waypoint_ptr(&ux->view, id);
+        Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
         if (
-          HMM_LenSqrV2(HMM_SubV2(waypointView->pos, worldMousePos)) <
+          HMM_LenSqrV2(HMM_SubV2(waypoint->position, worldMousePos)) <
           MOUSE_WP_FUDGE) {
           inSelection = true;
           break;
@@ -300,15 +300,15 @@ static void ux_handle_mouse(CircuitUX *ux) {
   };
 
   for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-    ComponentView *componentView = &ux->view.components[i];
-    if (box_intersect_box(componentView->box, mouseBox)) {
+    Component *component = &ux->view.circuit.components[i];
+    if (box_intersect_box(component->box, mouseBox)) {
       ux->view.hovered = circuit_component_id(&ux->view.circuit, i);
     }
     PortID portID = ux->view.circuit.components[i].portFirst;
     while (portID != NO_PORT) {
-      PortView *portView = view_port_ptr(&ux->view, portID);
+      Port *port = circuit_port_ptr(&ux->view.circuit, portID);
       Box portBox = {
-        .center = HMM_AddV2(portView->center, componentView->box.center),
+        .center = HMM_AddV2(port->position, component->box.center),
         .halfSize = HMM_V2(
           ux->view.theme.portWidth / 2.0f, ux->view.theme.portWidth / 2.0f),
       };
@@ -321,9 +321,9 @@ static void ux_handle_mouse(CircuitUX *ux) {
   }
 
   for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
-    WaypointView *waypointView = &ux->view.waypoints[i];
+    Waypoint *waypoint = &ux->view.circuit.waypoints[i];
     Box waypointBox = {
-      .center = waypointView->pos,
+      .center = waypoint->position,
       .halfSize = HMM_V2(MOUSE_WP_FUDGE, MOUSE_WP_FUDGE),
     };
     if (box_intersect_box(waypointBox, mouseBox)) {
