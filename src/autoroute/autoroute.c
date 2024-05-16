@@ -86,32 +86,32 @@ static void autoroute_update_anchors(AutoRoute *ar) {
     float cx = box.center.X;
     float cy = box.center.Y;
 
-    HMM_Vec2 halfSize = HMM_AddV2(box.halfSize, HMM_V2(RT_PADDING, RT_PADDING));
-    RT_Anchor tl = (RT_Anchor){
-      .position = {.x = cx - halfSize.X, .y = cy - halfSize.Y},
-      .connect_directions = RT_DIRECTIONS_ALL,
-      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    };
-    RT_Anchor tr = (RT_Anchor){
-      .position = {.x = cx + halfSize.X, .y = cy - halfSize.Y},
-      .connect_directions = RT_DIRECTIONS_ALL,
-      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    };
-    RT_Anchor bl = (RT_Anchor){
-      .position = {.x = cx - halfSize.X, .y = cy + halfSize.Y},
-      .connect_directions = RT_DIRECTIONS_ALL,
-      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    };
-    RT_Anchor br = (RT_Anchor){
-      .position = {.x = cx + halfSize.X, .y = cy + halfSize.Y},
-      .connect_directions = RT_DIRECTIONS_ALL,
-      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    };
+    // HMM_Vec2 halfSize = HMM_AddV2(box.halfSize, HMM_V2(RT_PADDING,
+    // RT_PADDING)); RT_Anchor tl = (RT_Anchor){
+    //   .position = {.x = cx - halfSize.X, .y = cy - halfSize.Y},
+    //   .connect_directions = RT_DIRECTIONS_ALL,
+    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    // };
+    // RT_Anchor tr = (RT_Anchor){
+    //   .position = {.x = cx + halfSize.X, .y = cy - halfSize.Y},
+    //   .connect_directions = RT_DIRECTIONS_ALL,
+    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    // };
+    // RT_Anchor bl = (RT_Anchor){
+    //   .position = {.x = cx - halfSize.X, .y = cy + halfSize.Y},
+    //   .connect_directions = RT_DIRECTIONS_ALL,
+    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    // };
+    // RT_Anchor br = (RT_Anchor){
+    //   .position = {.x = cx + halfSize.X, .y = cy + halfSize.Y},
+    //   .connect_directions = RT_DIRECTIONS_ALL,
+    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    // };
 
-    arrput(ar->anchors, tl);
-    arrput(ar->anchors, tr);
-    arrput(ar->anchors, bl);
-    arrput(ar->anchors, br);
+    // arrput(ar->anchors, tl);
+    // arrput(ar->anchors, tr);
+    // arrput(ar->anchors, bl);
+    // arrput(ar->anchors, br);
 
     PortID portID = comp->portFirst;
     while (portID != NO_PORT) {
