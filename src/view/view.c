@@ -23,6 +23,9 @@
 
 #include <assert.h>
 
+#define LOG_LEVEL LL_DEBUG
+#include "log.h"
+
 void theme_init(Theme *theme, FontHandle font) {
   *theme = (Theme){
     .portSpacing = 20.0f,
@@ -51,35 +54,15 @@ void theme_init(Theme *theme, FontHandle font) {
   };
 }
 
-void view_init(
-  CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
-  FontHandle font) {
-  *view = (CircuitView){
-    .drawCtx = drawCtx,
-    .hovered = NO_ID,
-    .selectedPort = NO_PORT,
-    .hoveredPort = NO_PORT,
-  };
-  circuit_init(&view->circuit, componentDescs);
-
-  theme_init(&view->theme, font);
-}
-
-void view_free(CircuitView *view) {
-  arrfree(view->selected);
-  circuit_free(&view->circuit);
-}
-
 void view_augment_label(CircuitView *view, LabelID id, Box bounds) {
   Label *label = circuit_label_ptr(&view->circuit, id);
   label->box = bounds;
+  circuit_label_update_id(&view->circuit, id);
 }
 
-ComponentID view_add_component(
-  CircuitView *view, ComponentDescID descID, HMM_Vec2 position) {
-  ComponentID id = circuit_add_component(&view->circuit, descID, position);
-
-  Component *component = circuit_component_ptr(&view->circuit, id);
+static void view_augment_component(void *user, ComponentID id, void *ptr) {
+  CircuitView *view = user;
+  Component *component = ptr;
   const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
 
   float labelPadding = view->theme.labelPadding;
@@ -180,40 +163,26 @@ ComponentID view_add_component(
 
     portID = port->compNext;
   }
-
-  return id;
 }
 
-NetID view_add_net(CircuitView *view) {
-  return circuit_add_net(&view->circuit);
+void view_init(
+  CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  FontHandle font) {
+  *view = (CircuitView){
+    .drawCtx = drawCtx,
+    .hovered = NO_ID,
+    .selectedPort = NO_PORT,
+    .hoveredPort = NO_PORT,
+  };
+  circuit_init(&view->circuit, componentDescs);
+  circuit_on_component_create(&view->circuit, view, view_augment_component);
+
+  theme_init(&view->theme, font);
 }
 
-EndpointID
-view_add_endpoint(CircuitView *view, NetID net, PortID portID, HMM_Vec2 pos) {
-  EndpointID id = circuit_add_endpoint(&view->circuit, net, portID, pos);
-  Endpoint *endpoint = circuit_endpoint_ptr(&view->circuit, id);
-
-  HMM_Vec2 position = pos;
-  if (portID != NO_PORT) {
-    Port *port = circuit_port_ptr(&view->circuit, portID);
-    Component *component =
-      circuit_component_ptr(&view->circuit, port->component);
-    position = HMM_AddV2(component->box.center, port->position);
-  }
-
-  endpoint->position = position;
-  return id;
-}
-
-WaypointID view_add_waypoint(CircuitView *view, NetID net, HMM_Vec2 position) {
-  return circuit_add_waypoint(&view->circuit, net, position);
-}
-
-LabelID view_add_label(CircuitView *view, const char *text, Box bounds) {
-  LabelID id = circuit_add_label(&view->circuit, text);
-  Label *label = circuit_label_ptr(&view->circuit, id);
-  label->box = bounds;
-  return id;
+void view_free(CircuitView *view) {
+  arrfree(view->selected);
+  circuit_free(&view->circuit);
 }
 
 Box view_label_size(
@@ -223,10 +192,6 @@ Box view_label_size(
     view->drawCtx, pos, text, strlen(text), horz, vert, fontSize,
     view->theme.font);
   return bounds;
-}
-
-const char *view_label_text(CircuitView *view, LabelID id) {
-  return circuit_label_text(&view->circuit, id);
 }
 
 // mainly for tests

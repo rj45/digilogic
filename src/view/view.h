@@ -42,12 +42,6 @@ void view_init(
   CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font);
 void view_free(CircuitView *view);
-ComponentID view_add_component(
-  CircuitView *view, ComponentDescID descID, HMM_Vec2 position);
-NetID view_add_net(CircuitView *view);
-EndpointID
-view_add_endpoint(CircuitView *view, NetID net, PortID port, HMM_Vec2 position);
-WaypointID view_add_waypoint(CircuitView *view, NetID net, HMM_Vec2 position);
 
 // wires all endpoints in the net together in a star pattern,
 // mainly only useful in tests
@@ -55,10 +49,8 @@ void view_direct_wire_nets(CircuitView *view);
 
 void view_draw(CircuitView *view);
 
-LabelID view_add_label(CircuitView *view, const char *text, Box bounds);
 Box view_label_size(
   CircuitView *view, const char *text, HMM_Vec2 pos, HorizAlign horz,
   VertAlign vert, float fontSize);
-const char *view_label_text(CircuitView *view, LabelID id);
 
 #endif // VIEW_H

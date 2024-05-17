@@ -376,6 +376,11 @@ void pl_finish(PolyLiner *pl) {
   float scaleY = HMM_LenV2(HMM_V2(xform.v[0][1], xform.v[1][1]));
   pl->screenScale = (scaleX + scaleY) / 2.0f;
 
+  if (arrlen(pl->segments) == 0) {
+    // nothing to draw
+    return;
+  }
+
   if (pl->capStyle == LC_JOINT) {
     // close the polyline
     HMM_Vec2 p0 = pl->segments[arrlen(pl->segments) - 1].center.b;
@@ -383,11 +388,6 @@ void pl_finish(PolyLiner *pl) {
     if (p0.X != p1.X || p0.Y != p1.Y) {
       pl_add_polysegment(pl, (LineSegment){p0, p1});
     }
-  }
-
-  if (arrlen(pl->segments) == 0) {
-    // nothing to draw
-    return;
   }
 
   HMM_Vec2 nextStart1 = {0};

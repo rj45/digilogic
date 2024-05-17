@@ -52,13 +52,13 @@ void ux_free(CircuitUX *ux) {
 
 ComponentID
 ux_add_component(CircuitUX *ux, ComponentDescID descID, HMM_Vec2 position) {
-  ComponentID id = view_add_component(&ux->view, descID, position);
+  ComponentID id = circuit_add_component(&ux->view.circuit, descID, position);
   autoroute_update_component(ux->router, id);
   return id;
 }
 
 NetID ux_add_net(CircuitUX *ux) {
-  NetID id = view_add_net(&ux->view);
+  NetID id = circuit_add_net(&ux->view.circuit);
   autoroute_update_net(ux->router, id);
   return id;
 }
@@ -66,14 +66,14 @@ NetID ux_add_net(CircuitUX *ux) {
 EndpointID
 ux_add_endpoint(CircuitUX *ux, NetID net, PortID port, HMM_Vec2 position) {
   log_debug("Adding endpoint to net %x", net);
-  EndpointID id = view_add_endpoint(&ux->view, net, port, position);
+  EndpointID id = circuit_add_endpoint(&ux->view.circuit, net, port, position);
   autoroute_update_endpoint(ux->router, id);
   return id;
 }
 
 WaypointID ux_add_waypoint(CircuitUX *ux, NetID net, HMM_Vec2 position) {
   log_debug("Adding waypoint to net %x", net);
-  WaypointID id = view_add_waypoint(&ux->view, net, position);
+  WaypointID id = circuit_add_waypoint(&ux->view.circuit, net, position);
   autoroute_update_waypoint(ux->router, id);
   return id;
 }

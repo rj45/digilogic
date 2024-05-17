@@ -103,51 +103,11 @@ const ComponentDesc *circuit_component_descs() {
   return descs;
 }
 
-void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
-  *circuit = (Circuit){.componentDescs = componentDescs};
-
-  smap_init(&circuit->sm.components, ID_COMPONENT);
-  smap_add_synced_array(
-    &circuit->sm.components, (void **)&circuit->components,
-    sizeof(*circuit->components));
-
-  smap_init(&circuit->sm.ports, ID_PORT);
-  smap_add_synced_array(
-    &circuit->sm.ports, (void **)&circuit->ports, sizeof(*circuit->ports));
-  smap_init(&circuit->sm.nets, ID_NET);
-  smap_add_synced_array(
-    &circuit->sm.nets, (void **)&circuit->nets, sizeof(*circuit->nets));
-  smap_init(&circuit->sm.waypoints, ID_WAYPOINT);
-  smap_add_synced_array(
-    &circuit->sm.waypoints, (void **)&circuit->waypoints,
-    sizeof(*circuit->waypoints));
-  smap_init(&circuit->sm.endpoints, ID_ENDPOINT);
-  smap_add_synced_array(
-    &circuit->sm.endpoints, (void **)&circuit->endpoints,
-    sizeof(*circuit->endpoints));
-  smap_init(&circuit->sm.labels, ID_LABEL);
-  smap_add_synced_array(
-    &circuit->sm.labels, (void **)&circuit->labels, sizeof(*circuit->labels));
-}
-
-void circuit_free(Circuit *circuit) {
-  smap_free(&circuit->sm.components);
-  smap_free(&circuit->sm.ports);
-  smap_free(&circuit->sm.nets);
-  smap_free(&circuit->sm.waypoints);
-  smap_free(&circuit->sm.endpoints);
-  smap_free(&circuit->sm.labels);
-  arrfree(circuit->text);
-  hmfree(circuit->nextName);
-  arrfree(circuit->wires);
-  arrfree(circuit->vertices);
-}
-
-PortID circuit_add_port(
+static PortID circuit_add_port(
   Circuit *circuit, ComponentID componentID, ComponentDescID compDesc,
   PortDescID portDesc) {
   LabelID label = circuit_add_label(
-    circuit, circuit->componentDescs[compDesc].ports[portDesc].name);
+    circuit, circuit->componentDescs[compDesc].ports[portDesc].name, (Box){0});
 
   Component *component = circuit_component_ptr(circuit, componentID);
 
@@ -173,11 +133,103 @@ PortID circuit_add_port(
   return id;
 }
 
+static void circuit_augment_component(void *user, ComponentID id, void *ptr) {
+  Circuit *circuit = user;
+  Component *component = ptr;
+
+  ComponentDescID desc = component->desc;
+  int numPorts = circuit->componentDescs[desc].numPorts;
+  for (int i = 0; i < numPorts; i++) {
+    circuit_add_port(circuit, id, desc, i);
+  }
+}
+
+static void circuit_augment_waypoint(void *user, WaypointID id, void *ptr) {
+  Circuit *circuit = user;
+  Waypoint *waypoint = ptr;
+
+  Net *net = circuit_net_ptr(circuit, waypoint->net);
+  if (net->waypointFirst == NO_ENDPOINT) {
+    net->waypointFirst = id;
+  }
+  if (net->waypointLast != NO_ENDPOINT) {
+    circuit_waypoint_ptr(circuit, net->waypointLast)->next = id;
+    circuit_waypoint_update_id(circuit, net->waypointLast);
+  }
+  net->waypointLast = id;
+  circuit_net_update_id(circuit, waypoint->net);
+}
+
+static void circuit_augment_endpoint(void *user, EndpointID id, void *ptr) {
+  Circuit *circuit = user;
+  Endpoint *endpoint = ptr;
+
+  circuit_port_ptr(circuit, endpoint->port)->endpoint = id;
+
+  Net *net = circuit_net_ptr(circuit, endpoint->net);
+  if (net->endpointFirst == NO_ENDPOINT) {
+    net->endpointFirst = id;
+  }
+  if (net->endpointLast != NO_ENDPOINT) {
+    circuit_endpoint_ptr(circuit, net->endpointLast)->next = id;
+    circuit_endpoint_update_id(circuit, net->endpointLast);
+  }
+  net->endpointLast = id;
+  circuit_net_update_id(circuit, endpoint->net);
+}
+
+void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
+  *circuit = (Circuit){.componentDescs = componentDescs};
+
+  smap_init(&circuit->sm.components, ID_COMPONENT);
+  smap_add_synced_array(
+    &circuit->sm.components, (void **)&circuit->components,
+    sizeof(*circuit->components));
+  circuit_on_component_create(circuit, circuit, circuit_augment_component);
+
+  smap_init(&circuit->sm.ports, ID_PORT);
+  smap_add_synced_array(
+    &circuit->sm.ports, (void **)&circuit->ports, sizeof(*circuit->ports));
+
+  smap_init(&circuit->sm.nets, ID_NET);
+  smap_add_synced_array(
+    &circuit->sm.nets, (void **)&circuit->nets, sizeof(*circuit->nets));
+
+  smap_init(&circuit->sm.waypoints, ID_WAYPOINT);
+  smap_add_synced_array(
+    &circuit->sm.waypoints, (void **)&circuit->waypoints,
+    sizeof(*circuit->waypoints));
+  circuit_on_waypoint_create(circuit, circuit, circuit_augment_waypoint);
+
+  smap_init(&circuit->sm.endpoints, ID_ENDPOINT);
+  smap_add_synced_array(
+    &circuit->sm.endpoints, (void **)&circuit->endpoints,
+    sizeof(*circuit->endpoints));
+  circuit_on_endpoint_create(circuit, circuit, circuit_augment_endpoint);
+
+  smap_init(&circuit->sm.labels, ID_LABEL);
+  smap_add_synced_array(
+    &circuit->sm.labels, (void **)&circuit->labels, sizeof(*circuit->labels));
+}
+
+void circuit_free(Circuit *circuit) {
+  smap_free(&circuit->sm.components);
+  smap_free(&circuit->sm.ports);
+  smap_free(&circuit->sm.nets);
+  smap_free(&circuit->sm.waypoints);
+  smap_free(&circuit->sm.endpoints);
+  smap_free(&circuit->sm.labels);
+  arrfree(circuit->text);
+  hmfree(circuit->nextName);
+  arrfree(circuit->wires);
+  arrfree(circuit->vertices);
+}
+
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position) {
 
-  LabelID typeLabel =
-    circuit_add_label(circuit, circuit->componentDescs[desc].typeName);
+  LabelID typeLabel = circuit_add_label(
+    circuit, circuit->componentDescs[desc].typeName, (Box){0});
 
   int num = hmget(circuit->nextName, circuit->componentDescs[desc].namePrefix);
   if (num < 1) {
@@ -188,7 +240,7 @@ ComponentID circuit_add_component(
   snprintf(
     name, sizeof(name), "%c%d", circuit->componentDescs[desc].namePrefix, num);
 
-  LabelID nameLabel = circuit_add_label(circuit, name);
+  LabelID nameLabel = circuit_add_label(circuit, name, (Box){0});
 
   ComponentID id = smap_add(
     &circuit->sm.components, &(Component){
@@ -197,12 +249,9 @@ ComponentID circuit_add_component(
                                .nameLabel = nameLabel,
                                .box.center = position,
                              });
-
-  int numPorts = circuit->componentDescs[desc].numPorts;
-  for (int i = 0; i < numPorts; i++) {
-    circuit_add_port(circuit, id, desc, i);
-  }
-
+  // NOTE: Do not add code here to further set up components, add it to
+  // circuit_augment_component instead. Otherwise the view on_create callback
+  // will not see the changes.
   return id;
 }
 
@@ -221,16 +270,8 @@ circuit_add_waypoint(Circuit *circuit, NetID netID, HMM_Vec2 position) {
                               .position = position,
                               .prev = net->waypointLast,
                             });
-
-  if (net->waypointFirst == NO_ENDPOINT) {
-    net->waypointFirst = id;
-  }
-  if (net->waypointLast != NO_ENDPOINT) {
-    circuit_waypoint_ptr(circuit, net->waypointLast)->next = id;
-    circuit_waypoint_update_id(circuit, net->waypointLast);
-  }
-  net->waypointLast = id;
-  circuit_net_update_id(circuit, netID);
+  // NOTE: Do not add code here to further set up waypoints, add it to
+  // circuit_augment_waypoint instead.
   return id;
 }
 
@@ -238,6 +279,10 @@ EndpointID circuit_add_endpoint(
   Circuit *circuit, NetID netID, PortID portID, HMM_Vec2 position) {
   if (!smap_has(&circuit->sm.ports, portID)) {
     portID = NO_PORT;
+  } else {
+    Port *port = circuit_port_ptr(circuit, portID);
+    Component *component = circuit_component_ptr(circuit, port->component);
+    position = HMM_AddV2(component->box.center, port->position);
   }
   assert(netID != NO_NET);
   Net *net = circuit_net_ptr(circuit, netID);
@@ -249,22 +294,12 @@ EndpointID circuit_add_endpoint(
                               .position = position,
                               .prev = net->endpointLast});
 
-  circuit_port_ptr(circuit, portID)->endpoint = id;
-
-  if (net->endpointFirst == NO_ENDPOINT) {
-    net->endpointFirst = id;
-  }
-  if (net->endpointLast != NO_ENDPOINT) {
-    circuit_endpoint_ptr(circuit, net->endpointLast)->next = id;
-    circuit_endpoint_update_id(circuit, net->endpointLast);
-  }
-  net->endpointLast = id;
-  circuit_net_update_id(circuit, netID);
-
+  // NOTE: Do not add code here to further set up endpoints, add it to
+  // circuit_augment_endpoint instead.
   return id;
 }
 
-LabelID circuit_add_label(Circuit *circuit, const char *text) {
+LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds) {
   char *found = NULL;
   int searchlen = strlen(text) + 1;
   int matches = 0;
@@ -290,8 +325,8 @@ LabelID circuit_add_label(Circuit *circuit, const char *text) {
     arrput(circuit->text, '\0');
   }
 
-  LabelID id =
-    smap_add(&circuit->sm.labels, &(Label){.textOffset = textOffset});
+  LabelID id = smap_add(
+    &circuit->sm.labels, &(Label){.textOffset = textOffset, .box = bounds});
 
   return id;
 }

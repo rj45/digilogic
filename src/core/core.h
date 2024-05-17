@@ -407,6 +407,18 @@ typedef struct Circuit {
   smap_update_index(&(circuit)->sm.components, (index))
 #define circuit_component_del(circuit, id)                                     \
   smap_del(&(circuit)->sm.components, (id))
+#define circuit_on_component_create(circuit, user, callback)                   \
+  smap_on_create(                                                              \
+    &(circuit)->sm.components, (circuit)->components,                          \
+    (SmapCallback){user, callback})
+#define circuit_on_component_update(circuit, user, callback)                   \
+  smap_on_update(                                                              \
+    &(circuit)->sm.components, (circuit)->components,                          \
+    (SmapCallback){user, callback})
+#define circuit_on_component_delete(circuit, user, callback)                   \
+  smap_on_delete(                                                              \
+    &(circuit)->sm.components, (circuit)->components,                          \
+    (SmapCallback){user, callback})
 
 #define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
 #define circuit_port_ptr(circuit, id)                                          \
@@ -418,6 +430,15 @@ typedef struct Circuit {
 #define circuit_port_update_index(circuit, index)                              \
   smap_update_index(&(circuit)->sm.ports, (index))
 #define circuit_port_del(circuit, id) smap_del(&(circuit)->sm.ports, (id))
+#define circuit_on_port_create(circuit, user, callback)                        \
+  smap_on_create(                                                              \
+    &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
+#define circuit_on_port_update(circuit, user, callback)                        \
+  smap_on_update(                                                              \
+    &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
+#define circuit_on_port_delete(circuit, user, callback)                        \
+  smap_on_delete(                                                              \
+    &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
 
 #define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
 #define circuit_net_ptr(circuit, id)                                           \
@@ -429,6 +450,15 @@ typedef struct Circuit {
 #define circuit_net_update_index(circuit, index)                               \
   smap_update_index(&(circuit)->sm.nets, (index))
 #define circuit_net_del(circuit, id) smap_del(&(circuit)->sm.nets, (id))
+#define circuit_on_net_create(circuit, user, callback)                         \
+  smap_on_create(                                                              \
+    &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
+#define circuit_on_net_update(circuit, user, callback)                         \
+  smap_on_update(                                                              \
+    &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
+#define circuit_on_net_delete(circuit, user, callback)                         \
+  smap_on_delete(                                                              \
+    &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
 
 #define circuit_endpoint_index(circuit, id)                                    \
   (smap_index(&(circuit)->sm.endpoints, (id)))
@@ -443,6 +473,18 @@ typedef struct Circuit {
   smap_update_index(&(circuit)->sm.endpoints, (index))
 #define circuit_endpoint_del(circuit, id)                                      \
   smap_del(&(circuit)->sm.endpoints, (id))
+#define circuit_on_endpoint_create(circuit, user, callback)                    \
+  smap_on_create(                                                              \
+    &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
+    (SmapCallback){user, callback})
+#define circuit_on_endpoint_update(circuit, user, callback)                    \
+  smap_on_update(                                                              \
+    &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
+    (SmapCallback){user, callback})
+#define circuit_on_endpoint_delete(circuit, user, callback)                    \
+  smap_on_delete(                                                              \
+    &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
+    (SmapCallback){user, callback})
 
 #define circuit_waypoint_index(circuit, id)                                    \
   (smap_index(&(circuit)->sm.waypoints, (id)))
@@ -457,6 +499,18 @@ typedef struct Circuit {
   smap_update_index(&(circuit)->sm.waypoints, (index))
 #define circuit_waypoint_del(circuit, id)                                      \
   smap_del(&(circuit)->sm.waypoints, (id))
+#define circuit_on_waypoint_create(circuit, user, callback)                    \
+  smap_on_create(                                                              \
+    &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
+    (SmapCallback){user, callback})
+#define circuit_on_waypoint_update(circuit, user, callback)                    \
+  smap_on_update(                                                              \
+    &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
+    (SmapCallback){user, callback})
+#define circuit_on_waypoint_delete(circuit, user, callback)                    \
+  smap_on_delete(                                                              \
+    &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
+    (SmapCallback){user, callback})
 
 #define circuit_label_index(circuit, id)                                       \
   (smap_index(&(circuit)->sm.labels, (id)))
@@ -470,6 +524,15 @@ typedef struct Circuit {
 #define circuit_label_update_index(circuit, index)                             \
   smap_update_index(&(circuit)->sm.labels, (index))
 #define circuit_label_del(circuit, id) smap_del(&(circuit)->sm.labels, (id))
+#define circuit_on_label_create(circuit, user, callback)                       \
+  smap_on_create(                                                              \
+    &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
+#define circuit_on_label_update(circuit, user, callback)                       \
+  smap_on_update(                                                              \
+    &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
+#define circuit_on_label_delete(circuit, user, callback)                       \
+  smap_on_delete(                                                              \
+    &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
 
 const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
@@ -481,7 +544,7 @@ EndpointID circuit_add_endpoint(
   Circuit *circuit, NetID net, PortID port, HMM_Vec2 position);
 WaypointID circuit_add_waypoint(Circuit *circuit, NetID, HMM_Vec2 position);
 
-LabelID circuit_add_label(Circuit *circuit, const char *text);
+LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds);
 const char *circuit_label_text(Circuit *circuit, LabelID id);
 
 void circuit_write_dot(Circuit *circuit, FILE *file);

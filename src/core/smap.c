@@ -27,9 +27,9 @@ void smap_free(SparseMap *smap) {
     for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
       SyncedArray *syncedArray = &smap->syncedArrays[i];
       for (int j = 0; j < smap->length; j++) {
-        for (int k = 0; k < arrlen(syncedArray->create); k++) {
-          syncedArray->create[k].fn(
-            syncedArray->create[k].user, smap->ids[j],
+        for (int k = 0; k < arrlen(syncedArray->delete); k++) {
+          syncedArray->delete[k].fn(
+            syncedArray->delete[k].user, smap->ids[j],
             ((char *)*syncedArray->ptr) + (j * syncedArray->elemSize));
         }
       }
@@ -55,24 +55,30 @@ void smap_on_create(SparseMap *smap, void *array, SmapCallback callback) {
   for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
     if (*smap->syncedArrays[i].ptr == array) {
       arrput(smap->syncedArrays[i].create, callback);
+      return;
     }
   }
+  assert(0); // array was not found
 }
 
 void smap_on_update(SparseMap *smap, void *array, SmapCallback callback) {
   for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
     if (*smap->syncedArrays[i].ptr == array) {
       arrput(smap->syncedArrays[i].update, callback);
+      return;
     }
   }
+  assert(0); // array was not found
 }
 
 void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback) {
   for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
     if (*smap->syncedArrays[i].ptr == array) {
       arrput(smap->syncedArrays[i].delete, callback);
+      return;
     }
   }
+  assert(0); // array was not found
 }
 
 ID smap_add(SparseMap *smap, void *value) {
