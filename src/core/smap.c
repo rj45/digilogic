@@ -25,8 +25,16 @@ void smap_init(SparseMap *smap, IDType type) {
 void smap_free(SparseMap *smap) {
   if (smap->capacity > 0) {
     for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
-      free(*smap->syncedArrays[i].ptr);
-      *smap->syncedArrays[i].ptr = NULL;
+      SyncedArray *syncedArray = &smap->syncedArrays[i];
+      for (int j = 0; j < smap->length; j++) {
+        for (int k = 0; k < arrlen(syncedArray->create); k++) {
+          syncedArray->create[k].fn(
+            syncedArray->create[k].user, smap->ids[j],
+            ((char *)*syncedArray->ptr) + (j * syncedArray->elemSize));
+        }
+      }
+      free(*syncedArray->ptr);
+      *syncedArray->ptr = NULL;
     }
     free(smap->ids);
   }
@@ -35,25 +43,39 @@ void smap_free(SparseMap *smap) {
   arrfree(smap->freeList);
 }
 
-static void smap_default_destructor(void *user, ID id, void *ptr) {}
-
-static SmapDestructor defaultDestructor = {
-  .user = NULL,
-  .fn = smap_default_destructor,
-};
-
-void smap_add_synced_array(
-  SparseMap *smap, void **ptr, uint32_t elemSize, SmapDestructor *destructor) {
-  SmapDestructor d = destructor ? *destructor : defaultDestructor;
+void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize) {
   SyncedArray syncedArray = {
     .ptr = ptr,
     .elemSize = elemSize,
-    .destructor = d,
   };
   arrput(smap->syncedArrays, syncedArray);
 }
 
-ID smap_alloc(SparseMap *smap) {
+void smap_on_create(SparseMap *smap, void *array, SmapCallback callback) {
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    if (*smap->syncedArrays[i].ptr == array) {
+      arrput(smap->syncedArrays[i].create, callback);
+    }
+  }
+}
+
+void smap_on_update(SparseMap *smap, void *array, SmapCallback callback) {
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    if (*smap->syncedArrays[i].ptr == array) {
+      arrput(smap->syncedArrays[i].update, callback);
+    }
+  }
+}
+
+void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback) {
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    if (*smap->syncedArrays[i].ptr == array) {
+      arrput(smap->syncedArrays[i].delete, callback);
+    }
+  }
+}
+
+ID smap_add(SparseMap *smap, void *value) {
   if (smap->capacity <= smap->length + 1) {
     int newCapacity = smap->capacity * 2;
     if (newCapacity == 0) {
@@ -107,6 +129,20 @@ ID smap_alloc(SparseMap *smap) {
   smap->sparse[sparseIndex] = sparseID;
   smap->ids[denseIndex] = denseID;
 
+  memcpy(
+    (char *)*smap->syncedArrays[0].ptr +
+      denseIndex * smap->syncedArrays[0].elemSize,
+    value, smap->syncedArrays[0].elemSize);
+
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    SyncedArray *syncedArray = &smap->syncedArrays[i];
+    for (int j = 0; j < arrlen(syncedArray->create); j++) {
+      syncedArray->create[j].fn(
+        syncedArray->create[j].user, denseID,
+        ((char *)*syncedArray->ptr) + denseIndex * syncedArray->elemSize);
+    }
+  }
+
   return denseID;
 }
 
@@ -117,6 +153,16 @@ void smap_del(SparseMap *smap, ID id) {
 
   int sparseIndex = id_index(id);
   int denseIndex = id_index(smap->sparse[sparseIndex]);
+
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    SyncedArray *syncedArray = &smap->syncedArrays[i];
+    for (int j = 0; j < arrlen(syncedArray->delete); j++) {
+      syncedArray->delete[j].fn(
+        syncedArray->delete[j].user, id,
+        ((char *)*syncedArray->ptr) + denseIndex * syncedArray->elemSize);
+    }
+  }
+
   int lastDenseIndex = smap->length - 1;
 
   smap->sparse[sparseIndex] = NO_ID;
@@ -129,13 +175,46 @@ void smap_del(SparseMap *smap, ID id) {
     smap->ids[denseIndex] = lastID;
 
     for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
-      int elemSize = smap->syncedArrays[i].elemSize;
+      SyncedArray *syncedArray = &smap->syncedArrays[i];
+      int elemSize = syncedArray->elemSize;
       memcpy(
-        (char *)*smap->syncedArrays[i].ptr + denseIndex * elemSize,
-        (char *)*smap->syncedArrays[i].ptr + lastDenseIndex * elemSize,
-        elemSize);
+        (char *)*syncedArray->ptr + denseIndex * elemSize,
+        (char *)*syncedArray->ptr + lastDenseIndex * elemSize, elemSize);
     }
   }
 
   smap->length--;
+}
+
+void smap_update_id(SparseMap *smap, ID id) {
+  if (!smap_has(smap, id)) {
+    return;
+  }
+
+  int sparseIndex = id_index(id);
+  int denseIndex = id_index(smap->sparse[sparseIndex]);
+
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    SyncedArray *syncedArray = &smap->syncedArrays[i];
+    for (int j = 0; j < arrlen(syncedArray->update); j++) {
+      syncedArray->update[j].fn(
+        syncedArray->update[j].user, id,
+        ((char *)*syncedArray->ptr) + denseIndex * syncedArray->elemSize);
+    }
+  }
+}
+
+void smap_update_index(SparseMap *smap, uint32_t index) {
+  if (index >= smap->length) {
+    return;
+  }
+
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    SyncedArray *syncedArray = &smap->syncedArrays[i];
+    for (int j = 0; j < arrlen(syncedArray->update); j++) {
+      syncedArray->update[j].fn(
+        syncedArray->update[j].user, smap->ids[index],
+        ((char *)*syncedArray->ptr) + index * syncedArray->elemSize);
+    }
+  }
 }

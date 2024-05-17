@@ -105,29 +105,29 @@ const ComponentDesc *circuit_component_descs() {
 
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
   *circuit = (Circuit){.componentDescs = componentDescs};
+
   smap_init(&circuit->sm.components, ID_COMPONENT);
   smap_add_synced_array(
     &circuit->sm.components, (void **)&circuit->components,
-    sizeof(*circuit->components), NULL);
+    sizeof(*circuit->components));
+
   smap_init(&circuit->sm.ports, ID_PORT);
   smap_add_synced_array(
-    &circuit->sm.ports, (void **)&circuit->ports, sizeof(*circuit->ports),
-    NULL);
+    &circuit->sm.ports, (void **)&circuit->ports, sizeof(*circuit->ports));
   smap_init(&circuit->sm.nets, ID_NET);
   smap_add_synced_array(
-    &circuit->sm.nets, (void **)&circuit->nets, sizeof(*circuit->nets), NULL);
+    &circuit->sm.nets, (void **)&circuit->nets, sizeof(*circuit->nets));
   smap_init(&circuit->sm.waypoints, ID_WAYPOINT);
   smap_add_synced_array(
     &circuit->sm.waypoints, (void **)&circuit->waypoints,
-    sizeof(*circuit->waypoints), NULL);
+    sizeof(*circuit->waypoints));
   smap_init(&circuit->sm.endpoints, ID_ENDPOINT);
   smap_add_synced_array(
     &circuit->sm.endpoints, (void **)&circuit->endpoints,
-    sizeof(*circuit->endpoints), NULL);
+    sizeof(*circuit->endpoints));
   smap_init(&circuit->sm.labels, ID_LABEL);
   smap_add_synced_array(
-    &circuit->sm.labels, (void **)&circuit->labels, sizeof(*circuit->labels),
-    NULL);
+    &circuit->sm.labels, (void **)&circuit->labels, sizeof(*circuit->labels));
 }
 
 void circuit_free(Circuit *circuit) {
@@ -146,36 +146,35 @@ void circuit_free(Circuit *circuit) {
 PortID circuit_add_port(
   Circuit *circuit, ComponentID componentID, ComponentDescID compDesc,
   PortDescID portDesc) {
-  PortID id = smap_alloc(&circuit->sm.ports);
-
   LabelID label = circuit_add_label(
     circuit, circuit->componentDescs[compDesc].ports[portDesc].name);
 
   Component *component = circuit_component_ptr(circuit, componentID);
 
-  Port *port = circuit_port_ptr(circuit, id);
-  *port = (Port){
-    .component = componentID,
-    .desc = portDesc,
-    .net = NO_NET,
-    .label = label,
-    .compPrev = component->portLast,
-  };
+  PortID id = smap_add(
+    &circuit->sm.ports, &(Port){
+                          .component = componentID,
+                          .desc = portDesc,
+                          .net = NO_NET,
+                          .label = label,
+                          .compPrev = component->portLast,
+                        });
+
   if (component->portLast != NO_PORT) {
     circuit_port_ptr(circuit, component->portLast)->compNext = id;
+    circuit_port_update_id(circuit, component->portLast);
   }
   component->portLast = id;
   if (component->portFirst == NO_PORT) {
     component->portFirst = id;
   }
+  circuit_component_update_id(circuit, componentID);
 
   return id;
 }
 
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position) {
-  ComponentID id = smap_alloc(&circuit->sm.components);
-  Component *comp = circuit_component_ptr(circuit, id);
 
   LabelID typeLabel =
     circuit_add_label(circuit, circuit->componentDescs[desc].typeName);
@@ -191,11 +190,13 @@ ComponentID circuit_add_component(
 
   LabelID nameLabel = circuit_add_label(circuit, name);
 
-  *comp = (Component){
-    .desc = desc,
-    .typeLabel = typeLabel,
-    .nameLabel = nameLabel,
-    .box.center = position};
+  ComponentID id = smap_add(
+    &circuit->sm.components, &(Component){
+                               .desc = desc,
+                               .typeLabel = typeLabel,
+                               .nameLabel = nameLabel,
+                               .box.center = position,
+                             });
 
   int numPorts = circuit->componentDescs[desc].numPorts;
   for (int i = 0; i < numPorts; i++) {
@@ -206,63 +207,64 @@ ComponentID circuit_add_component(
 }
 
 NetID circuit_add_net(Circuit *circuit) {
-  NetID id = smap_alloc(&circuit->sm.nets);
-  Net *net = circuit_net_ptr(circuit, id);
-  *net = (Net){0};
-
-  return id;
+  return smap_add(&circuit->sm.nets, &(Net){0});
 }
 
 WaypointID
 circuit_add_waypoint(Circuit *circuit, NetID netID, HMM_Vec2 position) {
-  WaypointID id = smap_alloc(&circuit->sm.waypoints);
-  Waypoint *waypoint = circuit_waypoint_ptr(circuit, id);
-  *waypoint = (Waypoint){.net = netID, .position = position};
-
   assert(netID != NO_NET);
   Net *net = circuit_net_ptr(circuit, netID);
+
+  WaypointID id = smap_add(
+    &circuit->sm.waypoints, &(Waypoint){
+                              .net = netID,
+                              .position = position,
+                              .prev = net->waypointLast,
+                            });
+
   if (net->waypointFirst == NO_ENDPOINT) {
     net->waypointFirst = id;
   }
   if (net->waypointLast != NO_ENDPOINT) {
     circuit_waypoint_ptr(circuit, net->waypointLast)->next = id;
+    circuit_waypoint_update_id(circuit, net->waypointLast);
   }
-  waypoint->prev = net->waypointLast;
   net->waypointLast = id;
+  circuit_net_update_id(circuit, netID);
   return id;
 }
 
 EndpointID circuit_add_endpoint(
   Circuit *circuit, NetID netID, PortID portID, HMM_Vec2 position) {
-  EndpointID id = smap_alloc(&circuit->sm.endpoints);
-  Endpoint *endpoint = circuit_endpoint_ptr(circuit, id);
   if (!smap_has(&circuit->sm.ports, portID)) {
     portID = NO_PORT;
   }
-  *endpoint = (Endpoint){.net = netID, .port = portID, .position = position};
+  assert(netID != NO_NET);
+  Net *net = circuit_net_ptr(circuit, netID);
+
+  EndpointID id = smap_add(
+    &circuit->sm.endpoints, &(Endpoint){
+                              .net = netID,
+                              .port = portID,
+                              .position = position,
+                              .prev = net->endpointLast});
 
   circuit_port_ptr(circuit, portID)->endpoint = id;
 
-  assert(netID != NO_NET);
-
-  Net *net = circuit_net_ptr(circuit, netID);
   if (net->endpointFirst == NO_ENDPOINT) {
     net->endpointFirst = id;
   }
   if (net->endpointLast != NO_ENDPOINT) {
     circuit_endpoint_ptr(circuit, net->endpointLast)->next = id;
+    circuit_endpoint_update_id(circuit, net->endpointLast);
   }
-  endpoint->prev = net->endpointLast;
   net->endpointLast = id;
+  circuit_net_update_id(circuit, netID);
 
   return id;
 }
 
 LabelID circuit_add_label(Circuit *circuit, const char *text) {
-  LabelID id = smap_alloc(&circuit->sm.labels);
-  Label *label = circuit_label_ptr(circuit, id);
-  *label = (Label){.textOffset = arrlen(circuit->text)};
-
   char *found = NULL;
   int searchlen = strlen(text) + 1;
   int matches = 0;
@@ -278,14 +280,18 @@ LabelID circuit_add_label(Circuit *circuit, const char *text) {
     }
   }
 
+  uint32_t textOffset = arrlen(circuit->text);
   if (found) {
-    label->textOffset = found - circuit->text;
+    textOffset = found - circuit->text;
   } else {
     for (const char *c = text; *c; c++) {
       arrput(circuit->text, *c);
     }
     arrput(circuit->text, '\0');
   }
+
+  LabelID id =
+    smap_add(&circuit->sm.labels, &(Label){.textOffset = textOffset});
 
   return id;
 }

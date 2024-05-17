@@ -53,19 +53,17 @@ AutoRoute *autoroute_create(CircuitView *view) {
     .view = view,
   };
   smap_add_synced_array(
-    &view->circuit.sm.components, (void **)&ar->boxes, sizeof(*ar->boxes),
-    NULL);
+    &view->circuit.sm.components, (void **)&ar->boxes, sizeof(*ar->boxes));
   smap_add_synced_array(
-    &view->circuit.sm.nets, (void **)&ar->nets, sizeof(*ar->nets), NULL);
+    &view->circuit.sm.nets, (void **)&ar->nets, sizeof(*ar->nets));
   smap_add_synced_array(
-    &view->circuit.sm.nets, (void **)&ar->netViews, sizeof(*ar->netViews),
-    NULL);
+    &view->circuit.sm.nets, (void **)&ar->netViews, sizeof(*ar->netViews));
   smap_add_synced_array(
     &view->circuit.sm.endpoints, (void **)&ar->endpoints,
-    sizeof(*ar->endpoints), NULL);
+    sizeof(*ar->endpoints));
   smap_add_synced_array(
     &view->circuit.sm.waypoints, (void **)&ar->waypoints,
-    sizeof(*ar->waypoints), NULL);
+    sizeof(*ar->waypoints));
 
   RT_Result res = RT_graph_new(&ar->graph);
   assert(res == RT_RESULT_SUCCESS);

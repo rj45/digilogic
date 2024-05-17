@@ -82,15 +82,17 @@ typedef int8_t Gen;
 
 struct SparseMap;
 
-typedef struct SmapDestructor {
+typedef struct SmapCallback {
   void *user;
   void (*fn)(void *user, ID id, void *ptr);
-} SmapDestructor;
+} SmapCallback;
 
 typedef struct SyncedArray {
   void **ptr;
   uint32_t elemSize;
-  SmapDestructor destructor;
+  arr(SmapCallback) create;
+  arr(SmapCallback) update;
+  arr(SmapCallback) delete;
 } SyncedArray;
 
 typedef struct SparseMap {
@@ -118,11 +120,15 @@ typedef struct SparseMap {
 void smap_init(SparseMap *smap, IDType type);
 void smap_free(SparseMap *smap);
 
-void smap_add_synced_array(
-  SparseMap *smap, void **ptr, uint32_t elemSize, SmapDestructor *destructor);
+void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize);
+void smap_on_create(SparseMap *smap, void *array, SmapCallback callback);
+void smap_on_update(SparseMap *smap, void *array, SmapCallback callback);
+void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback);
 
-ID smap_alloc(SparseMap *smap);
+ID smap_add(SparseMap *smap, void *value);
 void smap_del(SparseMap *smap, ID id);
+void smap_update_id(SparseMap *smap, ID id);
+void smap_update_index(SparseMap *smap, uint32_t index);
 
 static inline int smap_len(SparseMap *smap) { return smap->length; }
 
@@ -395,18 +401,34 @@ typedef struct Circuit {
 #define circuit_component_len(circuit) (smap_len(&(circuit)->sm.components))
 #define circuit_component_id(circuit, index)                                   \
   (smap_id(&(circuit)->sm.components, (index)))
+#define circuit_component_update_id(circuit, id)                               \
+  smap_update_id(&(circuit)->sm.components, (id))
+#define circuit_component_update_index(circuit, index)                         \
+  smap_update_index(&(circuit)->sm.components, (index))
+#define circuit_component_del(circuit, id)                                     \
+  smap_del(&(circuit)->sm.components, (id))
 
 #define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
 #define circuit_port_ptr(circuit, id)                                          \
   (&(circuit)->ports[circuit_port_index(circuit, id)])
 #define circuit_port_len(circuit) (smap_len(&(circuit)->sm.ports))
 #define circuit_port_id(circuit, index) (smap_id(&(circuit)->sm.ports, (index)))
+#define circuit_port_update_id(circuit, id)                                    \
+  smap_update_id(&(circuit)->sm.ports, (id))
+#define circuit_port_update_index(circuit, index)                              \
+  smap_update_index(&(circuit)->sm.ports, (index))
+#define circuit_port_del(circuit, id) smap_del(&(circuit)->sm.ports, (id))
 
 #define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
 #define circuit_net_ptr(circuit, id)                                           \
   (&(circuit)->nets[circuit_net_index(circuit, id)])
 #define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
 #define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
+#define circuit_net_update_id(circuit, id)                                     \
+  smap_update_id(&(circuit)->sm.nets, (id))
+#define circuit_net_update_index(circuit, index)                               \
+  smap_update_index(&(circuit)->sm.nets, (index))
+#define circuit_net_del(circuit, id) smap_del(&(circuit)->sm.nets, (id))
 
 #define circuit_endpoint_index(circuit, id)                                    \
   (smap_index(&(circuit)->sm.endpoints, (id)))
@@ -415,6 +437,12 @@ typedef struct Circuit {
 #define circuit_endpoint_len(circuit) (smap_len(&(circuit)->sm.endpoints))
 #define circuit_endpoint_id(circuit, index)                                    \
   (smap_id(&(circuit)->sm.endpoints, (index)))
+#define circuit_endpoint_update_id(circuit, id)                                \
+  smap_update_id(&(circuit)->sm.endpoints, (id))
+#define circuit_endpoint_update_index(circuit, index)                          \
+  smap_update_index(&(circuit)->sm.endpoints, (index))
+#define circuit_endpoint_del(circuit, id)                                      \
+  smap_del(&(circuit)->sm.endpoints, (id))
 
 #define circuit_waypoint_index(circuit, id)                                    \
   (smap_index(&(circuit)->sm.waypoints, (id)))
@@ -423,6 +451,12 @@ typedef struct Circuit {
 #define circuit_waypoint_len(circuit) (smap_len(&(circuit)->sm.waypoints))
 #define circuit_waypoint_id(circuit, index)                                    \
   (smap_id(&(circuit)->sm.waypoints, (index)))
+#define circuit_waypoint_update_id(circuit, id)                                \
+  smap_update_id(&(circuit)->sm.waypoints, (id))
+#define circuit_waypoint_update_index(circuit, index)                          \
+  smap_update_index(&(circuit)->sm.waypoints, (index))
+#define circuit_waypoint_del(circuit, id)                                      \
+  smap_del(&(circuit)->sm.waypoints, (id))
 
 #define circuit_label_index(circuit, id)                                       \
   (smap_index(&(circuit)->sm.labels, (id)))
@@ -431,6 +465,11 @@ typedef struct Circuit {
 #define circuit_label_len(circuit) (smap_len(&(circuit)->sm.labels))
 #define circuit_label_id(circuit, index)                                       \
   (smap_id(&(circuit)->sm.labels, (index)))
+#define circuit_label_update_id(circuit, id)                                   \
+  smap_update_id(&(circuit)->sm.labels, (id))
+#define circuit_label_update_index(circuit, index)                             \
+  smap_update_index(&(circuit)->sm.labels, (index))
+#define circuit_label_del(circuit, id) smap_del(&(circuit)->sm.labels, (id))
 
 const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
