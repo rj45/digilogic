@@ -39,9 +39,9 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
       ID id = ux->view.selected[i];
       if (id_type(id) == ID_COMPONENT) {
-        ux_move_component(ux, id, delta);
+        circuit_move_component(&ux->view.circuit, id, delta);
       } else if (id_type(id) == ID_WAYPOINT) {
-        ux_move_waypoint(ux, id, delta);
+        circuit_move_waypoint(&ux->view.circuit, id, delta);
       }
     }
     ux_route(ux);

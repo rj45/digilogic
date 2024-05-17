@@ -43,7 +43,7 @@ UTEST(SparseMap, alloc) {
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
   smap_add_synced_array(&smap, (void **)&data, sizeof(int));
-  ID id = smap_alloc(&smap);
+  ID id = smap_add(&smap, &(int){1});
   ASSERT_EQ(id_index(id), 0);
   ASSERT_EQ(id_type(id), ID_COMPONENT);
   ASSERT_EQ(id_gen(id), 1);
@@ -60,8 +60,8 @@ UTEST(SparseMap, alloc_multiple) {
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
   smap_add_synced_array(&smap, (void **)&data, sizeof(int));
-  ID id1 = smap_alloc(&smap);
-  ID id2 = smap_alloc(&smap);
+  ID id1 = smap_add(&smap, &(int){1});
+  ID id2 = smap_add(&smap, &(int){1});
   ASSERT_EQ(id_index(id1), 0);
   ASSERT_EQ(id_type(id1), ID_COMPONENT);
   ASSERT_EQ(id_gen(id1), 1);
@@ -85,11 +85,11 @@ UTEST(SparseMap, alloc_full) {
   smap_init(&smap, ID_COMPONENT);
   smap_add_synced_array(&smap, (void **)&data, sizeof(int));
   for (int i = 0; i < 7; i++) {
-    smap_alloc(&smap);
+    smap_add(&smap, &(int){1});
   }
   int *oldData = data;
   ID *oldIds = smap.ids;
-  smap_alloc(&smap);
+  smap_add(&smap, &(int){1});
   ASSERT_NE(smap.ids, oldIds);
   ASSERT_NE(data, oldData);
   ASSERT_EQ(smap.length, 8);
@@ -102,8 +102,8 @@ UTEST(SparseMap, del) {
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
   smap_add_synced_array(&smap, (void **)&data, sizeof(int));
-  ID id1 = smap_alloc(&smap);
-  ID id2 = smap_alloc(&smap);
+  ID id1 = smap_add(&smap, &(int){1});
+  ID id2 = smap_add(&smap, &(int){1});
   data[0] = 1;
   data[1] = 2;
 
@@ -124,8 +124,8 @@ UTEST(SparseMap, del_last) {
   int *data = NULL;
   smap_init(&smap, ID_COMPONENT);
   smap_add_synced_array(&smap, (void **)&data, sizeof(int));
-  ID id1 = smap_alloc(&smap);
-  ID id2 = smap_alloc(&smap);
+  ID id1 = smap_add(&smap, &(int){1});
+  ID id2 = smap_add(&smap, &(int){1});
   data[0] = 1;
   data[1] = 2;
 
@@ -141,7 +141,7 @@ UTEST(SparseMap, del_last) {
 UTEST(Circuit, add_component) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
-  ComponentID id = circuit_add_component(&circuit, COMP_AND);
+  ComponentID id = circuit_add_component(&circuit, COMP_AND, HMM_V2(0, 0));
   ASSERT_EQ(circuit_component_index(&circuit, id), 0);
   ASSERT_EQ(circuit_component_len(&circuit), 1);
   ASSERT_EQ(circuit_component_ptr(&circuit, id)->desc, COMP_AND);
@@ -162,13 +162,13 @@ UTEST(Circuit, add_net_no_ports) {
 UTEST(Circuit, add_net_with_ports) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
-  ComponentID compID = circuit_add_component(&circuit, COMP_AND);
+  ComponentID compID = circuit_add_component(&circuit, COMP_AND, HMM_V2(0, 0));
   Component *comp = circuit_component_ptr(&circuit, compID);
   PortID portID1 = comp->portFirst;
   PortID portID2 = circuit_port_ptr(&circuit, portID1)->compNext;
   NetID net = circuit_add_net(&circuit);
-  EndpointID epID1 = circuit_add_endpoint(&circuit, net, portID1);
-  EndpointID epID2 = circuit_add_endpoint(&circuit, net, portID2);
+  EndpointID epID1 = circuit_add_endpoint(&circuit, net, portID1, HMM_V2(0, 0));
+  EndpointID epID2 = circuit_add_endpoint(&circuit, net, portID2, HMM_V2(0, 0));
 
   ASSERT_EQ(circuit_net_index(&circuit, net), 0);
   ASSERT_EQ(circuit_net_len(&circuit), 1);

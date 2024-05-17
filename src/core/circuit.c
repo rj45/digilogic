@@ -20,6 +20,9 @@
 
 #include "core.h"
 
+#define LOG_LEVEL LL_INFO
+#include "log.h"
+
 const ComponentDesc *circuit_component_descs() {
   static PortDesc andPorts[] = {
     {.direction = PORT_IN, .name = "A"},
@@ -255,6 +258,16 @@ ComponentID circuit_add_component(
   return id;
 }
 
+void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta) {
+  Component *component = circuit_component_ptr(circuit, id);
+  assert(!isnan(delta.X));
+  assert(!isnan(delta.Y));
+
+  component->box.center = HMM_AddV2(component->box.center, delta);
+  log_debug("Move updating component %x", id);
+  circuit_component_update_id(circuit, id);
+}
+
 NetID circuit_add_net(Circuit *circuit) {
   return smap_add(&circuit->sm.nets, &(Net){0});
 }
@@ -273,6 +286,12 @@ circuit_add_waypoint(Circuit *circuit, NetID netID, HMM_Vec2 position) {
   // NOTE: Do not add code here to further set up waypoints, add it to
   // circuit_augment_waypoint instead.
   return id;
+}
+
+void circuit_move_waypoint(Circuit *circuit, WaypointID id, HMM_Vec2 delta) {
+  Waypoint *waypoint = circuit_waypoint_ptr(circuit, id);
+  waypoint->position = HMM_AddV2(waypoint->position, delta);
+  circuit_waypoint_update_id(circuit, id);
 }
 
 EndpointID circuit_add_endpoint(

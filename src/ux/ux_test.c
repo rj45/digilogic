@@ -32,7 +32,8 @@ UTEST(CircuitUX, add_component) {
   CircuitUX ux;
 
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
-  ComponentID id = ux_add_component(&ux, COMP_AND, HMM_V2(0, 0));
+  ComponentID id =
+    circuit_add_component(&ux.view.circuit, COMP_AND, HMM_V2(0, 0));
 
   ASSERT_EQ(circuit_component_len(&ux.view.circuit), 1);
   ASSERT_NE(id, 0);

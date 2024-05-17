@@ -318,7 +318,8 @@ void import_digital(CircuitUX *ux, char *buffer) {
       }
 
       log_debug("Adding component %s at %d, %d\n", typeName, x, y);
-      ComponentID componentID = ux_add_component(ux, descID, HMM_V2(x, y));
+      ComponentID componentID =
+        circuit_add_component(&ux->view.circuit, descID, HMM_V2(x, y));
 
       // digital's components are placed relative to the first port
       Component *component =
@@ -326,8 +327,9 @@ void import_digital(CircuitUX *ux, char *buffer) {
 
       PortID firstPort = component->portFirst;
       Port *port = circuit_port_ptr(&ux->view.circuit, firstPort);
-      ux_move_component(
-        ux, componentID, HMM_SubV2(HMM_V2(0, 0), port->position));
+      circuit_move_component(
+        &ux->view.circuit, componentID,
+        HMM_SubV2(HMM_V2(0, 0), port->position));
 
       HMM_Vec2 portPos = HMM_AddV2(component->box.center, port->position);
       log_debug("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
@@ -615,20 +617,20 @@ void import_digital(CircuitUX *ux, char *buffer) {
       }
     }
 
-    NetID netID = ux_add_net(ux);
+    NetID netID = circuit_add_net(&ux->view.circuit);
     log_debug("Net %d", netID);
 
     for (int j = 0; j < arrlen(inPorts); j++) {
       log_debug("  * In port %d", inPorts[j]);
-      ux_add_endpoint(ux, netID, inPorts[j], HMM_V2(0, 0));
+      circuit_add_endpoint(&ux->view.circuit, netID, inPorts[j], HMM_V2(0, 0));
     }
     for (int j = 0; j < arrlen(waypoints); j++) {
       log_debug("  * Waypoint %f %f", waypoints[j].X, waypoints[j].Y);
-      ux_add_waypoint(ux, netID, waypoints[j]);
+      circuit_add_waypoint(&ux->view.circuit, netID, waypoints[j]);
     }
     for (int j = 0; j < arrlen(outPorts); j++) {
       log_debug("  * Out port %d", outPorts[j]);
-      ux_add_endpoint(ux, netID, outPorts[j], HMM_V2(0, 0));
+      circuit_add_endpoint(&ux->view.circuit, netID, outPorts[j], HMM_V2(0, 0));
     }
 
     arrsetlen(inPorts, 0);

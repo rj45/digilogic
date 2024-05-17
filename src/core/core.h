@@ -539,10 +539,12 @@ void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position);
+void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta);
 NetID circuit_add_net(Circuit *circuit);
 EndpointID circuit_add_endpoint(
   Circuit *circuit, NetID net, PortID port, HMM_Vec2 position);
 WaypointID circuit_add_waypoint(Circuit *circuit, NetID, HMM_Vec2 position);
+void circuit_move_waypoint(Circuit *circuit, WaypointID id, HMM_Vec2 delta);
 
 LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds);
 const char *circuit_label_text(Circuit *circuit, LabelID id);

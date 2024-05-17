@@ -417,5 +417,6 @@ sapp_desc sokol_main(int argc, char *argv[]) {
     .window_title = "digilogic",
     .swap_interval = 2,
     .sample_count = 4,
+    .win32_console_attach = true,
   };
 }

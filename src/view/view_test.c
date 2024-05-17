@@ -32,14 +32,19 @@ UTEST(View, view_add_component) {
 
   view_init(&view, circuit_component_descs(), draw, NULL);
 
-  view_add_component(&view, COMP_AND, HMM_V2(100, 100));
-  view_add_component(&view, COMP_OR, HMM_V2(200, 200));
+  circuit_add_component(&view.circuit, COMP_AND, HMM_V2(100, 100));
+  circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
 
   ASSERT_EQ(circuit_component_len(&view.circuit), 2);
-  ASSERT_EQ(view.components[0].box.center.X, 100);
-  ASSERT_EQ(view.components[0].box.center.Y, 100);
-  ASSERT_EQ(view.components[1].box.center.X, 200);
-  ASSERT_EQ(view.components[1].box.center.Y, 200);
+  ASSERT_EQ(view.circuit.components[0].box.center.X, 100);
+  ASSERT_EQ(view.circuit.components[0].box.center.Y, 100);
+  ASSERT_NE(view.circuit.components[0].box.halfSize.X, 0);
+  ASSERT_NE(view.circuit.components[0].box.halfSize.Y, 0);
+
+  ASSERT_EQ(view.circuit.components[1].box.center.X, 200);
+  ASSERT_EQ(view.circuit.components[1].box.center.Y, 200);
+  ASSERT_NE(view.circuit.components[1].box.halfSize.X, 0);
+  ASSERT_NE(view.circuit.components[1].box.halfSize.Y, 0);
 
   view_free(&view);
   draw_free(draw);
@@ -51,7 +56,7 @@ UTEST(View, view_draw_components) {
 
   view_init(&view, circuit_component_descs(), draw, NULL);
 
-  view_add_component(&view, COMP_OR, HMM_V2(100, 100));
+  circuit_add_component(&view.circuit, COMP_OR, HMM_V2(100, 100));
 
   view_draw(&view);
 
@@ -72,8 +77,10 @@ UTEST(View, view_draw_component_with_wires) {
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
-  ComponentID and = view_add_component(&view, COMP_XOR, HMM_V2(100, 100));
-  ComponentID or = view_add_component(&view, COMP_OR, HMM_V2(200, 200));
+  ComponentID and =
+    circuit_add_component(&view.circuit, COMP_XOR, HMM_V2(100, 100));
+  ComponentID or
+    = circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
 
   Component *andComp = circuit_component_ptr(&view.circuit, and);
   PortID from = circuit_port_ptr(
@@ -84,9 +91,9 @@ UTEST(View, view_draw_component_with_wires) {
   Component *orComp = circuit_component_ptr(&view.circuit, or);
   PortID to = orComp->portFirst;
 
-  NetID net = view_add_net(&view);
-  view_add_endpoint(&view, net, from, HMM_V2(0, 0));
-  view_add_endpoint(&view, net, to, HMM_V2(0, 0));
+  NetID net = circuit_add_net(&view.circuit);
+  circuit_add_endpoint(&view.circuit, net, from, HMM_V2(0, 0));
+  circuit_add_endpoint(&view.circuit, net, to, HMM_V2(0, 0));
   view_direct_wire_nets(&view);
 
   view_draw(&view);
