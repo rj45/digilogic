@@ -32,16 +32,17 @@ cmake --build . --config Release
 
 ### Windows
 
-You need to install FreeType somehow and then pass the path to cmake.
+You will need cmake and MSVC installed.
 
-This might be potential a source: https://github.com/ubawurinna/freetype-windows-binaries
+You you can also either use vcpkg or install freetype and pass the info to cmake.
 
-MSVC is also required, as well as cmake.
+vcpkg is shown below, assuming vcpkg is installed at `c:\Users\User\Documents\vcpkg`.
+
 
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DFREETYPE_DIR=<path_to_freetype>
+cmake -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=c:/Users/User/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake"
 cmake --build build --config Release
 build\Release\digilogic.exe
 ```
