@@ -7,7 +7,7 @@ project(libnvdialog LANGUAGES C VERSION 0.8.0 DESCRIPTION "A simple and minimal 
 option(WIN32_TARGET "Build the library for Windows usage. Requires i686-w64-mingw32-gcc-win32." OFF)
 option(COCOA_TARGET "Build the library for MacOS/Cocoa usage." ON)
 option(NVD_USE_GTK4 "Instead of using the old Gtk3 backend, use Gtk4 and libadwaita for Linux. Experimental." OFF) # Default since 0.2.0-plus-some-commits.
-option(NVD_BUILD_STATIC "Build NvDialog as a static library. Experimental." OFF)
+option(NVD_BUILD_STATIC "Build NvDialog as a static library. Experimental." ON)
 option(NVD_SANDBOX_SUPPORT "Enable support for Flatpak applications on Linux" ON)
 
 set(CMAKE_C_STANDARD 11)

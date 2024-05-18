@@ -247,7 +247,7 @@ set_property(TARGET digilogic PROPERTY C_STANDARD 11)
 find_package(Freetype REQUIRED)
 target_link_libraries(digilogic PRIVATE Freetype::Freetype)
 
-set(NVD_BUILD_STATIC ON)
+target_compile_definitions(digilogic PRIVATE "NVD_STATIC_LINKAGE")
 
 add_subdirectory("thirdparty/nvdialog")
 target_link_libraries(digilogic PRIVATE nvdialog)

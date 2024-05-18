@@ -60,6 +60,10 @@
 
 #define UI_FONT_SIZE 20
 
+#ifndef MSAA_SAMPLE_COUNT
+#define MSAA_SAMPLE_COUNT 1
+#endif
+
 typedef struct my_app_t {
   CircuitUI circuit;
 
@@ -139,7 +143,7 @@ static void init(void *user_data) {
 
   // initialize Sokol GP
   sgp_desc sgpdesc = {
-    .sample_count = 4,
+    .sample_count = MSAA_SAMPLE_COUNT,
     .max_vertices = 1024 * 1024,
   };
   sgp_setup(&sgpdesc);
@@ -190,7 +194,7 @@ static void init(void *user_data) {
   snk_setup(&(snk_desc_t){
     .max_vertices = 64 * 1024,
     .logger.func = slog_func,
-    .sample_count = 4,
+    .sample_count = MSAA_SAMPLE_COUNT,
   });
 
   nuklear_fontstash_init(&app->nkFont, app->fsctx, mainFont, UI_FONT_SIZE);
@@ -432,8 +436,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
     .event_userdata_cb = event,
     .logger.func = slog_func,
     .window_title = "digilogic",
-    .swap_interval = 2,
-    .sample_count = 4,
+    .sample_count = MSAA_SAMPLE_COUNT,
     .win32_console_attach = true,
   };
 }
