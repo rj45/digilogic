@@ -42,7 +42,7 @@ vcpkg is shown below, assuming vcpkg is installed at `c:\Users\User\Documents\vc
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
-cmake -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=c:/Users/User/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake"
+cmake -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=c:/Users/User/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=x64-windows-static-md"
 cmake --build build --config Release
 build\Release\digilogic.exe
 ```
