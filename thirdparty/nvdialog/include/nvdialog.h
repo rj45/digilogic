@@ -85,7 +85,7 @@ extern "C" {
 
 #if !defined(NVD_API_EXPORT) && !defined(NVD_API_IMPORT) && !defined(NVD_API)
 
-#if defined(_WIN32) || defined(WIN32)
+#if (defined(_WIN32) || defined(WIN32)) && !defined(NVD_STATIC_LINKAGE)
 #if defined(__clang__) || defined(__GNUC__)
 #define NVD_API_EXPORT __attribute__((dllexport))
 #else /* __clang__ */
@@ -95,7 +95,7 @@ extern "C" {
 #define NVD_API_EXPORT
 #endif /* _WIN32 */
 
-#if defined(_WIN32) || defined(WIN32)
+#if (defined(_WIN32) || defined(WIN32)) && !defined(NVD_STATIC_LINKAGE)
 #if defined(__clang__) || defined(__GNUC__)
 #define NVD_API_IMPORT __attribute__((dllimport))
 #else /* __clang__ */
@@ -105,9 +105,7 @@ extern "C" {
 #define NVD_API_IMPORT
 #endif /* _WIN32 */
 
-#if defined(NVD_STATIC_LINKAGE)
-#define NVD_API
-#elif defined(NVD_EXPORT_SYMBOLS)
+#if defined(NVD_EXPORT_SYMBOLS)
 #define NVD_API NVD_API_EXPORT
 #else
 #define NVD_API NVD_API_IMPORT
