@@ -249,6 +249,7 @@ target_link_libraries(digilogic PRIVATE Freetype::Freetype)
 
 target_compile_definitions(digilogic PRIVATE "NVD_STATIC_LINKAGE")
 
+# some virtual machines and old hardware don't support MSAA
 if (MSAA_SAMPLE_COUNT)
     target_compile_definitions(digilogic PRIVATE "MSAA_SAMPLE_COUNT=${MSAA_SAMPLE_COUNT}")
 endif()
