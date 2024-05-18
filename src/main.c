@@ -61,7 +61,7 @@
 #define UI_FONT_SIZE 20
 
 #ifndef MSAA_SAMPLE_COUNT
-#define MSAA_SAMPLE_COUNT 1
+#define MSAA_SAMPLE_COUNT 4
 #endif
 
 typedef struct my_app_t {
