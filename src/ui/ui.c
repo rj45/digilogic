@@ -15,7 +15,10 @@
 */
 
 #include "ui/ui.h"
+#include "core/core.h"
+#include "nvdialog.h"
 #include "sokol_app.h"
+#include <stdbool.h>
 
 void ui_init(
   CircuitUI *ui, const ComponentDesc *componentDescs, DrawContext *drawCtx,
@@ -25,6 +28,38 @@ void ui_init(
 }
 
 void ui_free(CircuitUI *ui) { ux_free(&ui->ux); }
+
+bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
+  /* The file extensions we can use with the dialog. */
+  const char *filters = "*.dlc;*.dig";
+
+  /* Constructing the dialog. This is the most important part. */
+  NvdFileDialog *dialog;
+  if (saving) {
+    dialog = nvd_save_file_dialog_new("Save File", "untitled.dlc");
+  } else {
+    dialog = nvd_open_file_dialog_new("Open File", filters);
+  }
+
+  if (!dialog) {
+    return false;
+  }
+
+  const char *outfile = NULL;
+
+  nvd_get_file_location(dialog, &outfile);
+
+  if (outfile != NULL) {
+    printf("Chosen file: %s\n", outfile);
+    strncpy(filename, outfile, 1024);
+    free((void *)outfile);
+  }
+
+  /* Then finally, freeing the dialog. */
+  nvd_free_object(dialog);
+
+  return outfile != NULL;
+}
 
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height) {
@@ -45,7 +80,19 @@ void ui_update(
       }
       if (nk_menu_item_label(ctx, "Save", NK_TEXT_LEFT)) {
         printf("Save\n");
-        save_circuit_file(ui, "circuit.json");
+        char filename[1024];
+
+        if (ui_open_file_browser(ui, true, filename)) {
+          printf("Saving to: %s\n", filename);
+          char *savefile = filename;
+          if (strncmp(filename, "file://", 7) == 0) {
+            savefile += 7;
+          }
+          if (strncmp(filename, ".dlc", 4) != 0) {
+            strncat(savefile, ".dlc", 1024);
+          }
+          circuit_save_file(&ui->ux.view.circuit, savefile);
+        }
       }
       if (nk_menu_item_label(ctx, "Quit", NK_TEXT_LEFT)) {
         sapp_request_quit();
@@ -79,6 +126,9 @@ void ui_update(
     nk_menubar_end(ctx);
   }
   nk_end(ctx);
+
+  if (ui->showFileBrowser) {
+  }
 
   if (ui->showAbout) {
     if (nk_begin(

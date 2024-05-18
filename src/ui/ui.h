@@ -17,8 +17,18 @@
 #ifndef UI_H
 #define UI_H
 
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_SOFTWARE_FONT
+
 #include "nuklear.h"
 #include "ux/ux.h"
+
+////////////////////////////////////////
+// Circuit UI
+////////////////////////////////////////
 
 typedef enum ToolMode {
   TOOL_SELECT,
@@ -34,6 +44,9 @@ typedef struct CircuitUI {
 
   ToolMode tool;
 
+  bool showFileBrowser;
+  bool saving;
+
   bool showAbout;
 } CircuitUI;
 
@@ -44,7 +57,5 @@ void ui_free(CircuitUI *ui);
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height);
 void ui_draw(CircuitUI *ui);
-
-bool save_circuit_file(CircuitUI *ui, const char *filename);
 
 #endif // UI_H

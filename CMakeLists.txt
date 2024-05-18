@@ -5,12 +5,12 @@ set(DIGILOGIC_SRCS
     src/main.c
     src/core/circuit.c
     src/core/smap.c
+    src/core/save.c
     src/ux/ux.c
     src/ux/input.c
     src/ux/snap.c
     src/ux/undo.c
     src/ui/ui.c
-    src/ui/loadsave.c
     src/view/view.c
     src/import/digital.c
     src/autoroute/autoroute.c
@@ -245,10 +245,16 @@ corrosion_import_crate(
 set_property(TARGET digilogic PROPERTY C_STANDARD 11)
 
 find_package(Freetype REQUIRED)
-target_link_libraries(digilogic PUBLIC Freetype::Freetype)
+target_link_libraries(digilogic PRIVATE Freetype::Freetype)
 
-target_include_directories(digilogic PUBLIC "thirdparty")
-target_include_directories(digilogic PUBLIC "src")
+set(NVD_BUILD_STATIC ON)
+
+add_subdirectory("thirdparty/nvdialog")
+target_link_libraries(digilogic PRIVATE nvdialog)
+
+target_include_directories(digilogic PRIVATE "thirdparty/nvdialog/include")
+target_include_directories(digilogic PRIVATE "thirdparty")
+target_include_directories(digilogic PRIVATE "src")
 
 # link rust crates into digilogic
-target_link_libraries(digilogic PUBLIC digilogic_routing)
+target_link_libraries(digilogic PRIVATE digilogic_routing)

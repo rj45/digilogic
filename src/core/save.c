@@ -16,9 +16,8 @@
 
 #include <stdint.h>
 
+#include "core/core.h"
 #include "yyjson.h"
-
-#include "ui/ui.h"
 
 #define CURRENT_VERSION 1
 
@@ -31,15 +30,46 @@ save_id(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, ID id) {
   yyjson_mut_obj_add_strncpy(doc, obj, key, idStr, len);
 }
 
+static void
+save_box(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, Box box) {
+  yyjson_mut_val *boxNode = yyjson_mut_obj_add_arr(doc, obj, key);
+
+  yyjson_mut_arr_add_real(doc, boxNode, box.center.X);
+  yyjson_mut_arr_add_real(doc, boxNode, box.center.Y);
+  yyjson_mut_arr_add_real(doc, boxNode, box.halfSize.Width);
+  yyjson_mut_arr_add_real(doc, boxNode, box.halfSize.Height);
+}
+
+static void save_vec2(
+  yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, HMM_Vec2 pos) {
+  yyjson_mut_val *boxNode = yyjson_mut_obj_add_arr(doc, obj, key);
+
+  yyjson_mut_arr_add_real(doc, boxNode, pos.X);
+  yyjson_mut_arr_add_real(doc, boxNode, pos.Y);
+}
+
+static void save_label(
+  yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, Circuit *circuit,
+  LabelID labelID) {
+  Label *label = circuit_label_ptr(circuit, labelID);
+
+  yyjson_mut_val *labelNode = yyjson_mut_obj_add_obj(doc, obj, key);
+
+  save_id(doc, labelNode, "id", labelID);
+  save_box(doc, labelNode, "box", label->box);
+  yyjson_mut_obj_add_str(
+    doc, labelNode, "text", circuit_label_text(circuit, labelID));
+}
+
 static void save_port(
   yyjson_mut_doc *doc, yyjson_mut_val *ports, Circuit *circuit, PortID portID) {
   Port *port = circuit_port_ptr(circuit, portID);
 
   yyjson_mut_val *portNode = yyjson_mut_arr_add_obj(doc, ports);
 
-  yyjson_mut_obj_add_int(doc, portNode, "index", port->desc);
   save_id(doc, portNode, "id", portID);
-  save_id(doc, portNode, "endpoint", port->endpoint);
+  save_vec2(doc, portNode, "position", port->position);
+  save_label(doc, portNode, "label", circuit, port->label);
 }
 
 static void save_component(
@@ -51,6 +81,11 @@ static void save_component(
 
   const ComponentDesc *desc = &circuit->componentDescs[component->desc];
   yyjson_mut_obj_add_str(doc, componentNode, "type", desc->typeName);
+
+  save_box(doc, componentNode, "box", component->box);
+
+  save_label(doc, componentNode, "typeLabel", circuit, component->typeLabel);
+  save_label(doc, componentNode, "nameLabel", circuit, component->nameLabel);
 
   yyjson_mut_val *ports = yyjson_mut_obj_add_arr(doc, componentNode, "ports");
 
@@ -78,15 +113,26 @@ static void save_net(
 
     yyjson_mut_val *endpointNode = yyjson_mut_arr_add_obj(doc, endpoints);
     save_id(doc, endpointNode, "id", endpointID);
+    save_vec2(doc, endpointNode, "position", endpoint->position);
     save_id(doc, endpointNode, "port", endpoint->port);
 
     endpointID = endpoint->next;
   }
+
+  yyjson_mut_val *waypoints = yyjson_mut_obj_add_arr(doc, netNode, "waypoints");
+  WaypointID waypointID = net->waypointFirst;
+  while (waypointID != NO_ENDPOINT) {
+    Waypoint *waypoint = circuit_waypoint_ptr(circuit, waypointID);
+
+    yyjson_mut_val *waypointNode = yyjson_mut_arr_add_obj(doc, waypoints);
+    save_id(doc, waypointNode, "id", waypointID);
+    save_vec2(doc, waypointNode, "position", waypoint->position);
+
+    waypointID = waypoint->next;
+  }
 }
 
-yyjson_mut_val *save_circuit(yyjson_mut_doc *doc, CircuitUI *ui) {
-  Circuit *circuit = &ui->ux.view.circuit;
-
+yyjson_mut_val *circuit_serialize(yyjson_mut_doc *doc, Circuit *circuit) {
   yyjson_mut_val *root = yyjson_mut_obj(doc);
 
   yyjson_mut_obj_add_int(doc, root, "version", CURRENT_VERSION);
@@ -104,10 +150,10 @@ yyjson_mut_val *save_circuit(yyjson_mut_doc *doc, CircuitUI *ui) {
   return root;
 }
 
-bool save_circuit_file(CircuitUI *ui, const char *filename) {
+bool circuit_save_file(Circuit *circuit, const char *filename) {
   yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 
-  yyjson_mut_val *root = save_circuit(doc, ui);
+  yyjson_mut_val *root = circuit_serialize(doc, circuit);
   yyjson_mut_doc_set_root(doc, root);
 
   yyjson_write_err err;
