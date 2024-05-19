@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
     };
 
     digilogic.addCSourceFiles(.{
-        .root = .{ .path = "src" },
+        .root = b.path("src"),
         .files = &.{
             "main.c",
             "core/circuit.c",
@@ -61,12 +61,12 @@ pub fn build(b: *std.Build) void {
     });
 
     digilogic.addCSourceFile(.{
-        .file = .{ .path = "thirdparty/yyjson.c" },
+        .file = b.path("thirdparty/yyjson.c"),
         .flags = cflags,
     });
 
-    digilogic.addIncludePath(.{ .path = "src" });
-    digilogic.addIncludePath(.{ .path = "thirdparty" });
+    digilogic.addIncludePath(b.path("src"));
+    digilogic.addIncludePath(b.path("thirdparty"));
 
     digilogic.linkLibC();
 
@@ -101,16 +101,11 @@ pub fn build(b: *std.Build) void {
             @panic("Unsupported CPU architecture for macOS");
         }
 
-        // copy nonapple.c to apple.m
-        const copyAppleM = b.addWriteFiles();
-        _ = copyAppleM.addCopyFileToSource(b.path("src/nonapple.c"), "src/apple.m");
-        digilogic.step.dependOn(&copyAppleM.step);
-
         // add apple.m to the build
         // this is required in order for the file to be compiled as Objective-C
-        const mflags: []const []const u8 = &.{ "-ObjC", "-fobjc-arc", "-std=gnu11", "-Ithirdparty", "-Isrc", "-Wall", "-Werror" };
+        const mflags = &.{ "-ObjC", "-fobjc-arc", "-std=gnu11", "-Wall", "-Werror" };
         digilogic.addCSourceFile(.{
-            .file = b.path("src/apple.m"),
+            .file = b.addWriteFiles().addCopyFile(b.path("src/nonapple.c"), "apple.m"),
             .flags = mflags,
         });
 
@@ -135,11 +130,11 @@ pub fn build(b: *std.Build) void {
         }
 
         digilogic.addWin32ResourceFile(.{
-            .file = .{ .path = "res/app.rc" },
+            .file = b.path("res/app.rc"),
         });
 
         digilogic.addCSourceFiles(.{
-            .root = .{ .path = "src" },
+            .root = b.path("src"),
             .files = &.{
                 "nonapple.c",
             },
@@ -172,7 +167,7 @@ pub fn build(b: *std.Build) void {
         rust_target = "x86_64-unknown-linux-gnu";
 
         digilogic.addCSourceFiles(.{
-            .root = .{ .path = "src" },
+            .root = b.path("src"),
             .files = &.{
                 "nonapple.c",
             },
@@ -215,7 +210,7 @@ pub fn build(b: *std.Build) void {
                 .{ .xml_path = "/usr/share/wayland-protocols/unstable/relative-pointer/relative-pointer-unstable-v1.xml", .basename = "relative-pointer-unstable-v1-protocol" },
             }) |source| {
                 const generate_header = b.addSystemCommand(&.{ wayland_scanner_path, "client-header" });
-                generate_header.setStdIn(.{ .lazy_path = .{ .path = source.xml_path } });
+                generate_header.setStdIn(.{ .lazy_path = b.path(source.xml_path) });
                 const header_file = generate_header.captureStdOut();
                 // This is pretty fragile; really captureStdOut() should take an options struct so that the basename
                 // can be specified directly...  maybe I'll submit a PR to zig
@@ -223,7 +218,7 @@ pub fn build(b: *std.Build) void {
                 header_output.basename = source.basename ++ ".h";
 
                 const generate_source = b.addSystemCommand(&.{ wayland_scanner_path, "private-code" });
-                generate_source.setStdIn(.{ .lazy_path = .{ .path = source.xml_path } });
+                generate_source.setStdIn(.{ .lazy_path = b.path(source.xml_path) });
                 const source_file = generate_source.captureStdOut();
                 const source_output: *std.Build.Step.Run.Output = @fieldParentPtr("generated_file", @constCast(source_file.generated));
                 source_output.basename = source.basename ++ ".c";
@@ -261,12 +256,12 @@ pub fn build(b: *std.Build) void {
         if (optimize == .Debug) "dev" else "release",
     });
     cargo_build.stdio = .inherit;
-    cargo_build.setCwd(.{ .path = "thirdparty/routing" });
+    cargo_build.setCwd(b.path("thirdparty/routing"));
     digilogic.step.dependOn(&cargo_build.step);
 
     const rust_profile = if (optimize == .Debug) "debug" else "release";
     const library_path = b.fmt("thirdparty/routing/target/{s}/{s}", .{ rust_target, rust_profile });
-    digilogic.addLibraryPath(.{ .path = library_path });
+    digilogic.addLibraryPath(b.path(library_path));
     digilogic.linkSystemLibrary("digilogic_routing");
 
     if (target.result.os.tag.isDarwin()) {
@@ -304,9 +299,9 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
         "ssp-buffer-size=4",
     };
 
-    nvdialog.addIncludePath(.{ .path = "thirdparty/nvdialog/include" });
-    nvdialog.addIncludePath(.{ .path = "thirdparty/nvdialog/src" });
-    nvdialog.addIncludePath(.{ .path = "thirdparty/nvdialog/src/impl" });
+    nvdialog.addIncludePath(b.path("thirdparty/nvdialog/include"));
+    nvdialog.addIncludePath(b.path("thirdparty/nvdialog/src"));
+    nvdialog.addIncludePath(b.path("thirdparty/nvdialog/src/impl"));
 
     nvdialog.linkLibC();
 
@@ -328,7 +323,7 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
         nvdialog.root_module.addCMacro("NVD_USE_COCOA", "1");
 
         nvdialog.addCSourceFiles(.{
-            .root = .{ .path = "thirdparty/nvdialog/src/backend/cocoa" },
+            .root = b.path("thirdparty/nvdialog/src/backend/cocoa"),
             .files = platform_files,
             .flags = cflags,
         });
@@ -339,7 +334,7 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
         nvdialog.linkFramework("UserNotifications");
     } else if (target.result.os.tag == .windows) {
         nvdialog.addCSourceFiles(.{
-            .root = .{ .path = "thirdparty/nvdialog/src/backend/win32" },
+            .root = b.path("thirdparty/nvdialog/src/backend/win32"),
             .files = platform_files,
             .flags = cflags,
         });
@@ -350,13 +345,13 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
     } else {
         nvdialog.root_module.addCMacro("NVD_SANDBOX_SUPPORT", "0");
         nvdialog.addCSourceFiles(.{
-            .root = .{ .path = "thirdparty/nvdialog/src/backend/gtk" },
+            .root = b.path("thirdparty/nvdialog/src/backend/gtk"),
             .files = platform_files,
             .flags = cflags,
         });
 
         nvdialog.addCSourceFiles(.{
-            .root = .{ .path = "thirdparty/nvdialog/src/backend/sandbox" },
+            .root = b.path("thirdparty/nvdialog/src/backend/sandbox"),
             .files = platform_files,
             .flags = cflags,
         });
@@ -365,7 +360,7 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
     }
 
     nvdialog.addCSourceFiles(.{
-        .root = .{ .path = "thirdparty/nvdialog/src" },
+        .root = b.path("thirdparty/nvdialog/src"),
         .files = &.{
             "nvdialog_error.c",
             "nvdialog_capab.c",
@@ -376,7 +371,7 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
         .flags = cflags,
     });
 
-    nvdialog.installHeadersDirectory(.{ .path = "thirdparty/nvdialog/include" }, "", .{});
+    nvdialog.installHeadersDirectory(b.path("thirdparty/nvdialog/include"), "", .{});
 
     return nvdialog;
 }

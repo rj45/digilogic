@@ -498,10 +498,10 @@ struct strpool_t {
 #define _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_SECURE_NO_WARNINGS
 #include <string.h>
-#if !defined(sternicmp)
-#define STRPOOL_STRNICMP(s1, s2, len) (_strnicmp(s1, s2, len))
-#else
+#if defined(strnicmp)
 #define STRPOOL_STRNICMP(s1, s2, len) (strnicmp(s1, s2, len))
+#else
+#define STRPOOL_STRNICMP(s1, s2, len) (_strnicmp(s1, s2, len))
 #endif
 #else
 #include <string.h>
