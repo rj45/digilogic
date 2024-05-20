@@ -47,7 +47,14 @@ zig build "-Dtarget=x86_64-windows-msvc" "-Dmsaa_sample_count=1"
 
 #### Linux
 
-The zig build script on linux needs more testing. Pester me about this if it doesn't work. In the meantime the cmake build should work.
+Only the X11 mode works in the zig build. If you need wayland, it's highly recommended to use Xwayland, but if you want native wayland support, cmake is your best bet (see below). You can try `zig build -Dwayland=true` and see if you can get it to work.
+
+```sh
+git clone --recurse-submodules https://github.com/rj45/digilogic.git
+cd digilogic
+zig build
+zig-out\digilogic
+```
 
 ### Using cmake
 
