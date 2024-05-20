@@ -115,7 +115,7 @@ static void fons_error(void *user_ptr, int error, int val) {
 
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
-  printf("init\n");
+  log_info("Initialized sokol_app");
 
   int result = nvd_init();
   if (result != 0) {
@@ -131,6 +131,7 @@ static void init(void *user_data) {
   // todo: not sure how to get the parent window on Linux
   // nvd_set_parent((NvdParentWindow *)sapp_linux_get_window());
 #endif
+  log_info("nvdialog initialized");
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),
@@ -140,6 +141,7 @@ static void init(void *user_data) {
     fprintf(stderr, "Failed to create Sokol GFX context!\n");
     exit(1);
   }
+  log_info("sokol_gfx initialized");
 
   // initialize Sokol GP
   sgp_desc sgpdesc = {
@@ -153,6 +155,7 @@ static void init(void *user_data) {
       sgp_get_error_message(sgp_get_last_error()));
     exit(1);
   }
+  log_info("sokol_gp initialized");
 
   sg_enable_frame_stats();
 
@@ -162,11 +165,13 @@ static void init(void *user_data) {
     fprintf(stderr, "Failed to create FONS context\n");
     exit(1);
   }
+  log_info("sokol_fontstash initialized");
 
   fonsSetErrorCallback(app->fsctx, fons_error, app);
 
   app->assetsys = assetsys_create(0);
   assetsys_mount_from_memory(app->assetsys, assets_zip, assets_zip_len, "/");
+  log_info("assetsys mounted");
 
   assetsys_file_t file;
   assetsys_file(app->assetsys, "/assets/NotoSans-Regular.ttf", &file);
@@ -176,6 +181,7 @@ static void init(void *user_data) {
     app->assetsys, file, &mainFontSize, mainFontData, mainFontSize);
   int mainFont =
     fonsAddFontMem(app->fsctx, "sans", mainFontData, mainFontSize, 1);
+  log_info("main font loaded");
 
   assetsys_file(app->assetsys, "/assets/symbols.ttf", &file);
   int symbolsFontSize = assetsys_file_size(app->assetsys, file);
@@ -184,6 +190,7 @@ static void init(void *user_data) {
     app->assetsys, file, &symbolsFontSize, symbolsFontData, symbolsFontSize);
   int iconFont =
     fonsAddFontMem(app->fsctx, "icons", symbolsFontData, symbolsFontSize, 1);
+  log_info("symbol font loaded");
 
   app->fonsFont = (FonsFont){
     .fsctx = app->fsctx,
@@ -196,8 +203,10 @@ static void init(void *user_data) {
     .logger.func = slog_func,
     .sample_count = MSAA_SAMPLE_COUNT,
   });
+  log_info("sokol_nuklear initialized");
 
   nuklear_fontstash_init(&app->nkFont, app->fsctx, mainFont, UI_FONT_SIZE);
+  log_info("nuklear_fontstash initialized");
 
   draw_init(&app->draw, app->fsctx);
 
@@ -206,6 +215,8 @@ static void init(void *user_data) {
     (FontHandle)&app->fonsFont);
 
   app->pzoom = draw_get_zoom(&app->draw);
+
+  log_info("initialization complete, entering main loop");
 }
 
 void cleanup(void *user_data) {
@@ -410,8 +421,11 @@ void event(const sapp_event *event, void *user_data) {
 #endif
 
 sapp_desc sokol_main(int argc, char *argv[]) {
+  log_info("Starting sokol_main");
   ux_global_init();
   stm_setup();
+
+  log_info("Global setup complete");
 
 #ifndef _WIN32
   init_exceptions(argv[0]);
@@ -425,6 +439,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
   if (argc > 1) {
     app->filename = argv[1];
   }
+
+  log_info("Starting sokol_app");
 
   return (sapp_desc){
     .width = 1280,

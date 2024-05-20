@@ -73,4 +73,10 @@ void nvd_add_notification_action_win32(NvdNotification* notification,
                                      int  value_to_set,
                                      int* value_to_return);
 
+void nvd_about_dialog_set_license_link_win32(NvdAboutDialog *dialog,
+                                             const char      *license_link, 
+                                             const char      *txt);
+
+void nvd_send_notification_win32(NvdNotification *notification);
+
 #endif /* __nvdialog_win32_h__ */

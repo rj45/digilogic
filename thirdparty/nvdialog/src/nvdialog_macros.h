@@ -55,4 +55,8 @@
 #endif /* NVD_BUFFER_SIZE */
 #endif /* __clang__ */
 
+#if defined(_WIN32) && !defined(strdup)
+#define strdup(x) _strdup(x)
+#endif
+
 #endif /* __nvdialog_macros_h__ */

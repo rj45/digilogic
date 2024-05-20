@@ -31,8 +31,6 @@ NvdFileDialog *nvd_open_file_dialog_cocoa(const char *title, const char *file_ex
 
 NvdFileDialog *nvd_save_file_dialog_cocoa(const char *title, const char *default_filename)
 {
-	(void) default_filename;//TODO: This must be an option right?
-
 	NvdFileDialog *dialog = calloc(1, sizeof(struct _NvdFileDialog));
 	NVD_RETURN_IF_NULL(dialog);
 
