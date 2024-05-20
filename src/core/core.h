@@ -550,7 +550,15 @@ LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds);
 const char *circuit_label_text(Circuit *circuit, LabelID id);
 
 void circuit_write_dot(Circuit *circuit, FILE *file);
+
+////////////////////////////////////////////////////////////////////////////////
+// Save / Load
+////////////////////////////////////////////////////////////////////////////////
+
+#define SAVE_VERSION 1
+
 bool circuit_save_file(Circuit *circuit, const char *filename);
+bool circuit_load_file(Circuit *circuit, const char *filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bounding Volume Hierarchy

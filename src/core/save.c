@@ -19,8 +19,6 @@
 #include "core/core.h"
 #include "yyjson.h"
 
-#define CURRENT_VERSION 1
-
 static void
 save_id(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, ID id) {
   char idStr[128];
@@ -135,7 +133,7 @@ static void save_net(
 yyjson_mut_val *circuit_serialize(yyjson_mut_doc *doc, Circuit *circuit) {
   yyjson_mut_val *root = yyjson_mut_obj(doc);
 
-  yyjson_mut_obj_add_int(doc, root, "version", CURRENT_VERSION);
+  yyjson_mut_obj_add_int(doc, root, "version", SAVE_VERSION);
 
   yyjson_mut_val *components = yyjson_mut_obj_add_arr(doc, root, "components");
   for (size_t i = 0; i < circuit_component_len(circuit); i++) {
