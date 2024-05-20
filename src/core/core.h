@@ -56,7 +56,7 @@ typedef enum IDType {
 typedef uint32_t ID;
 #define NO_ID 0
 
-typedef int8_t Gen;
+typedef uint32_t Gen;
 
 #define smap(type) type *
 
@@ -72,12 +72,13 @@ typedef int8_t Gen;
 #define ID_GEN_SHIFT (ID_INDEX_BITS)
 
 #define id_make(type, gen, index)                                              \
-  (((type & ID_TYPE_MASK) << ID_TYPE_SHIFT) |                                  \
-   ((gen & ID_GEN_MASK) << ID_GEN_SHIFT) | (index & ID_INDEX_MASK))
+  ((((ID)(type) & ID_TYPE_MASK) << ID_TYPE_SHIFT) |                            \
+   (((ID)(gen) & ID_GEN_MASK) << ID_GEN_SHIFT) |                               \
+   ((ID)(index) & ID_INDEX_MASK))
 #define id_type(id) ((IDType)(((id) >> ID_TYPE_SHIFT) & ID_TYPE_MASK))
 #define id_gen(id) ((Gen)(((id) >> ID_GEN_SHIFT) & ID_GEN_MASK))
-#define id_typegen(id) ((id) >> ID_GEN_SHIFT)
-#define id_index(id) ((id) & ID_INDEX_MASK)
+#define id_typegen(id) ((ID)(id) >> ID_GEN_SHIFT)
+#define id_index(id) ((ID)(id) & ID_INDEX_MASK)
 #define id_valid(id) (id_gen(id) != 0 && id_type(id) != ID_NONE)
 
 struct SparseMap;

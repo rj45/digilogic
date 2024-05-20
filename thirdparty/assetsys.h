@@ -781,7 +781,9 @@ out of range, `assetsys_subdir_path` returns NULL.
 #if MINIZ_X86_OR_X64_CPU
 // Set MINIZ_USE_UNALIGNED_LOADS_AND_STORES to 1 on CPU's that permit efficient
 // integer loads and stores from unaligned addresses.
-#define MINIZ_USE_UNALIGNED_LOADS_AND_STORES 1
+
+// this is undefined behaviour and the zig compiler doesn't like it --rj
+// #define MINIZ_USE_UNALIGNED_LOADS_AND_STORES 1
 #endif
 
 #if defined(_M_X64) || defined(_WIN64) || defined(__MINGW64__) ||              \
