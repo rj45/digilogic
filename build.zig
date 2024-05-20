@@ -89,6 +89,9 @@ pub fn build(b: *std.Build) void {
 
     var rust_target: []const u8 = target.result.linuxTriple(b.allocator) catch @panic("OOM");
 
+    const msaa_sample_count = b.option(u32, "msaa_sample_count", "Number of MSAA samples to use (1 for no MSAA, default 4)") orelse 4;
+    digilogic.root_module.addCMacro("MSAA_SAMPLE_COUNT", msaa_sample_count);
+
     if (target.result.os.tag.isDarwin()) {
         if (target.result.cpu.arch.isAARCH64()) {
             rust_target = "aarch64-apple-darwin";
@@ -110,9 +113,6 @@ pub fn build(b: *std.Build) void {
             .file = b.path("src/apple.m"),
             .flags = mflags,
         });
-
-        // TODO no idea if this is the proper way to link apple resource files
-        // digilogic.addObjectFile(.{ .path = "src/logo.icns" });
 
         if (.metal != (renderer orelse .metal)) {
             @panic("This target supports only -Drenderer=metal");
