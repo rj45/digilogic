@@ -28,7 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
-// Deffinitions
+#ifndef strdup
+#define strdup _strdup
+#endif
+
+// Definitions
 // #define DEBUG
 #ifdef DEBUG
 #ifndef DEBUG_PRINT
