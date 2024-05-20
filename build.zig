@@ -42,6 +42,7 @@ pub fn build(b: *std.Build) void {
             "core/circuit.c",
             "core/smap.c",
             "core/save.c",
+            "core/load.c",
             "ux/ux.c",
             "ux/input.c",
             "ux/snap.c",
@@ -119,6 +120,7 @@ pub fn build(b: *std.Build) void {
         digilogic.linkFramework("MetalKit");
         digilogic.linkFramework("Quartz");
         digilogic.linkFramework("Cocoa");
+        digilogic.linkFramework("UniformTypeIdentifiers");
     } else if (target.result.os.tag == .windows) {
         // TODO this is just for testing; need a more robust way to map zig->rust targets if this ever works
         if (target.result.abi == .msvc) {

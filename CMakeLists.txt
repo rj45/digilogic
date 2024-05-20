@@ -6,6 +6,7 @@ set(DIGILOGIC_SRCS
     src/core/circuit.c
     src/core/smap.c
     src/core/save.c
+    src/core/load.c
     src/ux/ux.c
     src/ux/input.c
     src/ux/snap.c
@@ -50,17 +51,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-framework MetalKit"
         "-framework Quartz"
         "-framework Cocoa"
+        "-framework UniformTypeIdentifiers"
     )
 
     set_target_properties(digilogic PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER ca.rj45.digilogic
-        MACOSX_BUNDLE_BUNDLE_NAME digilogic
-        MACOSX_BUNDLE_ICON_FILE "logo.icns"
-        MACOSX_BUNDLE_COPYRIGHT "© 2024 Ryan \"rj45\" Sanche"
-        MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
-        RESOURCE "res/logo.icns"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/res/Info.plist"
     )
 endif()
 

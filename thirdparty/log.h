@@ -74,6 +74,14 @@ THIS SOFTWARE.
     /* display the level */                                                    \
     printf("%10s%s", DISPLAY_LEVEL ? level : "", DISPLAY_LEVEL ? " " : "");    \
                                                                                \
+    char *fixedfile = file;                                                    \
+    for (int i = strlen(file) - 1; i >= 0; i--) {                              \
+      if (file[i] == '/' || file[i] == '\\') {                                 \
+        fixedfile = &file[i + 1];                                              \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
     /* display the function doing the logging */                               \
     printf("%s%s", DISPLAY_FUNC ? func : "", DISPLAY_FUNC ? " " : "");         \
                                                                                \
@@ -81,7 +89,7 @@ THIS SOFTWARE.
     printf(                                                                    \
       "%s%s%s%.d%s%s",                                                         \
       DISPLAY_FUNC && (DISPLAY_FILE || DISPLAY_LINE) ? "(" : "",               \
-      DISPLAY_FILE ? file : "", DISPLAY_FILE && DISPLAY_LINE ? ":" : "",       \
+      DISPLAY_FILE ? fixedfile : "", DISPLAY_FILE && DISPLAY_LINE ? ":" : "",  \
       DISPLAY_LINE ? line : 0,                                                 \
       DISPLAY_FUNC && (DISPLAY_FILE || DISPLAY_LINE) ? ") " : "",              \
       !DISPLAY_FUNC && (DISPLAY_FILE || DISPLAY_LINE) ? " " : "");             \

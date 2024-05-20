@@ -43,6 +43,16 @@ void smap_free(SparseMap *smap) {
   arrfree(smap->freeList);
 }
 
+void smap_clear(SparseMap *smap) {
+  int last = smap->length - 1;
+  while (last >= 0) {
+    smap_del(smap, smap->ids[last]);
+    last--;
+  }
+  arrsetlen(smap->freeList, 0);
+  assert(smap_len(smap) == 0);
+}
+
 void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize) {
   SyncedArray syncedArray = {
     .ptr = ptr,

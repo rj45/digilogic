@@ -1,12 +1,14 @@
 #include "nvdialog.h"
 #include "nvdialog_cocoa.h"
 
+#include <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <AppKit/AppKit.h>
 #include <stdbool.h>
 
 #include "../../nvdialog_assert.h"
 
 /* Contributor's note: NSOpenPanel inherits from NSSavePanel. Unrelated in this context but you may find it useful */
+
 
 NvdFileDialog *nvd_open_file_dialog_cocoa(const char *title, const char *file_extensions)
 {
@@ -20,9 +22,11 @@ NvdFileDialog *nvd_open_file_dialog_cocoa(const char *title, const char *file_ex
 	dialog_raw.canChooseDirectories = false;
 	dialog_raw.allowsMultipleSelection = false;
 
-	//ex: .c;.m;.cpp;
-    if (file_extensions != NULL)
-		dialog_raw.allowedFileTypes = [@(file_extensions) componentsSeparatedByString: @";"];
+	// UTType* type = [UTType typeWithIdentifier:@("ca.rj45.digilogic-circuit")];
+	UTType* type = [UTType typeWithFilenameExtension:@("dlc")];
+
+
+	dialog_raw.allowedContentTypes = [ NSArray arrayWithObject: type ];
 
 	dialog->raw = dialog_raw;
 

@@ -126,6 +126,7 @@ void smap_on_create(SparseMap *smap, void *array, SmapCallback callback);
 void smap_on_update(SparseMap *smap, void *array, SmapCallback callback);
 void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback);
 
+void smap_clear(SparseMap *smap);
 ID smap_add(SparseMap *smap, void *value);
 void smap_del(SparseMap *smap, ID id);
 void smap_update_id(SparseMap *smap, ID id);
@@ -224,6 +225,7 @@ enum {
   COMP_NOT,
   COMP_INPUT,
   COMP_OUTPUT,
+  COMP_COUNT,
 };
 
 typedef uint32_t ComponentDescID;
@@ -538,6 +540,7 @@ typedef struct Circuit {
 const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
+void circuit_clear(Circuit *circuit);
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position);
 void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta);

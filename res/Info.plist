@@ -30,5 +30,25 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2024 Ryan "rj45" Sanche</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>ca.rj45.digilogic-circuit</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Digilogic Circuit</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>dlc</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

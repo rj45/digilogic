@@ -15,6 +15,8 @@
 
 ## Building
 
+Choose your own adventure: `Zig` or `cmake`. The zig build will statically compile the latest freetype, so if it works, that is probably the best option. If you don't want to install zig, and you have cmake, you can try that.
+
 ### Using Zig
 
 You will need rust installed via rustup, zig, and on windows you'll need MSVC.

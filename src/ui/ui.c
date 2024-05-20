@@ -18,7 +18,11 @@
 #include "core/core.h"
 #include "nvdialog.h"
 #include "sokol_app.h"
+#include "ux/ux.h"
 #include <stdbool.h>
+
+#define LOG_LEVEL LL_DEBUG
+#include "log.h"
 
 void ui_init(
   CircuitUI *ui, const ComponentDesc *componentDescs, DrawContext *drawCtx,
@@ -31,7 +35,7 @@ void ui_free(CircuitUI *ui) { ux_free(&ui->ux); }
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
   /* The file extensions we can use with the dialog. */
-  const char *filters = "*.dlc;*.dig";
+  const char *filters = ".dlc;.dig";
 
   /* Constructing the dialog. This is the most important part. */
   NvdFileDialog *dialog;
@@ -73,22 +77,35 @@ void ui_update(
     if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
-        printf("New\n");
+        // circuit_clear(&ui->ux.view.circuit);
+        // ux_route(&ui->ux);
+        log_info("New");
       }
       if (nk_menu_item_label(ctx, "Load", NK_TEXT_LEFT)) {
-        printf("Load\n");
+        char filename[1024];
+
+        if (ui_open_file_browser(ui, false, filename)) {
+          char *loadfile = filename;
+          if (strncmp(filename, "file://", 7) == 0) {
+            loadfile += 7;
+          }
+          if (strncmp(loadfile + strlen(loadfile) - 4, ".dlc", 4) != 0) {
+            strncat(loadfile, ".dlc", 1024);
+          }
+          circuit_clear(&ui->ux.view.circuit);
+          circuit_load_file(&ui->ux.view.circuit, loadfile);
+          ux_route(&ui->ux);
+        }
       }
       if (nk_menu_item_label(ctx, "Save", NK_TEXT_LEFT)) {
-        printf("Save\n");
         char filename[1024];
 
         if (ui_open_file_browser(ui, true, filename)) {
-          printf("Saving to: %s\n", filename);
           char *savefile = filename;
           if (strncmp(filename, "file://", 7) == 0) {
             savefile += 7;
           }
-          if (strncmp(filename, ".dlc", 4) != 0) {
+          if (strncmp(savefile + strlen(savefile) - 4, ".dlc", 4) != 0) {
             strncat(savefile, ".dlc", 1024);
           }
           circuit_save_file(&ui->ux.view.circuit, savefile);

@@ -228,6 +228,19 @@ void circuit_free(Circuit *circuit) {
   arrfree(circuit->vertices);
 }
 
+void circuit_clear(Circuit *circuit) {
+  smap_clear(&circuit->sm.components);
+  smap_clear(&circuit->sm.ports);
+  smap_clear(&circuit->sm.nets);
+  smap_clear(&circuit->sm.waypoints);
+  smap_clear(&circuit->sm.endpoints);
+  smap_clear(&circuit->sm.labels);
+  arrsetlen(circuit->text, 0);
+  hmfree(circuit->nextName);
+  arrsetlen(circuit->wires, 0);
+  arrsetlen(circuit->vertices, 0);
+}
+
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position) {
 

@@ -28,14 +28,12 @@ save_id(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, ID id) {
   yyjson_mut_obj_add_strncpy(doc, obj, key, idStr, len);
 }
 
-static void
-save_box(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, Box box) {
-  yyjson_mut_val *boxNode = yyjson_mut_obj_add_arr(doc, obj, key);
+static void save_id_arr(yyjson_mut_doc *doc, yyjson_mut_val *arr, ID id) {
+  char idStr[128];
+  int len = snprintf(
+    idStr, sizeof(idStr), "%x:%x:%x", id_type(id), id_gen(id), id_index(id));
 
-  yyjson_mut_arr_add_real(doc, boxNode, box.center.X);
-  yyjson_mut_arr_add_real(doc, boxNode, box.center.Y);
-  yyjson_mut_arr_add_real(doc, boxNode, box.halfSize.Width);
-  yyjson_mut_arr_add_real(doc, boxNode, box.halfSize.Height);
+  yyjson_mut_arr_add_strncpy(doc, arr, idStr, len);
 }
 
 static void save_vec2(
@@ -44,30 +42,6 @@ static void save_vec2(
 
   yyjson_mut_arr_add_real(doc, boxNode, pos.X);
   yyjson_mut_arr_add_real(doc, boxNode, pos.Y);
-}
-
-static void save_label(
-  yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, Circuit *circuit,
-  LabelID labelID) {
-  Label *label = circuit_label_ptr(circuit, labelID);
-
-  yyjson_mut_val *labelNode = yyjson_mut_obj_add_obj(doc, obj, key);
-
-  save_id(doc, labelNode, "id", labelID);
-  save_box(doc, labelNode, "box", label->box);
-  yyjson_mut_obj_add_str(
-    doc, labelNode, "text", circuit_label_text(circuit, labelID));
-}
-
-static void save_port(
-  yyjson_mut_doc *doc, yyjson_mut_val *ports, Circuit *circuit, PortID portID) {
-  Port *port = circuit_port_ptr(circuit, portID);
-
-  yyjson_mut_val *portNode = yyjson_mut_arr_add_obj(doc, ports);
-
-  save_id(doc, portNode, "id", portID);
-  save_vec2(doc, portNode, "position", port->position);
-  save_label(doc, portNode, "label", circuit, port->label);
 }
 
 static void save_component(
@@ -80,10 +54,7 @@ static void save_component(
   const ComponentDesc *desc = &circuit->componentDescs[component->desc];
   yyjson_mut_obj_add_str(doc, componentNode, "type", desc->typeName);
 
-  save_box(doc, componentNode, "box", component->box);
-
-  save_label(doc, componentNode, "typeLabel", circuit, component->typeLabel);
-  save_label(doc, componentNode, "nameLabel", circuit, component->nameLabel);
+  save_vec2(doc, componentNode, "position", component->box.center);
 
   yyjson_mut_val *ports = yyjson_mut_obj_add_arr(doc, componentNode, "ports");
 
@@ -91,7 +62,7 @@ static void save_component(
   while (portID != NO_PORT) {
     Port *port = circuit_port_ptr(circuit, portID);
 
-    save_port(doc, ports, circuit, portID);
+    save_id_arr(doc, ports, portID);
 
     portID = port->compNext;
   }
