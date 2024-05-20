@@ -15,9 +15,45 @@
 
 ## Building
 
+### Using Zig
+
+You will need rust installed via rustup, zig, and on windows you'll need MSVC.
+
+#### Mac
+
+```sh
+git clone --recurse-submodules https://github.com/rj45/digilogic.git
+cd digilogic
+zig build
+open zig-out/digilogic.app
+```
+
+You can move the app in `zig-out` to your `Applications` folder if you want to.
+
+#### Windows
+
+```sh
+git clone --recurse-submodules https://github.com/rj45/digilogic.git
+cd digilogic
+zig build "-Dtarget=x86_64-windows-msvc"
+zig-out\digilogic.exe
+```
+
+If you get a crash immediately, try disabling MSAA:
+
+```sh
+zig build "-Dtarget=x86_64-windows-msvc" "-Dmsaa_sample_count=1"
+```
+
+#### Linux
+
+The zig build script on linux needs more testing. Pester me about this if it doesn't work. In the meantime the cmake build should work.
+
+### Using cmake
+
 You'll need rust via rustup, and cmake. Windows you'll need MSVC. You need FreeType too.
 
-### Mac
+#### Mac
 
 (You can also follow the linux instructions to avoid XCode and use make.)
 
@@ -30,7 +66,7 @@ cmake .. -G Xcode -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
 
-### Windows
+#### Windows
 
 You will need cmake and MSVC installed.
 
@@ -47,7 +83,7 @@ cmake --build build --config Release
 build\Release\digilogic.exe
 ```
 
-### Linux X11 (Xorg)
+#### Linux X11 (Xorg)
 
 You will need FreeType, cmake and build essentials installed. You may also need dev libraries for X11.
 
@@ -62,7 +98,7 @@ make
 ./digilogic
 ```
 
-### Linux Wayland
+#### Linux Wayland
 
 Note: For Gnome, I recommend using Xwayland and compiling for X11 rather than native Wayland. This will give you window decorations. If you don't use Gnome, then you won't have this problem and Wayland will work fine for you. I welcome contributions to get libdecor working for Gnome+Wayland.
 
