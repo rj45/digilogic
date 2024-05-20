@@ -169,6 +169,7 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("advapi32"); // required by rust
     } else {
         // assuming linux
+        rust_target = "x86_64-unknown-linux-gnu";
 
         digilogic.addCSourceFiles(.{
             .root = .{ .path = "src" },
@@ -187,6 +188,8 @@ pub fn build(b: *std.Build) void {
         }
 
         digilogic.linkSystemLibrary("GL");
+
+        digilogic.linkSystemLibrary("unwind"); // required by rust
 
         const use_egl = b.option(bool, "egl", "Force Sokol to use EGL instead of GLX for OpenGL context creation") orelse use_wayland;
         if (use_egl) {
@@ -241,7 +244,7 @@ pub fn build(b: *std.Build) void {
             digilogic.linkSystemLibrary("xkbcommon");
         } else {
             // X11
-            digilogic.root_module.addCMacro("SOKOL_DISABLE_WAYLAND", "");
+            digilogic.root_module.addCMacro("SOKOL_DISABLE_WAYLAND", "1");
 
             digilogic.linkSystemLibrary("X11");
             digilogic.linkSystemLibrary("Xi");
@@ -345,13 +348,20 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
         nvdialog.linkSystemLibrary("shell32");
         nvdialog.linkSystemLibrary("user32");
     } else {
+        nvdialog.root_module.addCMacro("NVD_SANDBOX_SUPPORT", "0");
         nvdialog.addCSourceFiles(.{
             .root = .{ .path = "thirdparty/nvdialog/src/backend/gtk" },
             .files = platform_files,
             .flags = cflags,
         });
 
-        // TODO figure out what GTK+ libs need to be linked and where to find them
+        nvdialog.addCSourceFiles(.{
+            .root = .{ .path = "thirdparty/nvdialog/src/backend/sandbox" },
+            .files = platform_files,
+            .flags = cflags,
+        });
+
+        nvdialog.linkSystemLibrary("gtk+-3.0");
     }
 
     nvdialog.addCSourceFiles(.{
