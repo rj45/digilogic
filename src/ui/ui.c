@@ -34,10 +34,8 @@ void ui_init(
 void ui_free(CircuitUI *ui) { ux_free(&ui->ux); }
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
-  /* The file extensions we can use with the dialog. */
   const char *filters = ".dlc;.dig";
 
-  /* Constructing the dialog. This is the most important part. */
   NvdFileDialog *dialog;
   if (saving) {
     dialog = nvd_save_file_dialog_new("Save File", "untitled.dlc");
@@ -59,15 +57,12 @@ bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
     free((void *)outfile);
   }
 
-  /* Then finally, freeing the dialog. */
   nvd_free_object(dialog);
 
   return outfile != NULL;
 }
 
-void ui_update(
-  CircuitUI *ui, struct nk_context *ctx, float width, float height) {
-
+static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
   if (nk_begin(
         ctx, "Menubar", nk_rect(0, 0, width, ctx->style.font->height + 15),
         0)) {
@@ -143,10 +138,11 @@ void ui_update(
     nk_menubar_end(ctx);
   }
   nk_end(ctx);
+}
 
-  if (ui->showFileBrowser) {
-  }
-
+static void
+ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
+  // todo: display the entire NOTICE file here
   if (ui->showAbout) {
     if (nk_begin(
           ctx, "About",
@@ -180,25 +176,35 @@ void ui_update(
     }
     nk_end(ctx);
   }
+}
 
-  /*if (nk_begin(
+void ui_update(
+  CircuitUI *ui, struct nk_context *ctx, float width, float height) {
+
+  ui_menu_bar(ui, ctx, width);
+  ui_about(ui, ctx, width, height);
+
+  if (nk_begin(
         ctx, "Toolbar", nk_rect(0, 30, 180, 480),
         NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
           NK_WINDOW_TITLE)) {
 
-    nk_layout_row_dynamic(ctx, 30, 2);
-    if (nk_option_label(ctx, "Select", ui->tool == TOOL_SELECT))
-      ui->tool = TOOL_SELECT;
-    if (nk_option_label(ctx, "Move", ui->tool == TOOL_MOVE))
-      ui->tool = TOOL_MOVE;
-    if (nk_option_label(ctx, "Wire", ui->tool == TOOL_WIRE))
-      ui->tool = TOOL_WIRE;
-    if (nk_option_label(ctx, "Component", ui->tool == TOOL_COMPONENT))
-      ui->tool = TOOL_COMPONENT;
-    if (nk_option_label(ctx, "Pan", ui->tool == TOOL_PAN))
-      ui->tool = TOOL_PAN;
+    nk_layout_row_dynamic(ctx, 30, 1);
+    for (ComponentDescID descID = 0; descID < COMP_COUNT; descID++) {
+      const ComponentDesc *desc = &ui->ux.view.circuit.componentDescs[descID];
+      if (nk_option_label(ctx, desc->typeName, ui->addingComponent == descID)) {
+        if (ui->addingComponent == COMP_NONE && descID != COMP_NONE) {
+          ux_start_adding_component(&ui->ux, descID);
+        } else if (ui->addingComponent != COMP_NONE && descID == COMP_NONE) {
+          ux_stop_adding_component(&ui->ux);
+        } else if (ui->addingComponent != descID) {
+          ux_change_adding_component(&ui->ux, descID);
+        }
+        ui->addingComponent = descID;
+      }
+    }
   }
-  nk_end(ctx);*/
+  nk_end(ctx);
 
   ux_update(&ui->ux);
 }

@@ -56,6 +56,10 @@ const ComponentDesc *circuit_component_descs() {
   };
 
   static const ComponentDesc descs[] = {
+    [COMP_NONE] =
+      {
+        .typeName = "NONE",
+      },
     [COMP_AND] =
       {
         .typeName = "AND",
@@ -276,7 +280,13 @@ void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta) {
   assert(!isnan(delta.X));
   assert(!isnan(delta.Y));
 
-  component->box.center = HMM_AddV2(component->box.center, delta);
+  circuit_move_component_to(
+    circuit, id, HMM_AddV2(component->box.center, delta));
+}
+
+void circuit_move_component_to(Circuit *circuit, ComponentID id, HMM_Vec2 pos) {
+  Component *component = circuit_component_ptr(circuit, id);
+  component->box.center = pos;
   log_debug("Move updating component %x", id);
   circuit_component_update_id(circuit, id);
 }

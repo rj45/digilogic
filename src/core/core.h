@@ -544,6 +544,7 @@ void circuit_clear(Circuit *circuit);
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position);
 void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta);
+void circuit_move_component_to(Circuit *circuit, ComponentID id, HMM_Vec2 pos);
 NetID circuit_add_net(Circuit *circuit);
 EndpointID circuit_add_endpoint(
   Circuit *circuit, NetID net, PortID port, HMM_Vec2 position);

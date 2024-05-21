@@ -117,3 +117,11 @@ void ux_select_all(CircuitUX *ux) {
           .area = box_from_tlbr(min, max),
         });
 }
+
+void ux_draw(CircuitUX *ux) {
+  view_draw(&ux->view);
+
+  if (ux->debugLines) {
+    autoroute_draw_debug_lines(ux->router, ux->view.drawCtx);
+  }
+}

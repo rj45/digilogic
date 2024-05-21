@@ -44,7 +44,8 @@ typedef struct CircuitUI {
 
   ToolMode tool;
 
-  bool showFileBrowser;
+  ComponentDescID addingComponent;
+
   bool saving;
 
   bool showAbout;

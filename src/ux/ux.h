@@ -171,6 +171,8 @@ typedef enum MouseDownState {
   STATE_CLICK_WIRING,
   STATE_CONNECT_PORT,
   STATE_FLOATING_WIRE,
+  STATE_ADDING_COMPONENT,
+  STATE_ADD_COMPONENT,
 } MouseDownState;
 
 typedef struct Input {
@@ -220,6 +222,8 @@ typedef struct CircuitUX {
   HMM_Vec2 downStart;
   HMM_Vec2 selectionCenter;
 
+  ComponentID addingComponent;
+
   float zoomExp;
 
   bool debugLines;
@@ -244,6 +248,10 @@ UndoCommand ux_undo(CircuitUX *ux);
 UndoCommand ux_redo(CircuitUX *ux);
 void ux_select_none(CircuitUX *ux);
 void ux_select_all(CircuitUX *ux);
+
+void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID);
+void ux_stop_adding_component(CircuitUX *ux);
+void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID);
 
 void ux_route(CircuitUX *ux);
 

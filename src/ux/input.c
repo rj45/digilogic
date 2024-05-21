@@ -23,10 +23,31 @@
 
 #include "ux.h"
 
+#define LOG_LEVEL LL_DEBUG
+#include "log.h"
+
 #define MAX_ZOOM 20.0f
 #define MOUSE_FUDGE 1.5f
 #define MOUSE_WP_FUDGE 5.0f
 #define MOVE_THRESHOLD 5.0f
+
+static const char *stateNames[] = {
+  [STATE_UP] = "Up",
+  [STATE_DOWN] = "Down",
+  [STATE_PAN] = "Pan",
+  [STATE_CLICK] = "Click",
+  [STATE_DESELECT] = "Desel",
+  [STATE_SELECT_AREA] = "SelArea",
+  [STATE_SELECT_ONE] = "SelOne",
+  [STATE_MOVE_SELECTION] = "MoveSel",
+  [STATE_CLICK_PORT] = "ClickPort",
+  [STATE_DRAG_WIRING] = "DragWiring",
+  [STATE_CLICK_WIRING] = "ClickWiring",
+  [STATE_CONNECT_PORT] = "ConnectPort",
+  [STATE_FLOATING_WIRE] = "FloatingWire",
+  [STATE_ADDING_COMPONENT] = "AddingComponent",
+  [STATE_ADD_COMPONENT] = "AddComponent",
+};
 
 /* Enter this into mermaid.live:
     stateDiagram
@@ -176,21 +197,41 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
     case STATE_CONNECT_PORT:
       if (!leftDown) {
         state = STATE_UP;
-        break;
       }
+      break;
     case STATE_FLOATING_WIRE:
       if (!leftDown) {
         state = STATE_UP;
-        break;
       }
+      break;
+    case STATE_ADDING_COMPONENT:
+      if (leftDown) {
+        state = STATE_ADD_COMPONENT;
+      }
+      break;
+    case STATE_ADD_COMPONENT:
+      if (!leftDown) {
+        state = STATE_ADDING_COMPONENT;
+      }
+      break;
     }
 
     if (state != oldState) {
+      log_debug(
+        "State transition: %s -> %s", stateNames[oldState], stateNames[state]);
+
       // process exit state actions here
       switch (oldState) {
       case STATE_UP:
         ux->downStart = worldMousePos;
         break;
+
+      case STATE_ADD_COMPONENT: {
+        // "drop" the component here and start adding a new one
+        ComponentDescID descID =
+          circuit_component_ptr(&ux->view.circuit, ux->addingComponent)->desc;
+        ux_start_adding_component(ux, descID);
+      } break;
 
       default:
         break;
@@ -260,6 +301,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
     break;
   }
+
   case STATE_SELECT_AREA: {
     Box area = box_from_tlbr(ux->downStart, worldMousePos);
     if (arrlen(ux->view.selected) > 0) {
@@ -275,11 +317,18 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           });
     break;
   }
+
   case STATE_PAN: {
     HMM_Vec2 delta = HMM_SubV2(worldMousePos, ux->downStart);
     draw_add_pan(ux->view.drawCtx, delta);
     break;
   }
+
+  case STATE_ADDING_COMPONENT:
+    circuit_move_component_to(
+      &ux->view.circuit, ux->addingComponent, worldMousePos);
+    break;
+
   default:
     break;
   }
@@ -427,10 +476,19 @@ void ux_update(CircuitUX *ux) {
   ux_handle_mouse(ux);
 }
 
-void ux_draw(CircuitUX *ux) {
-  view_draw(&ux->view);
+void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID) {
+  ux->mouseDownState = STATE_ADDING_COMPONENT;
+  ux->addingComponent =
+    circuit_add_component(&ux->view.circuit, descID, HMM_V2(0, 0));
+}
 
-  if (ux->debugLines) {
-    autoroute_draw_debug_lines(ux->router, ux->view.drawCtx);
-  }
+void ux_stop_adding_component(CircuitUX *ux) {
+  ux->mouseDownState = STATE_UP;
+  circuit_component_del(&ux->view.circuit, ux->addingComponent);
+  ux->addingComponent = NO_COMPONENT;
+}
+
+void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID) {
+  ux_stop_adding_component(ux);
+  ux_start_adding_component(ux, descID);
 }
