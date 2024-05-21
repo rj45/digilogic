@@ -168,6 +168,7 @@ typedef enum MouseDownState {
   STATE_MOVE_SELECTION,
   STATE_CLICK_PORT,
   STATE_DRAG_WIRING,
+  STATE_START_CLICK_WIRING,
   STATE_CLICK_WIRING,
   STATE_CONNECT_PORT,
   STATE_FLOATING_WIRE,
@@ -193,16 +194,18 @@ typedef struct UndoCommand {
     UNDO_SELECT_AREA,
     UNDO_DESELECT_ITEM,
     UNDO_DESELECT_AREA,
+    UNDO_ADD_COMPONENT,
+    UNDO_DEL_COMPONENT,
   } verb;
 
   union {
-    struct {
-      HMM_Vec2 oldCenter;
-      HMM_Vec2 newCenter;
-    };
+    HMM_Vec2 oldCenter;
     ID itemID;
     Box area;
   };
+
+  HMM_Vec2 newCenter;
+  ComponentDescID descID;
 
   bool snap;
 } UndoCommand;
@@ -223,6 +226,9 @@ typedef struct CircuitUX {
   HMM_Vec2 selectionCenter;
 
   ComponentID addingComponent;
+
+  EndpointID endpointStart;
+  EndpointID endpointEnd;
 
   float zoomExp;
 

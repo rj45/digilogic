@@ -397,6 +397,8 @@ typedef struct Circuit {
   arr(HMM_Vec2) vertices;
 } Circuit;
 
+#define circuit_component_has(circuit, id)                                     \
+  (smap_has(&(circuit)->sm.components, (id)))
 #define circuit_component_index(circuit, id)                                   \
   (smap_index(&(circuit)->sm.components, (id)))
 #define circuit_component_ptr(circuit, id)                                     \

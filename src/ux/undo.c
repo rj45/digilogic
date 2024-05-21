@@ -21,16 +21,16 @@
 
 #include "ux.h"
 
-static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
-  switch (command.verb) {
+static void ux_perform_command(CircuitUX *ux, UndoCommand *command) {
+  switch (command->verb) {
   case UNDO_NONE:
     break;
   case UNDO_MOVE_SELECTION: {
-    HMM_Vec2 initialDelta = HMM_SubV2(command.newCenter, command.oldCenter);
-    HMM_Vec2 newCenter = command.newCenter;
+    HMM_Vec2 initialDelta = HMM_SubV2(command->newCenter, command->oldCenter);
+    HMM_Vec2 newCenter = command->newCenter;
     HMM_Vec2 delta = initialDelta;
-    if (arrlen(ux->view.selected) == 1 && command.snap) {
-      newCenter = ux_calc_snap(ux, command.newCenter);
+    if (arrlen(ux->view.selected) == 1 && command->snap) {
+      newCenter = ux_calc_snap(ux, command->newCenter);
     }
 
     HMM_Vec2 currentCenter = ux_calc_selection_center(ux);
@@ -48,32 +48,32 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     ux->view.selectionBox.center =
       HMM_AddV2(ux->view.selectionBox.center, initialDelta);
     ux->downStart = HMM_AddV2(ux->downStart, initialDelta);
-    ux->selectionCenter = command.newCenter;
+    ux->selectionCenter = command->newCenter;
     break;
   }
   case UNDO_SELECT_ITEM:
-    arrput(ux->view.selected, command.itemID);
+    arrput(ux->view.selected, command->itemID);
     break;
   case UNDO_SELECT_AREA:
-    ux->view.selectionBox = command.area;
+    ux->view.selectionBox = command->area;
     arrsetlen(ux->view.selected, 0);
     for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
       Component *component = &ux->view.circuit.components[i];
-      if (box_intersect_box(component->box, command.area)) {
+      if (box_intersect_box(component->box, command->area)) {
         arrput(ux->view.selected, circuit_component_id(&ux->view.circuit, i));
       }
     }
     for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
       Waypoint *waypoint = &ux->view.circuit.waypoints[i];
       Box box = (Box){.center = waypoint->position, .halfSize = HMM_V2(5, 5)};
-      if (box_intersect_box(box, command.area)) {
+      if (box_intersect_box(box, command->area)) {
         arrput(ux->view.selected, circuit_waypoint_id(&ux->view.circuit, i));
       }
     }
     break;
   case UNDO_DESELECT_ITEM:
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
-      if (ux->view.selected[i] == command.itemID) {
+      if (ux->view.selected[i] == command->itemID) {
         arrdel(ux->view.selected, i);
         break;
       }
@@ -82,6 +82,18 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   case UNDO_DESELECT_AREA:
     arrsetlen(ux->view.selected, 0);
     ux->view.selectionBox = (Box){0};
+    break;
+  case UNDO_ADD_COMPONENT:
+    if (!circuit_component_has(&ux->view.circuit, command->itemID)) {
+      ID id = circuit_add_component(
+        &ux->view.circuit, command->descID, command->newCenter);
+      command->itemID = id;
+    }
+    break;
+  case UNDO_DEL_COMPONENT:
+    if (circuit_component_has(&ux->view.circuit, command->itemID)) {
+      circuit_component_del(&ux->view.circuit, command->itemID);
+    }
     break;
   }
 }
@@ -111,6 +123,10 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
         break;
       case UNDO_DESELECT_AREA:
         break;
+      case UNDO_ADD_COMPONENT:
+        break;
+      case UNDO_DEL_COMPONENT:
+        break;
       }
     }
   }
@@ -120,7 +136,7 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
 void ux_do(CircuitUX *ux, UndoCommand command) {
   arrsetlen(ux->redoStack, 0);
   ux_push_undo(ux, command);
-  ux_perform_command(ux, command);
+  ux_perform_command(ux, &ux->undoStack[arrlen(ux->undoStack) - 1]);
 }
 
 static UndoCommand ux_flip_command(UndoCommand cmd) {
@@ -150,6 +166,18 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
     flip.verb = UNDO_SELECT_AREA;
     flip.area = cmd.area;
     break;
+  case UNDO_ADD_COMPONENT:
+    flip.verb = UNDO_DEL_COMPONENT;
+    flip.itemID = cmd.itemID;
+    flip.descID = cmd.descID;
+    flip.newCenter = cmd.newCenter;
+    break;
+  case UNDO_DEL_COMPONENT:
+    flip.verb = UNDO_ADD_COMPONENT;
+    flip.itemID = cmd.itemID;
+    flip.descID = cmd.descID;
+    flip.newCenter = cmd.newCenter;
+    break;
   }
   return flip;
 }
@@ -165,7 +193,7 @@ UndoCommand ux_undo(CircuitUX *ux) {
   UndoCommand redoCmd = ux_flip_command(cmd);
   arrput(ux->redoStack, redoCmd);
 
-  ux_perform_command(ux, redoCmd);
+  ux_perform_command(ux, &ux->redoStack[arrlen(ux->redoStack) - 1]);
   return cmd;
 }
 
@@ -180,6 +208,6 @@ UndoCommand ux_redo(CircuitUX *ux) {
   UndoCommand undoCmd = ux_flip_command(cmd);
   arrput(ux->undoStack, undoCmd);
 
-  ux_perform_command(ux, undoCmd);
+  ux_perform_command(ux, &ux->undoStack[arrlen(ux->undoStack) - 1]);
   return cmd;
 }

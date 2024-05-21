@@ -42,6 +42,7 @@ static const char *stateNames[] = {
   [STATE_MOVE_SELECTION] = "MoveSel",
   [STATE_CLICK_PORT] = "ClickPort",
   [STATE_DRAG_WIRING] = "DragWiring",
+  [STATE_START_CLICK_WIRING] = "StartClickWiring",
   [STATE_CLICK_WIRING] = "ClickWiring",
   [STATE_CONNECT_PORT] = "ConnectPort",
   [STATE_FLOATING_WIRE] = "FloatingWire",
@@ -49,31 +50,6 @@ static const char *stateNames[] = {
   [STATE_ADD_COMPONENT] = "AddComponent",
 };
 
-/* Enter this into mermaid.live:
-    stateDiagram
-        [*] --> Up : !down
-        Up --> Down : down & !overComp & !overPort & !inSel
-        Down --> Click : !down & !sel
-        Down --> Desel : !down & sel
-        Desel --> [*]
-        Down --> SelArea : move & !sel
-        SelArea --> [*]
-        Up --> MoveSel : down & inSel
-        MoveSel --> [*]
-        SelOne --> MoveSel : move
-        SelOne --> [*]
-        Click --> [*]
-        ConnectPort --> [*]
-        Up --> SelOne : down & overComp & !overPort & !inSel
-        Up --> ClickPort : down & overPort & !inSel
-        ClickPort --> DragWiring : move
-        ClickPort --> ClickWiring : !down
-        DragWiring --> ConnectPort : overPort & !down
-        DragWiring --> FloatingWire : !overPort & !down
-        ClickWiring --> ConnectPort : overPort & down
-        ClickWiring --> FloatingWire : !overPort & down
-        FloatingWire --> [*]
-*/
 static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool rightDown = ux->input.modifiers & MODIFIER_RMB;
   bool leftDown = ux->input.modifiers & MODIFIER_LMB;
@@ -173,7 +149,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       break;
     case STATE_CLICK_PORT:
       if (leftDown) {
-        state = STATE_CLICK_WIRING;
+        state = STATE_START_CLICK_WIRING;
       } else if (move) {
         state = STATE_DRAG_WIRING;
       }
@@ -183,6 +159,11 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         state = STATE_CONNECT_PORT;
       } else if (!overPort && !leftDown) {
         state = STATE_FLOATING_WIRE;
+      }
+      break;
+    case STATE_START_CLICK_WIRING:
+      if (!leftDown) {
+        state = STATE_CLICK_WIRING;
       }
       break;
     case STATE_CLICK_WIRING:
@@ -228,8 +209,16 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
       case STATE_ADD_COMPONENT: {
         // "drop" the component here and start adding a new one
-        ComponentDescID descID =
-          circuit_component_ptr(&ux->view.circuit, ux->addingComponent)->desc;
+        Component *component =
+          circuit_component_ptr(&ux->view.circuit, ux->addingComponent);
+        ComponentDescID descID = component->desc;
+        ux_do(
+          ux, (UndoCommand){
+                .verb = UNDO_ADD_COMPONENT,
+                .itemID = ux->addingComponent,
+                .descID = descID,
+                .newCenter = component->box.center,
+              });
         ux_start_adding_component(ux, descID);
       } break;
 
