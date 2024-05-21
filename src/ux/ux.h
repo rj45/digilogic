@@ -242,6 +242,8 @@ void ux_draw(CircuitUX *ux);
 void ux_do(CircuitUX *ux, UndoCommand command);
 UndoCommand ux_undo(CircuitUX *ux);
 UndoCommand ux_redo(CircuitUX *ux);
+void ux_select_none(CircuitUX *ux);
+void ux_select_all(CircuitUX *ux);
 
 void ux_route(CircuitUX *ux);
 

@@ -77,8 +77,8 @@ void ui_update(
     if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
-        // circuit_clear(&ui->ux.view.circuit);
-        // ux_route(&ui->ux);
+        circuit_clear(&ui->ux.view.circuit);
+        ux_route(&ui->ux);
         log_info("New");
       }
       if (nk_menu_item_label(ctx, "Load", NK_TEXT_LEFT)) {
@@ -119,16 +119,16 @@ void ui_update(
     if (nk_menu_begin_label(ctx, "Edit", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "Undo", NK_TEXT_LEFT)) {
-        printf("Undo\n");
+        ux_undo(&ui->ux);
       }
       if (nk_menu_item_label(ctx, "Redo", NK_TEXT_LEFT)) {
-        printf("Redo\n");
+        ux_redo(&ui->ux);
       }
       if (nk_menu_item_label(ctx, "Select All", NK_TEXT_LEFT)) {
-        printf("Select All\n");
+        ux_select_all(&ui->ux);
       }
       if (nk_menu_item_label(ctx, "Select None", NK_TEXT_LEFT)) {
-        printf("Select None\n");
+        ux_select_none(&ui->ux);
       }
       nk_menu_end(ctx);
     }

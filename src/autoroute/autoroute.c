@@ -299,9 +299,9 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
 
   autoroute_update_anchors(ar);
 
-  assert(arrlen(ar->anchors) > 0);
-  assert(ar->boxes != NULL);
-  assert(circuit_component_len(&ar->view->circuit) > 0);
+  if (arrlen(ar->anchors) == 0) {
+    return;
+  }
 
   RT_Result res = RT_graph_build(
     ar->graph, (RT_Slice_Anchor){ar->anchors, arrlen(ar->anchors)},

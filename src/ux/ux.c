@@ -19,6 +19,7 @@
 #include "handmade_math.h"
 #include "stb_ds.h"
 #include "view/view.h"
+#include <float.h>
 
 #include "ux.h"
 
@@ -70,3 +71,49 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
 }
 
 void ux_route(CircuitUX *ux) { autoroute_route(ux->router, ux->betterRoutes); }
+
+void ux_select_none(CircuitUX *ux) {
+  if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
+    ux_do(
+      ux, (UndoCommand){
+            .verb = UNDO_DESELECT_AREA,
+            .area = ux->view.selectionBox,
+          });
+  } else {
+    while (arrlen(ux->view.selected) > 0) {
+      ux_do(
+        ux, (UndoCommand){
+              .verb = UNDO_DESELECT_ITEM,
+              .itemID = ux->view.selected[arrlen(ux->view.selected) - 1],
+            });
+    }
+  }
+}
+
+void ux_select_all(CircuitUX *ux) {
+  HMM_Vec2 min = HMM_V2(FLT_MAX, FLT_MAX);
+  HMM_Vec2 max = HMM_V2(-FLT_MAX, -FLT_MAX);
+  for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
+    Component *component = &ux->view.circuit.components[i];
+    HMM_Vec2 cmin = box_top_left(component->box);
+    HMM_Vec2 cmax = box_bottom_right(component->box);
+    min.X = HMM_MIN(min.X, cmin.X);
+    min.Y = HMM_MIN(min.Y, cmin.Y);
+    max.X = HMM_MAX(max.X, cmax.X);
+    max.Y = HMM_MAX(max.Y, cmax.Y);
+  }
+  for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
+    Waypoint *waypoint = &ux->view.circuit.waypoints[i];
+    HMM_Vec2 cmin = waypoint->position;
+    HMM_Vec2 cmax = waypoint->position;
+    min.X = HMM_MIN(min.X, cmin.X);
+    min.Y = HMM_MIN(min.Y, cmin.Y);
+    max.X = HMM_MAX(max.X, cmax.X);
+    max.Y = HMM_MAX(max.Y, cmax.Y);
+  }
+  ux_do(
+    ux, (UndoCommand){
+          .verb = UNDO_SELECT_AREA,
+          .area = box_from_tlbr(min, max),
+        });
+}
