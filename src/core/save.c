@@ -64,7 +64,7 @@ static void save_component(
 
     save_id_arr(doc, ports, portID);
 
-    portID = port->compNext;
+    portID = port->next;
   }
 }
 

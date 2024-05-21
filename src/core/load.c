@@ -148,7 +148,7 @@ static bool circuit_deserialize(LoadContext *ctx) {
 
       shput(ctx->ids, portIdstr, portID);
 
-      portID = port->compNext;
+      portID = port->next;
       portIndex++;
     }
   }

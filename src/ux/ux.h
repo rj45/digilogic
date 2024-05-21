@@ -227,6 +227,7 @@ typedef struct CircuitUX {
 
   ComponentID addingComponent;
 
+  bool newNet;
   EndpointID endpointStart;
   EndpointID endpointEnd;
 
@@ -258,6 +259,10 @@ void ux_select_all(CircuitUX *ux);
 void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID);
 void ux_stop_adding_component(CircuitUX *ux);
 void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID);
+
+void ux_start_wire(CircuitUX *ux, PortID portID);
+void ux_cancel_wire(CircuitUX *ux);
+void ux_connect_wire(CircuitUX *ux, PortID portID);
 
 void ux_route(CircuitUX *ux);
 

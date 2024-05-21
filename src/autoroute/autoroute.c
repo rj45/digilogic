@@ -85,7 +85,7 @@ autoroute_on_component_update(void *user, ComponentID id, void *ptr) {
       circuit_endpoint_update_id(&ar->view->circuit, port->endpoint);
     }
 
-    portID = port->compNext;
+    portID = port->next;
   }
 }
 
@@ -276,8 +276,24 @@ static void autoroute_update_anchors(AutoRoute *ar) {
         assert(endpoint->position.y == anchor.position.y);
       }
 
-      portID = port->compNext;
+      portID = port->next;
     }
+  }
+  for (int i = 0; i < circuit_endpoint_len(&ar->view->circuit); i++) {
+    Endpoint *endpoint = &ar->view->circuit.endpoints[i];
+    if (endpoint->port != NO_PORT) {
+      continue;
+    }
+    RT_Anchor anchor = (RT_Anchor){
+      .position =
+        {
+          .x = endpoint->position.X,
+          .y = endpoint->position.Y,
+        },
+      .connect_directions = RT_DIRECTIONS_ALL,
+      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+    };
+    arrput(ar->anchors, anchor);
   }
   for (int i = 0; i < circuit_waypoint_len(&ar->view->circuit); i++) {
     Waypoint *waypoint = &ar->view->circuit.waypoints[i];
@@ -338,18 +354,18 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     RT_Net *net = &ar->nets[netIdx];
     assert(net->first_endpoint != RT_INVALID_ENDPOINT_INDEX);
     int count = 0;
-    RT_Point prevPoint = ar->endpoints[net->first_endpoint].position;
-    int dist = 0;
+    // RT_Point prevPoint = ar->endpoints[net->first_endpoint].position;
+    // int dist = 0;
     RT_EndpointIndex endpointIdx = net->first_endpoint;
     while (endpointIdx != RT_INVALID_ENDPOINT_INDEX) {
       count++;
-      dist += HMM_ABS(prevPoint.x - ar->endpoints[endpointIdx].position.x) +
-              HMM_ABS(prevPoint.y - ar->endpoints[endpointIdx].position.y);
-      prevPoint = ar->endpoints[endpointIdx].position;
+      // dist += HMM_ABS(prevPoint.x - ar->endpoints[endpointIdx].position.x) +
+      //         HMM_ABS(prevPoint.y - ar->endpoints[endpointIdx].position.y);
+      // prevPoint = ar->endpoints[endpointIdx].position;
       endpointIdx = ar->endpoints[endpointIdx].next;
     }
     assert(count > 1);
-    assert(dist > 0);
+    // assert(dist > 0);
   }
 
   for (;;) {

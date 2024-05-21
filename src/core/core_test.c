@@ -165,7 +165,7 @@ UTEST(Circuit, add_net_with_ports) {
   ComponentID compID = circuit_add_component(&circuit, COMP_AND, HMM_V2(0, 0));
   Component *comp = circuit_component_ptr(&circuit, compID);
   PortID portID1 = comp->portFirst;
-  PortID portID2 = circuit_port_ptr(&circuit, portID1)->compNext;
+  PortID portID2 = circuit_port_ptr(&circuit, portID1)->next;
   NetID net = circuit_add_net(&circuit);
   EndpointID epID1 = circuit_add_endpoint(&circuit, net, portID1, HMM_V2(0, 0));
   EndpointID epID2 = circuit_add_endpoint(&circuit, net, portID2, HMM_V2(0, 0));

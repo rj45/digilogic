@@ -124,11 +124,11 @@ static PortID circuit_add_port(
                           .desc = portDesc,
                           .net = NO_NET,
                           .label = label,
-                          .compPrev = component->portLast,
+                          .prev = component->portLast,
                         });
 
   if (component->portLast != NO_PORT) {
-    circuit_port_ptr(circuit, component->portLast)->compNext = id;
+    circuit_port_ptr(circuit, component->portLast)->next = id;
     circuit_port_update_id(circuit, component->portLast);
   }
   component->portLast = id;
@@ -171,7 +171,9 @@ static void circuit_augment_endpoint(void *user, EndpointID id, void *ptr) {
   Circuit *circuit = user;
   Endpoint *endpoint = ptr;
 
-  circuit_port_ptr(circuit, endpoint->port)->endpoint = id;
+  if (circuit_port_has(circuit, endpoint->port)) {
+    circuit_port_ptr(circuit, endpoint->port)->endpoint = id;
+  }
 
   Net *net = circuit_net_ptr(circuit, endpoint->net);
   if (net->endpointFirst == NO_ENDPOINT) {
@@ -185,6 +187,119 @@ static void circuit_augment_endpoint(void *user, EndpointID id, void *ptr) {
   circuit_net_update_id(circuit, endpoint->net);
 }
 
+static void circuit_componented_deleted(void *user, ID id, void *ptr) {
+  Circuit *circuit = user;
+  Component *component = ptr;
+
+  PortID portID = component->portFirst;
+  while (portID != NO_PORT) {
+    Port *port = circuit_port_ptr(circuit, portID);
+    PortID next = port->next;
+    circuit_port_del(circuit, portID);
+    portID = next;
+  }
+
+  circuit_label_del(circuit, component->typeLabel);
+  circuit_label_del(circuit, component->nameLabel);
+}
+
+static void circuit_port_deleted(void *user, ID id, void *ptr) {
+  Circuit *circuit = user;
+  Port *port = ptr;
+
+  if (circuit_port_has(circuit, port->prev)) {
+    circuit_port_ptr(circuit, port->prev)->next = port->next;
+    circuit_port_update_id(circuit, port->prev);
+  }
+  if (circuit_port_has(circuit, port->next)) {
+    circuit_port_ptr(circuit, port->next)->prev = port->prev;
+    circuit_port_update_id(circuit, port->next);
+  }
+
+  if (port->endpoint != NO_ENDPOINT) {
+    Endpoint *endpoint = circuit_endpoint_ptr(circuit, port->endpoint);
+    circuit_endpoint_update_id(circuit, port->endpoint);
+    endpoint->port = NO_PORT;
+  }
+
+  circuit_label_del(circuit, port->label);
+}
+
+static void circuit_net_deleted(void *user, ID id, void *ptr) {
+  Circuit *circuit = user;
+  Net *net = ptr;
+
+  WaypointID waypointID = net->waypointFirst;
+  while (waypointID != NO_WAYPOINT) {
+    Waypoint *waypoint = circuit_waypoint_ptr(circuit, waypointID);
+    WaypointID next = waypoint->next;
+    circuit_waypoint_del(circuit, waypointID);
+    waypointID = next;
+  }
+
+  EndpointID endpointID = net->endpointFirst;
+  while (endpointID != NO_ENDPOINT) {
+    Endpoint *endpoint = circuit_endpoint_ptr(circuit, endpointID);
+    EndpointID next = endpoint->next;
+    circuit_endpoint_del(circuit, endpointID);
+    endpointID = next;
+  }
+
+  if (net->label != NO_LABEL) {
+    circuit_label_del(circuit, net->label);
+  }
+}
+
+static void circuit_waypoint_deleted(void *user, ID id, void *ptr) {
+  Circuit *circuit = user;
+  Waypoint *waypoint = ptr;
+
+  Net *net = circuit_net_ptr(circuit, waypoint->net);
+  if (net->waypointFirst == id) {
+    net->waypointFirst = waypoint->next;
+  }
+  if (net->waypointLast == id) {
+    net->waypointLast = waypoint->prev;
+  }
+  if (waypoint->prev != NO_WAYPOINT) {
+    circuit_waypoint_ptr(circuit, waypoint->prev)->next = waypoint->next;
+    circuit_waypoint_update_id(circuit, waypoint->prev);
+  }
+  if (waypoint->next != NO_WAYPOINT) {
+    circuit_waypoint_ptr(circuit, waypoint->next)->prev = waypoint->prev;
+    circuit_waypoint_update_id(circuit, waypoint->next);
+  }
+  circuit_net_update_id(circuit, waypoint->net);
+}
+
+static void circuit_endpoint_deleted(void *user, ID id, void *ptr) {
+  Circuit *circuit = user;
+  Endpoint *endpoint = ptr;
+
+  Net *net = circuit_net_ptr(circuit, endpoint->net);
+  if (net->endpointFirst == id) {
+    net->endpointFirst = endpoint->next;
+  }
+  if (net->endpointLast == id) {
+    net->endpointLast = endpoint->prev;
+  }
+  if (endpoint->prev != NO_ENDPOINT) {
+    circuit_endpoint_ptr(circuit, endpoint->prev)->next = endpoint->next;
+    circuit_endpoint_update_id(circuit, endpoint->prev);
+  }
+  if (endpoint->next != NO_ENDPOINT) {
+    circuit_endpoint_ptr(circuit, endpoint->next)->prev = endpoint->prev;
+    circuit_endpoint_update_id(circuit, endpoint->next);
+  }
+  circuit_net_update_id(circuit, endpoint->net);
+
+  if (endpoint->port != NO_PORT) {
+    Port *port = circuit_port_ptr(circuit, endpoint->port);
+    port->endpoint = NO_ENDPOINT;
+    circuit_port_update_id(circuit, endpoint->port);
+  }
+}
+
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
   *circuit = (Circuit){.componentDescs = componentDescs};
 
@@ -193,26 +308,31 @@ void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
     &circuit->sm.components, (void **)&circuit->components,
     sizeof(*circuit->components));
   circuit_on_component_create(circuit, circuit, circuit_augment_component);
+  circuit_on_component_delete(circuit, circuit, circuit_componented_deleted);
 
   smap_init(&circuit->sm.ports, ID_PORT);
   smap_add_synced_array(
     &circuit->sm.ports, (void **)&circuit->ports, sizeof(*circuit->ports));
+  circuit_on_port_delete(circuit, circuit, circuit_port_deleted);
 
   smap_init(&circuit->sm.nets, ID_NET);
   smap_add_synced_array(
     &circuit->sm.nets, (void **)&circuit->nets, sizeof(*circuit->nets));
+  circuit_on_net_delete(circuit, circuit, circuit_net_deleted);
 
   smap_init(&circuit->sm.waypoints, ID_WAYPOINT);
   smap_add_synced_array(
     &circuit->sm.waypoints, (void **)&circuit->waypoints,
     sizeof(*circuit->waypoints));
   circuit_on_waypoint_create(circuit, circuit, circuit_augment_waypoint);
+  circuit_on_waypoint_delete(circuit, circuit, circuit_waypoint_deleted);
 
   smap_init(&circuit->sm.endpoints, ID_ENDPOINT);
   smap_add_synced_array(
     &circuit->sm.endpoints, (void **)&circuit->endpoints,
     sizeof(*circuit->endpoints));
   circuit_on_endpoint_create(circuit, circuit, circuit_augment_endpoint);
+  circuit_on_endpoint_delete(circuit, circuit, circuit_endpoint_deleted);
 
   smap_init(&circuit->sm.labels, ID_LABEL);
   smap_add_synced_array(
@@ -287,12 +407,19 @@ void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta) {
 void circuit_move_component_to(Circuit *circuit, ComponentID id, HMM_Vec2 pos) {
   Component *component = circuit_component_ptr(circuit, id);
   component->box.center = pos;
-  log_debug("Move updating component %x", id);
+  log_debug("Moving component %x to %f %f", id, pos.X, pos.Y);
   circuit_component_update_id(circuit, id);
 }
 
 NetID circuit_add_net(Circuit *circuit) {
   return smap_add(&circuit->sm.nets, &(Net){0});
+}
+
+void circuit_move_endpoint_to(
+  Circuit *circuit, EndpointID id, HMM_Vec2 position) {
+  Endpoint *endpoint = circuit_endpoint_ptr(circuit, id);
+  endpoint->position = position;
+  circuit_endpoint_update_id(circuit, id);
 }
 
 WaypointID
@@ -339,6 +466,23 @@ EndpointID circuit_add_endpoint(
   // NOTE: Do not add code here to further set up endpoints, add it to
   // circuit_augment_endpoint instead.
   return id;
+}
+
+void circuit_endpoint_connect(
+  Circuit *circuit, EndpointID endpointID, PortID portID) {
+  log_debug("Connecting endpoint %x to port %x", endpointID, portID);
+
+  Endpoint *endpoint = circuit_endpoint_ptr(circuit, endpointID);
+
+  endpoint->port = portID;
+
+  Port *port = circuit_port_ptr(circuit, portID);
+  port->endpoint = endpointID;
+
+  Component *component = circuit_component_ptr(circuit, port->component);
+  endpoint->position = HMM_AddV2(component->box.center, port->position);
+
+  circuit_endpoint_update_id(circuit, endpointID);
 }
 
 LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds) {

@@ -83,10 +83,10 @@ UTEST(View, view_draw_component_with_wires) {
     = circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
 
   Component *andComp = circuit_component_ptr(&view.circuit, and);
-  PortID from = circuit_port_ptr(
-                  &view.circuit,
-                  circuit_port_ptr(&view.circuit, andComp->portFirst)->compNext)
-                  ->compNext;
+  PortID from =
+    circuit_port_ptr(
+      &view.circuit, circuit_port_ptr(&view.circuit, andComp->portFirst)->next)
+      ->next;
 
   Component *orComp = circuit_component_ptr(&view.circuit, or);
   PortID to = orComp->portFirst;

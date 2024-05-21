@@ -369,7 +369,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
             digWires, digWireEnds, portID, pos,
             desc->ports[j].direction == PORT_IN);
 
-          portID = circuit_port_ptr(&ux->view.circuit, portID)->compNext;
+          portID = circuit_port_ptr(&ux->view.circuit, portID)->next;
           j++;
         }
         break;

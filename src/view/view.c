@@ -93,7 +93,7 @@ static void view_augment_component(void *user, ComponentID id, void *ptr) {
       width = desiredHalfWidth * 2;
     }
 
-    portID = port->compNext;
+    portID = port->next;
   }
   float height =
     fmaxf(numInputPorts, numOutputPorts) * view->theme.portSpacing +
@@ -161,7 +161,27 @@ static void view_augment_component(void *user, ComponentID id, void *ptr) {
       view->theme.font);
     view_augment_label(view, labelID, labelBounds);
 
-    portID = port->compNext;
+    portID = port->next;
+  }
+}
+
+static void view_component_deleted(void *user, ComponentID id, void *ptr) {
+  CircuitView *view = user;
+  for (int i = 0; i < arrlen(view->selected); i++) {
+    if (view->selected[i] == id) {
+      arrdel(view->selected, i);
+      break;
+    }
+  }
+}
+
+static void view_waypoint_deleted(void *user, WaypointID id, void *ptr) {
+  CircuitView *view = user;
+  for (int i = 0; i < arrlen(view->selected); i++) {
+    if (view->selected[i] == id) {
+      arrdel(view->selected, i);
+      break;
+    }
   }
 }
 
@@ -176,6 +196,8 @@ void view_init(
   };
   circuit_init(&view->circuit, componentDescs);
   circuit_on_component_create(&view->circuit, view, view_augment_component);
+  circuit_on_component_delete(&view->circuit, view, view_component_deleted);
+  circuit_on_waypoint_delete(&view->circuit, view, view_waypoint_deleted);
 
   theme_init(&view->theme, font);
 }
@@ -368,7 +390,7 @@ void view_draw(CircuitView *view) {
           portFlags);
       }
 
-      portID = port->compNext;
+      portID = port->next;
     }
   }
 

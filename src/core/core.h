@@ -304,8 +304,8 @@ typedef struct Port {
   LabelID label;
 
   // linked list of all ports in the component
-  PortID compNext;
-  PortID compPrev;
+  PortID next;
+  PortID prev;
 
   // the net the port is connected to.
   NetID net;
@@ -313,10 +313,6 @@ typedef struct Port {
   // the endpoint the port is connected to.
   // ports must have an endpoint.
   EndpointID endpoint;
-
-  // linked list of all ports connected to the same net
-  PortID netNext;
-  PortID netPrev;
 } Port;
 
 typedef struct Endpoint {
@@ -425,6 +421,7 @@ typedef struct Circuit {
     &(circuit)->sm.components, (circuit)->components,                          \
     (SmapCallback){user, callback})
 
+#define circuit_port_has(circuit, id) (smap_has(&(circuit)->sm.ports, (id)))
 #define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
 #define circuit_port_ptr(circuit, id)                                          \
   (&(circuit)->ports[circuit_port_index(circuit, id)])
@@ -445,6 +442,7 @@ typedef struct Circuit {
   smap_on_delete(                                                              \
     &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
 
+#define circuit_net_has(circuit, id) (smap_has(&(circuit)->sm.nets, (id)))
 #define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
 #define circuit_net_ptr(circuit, id)                                           \
   (&(circuit)->nets[circuit_net_index(circuit, id)])
@@ -465,6 +463,8 @@ typedef struct Circuit {
   smap_on_delete(                                                              \
     &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
 
+#define circuit_endpoint_has(circuit, id)                                      \
+  (smap_has(&(circuit)->sm.endpoints, (id)))
 #define circuit_endpoint_index(circuit, id)                                    \
   (smap_index(&(circuit)->sm.endpoints, (id)))
 #define circuit_endpoint_ptr(circuit, id)                                      \
@@ -491,6 +491,8 @@ typedef struct Circuit {
     &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
     (SmapCallback){user, callback})
 
+#define circuit_waypoint_has(circuit, id)                                      \
+  (smap_has(&(circuit)->sm.waypoints, (id)))
 #define circuit_waypoint_index(circuit, id)                                    \
   (smap_index(&(circuit)->sm.waypoints, (id)))
 #define circuit_waypoint_ptr(circuit, id)                                      \
@@ -517,6 +519,7 @@ typedef struct Circuit {
     &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
     (SmapCallback){user, callback})
 
+#define circuit_label_has(circuit, id) (smap_has(&(circuit)->sm.labels, (id)))
 #define circuit_label_index(circuit, id)                                       \
   (smap_index(&(circuit)->sm.labels, (id)))
 #define circuit_label_ptr(circuit, id)                                         \
@@ -550,6 +553,9 @@ void circuit_move_component_to(Circuit *circuit, ComponentID id, HMM_Vec2 pos);
 NetID circuit_add_net(Circuit *circuit);
 EndpointID circuit_add_endpoint(
   Circuit *circuit, NetID net, PortID port, HMM_Vec2 position);
+void circuit_move_endpoint_to(
+  Circuit *circuit, EndpointID id, HMM_Vec2 position);
+void circuit_endpoint_connect(Circuit *circuit, EndpointID id, PortID port);
 WaypointID circuit_add_waypoint(Circuit *circuit, NetID, HMM_Vec2 position);
 void circuit_move_waypoint(Circuit *circuit, WaypointID id, HMM_Vec2 delta);
 
