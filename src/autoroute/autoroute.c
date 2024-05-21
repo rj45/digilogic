@@ -284,14 +284,35 @@ static void autoroute_update_anchors(AutoRoute *ar) {
     if (endpoint->port != NO_PORT) {
       continue;
     }
+
+    RT_BoundingBoxIndex boundingBox = RT_INVALID_BOUNDING_BOX_INDEX;
+    RT_Directions connectDirections = RT_DIRECTIONS_ALL;
+
+    // for (int j = 0; j < circuit_component_len(&ar->view->circuit); j++) {
+    //   Component *comp = &ar->view->circuit.components[j];
+    //   Box box = comp->box;
+
+    //   if (box_intersect_point(box, endpoint->position)) {
+    //     boundingBox = j;
+
+    //     if (endpoint->position.X < box.center.X) {
+    //       connectDirections = RT_DIRECTIONS_NEG_X;
+    //     } else {
+    //       connectDirections = RT_DIRECTIONS_POS_X;
+    //     }
+
+    //     break;
+    //   }
+    // }
+
     RT_Anchor anchor = (RT_Anchor){
       .position =
         {
           .x = endpoint->position.X,
           .y = endpoint->position.Y,
         },
-      .connect_directions = RT_DIRECTIONS_ALL,
-      .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
+      .connect_directions = connectDirections,
+      .bounding_box = boundingBox,
     };
     arrput(ar->anchors, anchor);
   }
