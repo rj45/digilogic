@@ -8,5 +8,9 @@
             .url = "git+https://github.com/bcrist/freetype#ba36fc3d3ce94ffcda37e87bc4cc51ee0b7e365e",
             .hash = "1220d14057af1a9d6dde4643293527bd5ee5099517d655251a066666a4320737ea7c",
         },
+        .compile_commands = .{
+            .url = "git+https://github.com/bcrist/zig-compile-commands#b9d100d9f8f1395ea67f0281e0787848db423d10",
+            .hash = "12208ed963cbf5fb40e88f24cf8ce5d33c67a10778a92ca7ad62d0d0e048cdc11880",
+        },
     },
 }

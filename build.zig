@@ -20,6 +20,7 @@
 /////////////////////////////////////////////////////////////////////////
 
 const std = @import("std");
+const zcc = @import("compile_commands");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -278,6 +279,8 @@ pub fn build(b: *std.Build) void {
     } else {
         b.installArtifact(digilogic);
     }
+
+    zcc.createStep(b, "cdb", &.{ digilogic });
 }
 
 fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
