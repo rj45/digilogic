@@ -287,8 +287,13 @@ void frame(void *user_data) {
           NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
       struct nk_vec2 min = nk_window_get_content_region_min(ctx);
       struct nk_vec2 max = nk_window_get_content_region_max(ctx);
-      float height = ((max.y - min.y) / 3) - 6;
+      float height = ((max.y - min.y) / 4) - 6;
       nk_layout_row_dynamic(ctx, height, 1);
+
+      if (nk_button_label(ctx, "New empty circuit")) {
+        app->loaded = true;
+      }
+
       if (nk_button_label(ctx, "Load small sized test circuit")) {
         load_file(app, "/assets/testdata/simple_test.dig");
       }

@@ -63,12 +63,19 @@ bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
 }
 
 static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
+  struct nk_vec2 padding = ctx->style.window.padding;
+  float barHeight = ctx->style.font->height + padding.y * 2;
+  nk_style_push_vec2(ctx, &ctx->style.window.padding, nk_vec2(padding.x, 0));
+  // todo: figure out how to remove the bottom padding from the menubar
   if (nk_begin(
-        ctx, "Menubar", nk_rect(0, 0, width, ctx->style.font->height + 15),
+        ctx, "Menubar",
+        nk_rect(
+          0, 0, width,
+          barHeight + ctx->style.window.spacing.y +
+            ctx->style.window.menu_padding.y),
         0)) {
     nk_menubar_begin(ctx);
-    nk_layout_row_begin(ctx, NK_STATIC, ctx->style.font->height + 8, 4);
-    nk_layout_row_push(ctx, 45);
+    nk_layout_row_static(ctx, barHeight, 45, 4);
     if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
@@ -138,6 +145,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
     nk_menubar_end(ctx);
   }
   nk_end(ctx);
+  nk_style_pop_vec2(ctx);
 }
 
 static void
