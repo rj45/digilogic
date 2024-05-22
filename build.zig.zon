@@ -9,8 +9,8 @@
             .hash = "1220d14057af1a9d6dde4643293527bd5ee5099517d655251a066666a4320737ea7c",
         },
         .compile_commands = .{
-            .url = "git+https://github.com/bcrist/zig-compile-commands#b9d100d9f8f1395ea67f0281e0787848db423d10",
-            .hash = "12208ed963cbf5fb40e88f24cf8ce5d33c67a10778a92ca7ad62d0d0e048cdc11880",
+            .url = "git+https://github.com/bcrist/zig-compile-commands#20372137e6d63f39cece19ee1e91ae4a3151875c",
+            .hash = "1220a2e71dce460ce3ebaca36565893bc14e8d89177ec568c5efd6444f03118cc090",
         },
     },
 }
