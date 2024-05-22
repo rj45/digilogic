@@ -355,7 +355,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
         }
         PortID portID = component->portFirst;
         int j = 0;
-        while (portID != NO_PORT) {
+        while (circuit_has(&ux->view.circuit, portID)) {
           IVec2 pos = nextInput;
           if (desc->ports[j].direction == PORT_OUT) {
             pos = nextOutput;

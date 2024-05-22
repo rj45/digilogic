@@ -132,7 +132,7 @@ static bool circuit_deserialize(LoadContext *ctx) {
 
     int portIndex = 0;
     PortID portID = component->portFirst;
-    while (portID != NO_PORT) {
+    while (circuit_has(circuit, portID)) {
       Port *port = circuit_port_ptr(circuit, portID);
       yyjson_val *portIDVal = yyjson_arr_get(portsVal, portIndex);
       if (portIDVal == NULL) {

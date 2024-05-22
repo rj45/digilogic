@@ -57,7 +57,7 @@ void theme_init(Theme *theme, FontHandle font) {
 void view_augment_label(CircuitView *view, LabelID id, Box bounds) {
   Label *label = circuit_label_ptr(&view->circuit, id);
   label->box = bounds;
-  circuit_label_update_id(&view->circuit, id);
+  circuit_update_id(&view->circuit, id);
 }
 
 static void view_augment_component(void *user, ComponentID id, void *ptr) {
@@ -231,7 +231,7 @@ void view_direct_wire_nets(CircuitView *view) {
 
     arrsetlen(waypoints, 0);
     WaypointID waypointID = net->waypointFirst;
-    while (waypointID != NO_WAYPOINT) {
+    while (circuit_has(&view->circuit, waypointID)) {
       Waypoint *waypoint = circuit_waypoint_ptr(&view->circuit, waypointID);
       arrput(waypoints, waypoint->position);
       waypointID = waypoint->next;
@@ -240,7 +240,7 @@ void view_direct_wire_nets(CircuitView *view) {
     HMM_Vec2 centroid = HMM_V2(0, 0);
     int endpointCount = 0;
     EndpointID endpointID = net->endpointFirst;
-    while (endpointID != NO_ENDPOINT) {
+    while (circuit_has(&view->circuit, endpointID)) {
       Endpoint *endpoint = circuit_endpoint_ptr(&view->circuit, endpointID);
       endpointCount++;
       centroid = HMM_AddV2(centroid, endpoint->position);
@@ -280,7 +280,7 @@ void view_direct_wire_nets(CircuitView *view) {
     }
 
     endpointID = net->endpointFirst;
-    while (endpointID != NO_ENDPOINT) {
+    while (circuit_has(&view->circuit, endpointID)) {
       Endpoint *endpoint = circuit_endpoint_ptr(&view->circuit, endpointID);
 
       Port *port = circuit_port_ptr(&view->circuit, endpoint->port);
@@ -368,7 +368,7 @@ void view_draw(CircuitView *view) {
       nameLabelText, LABEL_COMPONENT_NAME, 0);
 
     PortID portID = component->portFirst;
-    while (portID != NO_PORT) {
+    while (circuit_has(&view->circuit, portID)) {
       Port *port = circuit_port_ptr(&view->circuit, portID);
 
       HMM_Vec2 portPosition = HMM_AddV2(component->box.center, port->position);

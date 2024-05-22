@@ -59,7 +59,7 @@ static void save_component(
   yyjson_mut_val *ports = yyjson_mut_obj_add_arr(doc, componentNode, "ports");
 
   PortID portID = component->portFirst;
-  while (portID != NO_PORT) {
+  while (circuit_has(circuit, portID)) {
     Port *port = circuit_port_ptr(circuit, portID);
 
     save_id_arr(doc, ports, portID);
@@ -77,7 +77,7 @@ static void save_net(
 
   yyjson_mut_val *endpoints = yyjson_mut_obj_add_arr(doc, netNode, "endpoints");
   EndpointID endpointID = net->endpointFirst;
-  while (endpointID != NO_ENDPOINT) {
+  while (circuit_has(circuit, endpointID)) {
     Endpoint *endpoint = circuit_endpoint_ptr(circuit, endpointID);
 
     yyjson_mut_val *endpointNode = yyjson_mut_arr_add_obj(doc, endpoints);
@@ -90,7 +90,7 @@ static void save_net(
 
   yyjson_mut_val *waypoints = yyjson_mut_obj_add_arr(doc, netNode, "waypoints");
   WaypointID waypointID = net->waypointFirst;
-  while (waypointID != NO_ENDPOINT) {
+  while (circuit_has(circuit, waypointID)) {
     Waypoint *waypoint = circuit_waypoint_ptr(circuit, waypointID);
 
     yyjson_mut_val *waypointNode = yyjson_mut_arr_add_obj(doc, waypoints);

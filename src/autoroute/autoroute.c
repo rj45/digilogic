@@ -52,8 +52,7 @@ autoroute_on_component_update(void *user, ComponentID id, void *ptr) {
   AutoRoute *ar = user;
   Component *comp = ptr;
 
-  RT_BoundingBox *box =
-    &ar->boxes[circuit_component_index(&ar->view->circuit, id)];
+  RT_BoundingBox *box = &ar->boxes[circuit_index(&ar->view->circuit, id)];
   assert(!isnan(comp->box.center.X));
   assert(!isnan(comp->box.center.Y));
   assert(!isnan(comp->box.halfSize.X));
@@ -78,11 +77,11 @@ autoroute_on_component_update(void *user, ComponentID id, void *ptr) {
 
     HMM_Vec2 pos = HMM_AddV2(comp->box.center, port->position);
 
-    if (port->endpoint != NO_ENDPOINT) {
+    if (circuit_has(&ar->view->circuit, port->endpoint)) {
       Endpoint *endpoint =
         circuit_endpoint_ptr(&ar->view->circuit, port->endpoint);
       endpoint->position = pos;
-      circuit_endpoint_update_id(&ar->view->circuit, port->endpoint);
+      circuit_update_id(&ar->view->circuit, port->endpoint);
     }
 
     portID = port->next;
@@ -93,16 +92,16 @@ static void autoroute_on_net_update(void *user, NetID id, void *ptr) {
   AutoRoute *ar = user;
   Net *net = ptr;
 
-  RT_Net *rtNet = &ar->nets[circuit_net_index(&ar->view->circuit, id)];
+  RT_Net *rtNet = &ar->nets[circuit_index(&ar->view->circuit, id)];
   rtNet->first_endpoint = RT_INVALID_ENDPOINT_INDEX;
-  if (net->endpointFirst != NO_ENDPOINT) {
+  if (circuit_has(&ar->view->circuit, net->endpointFirst)) {
     rtNet->first_endpoint =
-      circuit_endpoint_index(&ar->view->circuit, net->endpointFirst);
+      circuit_index(&ar->view->circuit, net->endpointFirst);
   }
   rtNet->first_waypoint = RT_INVALID_WAYPOINT_INDEX;
-  if (net->waypointFirst != NO_WAYPOINT) {
+  if (circuit_has(&ar->view->circuit, net->waypointFirst)) {
     rtNet->first_waypoint =
-      circuit_waypoint_index(&ar->view->circuit, net->waypointFirst);
+      circuit_index(&ar->view->circuit, net->waypointFirst);
   }
   log_debug("Updating net %x", id);
 }
@@ -112,18 +111,17 @@ static void autoroute_on_endpoint_update(void *user, EndpointID id, void *ptr) {
   Endpoint *endpoint = ptr;
 
   RT_Endpoint *rtEndpoint =
-    &ar->endpoints[circuit_endpoint_index(&ar->view->circuit, id)];
+    &ar->endpoints[circuit_index(&ar->view->circuit, id)];
 
   rtEndpoint->next = RT_INVALID_ENDPOINT_INDEX;
-  if (endpoint->next != NO_ENDPOINT) {
-    rtEndpoint->next =
-      circuit_endpoint_index(&ar->view->circuit, endpoint->next);
+  if (circuit_has(&ar->view->circuit, endpoint->next)) {
+    rtEndpoint->next = circuit_index(&ar->view->circuit, endpoint->next);
   }
 
-  if (endpoint->prev != NO_ENDPOINT) {
-    RT_Endpoint *prevEndpoint = &ar->endpoints[circuit_endpoint_index(
-      &ar->view->circuit, endpoint->prev)];
-    prevEndpoint->next = circuit_endpoint_index(&ar->view->circuit, id);
+  if (circuit_has(&ar->view->circuit, endpoint->prev)) {
+    RT_Endpoint *prevEndpoint =
+      &ar->endpoints[circuit_index(&ar->view->circuit, endpoint->prev)];
+    prevEndpoint->next = circuit_index(&ar->view->circuit, id);
   }
 
   log_debug(
@@ -142,18 +140,17 @@ static void autoroute_on_waypoint_update(void *user, WaypointID id, void *ptr) {
   Waypoint *waypoint = ptr;
 
   RT_Waypoint *rtWaypoint =
-    &ar->waypoints[circuit_waypoint_index(&ar->view->circuit, id)];
+    &ar->waypoints[circuit_index(&ar->view->circuit, id)];
 
   rtWaypoint->next = RT_INVALID_WAYPOINT_INDEX;
-  if (waypoint->next != NO_WAYPOINT) {
-    rtWaypoint->next =
-      circuit_waypoint_index(&ar->view->circuit, waypoint->next);
+  if (circuit_has(&ar->view->circuit, waypoint->next)) {
+    rtWaypoint->next = circuit_index(&ar->view->circuit, waypoint->next);
   }
 
-  if (waypoint->prev != NO_ENDPOINT) {
-    RT_Waypoint *prevWaypoint = &ar->waypoints[circuit_waypoint_index(
-      &ar->view->circuit, waypoint->prev)];
-    prevWaypoint->next = circuit_waypoint_index(&ar->view->circuit, id);
+  if (circuit_has(&ar->view->circuit, waypoint->prev)) {
+    RT_Waypoint *prevWaypoint =
+      &ar->waypoints[circuit_index(&ar->view->circuit, waypoint->prev)];
+    prevWaypoint->next = circuit_index(&ar->view->circuit, id);
   }
 
   rtWaypoint->position = (RT_Point){
@@ -249,7 +246,7 @@ static void autoroute_update_anchors(AutoRoute *ar) {
     // arrput(ar->anchors, br);
 
     PortID portID = comp->portFirst;
-    while (portID != NO_PORT) {
+    while (circuit_has(&ar->view->circuit, portID)) {
       Port *port = circuit_port_ptr(&ar->view->circuit, portID);
 
       PortDesc *portDesc =
@@ -269,9 +266,9 @@ static void autoroute_update_anchors(AutoRoute *ar) {
       };
       arrput(ar->anchors, anchor);
 
-      if (port->endpoint != NO_ENDPOINT) {
-        RT_Endpoint *endpoint = &ar->endpoints[circuit_endpoint_index(
-          &ar->view->circuit, port->endpoint)];
+      if (circuit_has(&ar->view->circuit, port->endpoint)) {
+        RT_Endpoint *endpoint =
+          &ar->endpoints[circuit_index(&ar->view->circuit, port->endpoint)];
         assert(endpoint->position.x == anchor.position.x);
         assert(endpoint->position.y == anchor.position.y);
       }
@@ -281,7 +278,7 @@ static void autoroute_update_anchors(AutoRoute *ar) {
   }
   for (int i = 0; i < circuit_endpoint_len(&ar->view->circuit); i++) {
     Endpoint *endpoint = &ar->view->circuit.endpoints[i];
-    if (endpoint->port != NO_PORT) {
+    if (circuit_has(&ar->view->circuit, endpoint->port)) {
       continue;
     }
 
@@ -548,12 +545,12 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
     Component *comp =
       circuit_component_ptr(&ar->view->circuit, port->component);
     fprintf(fp, "    Port {\n");
-    if (port->net == NO_NET) {
+    if (!circuit_has(&ar->view->circuit, port->net)) {
       fprintf(fp, "        NetIndex: NetIndex::INVALID,\n");
     } else {
       fprintf(
         fp, "        NetIndex: ni!(%d),\n",
-        circuit_net_index(&ar->view->circuit, port->net));
+        circuit_index(&ar->view->circuit, port->net));
     }
     fprintf(
       fp, "        position: Point { x: %d, y: %d },\n",

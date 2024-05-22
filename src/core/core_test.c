@@ -142,7 +142,7 @@ UTEST(Circuit, add_component) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
   ComponentID id = circuit_add_component(&circuit, COMP_AND, HMM_V2(0, 0));
-  ASSERT_EQ(circuit_component_index(&circuit, id), 0);
+  ASSERT_EQ(circuit_index(&circuit, id), 0);
   ASSERT_EQ(circuit_component_len(&circuit), 1);
   ASSERT_EQ(circuit_component_ptr(&circuit, id)->desc, COMP_AND);
   ASSERT_NE(circuit_component_ptr(&circuit, id)->portFirst, NO_PORT);
@@ -154,7 +154,7 @@ UTEST(Circuit, add_net_no_ports) {
   Circuit circuit;
   circuit_init(&circuit, circuit_component_descs());
   NetID id = circuit_add_net(&circuit);
-  ASSERT_EQ(circuit_net_index(&circuit, id), 0);
+  ASSERT_EQ(circuit_index(&circuit, id), 0);
   ASSERT_EQ(circuit_net_len(&circuit), 1);
   circuit_free(&circuit);
 }
@@ -170,7 +170,7 @@ UTEST(Circuit, add_net_with_ports) {
   EndpointID epID1 = circuit_add_endpoint(&circuit, net, portID1, HMM_V2(0, 0));
   EndpointID epID2 = circuit_add_endpoint(&circuit, net, portID2, HMM_V2(0, 0));
 
-  ASSERT_EQ(circuit_net_index(&circuit, net), 0);
+  ASSERT_EQ(circuit_index(&circuit, net), 0);
   ASSERT_EQ(circuit_net_len(&circuit), 1);
   ASSERT_EQ(circuit_endpoint_len(&circuit), 2);
   ASSERT_EQ(circuit_endpoint_ptr(&circuit, epID1)->port, portID1);

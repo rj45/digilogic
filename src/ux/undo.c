@@ -101,7 +101,7 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     log_debug(
       "Performing add component: %x %d %f %f", command.itemID, command.descID,
       command.newCenter.X, command.newCenter.Y);
-    if (!circuit_component_has(&ux->view.circuit, command.itemID)) {
+    if (!circuit_has(&ux->view.circuit, command.itemID)) {
       ID id = circuit_add_component(
         &ux->view.circuit, command.descID, command.newCenter);
       size_t lastUndo = arrlen(ux->undoStack) - 1;
@@ -119,10 +119,10 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
 
   case UNDO_DEL_COMPONENT:
     log_debug("Performing del component: %x", command.itemID);
-    if (circuit_component_has(&ux->view.circuit, command.itemID)) {
+    if (circuit_has(&ux->view.circuit, command.itemID)) {
       // todo: if adding component, replace it with the component removed
       // and delete the adding component instead
-      circuit_component_del(&ux->view.circuit, command.itemID);
+      circuit_del(&ux->view.circuit, command.itemID);
     }
     break;
   }

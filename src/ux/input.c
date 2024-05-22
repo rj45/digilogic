@@ -53,8 +53,8 @@ static const char *stateNames[] = {
 static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool rightDown = ux->input.modifiers & MODIFIER_RMB;
   bool leftDown = ux->input.modifiers & MODIFIER_LMB;
-  bool overPort = ux->view.hoveredPort != NO_PORT;
-  bool overItem = ux->view.hovered != NO_ID;
+  bool overPort = circuit_has(&ux->view.circuit, ux->view.hoveredPort);
+  bool overItem = circuit_has(&ux->view.circuit, ux->view.hovered);
 
   MouseDownState oldState = ux->mouseDownState;
   MouseDownState state = oldState;
@@ -358,7 +358,7 @@ static void ux_handle_mouse(CircuitUX *ux) {
       ux->view.hovered = circuit_component_id(&ux->view.circuit, i);
     }
     PortID portID = ux->view.circuit.components[i].portFirst;
-    while (portID != NO_PORT) {
+    while (circuit_has(&ux->view.circuit, portID)) {
       Port *port = circuit_port_ptr(&ux->view.circuit, portID);
       Box portBox = {
         .center = HMM_AddV2(port->position, component->box.center),
@@ -488,7 +488,7 @@ void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID) {
 
 void ux_stop_adding_component(CircuitUX *ux) {
   ux->mouseDownState = STATE_UP;
-  circuit_component_del(&ux->view.circuit, ux->addingComponent);
+  circuit_del(&ux->view.circuit, ux->addingComponent);
   ux->addingComponent = NO_COMPONENT;
 }
 
@@ -500,7 +500,7 @@ void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID) {
 void ux_start_wire(CircuitUX *ux, PortID portID) {
   Port *port = circuit_port_ptr(&ux->view.circuit, portID);
   NetID netID;
-  if (circuit_endpoint_has(&ux->view.circuit, port->endpoint)) {
+  if (circuit_has(&ux->view.circuit, port->endpoint)) {
     Endpoint *endpoint =
       circuit_endpoint_ptr(&ux->view.circuit, port->endpoint);
     netID = endpoint->net;
@@ -517,13 +517,13 @@ void ux_start_wire(CircuitUX *ux, PortID portID) {
 }
 
 void ux_cancel_wire(CircuitUX *ux) {
-  circuit_endpoint_del(&ux->view.circuit, ux->endpointEnd);
+  circuit_del(&ux->view.circuit, ux->endpointEnd);
   if (ux->newNet) {
     Endpoint *endpoint =
       circuit_endpoint_ptr(&ux->view.circuit, ux->endpointStart);
     NetID netID = endpoint->net;
-    circuit_endpoint_del(&ux->view.circuit, ux->endpointStart);
-    circuit_net_del(&ux->view.circuit, netID);
+    circuit_del(&ux->view.circuit, ux->endpointStart);
+    circuit_del(&ux->view.circuit, netID);
   }
   ux->newNet = false;
   ux->endpointStart = NO_ENDPOINT;
@@ -533,7 +533,7 @@ void ux_cancel_wire(CircuitUX *ux) {
 
 void ux_connect_wire(CircuitUX *ux, PortID portID) {
   Port *port = circuit_port_ptr(&ux->view.circuit, portID);
-  if (circuit_endpoint_has(&ux->view.circuit, port->endpoint)) {
+  if (circuit_has(&ux->view.circuit, port->endpoint)) {
     log_error("TODO: add merging of nets. For now, cancelling wire");
     ux_cancel_wire(ux);
     return;

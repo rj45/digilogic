@@ -39,11 +39,19 @@
 #define MUST_USE_RETURN
 #endif
 
+#if defined(__GNUC__)
+#define PACK(...) __VA_ARGS__ __attribute__((__packed__))
+#elif defined(_MSC_VER)
+#define PACK(...) __pragma(pack(push, 1)) __VA_ARGS__ __pragma(pack(pop))
+#else
+#define PACK(...) __VA_ARGS__
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // SparseMap and Generational Handle IDs
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum IDType {
+PACK(typedef enum IDType{
   ID_NONE,
   ID_COMPONENT,
   ID_PORT,
@@ -51,7 +59,8 @@ typedef enum IDType {
   ID_ENDPOINT,
   ID_WAYPOINT,
   ID_LABEL,
-} IDType;
+})
+IDType;
 
 typedef uint32_t ID;
 #define NO_ID 0
@@ -72,13 +81,12 @@ typedef uint32_t Gen;
 #define ID_GEN_SHIFT (ID_INDEX_BITS)
 
 #define id_make(type, gen, index)                                              \
-  ((((ID)(type) & ID_TYPE_MASK) << ID_TYPE_SHIFT) |                            \
-   (((ID)(gen) & ID_GEN_MASK) << ID_GEN_SHIFT) |                               \
-   ((ID)(index) & ID_INDEX_MASK))
+  ((((ID)(type)&ID_TYPE_MASK) << ID_TYPE_SHIFT) |                              \
+   (((ID)(gen)&ID_GEN_MASK) << ID_GEN_SHIFT) | ((ID)(index)&ID_INDEX_MASK))
 #define id_type(id) ((IDType)(((id) >> ID_TYPE_SHIFT) & ID_TYPE_MASK))
 #define id_gen(id) ((Gen)(((id) >> ID_GEN_SHIFT) & ID_GEN_MASK))
 #define id_typegen(id) ((ID)(id) >> ID_GEN_SHIFT)
-#define id_index(id) ((ID)(id) & ID_INDEX_MASK)
+#define id_index(id) ((ID)(id)&ID_INDEX_MASK)
 #define id_valid(id) (id_gen(id) != 0 && id_type(id) != ID_NONE)
 
 struct SparseMap;
@@ -232,8 +240,8 @@ typedef uint32_t ComponentDescID;
 
 typedef uint32_t PortDescID;
 
-typedef uint32_t ComponentID;
-#define NO_COMPONENT ((ComponentID) - 1)
+typedef ID ComponentID;
+#define NO_COMPONENT NO_ID
 
 typedef ID NetID;
 #define NO_NET NO_ID
@@ -364,50 +372,81 @@ typedef struct Label {
 } Label;
 
 typedef struct Circuit {
-  struct {
-    SparseMap components;
-    SparseMap ports;
-    SparseMap nets;
-    SparseMap endpoints;
-    SparseMap waypoints;
-    SparseMap labels;
-  } sm;
+  // important: keep in sync with IDType
+  union {
+    struct {
+      SparseMap none;
+      SparseMap components;
+      SparseMap ports;
+      SparseMap nets;
+      SparseMap endpoints;
+      SparseMap waypoints;
+      SparseMap labels;
+    } sm;
+    SparseMap sparsemaps[7];
+  };
+
+  // important: keep in sync with IDType
+  union {
+    struct {
+      void *none;
+      Component *components;
+      Port *ports;
+      Net *nets;
+      Endpoint *endpoints;
+      Waypoint *waypoints;
+      Label *labels;
+    };
+    void *ptrs[7];
+  };
 
   const ComponentDesc *componentDescs;
-
-  Component *components;
-  Port *ports;
-  Net *nets;
-  Endpoint *endpoints;
-  Waypoint *waypoints;
-  Label *labels;
 
   arr(char) text;
 
   struct {
     char key;
     uint32_t value;
-  } *nextName;
+  } * nextName;
 
   arr(Wire) wires;
   arr(HMM_Vec2) vertices;
 } Circuit;
 
-#define circuit_component_has(circuit, id)                                     \
-  (smap_has(&(circuit)->sm.components, (id)))
-#define circuit_component_index(circuit, id)                                   \
-  (smap_index(&(circuit)->sm.components, (id)))
+#define circuit_has(circuit, id)                                               \
+  (smap_has(&(circuit)->sparsemaps[id_type(id)], (id)))
+#define circuit_index(circuit, id)                                             \
+  (smap_index(&(circuit)->sparsemaps[id_type(id)], (id)))
+#define circuit_update_id(circuit, id)                                         \
+  (smap_update_id(&(circuit)->sparsemaps[id_type(id)], (id)))
+#define circuit_del(circuit, id)                                               \
+  (smap_del(&(circuit)->sparsemaps[id_type(id)], (id)))
+
+#define circuit_len(circuit, type) (smap_len(&(circuit)->sparsemaps[type]))
+#define circuit_id(circuit, type, index)                                       \
+  (smap_id(&(circuit)->sparsemaps[type], (index)))
+#define circuit_update_index(circuit, type, index)                             \
+  (smap_update_index(&(circuit)->sparsemaps[type], (index)))
+#define circuit_on_create(circuit, type, user, callback)                       \
+  (smap_on_create(                                                             \
+    &(circuit)->sparsemaps[type], (circuit)->ptrs[type],                       \
+    (SmapCallback){user, callback}))
+#define circuit_on_update(circuit, type, user, callback)                       \
+  (smap_on_update(                                                             \
+    &(circuit)->sparsemaps[type], (circuit)->ptrs[type],                       \
+    (SmapCallback){user, callback}))
+#define circuit_on_delete(circuit, type, user, callback)                       \
+  (smap_on_delete(                                                             \
+    &(circuit)->sparsemaps[type], (circuit)->ptrs[type],                       \
+    (SmapCallback){user, callback}))
+
 #define circuit_component_ptr(circuit, id)                                     \
-  (&(circuit)->components[circuit_component_index(circuit, id)])
+  (&(circuit)->components[circuit_index(circuit, id)])
 #define circuit_component_len(circuit) (smap_len(&(circuit)->sm.components))
 #define circuit_component_id(circuit, index)                                   \
   (smap_id(&(circuit)->sm.components, (index)))
-#define circuit_component_update_id(circuit, id)                               \
-  smap_update_id(&(circuit)->sm.components, (id))
 #define circuit_component_update_index(circuit, index)                         \
   smap_update_index(&(circuit)->sm.components, (index))
-#define circuit_component_del(circuit, id)                                     \
-  smap_del(&(circuit)->sm.components, (id))
 #define circuit_on_component_create(circuit, user, callback)                   \
   smap_on_create(                                                              \
     &(circuit)->sm.components, (circuit)->components,                          \
@@ -421,17 +460,12 @@ typedef struct Circuit {
     &(circuit)->sm.components, (circuit)->components,                          \
     (SmapCallback){user, callback})
 
-#define circuit_port_has(circuit, id) (smap_has(&(circuit)->sm.ports, (id)))
-#define circuit_port_index(circuit, id) (smap_index(&(circuit)->sm.ports, (id)))
 #define circuit_port_ptr(circuit, id)                                          \
-  (&(circuit)->ports[circuit_port_index(circuit, id)])
+  (&(circuit)->ports[circuit_index(circuit, id)])
 #define circuit_port_len(circuit) (smap_len(&(circuit)->sm.ports))
 #define circuit_port_id(circuit, index) (smap_id(&(circuit)->sm.ports, (index)))
-#define circuit_port_update_id(circuit, id)                                    \
-  smap_update_id(&(circuit)->sm.ports, (id))
 #define circuit_port_update_index(circuit, index)                              \
   smap_update_index(&(circuit)->sm.ports, (index))
-#define circuit_port_del(circuit, id) smap_del(&(circuit)->sm.ports, (id))
 #define circuit_on_port_create(circuit, user, callback)                        \
   smap_on_create(                                                              \
     &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
@@ -442,17 +476,12 @@ typedef struct Circuit {
   smap_on_delete(                                                              \
     &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
 
-#define circuit_net_has(circuit, id) (smap_has(&(circuit)->sm.nets, (id)))
-#define circuit_net_index(circuit, id) (smap_index(&(circuit)->sm.nets, (id)))
 #define circuit_net_ptr(circuit, id)                                           \
-  (&(circuit)->nets[circuit_net_index(circuit, id)])
+  (&(circuit)->nets[circuit_index(circuit, id)])
 #define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
 #define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
-#define circuit_net_update_id(circuit, id)                                     \
-  smap_update_id(&(circuit)->sm.nets, (id))
 #define circuit_net_update_index(circuit, index)                               \
   smap_update_index(&(circuit)->sm.nets, (index))
-#define circuit_net_del(circuit, id) smap_del(&(circuit)->sm.nets, (id))
 #define circuit_on_net_create(circuit, user, callback)                         \
   smap_on_create(                                                              \
     &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
@@ -463,21 +492,13 @@ typedef struct Circuit {
   smap_on_delete(                                                              \
     &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
 
-#define circuit_endpoint_has(circuit, id)                                      \
-  (smap_has(&(circuit)->sm.endpoints, (id)))
-#define circuit_endpoint_index(circuit, id)                                    \
-  (smap_index(&(circuit)->sm.endpoints, (id)))
 #define circuit_endpoint_ptr(circuit, id)                                      \
-  (&(circuit)->endpoints[circuit_endpoint_index(circuit, id)])
+  (&(circuit)->endpoints[circuit_index(circuit, id)])
 #define circuit_endpoint_len(circuit) (smap_len(&(circuit)->sm.endpoints))
 #define circuit_endpoint_id(circuit, index)                                    \
   (smap_id(&(circuit)->sm.endpoints, (index)))
-#define circuit_endpoint_update_id(circuit, id)                                \
-  smap_update_id(&(circuit)->sm.endpoints, (id))
 #define circuit_endpoint_update_index(circuit, index)                          \
   smap_update_index(&(circuit)->sm.endpoints, (index))
-#define circuit_endpoint_del(circuit, id)                                      \
-  smap_del(&(circuit)->sm.endpoints, (id))
 #define circuit_on_endpoint_create(circuit, user, callback)                    \
   smap_on_create(                                                              \
     &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
@@ -491,21 +512,13 @@ typedef struct Circuit {
     &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
     (SmapCallback){user, callback})
 
-#define circuit_waypoint_has(circuit, id)                                      \
-  (smap_has(&(circuit)->sm.waypoints, (id)))
-#define circuit_waypoint_index(circuit, id)                                    \
-  (smap_index(&(circuit)->sm.waypoints, (id)))
 #define circuit_waypoint_ptr(circuit, id)                                      \
-  (&(circuit)->waypoints[circuit_waypoint_index(circuit, id)])
+  (&(circuit)->waypoints[circuit_index(circuit, id)])
 #define circuit_waypoint_len(circuit) (smap_len(&(circuit)->sm.waypoints))
 #define circuit_waypoint_id(circuit, index)                                    \
   (smap_id(&(circuit)->sm.waypoints, (index)))
-#define circuit_waypoint_update_id(circuit, id)                                \
-  smap_update_id(&(circuit)->sm.waypoints, (id))
 #define circuit_waypoint_update_index(circuit, index)                          \
   smap_update_index(&(circuit)->sm.waypoints, (index))
-#define circuit_waypoint_del(circuit, id)                                      \
-  smap_del(&(circuit)->sm.waypoints, (id))
 #define circuit_on_waypoint_create(circuit, user, callback)                    \
   smap_on_create(                                                              \
     &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
@@ -519,19 +532,13 @@ typedef struct Circuit {
     &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
     (SmapCallback){user, callback})
 
-#define circuit_label_has(circuit, id) (smap_has(&(circuit)->sm.labels, (id)))
-#define circuit_label_index(circuit, id)                                       \
-  (smap_index(&(circuit)->sm.labels, (id)))
 #define circuit_label_ptr(circuit, id)                                         \
-  (&(circuit)->labels[circuit_label_index(circuit, id)])
+  (&(circuit)->labels[circuit_index(circuit, id)])
 #define circuit_label_len(circuit) (smap_len(&(circuit)->sm.labels))
 #define circuit_label_id(circuit, index)                                       \
   (smap_id(&(circuit)->sm.labels, (index)))
-#define circuit_label_update_id(circuit, id)                                   \
-  smap_update_id(&(circuit)->sm.labels, (id))
 #define circuit_label_update_index(circuit, index)                             \
   smap_update_index(&(circuit)->sm.labels, (index))
-#define circuit_label_del(circuit, id) smap_del(&(circuit)->sm.labels, (id))
 #define circuit_on_label_create(circuit, user, callback)                       \
   smap_on_create(                                                              \
     &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
@@ -556,7 +563,8 @@ EndpointID circuit_add_endpoint(
 void circuit_move_endpoint_to(
   Circuit *circuit, EndpointID id, HMM_Vec2 position);
 void circuit_endpoint_connect(Circuit *circuit, EndpointID id, PortID port);
-WaypointID circuit_add_waypoint(Circuit *circuit, NetID, HMM_Vec2 position);
+WaypointID
+circuit_add_waypoint(Circuit *circuit, NetID netID, HMM_Vec2 position);
 void circuit_move_waypoint(Circuit *circuit, WaypointID id, HMM_Vec2 delta);
 
 LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds);
@@ -624,21 +632,21 @@ arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result);
 /** Set the length of a bitvector. The bitvector should be a null pointer to a
  * int array. */
 #define bv_setlen(bv, len)                                                     \
-  arrsetlen(bv, ((len) >> BV_BIT_SHIFT(bv)) + ((len) & BV_MASK(bv) ? 1 : 0))
+  arrsetlen(bv, ((len) >> BV_BIT_SHIFT(bv)) + ((len)&BV_MASK(bv) ? 1 : 0))
 
 /** Free the bitvector. */
 #define bv_free(bv) arrfree(bv)
 
 /** Set a bit in the bitvector. */
 #define bv_set(bv, i)                                                          \
-  (bv[(i) >> BV_BIT_SHIFT(bv)] |= (1ull << ((i) & BV_MASK(bv))))
+  (bv[(i) >> BV_BIT_SHIFT(bv)] |= (1ull << ((i)&BV_MASK(bv))))
 
 /** Set a bit to a specific value in the bitvector. */
 #define bv_set_to(bv, i, val) (val ? bv_set(bv, i) : bv_clear(bv, i))
 
 /** Clear a specific bit of the bitvector. */
 #define bv_clear(bv, i)                                                        \
-  (bv[(i) >> BV_BIT_SHIFT(bv)] &= ~(1ull << ((i) & BV_MASK(bv))))
+  (bv[(i) >> BV_BIT_SHIFT(bv)] &= ~(1ull << ((i)&BV_MASK(bv))))
 
 /** Clear all bits in the bitvector. */
 #define bv_clear_all(bv) memset(bv, 0, arrlen(bv) * sizeof(bv[0]))
@@ -648,13 +656,13 @@ arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result);
 
 /** Toggle a specific bit in the bitvector. */
 #define bv_toggle(bv, i)                                                       \
-  (bv[(i) >> BV_BIT_SHIFT(bv)] ^= (1ull << ((i) & BV_MASK(bv))))
+  (bv[(i) >> BV_BIT_SHIFT(bv)] ^= (1ull << ((i)&BV_MASK(bv))))
 
 /** Check if a specific bit is set in the bitvector. */
 #define bv_is_set(bv, i)                                                       \
-  (bv[(i) >> BV_BIT_SHIFT(bv)] & (1ull << ((i) & BV_MASK(bv))))
+  (bv[(i) >> BV_BIT_SHIFT(bv)] & (1ull << ((i)&BV_MASK(bv))))
 
 /** Get the value of a specific bit in the bitvector. */
-#define bv_val(bv, i) bv_is_set(bv, i) >> ((i) & BV_MASK(bv))
+#define bv_val(bv, i) bv_is_set(bv, i) >> ((i)&BV_MASK(bv))
 
 #endif // CORE_H
