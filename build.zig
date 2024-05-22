@@ -20,9 +20,18 @@
 /////////////////////////////////////////////////////////////////////////
 
 const std = @import("std");
+const zcc = @import("compile_commands");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = switch (b.host.result.os.tag) {
+            .windows => switch (b.host.result.cpu.arch) {
+                .x86_64 => std.Target.Query.parse(.{ .arch_os_abi = "x86_64-windows-msvc" }) catch @panic("invalid default target"),
+                else => b.host.query,
+            },
+            else => b.host.query,
+        },
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const digilogic = b.addExecutable(.{
@@ -278,6 +287,8 @@ pub fn build(b: *std.Build) void {
     } else {
         b.installArtifact(digilogic);
     }
+
+    zcc.createStep(b, "cdb", .{ .target = digilogic });
 }
 
 fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
