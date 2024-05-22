@@ -217,6 +217,8 @@ typedef struct CircuitUX {
   Input input;
   AutoRoute *router;
 
+  bool changed;
+
   arr(UndoCommand) undoStack;
   arr(UndoCommand) redoStack;
 

@@ -360,9 +360,34 @@ void circuit_clear(Circuit *circuit) {
   smap_clear(&circuit->sm.endpoints);
   smap_clear(&circuit->sm.labels);
   arrsetlen(circuit->text, 0);
-  hmfree(circuit->nextName);
+  for (int i = 0; i < hmlen(circuit->nextName); i++) {
+    hmdel(circuit->nextName, circuit->nextName[i].key);
+  }
   arrsetlen(circuit->wires, 0);
   arrsetlen(circuit->vertices, 0);
+}
+
+void circuit_clone_from(Circuit *dst, Circuit *src) {
+  circuit_clear(dst);
+  dst->componentDescs = src->componentDescs;
+  for (int i = 0; i < ID_TYPE_COUNT; i++) {
+    smap_clone_from(&dst->sparsemaps[i], &src->sparsemaps[i]);
+  }
+  arrsetlen(dst->text, arrlen(src->text));
+  memcpy(dst->text, src->text, arrlen(src->text));
+
+  for (int i = 0; i < hmlen(dst->nextName); i++) {
+    hmdel(dst->nextName, dst->nextName[i].key);
+  }
+  for (int i = 0; i < hmlen(src->nextName); i++) {
+    hmput(dst->nextName, src->nextName[i].key, src->nextName[i].value);
+  }
+
+  arrsetlen(dst->wires, arrlen(src->wires));
+  memcpy(dst->wires, src->wires, arrlen(src->wires));
+
+  arrsetlen(dst->vertices, arrlen(src->vertices));
+  memcpy(dst->vertices, src->vertices, arrlen(src->vertices));
 }
 
 ComponentID circuit_add_component(

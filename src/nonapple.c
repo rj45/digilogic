@@ -47,3 +47,40 @@
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
+
+#include "file_compat.h"
+
+static char locale[64];
+static char resourcePath[PATH_MAX];
+static char dataPath[PATH_MAX];
+static char cachePath[PATH_MAX];
+static char autosavePath[PATH_MAX];
+
+void platform_init() {
+  fc_locale(locale, 64);
+  fc_resdir(resourcePath, PATH_MAX);
+  if (resourcePath[strlen(resourcePath) - 1] != FC_DIRECTORY_SEPARATOR) {
+    int len = strlen(resourcePath);
+    resourcePath[len] = FC_DIRECTORY_SEPARATOR;
+    resourcePath[len + 1] = '\0';
+  }
+  fc_datadir("digilogic", dataPath, PATH_MAX);
+  if (dataPath[strlen(dataPath) - 1] != FC_DIRECTORY_SEPARATOR) {
+    int len = strlen(dataPath);
+    dataPath[len] = FC_DIRECTORY_SEPARATOR;
+    dataPath[len + 1] = '\0';
+  }
+  fc_cachedir("digilogic", cachePath, PATH_MAX);
+  if (cachePath[strlen(cachePath) - 1] != FC_DIRECTORY_SEPARATOR) {
+    int len = strlen(cachePath);
+    cachePath[len] = FC_DIRECTORY_SEPARATOR;
+    cachePath[len + 1] = '\0';
+  }
+  snprintf(autosavePath, PATH_MAX, "%sautosave.dlc", dataPath);
+}
+
+const char *platform_locale() { return locale; }
+const char *platform_resource_path() { return resourcePath; }
+const char *platform_data_path() { return dataPath; }
+const char *platform_cache_path() { return cachePath; }
+const char *platform_autosave_path() { return autosavePath; }

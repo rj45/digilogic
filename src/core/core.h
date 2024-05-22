@@ -62,6 +62,8 @@ PACK(typedef enum IDType{
 })
 IDType;
 
+#define ID_TYPE_COUNT 7
+
 typedef uint32_t ID;
 #define NO_ID 0
 
@@ -128,6 +130,7 @@ typedef struct SparseMap {
 
 void smap_init(SparseMap *smap, IDType type);
 void smap_free(SparseMap *smap);
+void smap_clone_from(SparseMap *dst, SparseMap *src);
 
 void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize);
 void smap_on_create(SparseMap *smap, void *array, SmapCallback callback);
@@ -383,7 +386,7 @@ typedef struct Circuit {
       SparseMap waypoints;
       SparseMap labels;
     } sm;
-    SparseMap sparsemaps[7];
+    SparseMap sparsemaps[ID_TYPE_COUNT];
   };
 
   // important: keep in sync with IDType
@@ -397,7 +400,7 @@ typedef struct Circuit {
       Waypoint *waypoints;
       Label *labels;
     };
-    void *ptrs[7];
+    void *ptrs[ID_TYPE_COUNT];
   };
 
   const ComponentDesc *componentDescs;
@@ -553,6 +556,7 @@ const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
 void circuit_free(Circuit *circuit);
 void circuit_clear(Circuit *circuit);
+void circuit_clone_from(Circuit *dst, Circuit *src);
 ComponentID circuit_add_component(
   Circuit *circuit, ComponentDescID desc, HMM_Vec2 position);
 void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta);
@@ -580,6 +584,16 @@ void circuit_write_dot(Circuit *circuit, FILE *file);
 
 bool circuit_save_file(Circuit *circuit, const char *filename);
 bool circuit_load_file(Circuit *circuit, const char *filename);
+
+////////////////////////////////////////////////////////////////////////////////
+// Platform
+////////////////////////////////////////////////////////////////////////////////
+
+const char *platform_locale();
+const char *platform_resource_path();
+const char *platform_data_path();
+const char *platform_cache_path();
+const char *platform_autosave_path();
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bounding Volume Hierarchy

@@ -18,8 +18,11 @@
 #include "core/core.h"
 #include "nvdialog.h"
 #include "sokol_app.h"
+#include "thread.h"
 #include "ux/ux.h"
 #include <stdbool.h>
+
+#include "sokol_time.h"
 
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
@@ -29,6 +32,8 @@ void ui_init(
   FontHandle font) {
   *ui = (CircuitUI){0};
   ux_init(&ui->ux, componentDescs, drawCtx, font);
+  circuit_init(&ui->saveCopy, componentDescs);
+  thread_mutex_init(&ui->saveMutex);
 }
 
 void ui_free(CircuitUI *ui) { ux_free(&ui->ux); }
@@ -110,7 +115,8 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           if (strncmp(savefile + strlen(savefile) - 4, ".dlc", 4) != 0) {
             strncat(savefile, ".dlc", 1024);
           }
-          circuit_save_file(&ui->ux.view.circuit, savefile);
+
+          ui_background_save(ui, savefile, false);
         }
       }
       if (nk_menu_item_label(ctx, "Quit", NK_TEXT_LEFT)) {
@@ -215,6 +221,52 @@ void ui_update(
   nk_end(ctx);
 
   ux_update(&ui->ux);
+
+  if (ui->ux.changed) {
+    ui->ux.changed = false;
+
+    if (ui->saveAt == 0) {
+      ui->saveAt = stm_now();
+    }
+  }
+
+  if (ui->saveAt != 0 && stm_sec(stm_since(ui->saveAt)) > 1) {
+    log_info("Autosaving to %s", platform_autosave_path());
+    if (ui_background_save(ui, platform_autosave_path(), true)) {
+      ui->saveAt = 0;
+    }
+  }
 }
 
 void ui_draw(CircuitUI *ui) { ux_draw(&ui->ux); }
+
+static int ui_do_save(void *data) {
+  CircuitUI *ui = (CircuitUI *)data;
+  thread_mutex_lock(&ui->saveMutex);
+  circuit_save_file(&ui->saveCopy, ui->saveFilename);
+  thread_atomic_int_store(&ui->saveThreadBusy, 0);
+  thread_mutex_unlock(&ui->saveMutex);
+  return 0;
+}
+
+bool ui_background_save(
+  CircuitUI *ui, const char *filename, bool skipWhenBusy) {
+  if (skipWhenBusy && thread_atomic_int_load(&ui->saveThreadBusy)) {
+    return false;
+  }
+  thread_mutex_lock(&ui->saveMutex);
+  circuit_clone_from(&ui->saveCopy, &ui->ux.view.circuit);
+  memcpy(ui->saveFilename, filename, 1024);
+  thread_atomic_int_store(&ui->saveThreadBusy, 1);
+  thread_mutex_unlock(&ui->saveMutex);
+
+  thread_ptr_t thread =
+    thread_create(ui_do_save, ui, THREAD_STACK_SIZE_DEFAULT);
+  if (thread == NULL) {
+    log_error("Failed to create save thread");
+    return false;
+  }
+  thread_detach(thread);
+
+  return true;
+}

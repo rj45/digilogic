@@ -25,6 +25,8 @@
 #include "log.h"
 
 static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
+  ux->changed = true;
+
   switch (command.verb) {
   case UNDO_NONE:
     break;

@@ -91,32 +91,45 @@ void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback) {
   assert(0); // array was not found
 }
 
-ID smap_add(SparseMap *smap, void *value) {
-  if (smap->capacity <= smap->length + 1) {
-    int newCapacity = smap->capacity * 2;
-    if (newCapacity == 0) {
-      newCapacity = 8;
-    }
+static bool smap_grow(SparseMap *smap, int wantedCapacity) {
+  if (wantedCapacity <= smap->capacity) {
+    return true;
+  }
 
-    ID *newIds = realloc(smap->ids, newCapacity * sizeof(ID));
-    if (newIds == NULL) {
+  int newCapacity = smap->capacity * 2;
+  if (newCapacity == 0) {
+    newCapacity = 8;
+  }
+
+  while (newCapacity < wantedCapacity) {
+    newCapacity *= 2;
+  }
+
+  ID *newIds = realloc(smap->ids, newCapacity * sizeof(ID));
+  if (newIds == NULL) {
+    // todo: emit OOM error
+    return false;
+  }
+  smap->ids = newIds;
+
+  for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
+    void *newPtr = realloc(
+      *smap->syncedArrays[i].ptr, newCapacity * smap->syncedArrays[i].elemSize);
+    if (newPtr == NULL) {
       // todo: emit OOM error
-      return NO_ID;
+      return false;
     }
-    smap->ids = newIds;
+    *smap->syncedArrays[i].ptr = newPtr;
+  }
 
-    for (int i = 0; i < arrlen(smap->syncedArrays); i++) {
-      void *newPtr = realloc(
-        *smap->syncedArrays[i].ptr,
-        newCapacity * smap->syncedArrays[i].elemSize);
-      if (newPtr == NULL) {
-        // todo: emit OOM error
-        return NO_ID;
-      }
-      *smap->syncedArrays[i].ptr = newPtr;
-    }
+  smap->capacity = newCapacity;
 
-    smap->capacity = newCapacity;
+  return true;
+}
+
+ID smap_add(SparseMap *smap, void *value) {
+  if (!smap_grow(smap, smap->length + 1)) {
+    return NO_ID;
   }
 
   int sparseIndex;
@@ -233,4 +246,26 @@ void smap_update_index(SparseMap *smap, uint32_t index) {
         ((char *)*syncedArray->ptr) + index * syncedArray->elemSize);
     }
   }
+}
+
+void smap_clone_from(SparseMap *dst, SparseMap *src) {
+  smap_clear(dst);
+  smap_grow(dst, src->length);
+
+  dst->type = src->type;
+  dst->length = src->length;
+
+  for (int i = 0; i < arrlen(dst->syncedArrays); i++) {
+    void *srcPtr = *src->syncedArrays[i].ptr;
+    void *dstPtr = *dst->syncedArrays[i].ptr;
+    memcpy(dstPtr, srcPtr, src->length * src->syncedArrays[i].elemSize);
+  }
+
+  memcpy(dst->ids, src->ids, src->length * sizeof(ID));
+
+  arrsetlen(dst->sparse, arrlen(src->sparse));
+  memcpy(dst->sparse, src->sparse, arrlen(src->sparse) * sizeof(ID));
+
+  arrsetlen(dst->freeList, arrlen(src->freeList));
+  memcpy(dst->freeList, src->freeList, arrlen(src->freeList) * sizeof(ID));
 }

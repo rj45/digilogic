@@ -14,7 +14,6 @@
    limitations under the License.
 */
 
-#include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "handmade_math.h"
 #include "render/draw.h"

@@ -24,6 +24,7 @@
 #define NK_INCLUDE_SOFTWARE_FONT
 
 #include "nuklear.h"
+#include "thread.h"
 #include "ux/ux.h"
 
 ////////////////////////////////////////
@@ -47,8 +48,13 @@ typedef struct CircuitUI {
   ComponentDescID addingComponent;
 
   bool saving;
-
   bool showAbout;
+
+  Circuit saveCopy;
+  thread_atomic_int_t saveThreadBusy;
+  char saveFilename[1024];
+  thread_mutex_t saveMutex;
+  uint64_t saveAt;
 } CircuitUI;
 
 void ui_init(
@@ -58,5 +64,6 @@ void ui_free(CircuitUI *ui);
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height);
 void ui_draw(CircuitUI *ui);
+bool ui_background_save(CircuitUI *ui, const char *filename, bool skipWhenBusy);
 
 #endif // UI_H

@@ -52,6 +52,9 @@
 
 #include "nvdialog.h"
 
+#define THREAD_IMPLEMENTATION
+#include "thread.h"
+
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
@@ -216,6 +219,12 @@ static void init(void *user_data) {
 
   app->pzoom = draw_get_zoom(&app->draw);
 
+  if (circuit_load_file(
+        &app->circuit.ux.view.circuit, platform_autosave_path())) {
+    app->loaded = true;
+    ux_route(&app->circuit.ux);
+  }
+
   log_info("initialization complete, entering main loop");
 }
 
@@ -236,6 +245,8 @@ void cleanup(void *user_data) {
   sgp_shutdown();
   sg_shutdown();
   free(app);
+
+  remove(platform_autosave_path());
 }
 
 void load_file(my_app_t *app, const char *filename) {
@@ -425,10 +436,13 @@ void event(const sapp_event *event, void *user_data) {
 #include "stacktrace.h"
 #endif
 
+void platform_init();
+
 sapp_desc sokol_main(int argc, char *argv[]) {
   log_info("Starting sokol_main");
   ux_global_init();
   stm_setup();
+  platform_init();
 
   log_info("Global setup complete");
 
