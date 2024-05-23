@@ -224,6 +224,8 @@ typedef struct CircuitUX {
 
   MouseDownState mouseDownState;
 
+  PortID clickedPort;
+
   HMM_Vec2 downStart;
   HMM_Vec2 selectionCenter;
 

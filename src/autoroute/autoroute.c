@@ -361,8 +361,6 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     ar->view->circuit.wires, 0,
     arrlen(ar->view->circuit.wires) * sizeof(RT_WireView));
 
-  assert(ar->endpoints);
-  // assert(ar->waypoints);
   assert(ar->graph);
   assert(ar->view->circuit.wires);
   assert(ar->view->circuit.vertices);
@@ -386,13 +384,45 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     // assert(dist > 0);
   }
 
+  RT_Net defNets[0];
+  RT_Net *nets = ar->nets;
+  if (nets == NULL) {
+    assert(circuit_net_len(&ar->view->circuit) == 0);
+    nets = defNets;
+  }
+  assert(nets);
+
+  RT_Endpoint defEndpoints[0];
+  RT_Endpoint *endpoints = ar->endpoints;
+  if (endpoints == NULL) {
+    assert(circuit_endpoint_len(&ar->view->circuit) == 0);
+    endpoints = defEndpoints;
+  }
+  assert(endpoints);
+
+  RT_Waypoint defWaypoints[0];
+  RT_Waypoint *waypoints = ar->waypoints;
+  if (waypoints == NULL) {
+    assert(circuit_waypoint_len(&ar->view->circuit) == 0);
+    waypoints = defWaypoints;
+  }
+  assert(waypoints);
+
+  RT_NetView defNetViews[0];
+  RT_NetView *netViews = ar->netViews;
+  if (netViews == NULL) {
+    assert(circuit_net_len(&ar->view->circuit) == 0);
+    netViews = defNetViews;
+  }
+  assert(netViews);
+
+  assert(ar->graph);
+
   for (;;) {
     res = RT_graph_connect_nets(
-      ar->graph, (RT_Slice_Net){ar->nets, circuit_net_len(&ar->view->circuit)},
-      (RT_Slice_Endpoint){
-        ar->endpoints, circuit_endpoint_len(&ar->view->circuit)},
-      (RT_Slice_Waypoint){
-        ar->waypoints, circuit_waypoint_len(&ar->view->circuit)},
+      ar->graph, (RT_Slice_Net){nets, circuit_net_len(&ar->view->circuit)},
+      (RT_Slice_Endpoint){endpoints, circuit_endpoint_len(&ar->view->circuit)},
+      (RT_Slice_Waypoint){waypoints, circuit_waypoint_len(&ar->view->circuit)},
       (RT_MutSlice_Vertex){
         (RT_Vertex *)ar->view->circuit.vertices,
         arrlen(ar->view->circuit.vertices),
@@ -402,7 +432,7 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
         arrlen(ar->view->circuit.wires),
       },
       (RT_MutSlice_NetView){
-        ar->netViews,
+        netViews,
         circuit_net_len(&ar->view->circuit),
       });
     switch (res) {

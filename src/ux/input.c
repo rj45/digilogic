@@ -260,13 +260,22 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         }
         break;
 
+      case STATE_CLICK_PORT:
+        ux->clickedPort = ux->view.hoveredPort;
+        break;
+
       case STATE_START_CLICK_WIRING:
       case STATE_DRAG_WIRING:
-        ux_start_wire(ux, ux->view.hoveredPort);
+        if (circuit_has(&ux->view.circuit, ux->clickedPort)) {
+          ux_start_wire(ux, ux->clickedPort);
+          ux->clickedPort = NO_PORT;
+        }
         break;
 
       case STATE_CONNECT_PORT:
-        ux_connect_wire(ux, ux->view.hoveredPort);
+        if (circuit_has(&ux->view.circuit, ux->view.hoveredPort)) {
+          ux_connect_wire(ux, ux->view.hoveredPort);
+        }
         break;
 
       default:
