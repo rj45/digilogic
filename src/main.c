@@ -219,12 +219,6 @@ static void init(void *user_data) {
 
   app->pzoom = draw_get_zoom(&app->draw);
 
-  if (circuit_load_file(
-        &app->circuit.ux.view.circuit, platform_autosave_path())) {
-    app->loaded = true;
-    ux_route(&app->circuit.ux);
-  }
-
   log_info("initialization complete, entering main loop");
 }
 
@@ -245,8 +239,6 @@ void cleanup(void *user_data) {
   sgp_shutdown();
   sg_shutdown();
   free(app);
-
-  remove(platform_autosave_path());
 }
 
 void load_file(my_app_t *app, const char *filename) {
@@ -290,6 +282,13 @@ void frame(void *user_data) {
   ui_update(&app->circuit, ctx, width, height);
 
   if (!app->loaded) {
+    bool hasAutoSave = false;
+    FILE *fp = fopen(platform_autosave_path(), "r");
+    if (fp) {
+      hasAutoSave = true;
+      fclose(fp);
+    }
+
     if (nk_begin(
           ctx, "Load example file",
           nk_rect(
@@ -298,11 +297,20 @@ void frame(void *user_data) {
           NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
       struct nk_vec2 min = nk_window_get_content_region_min(ctx);
       struct nk_vec2 max = nk_window_get_content_region_max(ctx);
-      float height = ((max.y - min.y) / 4) - 6;
+      float height = ((max.y - min.y) / (hasAutoSave ? 5 : 4)) - 6;
       nk_layout_row_dynamic(ctx, height, 1);
 
       if (nk_button_label(ctx, "New empty circuit")) {
         app->loaded = true;
+      }
+
+      if (hasAutoSave) {
+        if (nk_button_label(ctx, "Load auto-save")) {
+          circuit_load_file(
+            &app->circuit.ux.view.circuit, platform_autosave_path());
+          ux_route(&app->circuit.ux);
+          app->loaded = true;
+        }
       }
 
       if (nk_button_label(ctx, "Load small sized test circuit")) {

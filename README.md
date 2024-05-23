@@ -7,6 +7,7 @@
     - First class dark mode support
     - Cross platform (Windows, Mac, Linux, iOS, Android)
     - Native C (with some Rust), and light weight
+    - Fast background autosave with auto-restore after crash
 - Inspirations:
     - Issie (github.com/tomcl/issie)
     - Digital Logic Sim (github.com/SebLague/Digital-Logic-Sim)
