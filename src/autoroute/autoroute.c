@@ -218,33 +218,6 @@ static void autoroute_update_anchors(AutoRoute *ar) {
     float cx = box.center.X;
     float cy = box.center.Y;
 
-    // HMM_Vec2 halfSize = HMM_AddV2(box.halfSize, HMM_V2(RT_PADDING,
-    // RT_PADDING)); RT_Anchor tl = (RT_Anchor){
-    //   .position = {.x = cx - halfSize.X, .y = cy - halfSize.Y},
-    //   .connect_directions = RT_DIRECTIONS_ALL,
-    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    // };
-    // RT_Anchor tr = (RT_Anchor){
-    //   .position = {.x = cx + halfSize.X, .y = cy - halfSize.Y},
-    //   .connect_directions = RT_DIRECTIONS_ALL,
-    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    // };
-    // RT_Anchor bl = (RT_Anchor){
-    //   .position = {.x = cx - halfSize.X, .y = cy + halfSize.Y},
-    //   .connect_directions = RT_DIRECTIONS_ALL,
-    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    // };
-    // RT_Anchor br = (RT_Anchor){
-    //   .position = {.x = cx + halfSize.X, .y = cy + halfSize.Y},
-    //   .connect_directions = RT_DIRECTIONS_ALL,
-    //   .bounding_box = RT_INVALID_BOUNDING_BOX_INDEX,
-    // };
-
-    // arrput(ar->anchors, tl);
-    // arrput(ar->anchors, tr);
-    // arrput(ar->anchors, bl);
-    // arrput(ar->anchors, br);
-
     PortID portID = comp->portFirst;
     while (circuit_has(&ar->view->circuit, portID)) {
       Port *port = circuit_port_ptr(&ar->view->circuit, portID);
@@ -265,6 +238,9 @@ static void autoroute_update_anchors(AutoRoute *ar) {
         .connect_directions = directions,
       };
       arrput(ar->anchors, anchor);
+      assert(!isnan(cx + port->position.X));
+      assert(!isnan(cy + port->position.Y));
+      assert(anchor.position.x != 0 || anchor.position.y != 0);
 
       if (circuit_has(&ar->view->circuit, port->endpoint)) {
         RT_Endpoint *endpoint =
@@ -312,6 +288,9 @@ static void autoroute_update_anchors(AutoRoute *ar) {
       .bounding_box = boundingBox,
     };
     arrput(ar->anchors, anchor);
+    assert(!isnan(endpoint->position.X));
+    assert(!isnan(endpoint->position.Y));
+    assert(anchor.position.x != 0 || anchor.position.y != 0);
   }
   for (int i = 0; i < circuit_waypoint_len(&ar->view->circuit); i++) {
     Waypoint *waypoint = &ar->view->circuit.waypoints[i];
@@ -384,45 +363,13 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     // assert(dist > 0);
   }
 
-  RT_Net defNets[0];
-  RT_Net *nets = ar->nets;
-  if (nets == NULL) {
-    assert(circuit_net_len(&ar->view->circuit) == 0);
-    nets = defNets;
-  }
-  assert(nets);
-
-  RT_Endpoint defEndpoints[0];
-  RT_Endpoint *endpoints = ar->endpoints;
-  if (endpoints == NULL) {
-    assert(circuit_endpoint_len(&ar->view->circuit) == 0);
-    endpoints = defEndpoints;
-  }
-  assert(endpoints);
-
-  RT_Waypoint defWaypoints[0];
-  RT_Waypoint *waypoints = ar->waypoints;
-  if (waypoints == NULL) {
-    assert(circuit_waypoint_len(&ar->view->circuit) == 0);
-    waypoints = defWaypoints;
-  }
-  assert(waypoints);
-
-  RT_NetView defNetViews[0];
-  RT_NetView *netViews = ar->netViews;
-  if (netViews == NULL) {
-    assert(circuit_net_len(&ar->view->circuit) == 0);
-    netViews = defNetViews;
-  }
-  assert(netViews);
-
-  assert(ar->graph);
-
   for (;;) {
     res = RT_graph_connect_nets(
-      ar->graph, (RT_Slice_Net){nets, circuit_net_len(&ar->view->circuit)},
-      (RT_Slice_Endpoint){endpoints, circuit_endpoint_len(&ar->view->circuit)},
-      (RT_Slice_Waypoint){waypoints, circuit_waypoint_len(&ar->view->circuit)},
+      ar->graph, (RT_Slice_Net){ar->nets, circuit_net_len(&ar->view->circuit)},
+      (RT_Slice_Endpoint){
+        ar->endpoints, circuit_endpoint_len(&ar->view->circuit)},
+      (RT_Slice_Waypoint){
+        ar->waypoints, circuit_waypoint_len(&ar->view->circuit)},
       (RT_MutSlice_Vertex){
         (RT_Vertex *)ar->view->circuit.vertices,
         arrlen(ar->view->circuit.vertices),
@@ -432,7 +379,7 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
         arrlen(ar->view->circuit.wires),
       },
       (RT_MutSlice_NetView){
-        netViews,
+        ar->netViews,
         circuit_net_len(&ar->view->circuit),
       });
     switch (res) {
@@ -451,7 +398,6 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
       log_error("Invalid argument error");
       break;
     case RT_RESULT_VERTEX_BUFFER_OVERFLOW_ERROR:
-
       arrsetlen(
         ar->view->circuit.vertices, arrlen(ar->view->circuit.vertices) * 2);
       continue;
@@ -461,6 +407,32 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     }
     break;
   }
+
+  if (res != RT_RESULT_SUCCESS) {
+    RT_Result serres = RT_graph_serialize(ar->graph, "graph.dump");
+    if (serres != RT_RESULT_SUCCESS) {
+      switch (serres) {
+      case RT_RESULT_NULL_POINTER_ERROR:
+        log_error("error serializing graph: null pointer error");
+        break;
+      case RT_RESULT_INVALID_OPERATION_ERROR:
+        log_error("error serializing graph: serialization failed (invalid "
+                  "operation error)");
+        break;
+      case RT_RESULT_INVALID_ARGUMENT_ERROR:
+        log_error("error serializing graph: file path contains illegal UTF-8 "
+                  "(invalid argument error)");
+        break;
+      case RT_RESULT_IO_ERROR:
+        log_error("error serializing graph: IO error");
+        break;
+      default:
+        log_error("error serializing graph: %d", serres);
+        break;
+      }
+    }
+  }
+
   assert(res == RT_RESULT_SUCCESS);
 
   for (int i = 0; i < circuit_net_len(&ar->view->circuit); i++) {
@@ -569,23 +541,37 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
     fprintf(fp, "    },\n");
   }
   fprintf(fp, "];\n");
-  fprintf(fp, "const PORTS: &[Port] = &[\n");
-  for (size_t i = 0; i < circuit_port_len(&ar->view->circuit); i++) {
-    Port *port = &ar->view->circuit.ports[i];
-    Component *comp =
-      circuit_component_ptr(&ar->view->circuit, port->component);
-    fprintf(fp, "    Port {\n");
-    if (!circuit_has(&ar->view->circuit, port->net)) {
+  fprintf(fp, "const ENDPOINTS: &[Endpoint] = &[\n");
+  for (size_t i = 0; i < circuit_endpoint_len(&ar->view->circuit); i++) {
+    Endpoint *endpoint = &ar->view->circuit.endpoints[i];
+    fprintf(fp, "    Endpoint {\n");
+    if (!circuit_has(&ar->view->circuit, endpoint->net)) {
       fprintf(fp, "        NetIndex: NetIndex::INVALID,\n");
     } else {
       fprintf(
         fp, "        NetIndex: ni!(%d),\n",
-        circuit_index(&ar->view->circuit, port->net));
+        circuit_index(&ar->view->circuit, endpoint->net));
     }
     fprintf(
       fp, "        position: Point { x: %d, y: %d },\n",
-      (int)(comp->box.center.X + port->position.X),
-      (int)(comp->box.center.Y + port->position.Y));
+      (int)(endpoint->position.X), (int)(endpoint->position.Y));
+    fprintf(fp, "    },\n");
+  }
+  fprintf(fp, "];\n");
+  fprintf(fp, "const WAYPOINTS: &[Waypoint] = &[\n");
+  for (size_t i = 0; i < circuit_waypoint_len(&ar->view->circuit); i++) {
+    Waypoint *waypoint = &ar->view->circuit.waypoints[i];
+    fprintf(fp, "    Waypoint {\n");
+    if (!circuit_has(&ar->view->circuit, waypoint->net)) {
+      fprintf(fp, "        NetIndex: NetIndex::INVALID,\n");
+    } else {
+      fprintf(
+        fp, "        NetIndex: ni!(%d),\n",
+        circuit_index(&ar->view->circuit, waypoint->net));
+    }
+    fprintf(
+      fp, "        position: Point { x: %d, y: %d },\n",
+      (int)(waypoint->position.X), (int)(waypoint->position.Y));
     fprintf(fp, "    },\n");
   }
   fprintf(fp, "];\n");
