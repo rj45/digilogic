@@ -204,6 +204,7 @@ void view_init(
 
 void view_free(CircuitView *view) {
   arrfree(view->selected);
+  arrfree(view->hovered2);
   circuit_free(&view->circuit);
 }
 
@@ -321,6 +322,15 @@ void view_direct_wire_nets(CircuitView *view) {
   }
 }
 
+static bool view_is_hovered(CircuitView *view, ID id) {
+  for (int i = 0; i < arrlen(view->hovered2); i++) {
+    if (view->hovered2[i] == id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void view_draw(CircuitView *view) {
   if (
     view->selectionBox.halfSize.X > 0.001f &&
@@ -343,7 +353,7 @@ void view_draw(CircuitView *view) {
       }
     }
 
-    if (id == view->hovered) {
+    if (view_is_hovered(view, id)) {
       flags |= DRAW_HOVERED;
     }
 
@@ -374,7 +384,8 @@ void view_draw(CircuitView *view) {
       HMM_Vec2 portPosition = HMM_AddV2(component->box.center, port->position);
 
       DrawFlags portFlags = 0;
-      if (portID == view->hoveredPort) {
+
+      if (view_is_hovered(view, portID)) {
         portFlags |= DRAW_HOVERED;
       }
       draw_port(view->drawCtx, &view->theme, portPosition, portFlags);
@@ -397,6 +408,9 @@ void view_draw(CircuitView *view) {
   for (int netIdx = 0; netIdx < circuit_net_len(&view->circuit); netIdx++) {
     Net *net = &view->circuit.nets[netIdx];
 
+    bool netIsHovered =
+      view_is_hovered(view, circuit_net_id(&view->circuit, netIdx));
+
     VertexIndex vertexOffset = net->vertexOffset;
     assert(vertexOffset < arrlen(view->circuit.vertices));
 
@@ -409,6 +423,9 @@ void view_draw(CircuitView *view) {
       if (wireIdx == net->wireOffset && view->debugMode) {
         flags |= DRAW_DEBUG;
       }
+      if (netIsHovered) {
+        flags |= DRAW_HOVERED;
+      }
 
       draw_wire(
         view->drawCtx, &view->theme, view->circuit.vertices + vertexOffset,
@@ -417,7 +434,7 @@ void view_draw(CircuitView *view) {
       if (wireIdx != net->wireOffset) {
         draw_junction(
           view->drawCtx, &view->theme,
-          view->circuit.vertices[vertexOffset + wire->vertexCount - 1], 0);
+          view->circuit.vertices[vertexOffset + wire->vertexCount - 1], flags);
       }
 
       vertexOffset += wire->vertexCount;
@@ -435,10 +452,12 @@ void view_draw(CircuitView *view) {
       }
     }
 
-    if (id == view->hovered) {
+    if (view_is_hovered(view, id)) {
       flags |= DRAW_HOVERED;
     }
 
-    draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
+    if ((flags & DRAW_HOVERED) || view_is_hovered(view, waypoint->net)) {
+      draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
+    }
   }
 }

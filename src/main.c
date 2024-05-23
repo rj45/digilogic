@@ -256,6 +256,7 @@ void load_file(my_app_t *app, const char *filename) {
   free(buffer);
 
   ux_route(&app->circuit.ux);
+  ux_build_bvh(&app->circuit.ux);
 
   // autoroute_dump_anchor_boxes(app->circuit.ux.router);
 
@@ -310,6 +311,7 @@ void frame(void *user_data) {
           circuit_load_file(
             &app->circuit.ux.view.circuit, platform_autosave_path());
           ux_route(&app->circuit.ux);
+          ux_build_bvh(&app->circuit.ux);
           app->loaded = true;
         }
       }
@@ -336,7 +338,7 @@ void frame(void *user_data) {
   app->circuit.ux.input.mouseDelta = HMM_V2(0, 0);
   draw_end_frame(&app->draw);
 
-  sg_frame_stats stats = sg_query_frame_stats();
+  // sg_frame_stats stats = sg_query_frame_stats();
 
   uint64_t avgFrameInterval = 0.0;
   for (int i = 0; i < 60; i++) {

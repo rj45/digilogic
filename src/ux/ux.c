@@ -23,7 +23,7 @@
 
 #include "ux.h"
 
-#define LOG_LEVEL LL_INFO
+#define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
 void ux_global_init() { autoroute_global_init(); }
@@ -40,6 +40,7 @@ void ux_init(
   bv_clear_all(ux->input.keysPressed);
 
   view_init(&ux->view, componentDescs, drawCtx, font);
+  bvh_init(&ux->bvh);
 
   ux->router = autoroute_create(&ux->view);
 }
@@ -118,10 +119,128 @@ void ux_select_all(CircuitUX *ux) {
         });
 }
 
+static void ux_bvh_draw(BVH *bvh, DrawContext *drawCtx, int drawLevel);
+
 void ux_draw(CircuitUX *ux) {
   view_draw(&ux->view);
 
-  if (ux->debugLines) {
+  if (ux->rtDebugLines) {
     autoroute_draw_debug_lines(ux->router, ux->view.drawCtx);
   }
+
+  if (ux->bvhDebugLines) {
+    ux_bvh_draw(&ux->bvh, ux->view.drawCtx, ux->bvhDebugLevel);
+  }
+}
+
+void ux_build_bvh(CircuitUX *ux) {
+  bvh_clear(&ux->bvh);
+  for (int i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
+    Component *component = &ux->view.circuit.components[i];
+    bvh_add(
+      &ux->bvh, circuit_component_id(&ux->view.circuit, i), component->box);
+  }
+  HMM_Vec2 portHalfSize =
+    HMM_V2(ux->view.theme.portWidth / 2, ux->view.theme.portWidth / 2);
+  for (int i = 0; i < circuit_port_len(&ux->view.circuit); i++) {
+    Port *port = &ux->view.circuit.ports[i];
+    Component *component =
+      circuit_component_ptr(&ux->view.circuit, port->component);
+    bvh_add(
+      &ux->bvh, circuit_port_id(&ux->view.circuit, i),
+      (Box){HMM_AddV2(component->box.center, port->position), portHalfSize});
+  }
+
+  for (int i = 0; i < circuit_endpoint_len(&ux->view.circuit); i++) {
+    Endpoint *endpoint = &ux->view.circuit.endpoints[i];
+    bvh_add(
+      &ux->bvh, circuit_endpoint_id(&ux->view.circuit, i),
+      (Box){endpoint->position, portHalfSize});
+  }
+
+  for (int i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
+    Waypoint *waypoint = &ux->view.circuit.waypoints[i];
+    bvh_add(
+      &ux->bvh, circuit_waypoint_id(&ux->view.circuit, i),
+      (Box){waypoint->position, portHalfSize});
+  }
+
+  for (int netIdx = 0; netIdx < circuit_net_len(&ux->view.circuit); netIdx++) {
+    Net *net = &ux->view.circuit.nets[netIdx];
+
+    VertexIndex vertexOffset = net->vertexOffset;
+    assert(vertexOffset < arrlen(ux->view.circuit.vertices));
+
+    for (int wireIdx = net->wireOffset;
+         wireIdx < net->wireOffset + net->wireCount; wireIdx++) {
+      assert(wireIdx < arrlen(ux->view.circuit.wires));
+      Wire *wire = &ux->view.circuit.wires[wireIdx];
+
+      for (int vertIdx = 1; vertIdx < wire->vertexCount; vertIdx++) {
+        HMM_Vec2 p1 = ux->view.circuit.vertices[vertexOffset + vertIdx - 1];
+        HMM_Vec2 p2 = ux->view.circuit.vertices[vertexOffset + vertIdx];
+        Box box;
+        if (p1.X == p2.X) {
+          box = (Box){
+            HMM_V2(p1.X, (p1.Y + p2.Y) / 2),
+            HMM_V2(ux->view.theme.wireThickness / 2, HMM_ABS(p1.Y - p2.Y) / 2)};
+        } else {
+          box = (Box){
+            HMM_V2((p1.X + p2.X) / 2, p1.Y),
+            HMM_V2(HMM_ABS(p1.X - p2.X) / 2, ux->view.theme.wireThickness / 2)};
+        }
+        bvh_add(&ux->bvh, circuit_net_id(&ux->view.circuit, netIdx), box);
+      }
+
+      vertexOffset += wire->vertexCount;
+    }
+  }
+
+  log_debug("Added %td items to BVH", arrlen(ux->bvh.leaves));
+
+  bvh_rebuild(&ux->bvh);
+}
+
+typedef void *Context;
+void draw_stroked_line(
+  Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
+  HMM_Vec4 color);
+void draw_stroked_rect(
+  DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
+  float line_thickness, HMM_Vec4 color);
+
+static HMM_Vec4 bvhLevelColors[] = {
+  (HMM_Vec4){.R = 1, .G = 0.4, .B = 0.4, .A = 0.5},
+  (HMM_Vec4){.R = 0.4, .G = 1, .B = 0.4, .A = 0.5},
+  (HMM_Vec4){.R = 0.4, .G = 0.4, .B = 1, .A = 0.5},
+  (HMM_Vec4){.R = 1, .G = 1, .B = 0.4, .A = 0.5},
+  (HMM_Vec4){.R = 1, .G = 0.4, .B = 1, .A = 0.5},
+  (HMM_Vec4){.R = 0.4, .G = 1, .B = 1, .A = 0.5},
+  (HMM_Vec4){.R = 1, .G = 1, .B = 1, .A = 0.5},
+};
+
+static void ux_bvh_draw_node(
+  BVH *bvh, DrawContext *drawCtx, int node, int level, int drawLevel) {
+  int left = 2 * node + 1;
+  int right = 2 * node + 2;
+  if (node >= arrlen(bvh->nodeHeap)) {
+    return;
+  }
+
+  BVHNode *bvhNode = &bvh->nodeHeap[node];
+
+  if (level == drawLevel) {
+    draw_stroked_rect(
+      drawCtx, HMM_SubV2(bvhNode->box.center, bvhNode->box.halfSize),
+      HMM_MulV2F(bvhNode->box.halfSize, 2), 0, 1,
+      bvhLevelColors
+        [level % (sizeof(bvhLevelColors) / sizeof(bvhLevelColors[0]))]);
+  }
+
+  ux_bvh_draw_node(bvh, drawCtx, left, level + 1, drawLevel);
+  ux_bvh_draw_node(bvh, drawCtx, right, level + 1, drawLevel);
+}
+
+static void ux_bvh_draw(BVH *bvh, DrawContext *drawCtx, int drawLevel) {
+  ux_bvh_draw_node(bvh, drawCtx, 0, 0, drawLevel);
 }

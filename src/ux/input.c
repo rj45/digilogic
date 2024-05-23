@@ -26,7 +26,7 @@
 #include "log.h"
 
 #define MAX_ZOOM 20.0f
-#define MOUSE_FUDGE 1.5f
+#define MOUSE_FUDGE 3.0f
 #define MOUSE_WP_FUDGE 5.0f
 #define MOVE_THRESHOLD 5.0f
 
@@ -206,6 +206,17 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         ux->downStart = worldMousePos;
         break;
 
+      case STATE_MOVE_SELECTION:
+        // rebuild the BVH after moving things
+        ux_build_bvh(ux);
+        break;
+
+      case STATE_CLICK_WIRING:
+      case STATE_DRAG_WIRING:
+        // rebuild the BVH after wiring things
+        ux_build_bvh(ux);
+        break;
+
       case STATE_ADD_COMPONENT: {
         // "drop" the component here and start adding a new one
         Component *component =
@@ -219,6 +230,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
                 .newCenter = component->box.center,
               });
         ux_start_adding_component(ux, descID);
+
+        // rebuild the BVH after adding things
+        ux_build_bvh(ux);
       } break;
 
       default:
@@ -360,6 +374,9 @@ static void ux_handle_mouse(CircuitUX *ux) {
     .halfSize = HMM_V2(MOUSE_FUDGE, MOUSE_FUDGE),
   };
 
+  arrsetlen(ux->view.hovered2, 0);
+  ux->view.hovered2 = bvh_query(&ux->bvh, mouseBox, ux->view.hovered2);
+
   for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
     Component *component = &ux->view.circuit.components[i];
     if (box_intersect_box(component->box, mouseBox)) {
@@ -468,13 +485,34 @@ void ux_update(CircuitUX *ux) {
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_SPACE)) {
-    ux->debugLines = !ux->debugLines;
-    ux->view.debugMode = ux->debugLines;
+    ux->rtDebugLines = !ux->rtDebugLines;
+    ux->view.debugMode = ux->rtDebugLines;
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_B)) {
     ux->betterRoutes = !ux->betterRoutes;
     printf("Better (minimal) routes: %s\n", ux->betterRoutes ? "on" : "off");
+  }
+
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_V)) {
+    ux->bvhDebugLines = !ux->bvhDebugLines;
+    printf("BVH debug lines: %s\n", ux->bvhDebugLines ? "on" : "off");
+    if (ux->bvhDebugLines) {
+      ux_build_bvh(ux);
+    }
+  }
+
+  if (ux->bvhDebugLines) {
+    if (bv_is_set(ux->input.keysPressed, KEYCODE_COMMA)) {
+      ux->bvhDebugLevel--;
+      if (ux->bvhDebugLevel < 0) {
+        ux->bvhDebugLevel = 0;
+      }
+      printf("BVH debug level: %d\n", ux->bvhDebugLevel);
+    } else if (bv_is_set(ux->input.keysPressed, KEYCODE_PERIOD)) {
+      ux->bvhDebugLevel++;
+      printf("BVH debug level: %d\n", ux->bvhDebugLevel);
+    }
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_F3)) {

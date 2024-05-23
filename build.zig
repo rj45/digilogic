@@ -52,6 +52,7 @@ pub fn build(b: *std.Build) void {
             "core/smap.c",
             "core/save.c",
             "core/load.c",
+            "core/bvh.c",
             "ux/ux.c",
             "ux/input.c",
             "ux/snap.c",

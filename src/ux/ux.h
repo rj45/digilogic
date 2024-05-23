@@ -237,9 +237,13 @@ typedef struct CircuitUX {
 
   float zoomExp;
 
-  bool debugLines;
+  bool rtDebugLines;
   bool betterRoutes;
   bool showFPS;
+
+  BVH bvh;
+  bool bvhDebugLines;
+  int bvhDebugLevel;
 } CircuitUX;
 
 void ux_global_init();
@@ -269,5 +273,6 @@ void ux_cancel_wire(CircuitUX *ux);
 void ux_connect_wire(CircuitUX *ux, PortID portID);
 
 void ux_route(CircuitUX *ux);
+void ux_build_bvh(CircuitUX *ux);
 
 #endif // UX_H

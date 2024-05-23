@@ -86,6 +86,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
         circuit_clear(&ui->ux.view.circuit);
         ux_route(&ui->ux);
+        ux_build_bvh(&ui->ux);
         log_info("New");
       }
       if (nk_menu_item_label(ctx, "Load", NK_TEXT_LEFT)) {
@@ -102,6 +103,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           circuit_clear(&ui->ux.view.circuit);
           circuit_load_file(&ui->ux.view.circuit, loadfile);
           ux_route(&ui->ux);
+          ux_build_bvh(&ui->ux);
         }
       }
       if (nk_menu_item_label(ctx, "Save", NK_TEXT_LEFT)) {

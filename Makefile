@@ -1,6 +1,6 @@
 
 HEADERS = src/core/core.h src/assets.h src/view/view.h src/ux/ux.h src/shaders/alphaonly.h src/import/import.h src/autoroute/autoroute.h src/render/fons_sgp.h src/render/polyline.h $(THIRDPARTY)
-SRCS = src/core/circuit.c src/core/save.c src/core/load.c src/ux/ux.c src/ux/input.c src/ux/snap.c src/ux/undo.c src/view/view.c src/import/digital.c src/autoroute/autoroute.c src/core/smap.c
+SRCS = src/core/circuit.c src/core/save.c src/core/load.c src/core/bvh.c src/ux/ux.c src/ux/input.c src/ux/snap.c src/ux/undo.c src/view/view.c src/import/digital.c src/autoroute/autoroute.c src/core/smap.c
 THIRDPARTY = $(wildcard thirdparty/*.h)
 THIRDPARTY_LIBS = thirdparty/routing/target/release/libdigilogic_routing.a thirdparty/nvdialog/build/libnvdialog.a
 THIRDPARTY_SRCS = thirdparty/yyjson.c
