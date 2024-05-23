@@ -21,6 +21,20 @@
 
 typedef struct AutoRoute AutoRoute;
 
+typedef struct RouteTimeStats {
+  struct {
+    uint64_t avg;
+    uint64_t min;
+    uint64_t max;
+  } build;
+  struct {
+    uint64_t avg;
+    uint64_t min;
+    uint64_t max;
+  } route;
+  int samples;
+} RouteTimeStats;
+
 void autoroute_global_init();
 AutoRoute *autoroute_create(CircuitView *view);
 void autoroute_free(AutoRoute *ar);
@@ -28,5 +42,6 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes);
 
 void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx);
 void autoroute_dump_anchor_boxes(AutoRoute *ar);
+RouteTimeStats autoroute_stats(AutoRoute *ar);
 
 #endif // AUTOROUTE_H

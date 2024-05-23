@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "autoroute/autoroute.h"
 #include <stdint.h>
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -345,20 +346,34 @@ void frame(void *user_data) {
 
   char buff[256];
   if (app->circuit.ux.showFPS) {
+    RouteTimeStats rtStats = autoroute_stats(app->circuit.ux.router);
+
     snprintf(
-      buff, sizeof(buff),
-      "Draw time: %1.2f Frame interval: %.2f FPS: %.2f Draws: %d Pipelines: %d "
-      "LineVerts: %d FilledRects: %d StrokedRects: %d Texts: %d",
+      buff, sizeof(buff), "Draw time: %1.2f Frame interval: %.2f FPS: %.2f",
       stm_ms(app->lastDrawTime), stm_ms(avgFrameInterval),
-      1 / stm_sec(avgFrameInterval), stats.num_draw, stats.num_apply_pipeline,
-      app->draw.lineVertices, app->draw.filledRects, app->draw.strokedRects,
-      app->draw.texts);
+      1 / stm_sec(avgFrameInterval));
 
     Box box = draw_text_bounds(
       &app->draw, HMM_V2(0, height), buff, strlen(buff), ALIGN_LEFT,
-      ALIGN_BOTTOM, 12.0, &app->fonsFont);
+      ALIGN_BOTTOM, 20.0, &app->fonsFont);
     draw_screen_text(
-      &app->draw, box, buff, strlen(buff), 25.0, &app->fonsFont,
+      &app->draw, box, buff, strlen(buff), 20.0, &app->fonsFont,
+      HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
+
+    snprintf(
+      buff, sizeof(buff),
+      "Routing: Build: %.3fms min, %.3fms avg, %.3fms max; Pathing: %.3fms "
+      "min, %.3fms "
+      "avg, %.3fms max; Samples: %d",
+      stm_ms(rtStats.build.min), stm_ms(rtStats.build.avg),
+      stm_ms(rtStats.build.max), stm_ms(rtStats.route.min),
+      stm_ms(rtStats.route.avg), stm_ms(rtStats.route.max), rtStats.samples);
+
+    box = draw_text_bounds(
+      &app->draw, HMM_V2(0, (float)height - (box.halfSize.Y * 2 + 8)), buff,
+      strlen(buff), ALIGN_LEFT, ALIGN_BOTTOM, 20.0, &app->fonsFont);
+    draw_screen_text(
+      &app->draw, box, buff, strlen(buff), 20.0, &app->fonsFont,
       HMM_V4(1, 1, 1, 1), HMM_V4(0, 0, 0, 0));
   }
 

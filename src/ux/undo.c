@@ -21,7 +21,7 @@
 
 #include "ux.h"
 
-#define LOG_LEVEL LL_DEBUG
+#define LOG_LEVEL LL_INFO
 #include "log.h"
 
 static void ux_perform_command(CircuitUX *ux, UndoCommand command) {

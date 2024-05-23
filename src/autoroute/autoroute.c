@@ -28,6 +28,8 @@
 
 #define RT_PADDING 10.0f
 
+#define TIME_SAMPLES 120
+
 struct AutoRoute {
   CircuitView *view;
 
@@ -40,6 +42,11 @@ struct AutoRoute {
   arr(RT_Anchor) anchors;
 
   RT_Graph *graph;
+
+  int timeIndex;
+  int timeLength;
+  uint64_t buildTimes[TIME_SAMPLES];
+  uint64_t routeTimes[TIME_SAMPLES];
 };
 
 void autoroute_global_init() {
@@ -435,6 +442,8 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
 
   assert(res == RT_RESULT_SUCCESS);
 
+  uint64_t pathFind = stm_since(pathFindStart);
+
   for (int i = 0; i < circuit_net_len(&ar->view->circuit); i++) {
     RT_NetView *rtNetView = &ar->netViews[i];
     Net *net = &ar->view->circuit.nets[i];
@@ -444,10 +453,46 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
     net->vertexOffset = rtNetView->vertex_offset;
   }
 
-  uint64_t pathFind = stm_since(pathFindStart);
+  ar->buildTimes[ar->timeIndex] = graphBuild;
+  ar->routeTimes[ar->timeIndex] = pathFind;
+  ar->timeIndex = (ar->timeIndex + 1) % TIME_SAMPLES;
+  if (ar->timeLength < TIME_SAMPLES) {
+    ar->timeLength++;
+  }
 
-  log_info(
-    "Graph build: %fms, Path find: %fms", stm_ms(graphBuild), stm_ms(pathFind));
+  // RouteTimeStats stats = autoroute_stats(ar);
+
+  // log_info(
+  //   "Build: %.3fms min, %.3fms avg, %.3fms max; Pathing: %.3fms min, %.3fms "
+  //   "avg, %.3fms max; %d samples",
+  //   stm_ms(stats.build.min), stm_ms(stats.build.avg),
+  //   stm_ms(stats.build.max), stm_ms(stats.route.min),
+  //   stm_ms(stats.route.avg), stm_ms(stats.route.max), ar->timeLength);
+}
+
+RouteTimeStats autoroute_stats(AutoRoute *ar) {
+  RouteTimeStats stats = {
+    .build = {.avg = 0, .min = UINT64_MAX, .max = 0},
+    .route = {.avg = 0, .min = UINT64_MAX, .max = 0},
+  };
+
+  for (int i = 0; i < ar->timeLength; i++) {
+    stats.build.avg += ar->buildTimes[i];
+    stats.route.avg += ar->routeTimes[i];
+    stats.build.min = HMM_MIN(stats.build.min, ar->buildTimes[i]);
+    stats.route.min = HMM_MIN(stats.route.min, ar->routeTimes[i]);
+    stats.build.max = HMM_MAX(stats.build.max, ar->buildTimes[i]);
+    stats.route.max = HMM_MAX(stats.route.max, ar->routeTimes[i]);
+  }
+
+  if (ar->timeLength != 0) {
+    stats.build.avg /= ar->timeLength;
+    stats.route.avg /= ar->timeLength;
+  }
+
+  stats.samples = ar->timeLength;
+
+  return stats;
 }
 
 typedef void *Context;
