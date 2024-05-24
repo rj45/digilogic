@@ -209,14 +209,14 @@ void draw_stroked_rect(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
   float line_thickness, HMM_Vec4 color);
 
-static HMM_Vec4 bvhLevelColors[] = {
-  (HMM_Vec4){.R = 1, .G = 0.4, .B = 0.4, .A = 0.5},
-  (HMM_Vec4){.R = 0.4, .G = 1, .B = 0.4, .A = 0.5},
-  (HMM_Vec4){.R = 0.4, .G = 0.4, .B = 1, .A = 0.5},
-  (HMM_Vec4){.R = 1, .G = 1, .B = 0.4, .A = 0.5},
-  (HMM_Vec4){.R = 1, .G = 0.4, .B = 1, .A = 0.5},
-  (HMM_Vec4){.R = 0.4, .G = 1, .B = 1, .A = 0.5},
-  (HMM_Vec4){.R = 1, .G = 1, .B = 1, .A = 0.5},
+static const HMM_Vec4 bvhLevelColors[] = {
+  {.R = 1, .G = 0.4, .B = 0.4, .A = 0.5},
+  {.R = 0.4, .G = 1, .B = 0.4, .A = 0.5},
+  {.R = 0.4, .G = 0.4, .B = 1, .A = 0.5},
+  {.R = 1, .G = 1, .B = 0.4, .A = 0.5},
+  {.R = 1, .G = 0.4, .B = 1, .A = 0.5},
+  {.R = 0.4, .G = 1, .B = 1, .A = 0.5},
+  {.R = 1, .G = 1, .B = 1, .A = 0.5},
 };
 
 static void ux_bvh_draw_node(
