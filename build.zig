@@ -32,7 +32,7 @@ pub fn build(b: *std.Build) void {
             else => b.host.query,
         },
     });
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
     const digilogic = b.addExecutable(.{
         .name = "digilogic",
@@ -40,9 +40,37 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const cflags = &.{
-        "-std=gnu11",
-    };
+    var cflags = std.ArrayList([]const u8).init(b.allocator);
+    cflags.append("-std=gnu11") catch @panic("OOM");
+
+    if (optimize == .Debug and target.result.abi != .msvc) {
+        digilogic.root_module.addCMacro("DEBUG", "1");
+        cflags.append("-g") catch @panic("OOM");
+        cflags.append("-O1") catch @panic("OOM");
+        cflags.append("-fno-omit-frame-pointer") catch @panic("OOM");
+        cflags.append("-Wall") catch @panic("OOM");
+        cflags.append("-Werror") catch @panic("OOM");
+        if (target.result.os.tag.isDarwin()) {
+            // turn on address and undefined behaviour sanitizers
+            cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
+            const brewCellar = (std.ChildProcess.run(.{
+                .allocator = b.allocator,
+                .argv = &.{
+                    "brew",
+                    "--cellar",
+                },
+                .cwd = b.pathFromRoot("."),
+                .expand_arg0 = .expand,
+            }) catch @panic("Could not find homebrew cellar")).stdout;
+            // todo: figure out how to search for the version so it's not hard-coded
+            //       major version needs to match zig's version, minor/patch don't matter
+            // todo: not sure how to make a lazypath for an absolute path
+            digilogic.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brewCellar[0 .. brewCellar.len - 1]}) });
+            digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+        } else {
+            // todo: turn on address sanitizer for linux?
+        }
+    }
 
     digilogic.addCSourceFiles(.{
         .root = b.path("src"),
@@ -68,18 +96,20 @@ pub fn build(b: *std.Build) void {
             "render/draw.c",
             "assets.c",
         },
-        .flags = cflags,
+        .flags = cflags.items,
     });
 
     digilogic.addCSourceFile(.{
         .file = b.path("thirdparty/yyjson.c"),
-        .flags = cflags,
+        .flags = cflags.items,
     });
 
     digilogic.addIncludePath(b.path("src"));
     digilogic.addIncludePath(b.path("thirdparty"));
 
     digilogic.linkLibC();
+
+    if (optimize == .Debug and target.result.abi != .msvc) {}
 
     const freetype = b.dependency("freetype", .{
         .target = target,
@@ -112,12 +142,15 @@ pub fn build(b: *std.Build) void {
             @panic("Unsupported CPU architecture for macOS");
         }
 
-        // add apple.m to the build
+        // add apple.m (a copy of nonapple.c) to the build
         // this is required in order for the file to be compiled as Objective-C
-        const mflags = &.{ "-ObjC", "-fobjc-arc", "-std=gnu11", "-Wall", "-Werror" };
+        var mflags2 = std.ArrayList([]const u8).init(b.allocator);
+        mflags2.append("-ObjC") catch @panic("OOM");
+        mflags2.append("-fobjc-arc") catch @panic("OOM");
+        mflags2.appendSlice(cflags.items) catch @panic("OOM");
         digilogic.addCSourceFile(.{
             .file = b.addWriteFiles().addCopyFile(b.path("src/nonapple.c"), "apple.m"),
-            .flags = mflags,
+            .flags = mflags2.items,
         });
 
         if (.metal != (renderer orelse .metal)) {
@@ -150,7 +183,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{
                 "nonapple.c",
             },
-            .flags = cflags,
+            .flags = cflags.items,
         });
 
         switch (renderer orelse .d3d11) {
@@ -183,7 +216,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{
                 "nonapple.c",
             },
-            .flags = cflags,
+            .flags = cflags.items,
         });
 
         const use_wayland = b.option(bool, "wayland", "Compile for Wayland instead of X11") orelse false;
@@ -237,7 +270,7 @@ pub fn build(b: *std.Build) void {
 
                 digilogic.addCSourceFile(.{
                     .file = source_file,
-                    .flags = cflags,
+                    .flags = cflags.items,
                 });
                 digilogic.addIncludePath(.{ .generated_dirname = .{
                     .generated = header_file.generated,
