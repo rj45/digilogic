@@ -40,6 +40,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const digilogic_test = b.addExecutable(.{
+        .name = "test",
+        .target = target,
+        .optimize = optimize,
+    });
+
     var cflags = std.ArrayList([]const u8).init(b.allocator);
     cflags.append("-std=gnu11") catch @panic("OOM");
 
@@ -67,28 +73,52 @@ pub fn build(b: *std.Build) void {
             // todo: not sure how to make a lazypath for an absolute path
             digilogic.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
             digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+            digilogic_test.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
+            digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
         } else {
             // todo: turn on address sanitizer for linux?
         }
     }
 
+    // add files common to both the main and test executables
+    const common_files = &.{
+        "core/circuit.c",
+        "core/smap.c",
+        "core/save.c",
+        "core/load.c",
+        "core/bvh.c",
+        "ux/ux.c",
+        "ux/input.c",
+        "ux/snap.c",
+        "ux/undo.c",
+        "view/view.c",
+        "import/digital.c",
+        "autoroute/autoroute.c",
+    };
+    digilogic.addCSourceFiles(.{
+        .root = b.path("src"),
+        .files = common_files,
+        .flags = cflags.items,
+    });
+    digilogic.addCSourceFile(.{
+        .file = b.path("thirdparty/yyjson.c"),
+        .flags = cflags.items,
+    });
+    digilogic_test.addCSourceFiles(.{
+        .root = b.path("src"),
+        .files = common_files,
+        .flags = cflags.items,
+    });
+    digilogic_test.addCSourceFile(.{
+        .file = b.path("thirdparty/yyjson.c"),
+        .flags = cflags.items,
+    });
+
     digilogic.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
             "main.c",
-            "core/circuit.c",
-            "core/smap.c",
-            "core/save.c",
-            "core/load.c",
-            "core/bvh.c",
-            "ux/ux.c",
-            "ux/input.c",
-            "ux/snap.c",
-            "ux/undo.c",
             "ui/ui.c",
-            "view/view.c",
-            "import/digital.c",
-            "autoroute/autoroute.c",
             "render/fons_sgp.c",
             "render/sokol_nuklear.c",
             "render/fons_nuklear.c",
@@ -136,17 +166,10 @@ pub fn build(b: *std.Build) void {
         .flags = cflags.items,
     });
 
-    digilogic.addCSourceFile(.{
-        .file = b.path("thirdparty/yyjson.c"),
-        .flags = cflags.items,
-    });
-
     digilogic.addIncludePath(b.path("src"));
     digilogic.addIncludePath(b.path("thirdparty"));
 
     digilogic.linkLibC();
-
-    if (optimize == .Debug and target.result.abi != .msvc) {}
 
     const freetype = b.dependency("freetype", .{
         .target = target,
@@ -340,11 +363,14 @@ pub fn build(b: *std.Build) void {
     cargo_build.stdio = .inherit;
     cargo_build.setCwd(b.path("thirdparty/routing"));
     digilogic.step.dependOn(&cargo_build.step);
+    digilogic_test.step.dependOn(&cargo_build.step);
 
     const rust_profile = if (optimize == .Debug) "debug" else "release";
     const library_path = b.fmt("thirdparty/routing/target/{s}/{s}", .{ rust_target, rust_profile });
     digilogic.addLibraryPath(b.path(library_path));
     digilogic.linkSystemLibrary("digilogic_routing");
+    digilogic_test.addLibraryPath(b.path(library_path));
+    digilogic_test.linkSystemLibrary("digilogic_routing");
 
     if (target.result.os.tag.isDarwin()) {
         // apple has their own way of doing things
@@ -359,7 +385,29 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(digilogic);
     }
 
-    zcc.createStep(b, "cdb", .{ .target = digilogic });
+    digilogic_test.linkLibC();
+
+    digilogic_test.addCSourceFiles(.{
+        .root = b.path("src"),
+        .files = &.{
+            "test.c",
+            "ux/ux_test.c",
+            "view/view_test.c",
+            "core/core_test.c",
+            "render/draw_test.c",
+        },
+        .flags = cflags.items,
+    });
+
+    digilogic_test.addIncludePath(b.path("src"));
+    digilogic_test.addIncludePath(b.path("thirdparty"));
+
+    const test_run = b.addRunArtifact(digilogic_test);
+
+    const test_step = b.step("test", "Build and run tests");
+    test_step.dependOn(&test_run.step);
+
+    zcc.createStep(b, "cdb", .{ .targets = &.{ digilogic, digilogic_test } });
 }
 
 fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {

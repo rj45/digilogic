@@ -238,3 +238,6 @@ void draw_stroked_line(
   HMM_Vec4 color) {}
 void draw_filled_circle(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, HMM_Vec4 color) {}
+void draw_stroked_rect(
+  DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
+  float line_thickness, HMM_Vec4 color) {}

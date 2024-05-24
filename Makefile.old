@@ -46,7 +46,7 @@ res/assets.zip: res/assets/*
 	cd res && zip -r -9 assets.zip assets
 
 src/assets.c: res/assets.zip gen
-	./gen > src/assets.c
+	./gen res/assets.zip src/assets.c
 
 clean:
 	rm -f digilogic test gen src/apple.m

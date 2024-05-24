@@ -92,16 +92,16 @@ void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback) {
 }
 
 static bool smap_grow(SparseMap *smap, int wantedCapacity) {
-  if (wantedCapacity <= smap->capacity) {
+  if (wantedCapacity < smap->capacity) {
     return true;
   }
 
-  int newCapacity = smap->capacity * 2;
+  int newCapacity = smap->capacity;
   if (newCapacity == 0) {
     newCapacity = 8;
   }
 
-  while (newCapacity < wantedCapacity) {
+  while (newCapacity <= wantedCapacity) {
     newCapacity *= 2;
   }
 
