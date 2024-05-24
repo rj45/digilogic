@@ -53,7 +53,7 @@ pub fn build(b: *std.Build) void {
         if (target.result.os.tag.isDarwin()) {
             // turn on address and undefined behaviour sanitizers
             cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
-            const brewCellar = (std.ChildProcess.run(.{
+            const brew_cellar = (std.ChildProcess.run(.{
                 .allocator = b.allocator,
                 .argv = &.{
                     "brew",
@@ -65,7 +65,7 @@ pub fn build(b: *std.Build) void {
             // todo: figure out how to search for the version so it's not hard-coded
             //       major version needs to match zig's version, minor/patch don't matter
             // todo: not sure how to make a lazypath for an absolute path
-            digilogic.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brewCellar[0 .. brewCellar.len - 1]}) });
+            digilogic.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
             digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
         } else {
             // todo: turn on address sanitizer for linux?
@@ -94,8 +94,45 @@ pub fn build(b: *std.Build) void {
             "render/fons_nuklear.c",
             "render/polyline.c",
             "render/draw.c",
-            "assets.c",
         },
+        .flags = cflags.items,
+    });
+
+    // create an assets.zip from the contents of res/assets
+    var asset_zip: std.Build.LazyPath = undefined;
+    if (b.host.result.os.tag == .windows) {
+        const asset_zip_cmd = b.addSystemCommand(&.{
+            "powershell",
+            "Compress-Archive",
+            "-Path",
+            "assets",
+            "-DestinationPath",
+        });
+        asset_zip_cmd.setCwd(b.path("res"));
+        asset_zip = asset_zip_cmd.addOutputFileArg("assets.zip");
+    } else {
+        const asset_zip_cmd = b.addSystemCommand(&.{ "zip", "-r", "-9" });
+        asset_zip_cmd.setCwd(b.path("res"));
+        asset_zip = asset_zip_cmd.addOutputFileArg("assets.zip");
+        asset_zip_cmd.addArg("assets");
+    }
+
+    // complile src/gen.c to generate C code
+    const asset_gen = b.addExecutable(.{
+        .name = "gen",
+        .target = b.host,
+    });
+    asset_gen.addCSourceFile(.{
+        .file = b.path("src/gen.c"),
+        .flags = &.{"-std=gnu11"},
+    });
+
+    // generate assets.c from assets.zip
+    const asset_gen_step = b.addRunArtifact(asset_gen);
+    asset_gen_step.addFileArg(asset_zip);
+    const assets_c = asset_gen_step.addOutputFileArg("assets.c");
+    digilogic.addCSourceFile(.{
+        .file = assets_c,
         .flags = cflags.items,
     });
 
