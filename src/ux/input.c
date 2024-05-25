@@ -513,6 +513,12 @@ void ux_update(CircuitUX *ux) {
     }
   }
 
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_X)) {
+    autoroute_dump_routing_data(
+      ux->router, ux->routingConfig, "routing_data.dat");
+    printf("Dumped routing data to routing_data.dat\n");
+  }
+
   if (ux->bvhDebugLines) {
     if (bv_is_set(ux->input.keysPressed, KEYCODE_COMMA)) {
       ux->bvhDebugLevel--;

@@ -308,9 +308,7 @@ static void autoroute_update_anchors(AutoRoute *ar) {
   }
 }
 
-void autoroute_route(AutoRoute *ar, RoutingConfig config) {
-  uint64_t start = stm_now();
-
+static void autoroute_prepare_routing(AutoRoute *ar, RoutingConfig config) {
   autoroute_update_anchors(ar);
 
   if (arrlen(ar->anchors) == 0) {
@@ -326,9 +324,6 @@ void autoroute_route(AutoRoute *ar, RoutingConfig config) {
   }
   assert(res == RT_RESULT_SUCCESS);
 
-  uint64_t graphBuild = stm_since(start);
-  uint64_t pathFindStart = stm_now();
-
   if (arrlen(ar->circuit->vertices) == 0) {
     arrsetlen(ar->circuit->vertices, 1024);
     arrsetlen(ar->prevVertices, 1024);
@@ -336,20 +331,6 @@ void autoroute_route(AutoRoute *ar, RoutingConfig config) {
   if (arrlen(ar->circuit->wires) == 0) {
     arrsetlen(ar->circuit->wires, 1024);
     arrsetlen(ar->prevWires, 1024);
-  }
-
-  {
-    // swap wires
-    arr(Wire) tmp = ar->prevWires;
-    ar->prevWires = ar->circuit->wires;
-    ar->circuit->wires = tmp;
-  }
-
-  {
-    // swap vertices
-    arr(HMM_Vec2) tmp = ar->prevVertices;
-    ar->prevVertices = ar->circuit->vertices;
-    ar->circuit->vertices = tmp;
   }
 
   assert(ar->graph);
@@ -374,7 +355,46 @@ void autoroute_route(AutoRoute *ar, RoutingConfig config) {
     assert(count > 1);
     // assert(dist > 0);
   }
+}
 
+bool autoroute_dump_routing_data(
+  AutoRoute *ar, RoutingConfig config, const char *filename) {
+  autoroute_prepare_routing(ar, config);
+  RT_Result res = RT_graph_serialize_connect_nets_query(
+    ar->graph, (RT_Slice_Net){ar->nets, circuit_net_len(ar->circuit)},
+    (RT_Slice_Endpoint){ar->endpoints, circuit_endpoint_len(ar->circuit)},
+    (RT_Slice_Waypoint){ar->waypoints, circuit_waypoint_len(ar->circuit)},
+    config.performCentering, filename);
+  if (res != RT_RESULT_SUCCESS) {
+    log_error("Error serializing graph: %d", res);
+    return false;
+  }
+  return true;
+}
+
+void autoroute_route(AutoRoute *ar, RoutingConfig config) {
+  uint64_t start = stm_now();
+
+  autoroute_prepare_routing(ar, config);
+
+  uint64_t graphBuild = stm_since(start);
+  uint64_t pathFindStart = stm_now();
+
+  {
+    // swap wires
+    arr(Wire) tmp = ar->prevWires;
+    ar->prevWires = ar->circuit->wires;
+    ar->circuit->wires = tmp;
+  }
+
+  {
+    // swap vertices
+    arr(HMM_Vec2) tmp = ar->prevVertices;
+    ar->prevVertices = ar->circuit->vertices;
+    ar->circuit->vertices = tmp;
+  }
+
+  RT_Result res;
   for (;;) {
     res = RT_graph_connect_nets(
       ar->graph, (RT_Slice_Net){ar->nets, circuit_net_len(ar->circuit)},

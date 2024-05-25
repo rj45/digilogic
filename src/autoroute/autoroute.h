@@ -44,6 +44,8 @@ void autoroute_global_init();
 AutoRoute *autoroute_create(Circuit *circuit);
 void autoroute_free(AutoRoute *ar);
 void autoroute_route(AutoRoute *ar, RoutingConfig config);
+bool autoroute_dump_routing_data(
+  AutoRoute *ar, RoutingConfig config, const char *filename);
 
 void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx);
 void autoroute_dump_anchor_boxes(AutoRoute *ar);
