@@ -414,6 +414,9 @@ typedef struct Net {
   VertexIndex vertexOffset;
 } Net;
 
+#define circuit_wire_vertex_count(wire_view) ((wire_view)&0x7FFF)
+#define circuit_wire_ends_in_junction(wire_view) ((bool)((wire_view) >> 15))
+
 typedef struct Wire {
   uint16_t vertexCount;
 } Wire;

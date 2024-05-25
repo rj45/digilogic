@@ -490,8 +490,17 @@ void ux_update(CircuitUX *ux) {
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_B)) {
-    ux->betterRoutes = !ux->betterRoutes;
-    printf("Better (minimal) routes: %s\n", ux->betterRoutes ? "on" : "off");
+    ux->routingConfig.minimizeGraph = !ux->routingConfig.minimizeGraph;
+    printf(
+      "Minimize routing graph: %s\n",
+      ux->routingConfig.minimizeGraph ? "on" : "off");
+  }
+
+  if (bv_is_set(ux->input.keysPressed, KEYCODE_C)) {
+    ux->routingConfig.performCentering = !ux->routingConfig.performCentering;
+    printf(
+      "Perform Centering: %s\n",
+      ux->routingConfig.performCentering ? "on" : "off");
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_V)) {

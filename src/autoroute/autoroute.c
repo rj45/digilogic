@@ -308,7 +308,7 @@ static void autoroute_update_anchors(AutoRoute *ar) {
   }
 }
 
-void autoroute_route(AutoRoute *ar, bool betterRoutes) {
+void autoroute_route(AutoRoute *ar, RoutingConfig config) {
   uint64_t start = stm_now();
 
   autoroute_update_anchors(ar);
@@ -320,7 +320,7 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
   RT_Result res = RT_graph_build(
     ar->graph, (RT_Slice_Anchor){ar->anchors, arrlen(ar->anchors)},
     (RT_Slice_BoundingBox){ar->boxes, circuit_component_len(ar->circuit)},
-    betterRoutes);
+    config.minimizeGraph);
   if (res != RT_RESULT_SUCCESS) {
     log_error("Error building graph: %d", res);
   }
@@ -391,7 +391,8 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
       (RT_MutSlice_NetView){
         ar->netViews,
         circuit_net_len(ar->circuit),
-      });
+      },
+      config.performCentering);
     switch (res) {
     case RT_RESULT_SUCCESS:
       break;

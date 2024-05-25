@@ -32,7 +32,8 @@ void ux_init(
   CircuitUX *ux, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
   *ux = (CircuitUX){
-    .betterRoutes = true,
+    .routingConfig.minimizeGraph = true,
+    .routingConfig.performCentering = true,
   };
   bv_setlen(ux->input.keysDown, KEYCODE_MENU + 1);
   bv_setlen(ux->input.keysPressed, KEYCODE_MENU + 1);
@@ -71,7 +72,7 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
   return center;
 }
 
-void ux_route(CircuitUX *ux) { autoroute_route(ux->router, ux->betterRoutes); }
+void ux_route(CircuitUX *ux) { autoroute_route(ux->router, ux->routingConfig); }
 
 void ux_select_none(CircuitUX *ux) {
   if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
@@ -176,7 +177,8 @@ void ux_build_bvh(CircuitUX *ux) {
       assert(wireIdx < arrlen(ux->view.circuit.wires));
       Wire *wire = &ux->view.circuit.wires[wireIdx];
 
-      for (int vertIdx = 1; vertIdx < wire->vertexCount; vertIdx++) {
+      for (int vertIdx = 1;
+           vertIdx < circuit_wire_vertex_count(wire->vertexCount); vertIdx++) {
         HMM_Vec2 p1 = ux->view.circuit.vertices[vertexOffset + vertIdx - 1];
         HMM_Vec2 p2 = ux->view.circuit.vertices[vertexOffset + vertIdx];
         Box box;
@@ -192,7 +194,7 @@ void ux_build_bvh(CircuitUX *ux) {
         bvh_add(&ux->bvh, circuit_net_id(&ux->view.circuit, netIdx), box);
       }
 
-      vertexOffset += wire->vertexCount;
+      vertexOffset += circuit_wire_vertex_count(wire->vertexCount);
     }
   }
 

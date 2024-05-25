@@ -238,7 +238,7 @@ typedef struct CircuitUX {
   float zoomExp;
 
   bool rtDebugLines;
-  bool betterRoutes;
+  RoutingConfig routingConfig;
   bool showFPS;
 
   BVH bvh;

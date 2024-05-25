@@ -429,15 +429,17 @@ void view_draw(CircuitView *view) {
 
       draw_wire(
         view->drawCtx, &view->theme, view->circuit.vertices + vertexOffset,
-        wire->vertexCount, flags);
+        circuit_wire_vertex_count(wire->vertexCount), flags);
 
-      if (wireIdx != net->wireOffset) {
+      if (circuit_wire_ends_in_junction(wire->vertexCount)) {
         draw_junction(
           view->drawCtx, &view->theme,
-          view->circuit.vertices[vertexOffset + wire->vertexCount - 1], flags);
+          view->circuit.vertices
+            [vertexOffset + circuit_wire_vertex_count(wire->vertexCount) - 1],
+          flags);
       }
 
-      vertexOffset += wire->vertexCount;
+      vertexOffset += circuit_wire_vertex_count(wire->vertexCount);
     }
   }
   for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {

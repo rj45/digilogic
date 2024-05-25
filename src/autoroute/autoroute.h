@@ -35,10 +35,15 @@ typedef struct RouteTimeStats {
   int samples;
 } RouteTimeStats;
 
+typedef struct RoutingConfig {
+  bool minimizeGraph;
+  bool performCentering;
+} RoutingConfig;
+
 void autoroute_global_init();
 AutoRoute *autoroute_create(Circuit *circuit);
 void autoroute_free(AutoRoute *ar);
-void autoroute_route(AutoRoute *ar, bool betterRoutes);
+void autoroute_route(AutoRoute *ar, RoutingConfig config);
 
 void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx);
 void autoroute_dump_anchor_boxes(AutoRoute *ar);
