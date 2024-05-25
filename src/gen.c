@@ -37,16 +37,23 @@ int main(int argc, char **argv) {
 
   for (int i = 1; i < (argc - 1); i++) {
     printf("Zipping \"%s\"\n", argv[i]);
-    char *archiveFile = strstr(argv[i], "assets");
+    char *archiveBuf = strdup(argv[i]);
+    char *archiveFile = strstr(archiveBuf, "assets");
     if (!archiveFile) {
       fprintf(stderr, "Could not find `assets` in \"%s\"\n", argv[i]);
       return 1;
+    }
+    for (char *p = archiveFile; *p; p++) {
+      if (*p == '\\') {
+        *p = '/';
+      }
     }
     if (!mz_zip_writer_add_file(
           &zip, archiveFile, argv[i], "", 0, MZ_BEST_COMPRESSION)) {
       fprintf(stderr, "Failed to add file \"%s\" to zip\n", argv[i]);
       return 1;
     }
+    free(archiveBuf);
   }
 
   mz_zip_writer_finalize_heap_archive(&zip, (void **)&buffer, &length);
