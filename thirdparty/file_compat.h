@@ -555,8 +555,10 @@ static int fc_locale(char *locale, size_t locale_max) {
 #endif
 #include <windows.h>
 #include <Shlobj.h>
+#ifdef _MSC_VER
 #pragma comment(lib, "Shell32.lib")
 #pragma comment(lib, "Ole32.lib")
+#endif
 #include <stdlib.h> // wcstombs_s
 #if !defined(PATH_MAX)
 #  define PATH_MAX MAX_PATH

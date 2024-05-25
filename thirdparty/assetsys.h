@@ -7157,6 +7157,7 @@ void *mz_zip_extract_archive_file_to_heap(
 // 0x0603=Windows 8.1, 0x0A00=Windows 10
 #endif
 #define _WINSOCKAPI_
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4668) // 'symbol' is not defined as a preprocessor
                                 // macro, replacing with '0' for 'directives'
@@ -7164,8 +7165,11 @@ void *mz_zip_extract_archive_file_to_heap(
                                 // specification are ignored
 #pragma warning(disable : 4255) // 'function' : no function prototype given:
                                 // converting '()' to '(void)'
+#endif
 #include <windows.h>
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 struct assetsys_internal_dir_entry_t {
   char name[MAX_PATH];

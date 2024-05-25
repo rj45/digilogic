@@ -17,8 +17,8 @@
             .hash = "12208be74c8d4d86a323ba371a0e063dc87f9d4ce2b7c2b7e745e3bce99487ec11c7",
         },
         .@"build.crab" = .{
-            .url = "git+https://github.com/akarpovskii/build.crab#6f170fd7bc8845aeef58ff05c6d1ffa253445622",
-            .hash = "1220ac26da133ec83df00f0f0065f5cc74c8ac7bb2925096856ed27dce511ec6744a",
+            .url = "git+https://github.com/bcrist/build.crab#e6584ef1d50d70a7fd04b48c769f0bfb13e046ca",
+            .hash = "1220250870afb0635da169b7b9f67178e57e640c86ddf5fae9c0d7e07ef0980880ed",
         },
     },
 }

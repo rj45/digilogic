@@ -637,8 +637,9 @@ struct thread_queue_t {
 #endif
 
 #if defined(_WIN32)
-
+#ifdef _MSC_VER
 #pragma comment(lib, "winmm.lib")
+#endif
 
 #define _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_SECURE_NO_WARNINGS
@@ -649,6 +650,7 @@ struct thread_queue_t {
 #endif
 
 #define _WINSOCKAPI_
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4619)
 #pragma warning(disable : 4668) // 'symbol' is not defined as a preprocessor
@@ -657,8 +659,11 @@ struct thread_queue_t {
                                 // specification are ignored
 #pragma warning(disable : 4255) // 'function' : no function prototype given:
                                 // converting '()' to '(void)'
+#endif
 #include <windows.h>
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__)
 
@@ -811,14 +816,18 @@ void thread_mutex_init(thread_mutex_t *mutex) {
 #if defined(_WIN32)
 
 // Compile-time size check
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4214) // nonstandard extension used: bit field types
                                 // other than int
+#endif
   struct x {
     char thread_mutex_type_too_small
         : (sizeof(thread_mutex_t) < sizeof(CRITICAL_SECTION) ? 0 : 1);
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
   InitializeCriticalSectionAndSpinCount((CRITICAL_SECTION *)mutex, 32);
 
@@ -1188,14 +1197,18 @@ void *thread_atomic_ptr_load(thread_atomic_ptr_t *atomic) {
 void thread_atomic_ptr_store(thread_atomic_ptr_t *atomic, void *desired) {
 #if defined(_WIN32)
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(                                                               \
   disable : 4302) // 'type cast' : truncation from 'void *' to 'LONG'
 #pragma warning(disable : 4311) // pointer truncation from 'void *' to 'LONG'
 #pragma warning(                                                               \
   disable : 4312) // conversion from 'LONG' to 'PVOID' of greater size
+#endif
   InterlockedExchangePointer(&atomic->ptr, desired);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__)
 
@@ -1210,14 +1223,18 @@ void thread_atomic_ptr_store(thread_atomic_ptr_t *atomic, void *desired) {
 void *thread_atomic_ptr_swap(thread_atomic_ptr_t *atomic, void *desired) {
 #if defined(_WIN32)
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(                                                               \
   disable : 4302) // 'type cast' : truncation from 'void *' to 'LONG'
 #pragma warning(disable : 4311) // pointer truncation from 'void *' to 'LONG'
 #pragma warning(                                                               \
   disable : 4312) // conversion from 'LONG' to 'PVOID' of greater size
+#endif
   return InterlockedExchangePointer(&atomic->ptr, desired);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__)
 
@@ -1249,14 +1266,19 @@ void thread_timer_init(thread_timer_t *timer) {
 #if defined(_WIN32)
 
 // Compile-time size check
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4214) // nonstandard extension used: bit field types
                                 // other than int
+#endif
+
   struct x {
     char thread_timer_type_too_small
         : (sizeof(thread_mutex_t) < sizeof(HANDLE) ? 0 : 1);
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
   TIMECAPS tc;
   if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) == TIMERR_NOERROR)

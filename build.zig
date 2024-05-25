@@ -22,17 +22,10 @@
 const std = @import("std");
 const zcc = @import("compile_commands");
 const globlin = @import("globlin");
+const crab = @import("build.crab");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{
-        .default_target = switch (b.host.result.os.tag) {
-            .windows => switch (b.host.result.cpu.arch) {
-                .x86_64 => std.Target.Query.parse(.{ .arch_os_abi = "x86_64-windows-msvc" }) catch @panic("invalid default target"),
-                else => b.host.query,
-            },
-            else => b.host.query,
-        },
-    });
+    const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
     const digilogic = b.addExecutable(.{
@@ -50,28 +43,37 @@ pub fn build(b: *std.Build) void {
     var cflags = std.ArrayList([]const u8).init(b.allocator);
     cflags.append("-std=gnu11") catch @panic("OOM");
 
-    if (optimize == .Debug and target.result.abi != .msvc) {
+    if (optimize == .Debug) {
         digilogic.root_module.addCMacro("DEBUG", "1");
-        cflags.appendSlice(&.{
-            "-g",
-            "-O1",
-            "-fno-omit-frame-pointer",
-            "-Wall",
-            "-Werror",
-        }) catch @panic("OOM");
 
-        if (find_llvm_lib_path(b)) |llvm_lib_path| {
-            // turn on address and undefined behaviour sanitizers
-            cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
-            digilogic.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
-            digilogic_test.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+        if (target.result.abi == .msvc) {
+            cflags.appendSlice(&.{
+                "-g",
+                "-O1",
+            }) catch @panic("OOM");
+        } else {
+            cflags.appendSlice(&.{
+                "-g",
+                "-O1",
+                "-fno-omit-frame-pointer",
+                "-Wall",
+                "-Werror",
+                "-Wno-unused-function",
+            }) catch @panic("OOM");
 
-            if (target.result.os.tag.isDarwin()) {
-                digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-                digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-            } else {
-                digilogic.linkSystemLibrary("clang_rt.asan");
-                digilogic_test.linkSystemLibrary("clang_rt.asan");
+            if (find_llvm_lib_path(b)) |llvm_lib_path| {
+                // turn on address and undefined behaviour sanitizers
+                cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
+                digilogic.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+                digilogic_test.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+
+                if (target.result.os.tag.isDarwin()) {
+                    digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                    digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                } else {
+                    digilogic.linkSystemLibrary("clang_rt.asan");
+                    digilogic_test.linkSystemLibrary("clang_rt.asan");
+                }
             }
         }
     }
@@ -171,20 +173,10 @@ pub fn build(b: *std.Build) void {
     };
     const renderer = b.option(Renderer, "renderer", "Specify which rendering API to use (not all renderers work on all platforms");
 
-    var rust_target: []const u8 = target.result.linuxTriple(b.allocator) catch @panic("OOM");
-
     const msaa_sample_count = b.option(u32, "msaa_sample_count", "Number of MSAA samples to use (1 for no MSAA, default 4)") orelse 4;
     digilogic.root_module.addCMacro("MSAA_SAMPLE_COUNT", b.fmt("{d}", .{msaa_sample_count}));
 
     if (target.result.os.tag.isDarwin()) {
-        if (target.result.cpu.arch.isAARCH64()) {
-            rust_target = "aarch64-apple-darwin";
-        } else if (target.result.cpu.arch.isX86()) {
-            rust_target = "x86_64-apple-darwin";
-        } else {
-            @panic("Unsupported CPU architecture for macOS");
-        }
-
         // add apple.m (a copy of nonapple.c) to the build
         // this is required in order for the file to be compiled as Objective-C
         var mflags2 = std.ArrayList([]const u8).init(b.allocator);
@@ -208,15 +200,6 @@ pub fn build(b: *std.Build) void {
         digilogic.linkFramework("Cocoa");
         digilogic.linkFramework("UniformTypeIdentifiers");
     } else if (target.result.os.tag == .windows) {
-        // TODO this is just for testing; need a more robust way to map zig->rust targets if this ever works
-        if (target.result.abi == .msvc) {
-            // `zig build -Dtarget=x86_64-windows-msvc`
-            rust_target = "x86_64-pc-windows-msvc";
-        } else if (target.result.abi == .gnu) {
-            // `zig build -Dtarget=x86_64-windows-gnu`
-            rust_target = "x86_64-pc-windows-gnu";
-        }
-
         digilogic.addWin32ResourceFile(.{
             .file = b.path("res/app.rc"),
         });
@@ -250,9 +233,19 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("ws2_32"); // required by rust
         digilogic.linkSystemLibrary("userenv"); // required by rust
         digilogic.linkSystemLibrary("advapi32"); // required by rust
+
+        switch (target.result.abi) {
+            .msvc => {
+                //digilogic.linkSystemLibrary("Synchronization");
+            },
+            .gnu => {
+                digilogic.linkSystemLibrary("winmm"); // required by rust
+                digilogic.linkSystemLibrary("unwind"); // required by rust
+            },
+            else => @panic("Unsupported target"),
+        }
     } else {
         // assuming linux
-        rust_target = "x86_64-unknown-linux-gnu";
 
         digilogic.addCSourceFiles(.{
             .root = b.path("src"),
@@ -335,14 +328,12 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    const rust_lib_path = @import("build.crab").addCargoBuild(b, .{
-        .name = "libcrate.a",
+    const rust_lib_path = crab.addRustStaticlib(b, .{
+        .name = if (target.result.os.tag == .windows) "digilogic_routing.lib" else "digilogic_routing.a",
         .manifest_path = b.path("thirdparty/routing/Cargo.toml"),
-        .cargo_args = &.{
-            "--profile",
-            if (optimize == .Debug) "dev" else "release",
-            //"--quiet",
-        },
+        .target = .{ .zig = target },
+        .profile = crab.Profile.fromOptimizeMode(optimize),
+        .cargo_args = &.{ "--quiet" },
     });
 
     digilogic.addLibraryPath(rust_lib_path.dirname());
