@@ -41,6 +41,9 @@ struct AutoRoute {
 
   arr(RT_Anchor) anchors;
 
+  arr(Wire) prevWires;
+  arr(HMM_Vec2) prevVertices;
+
   RT_Graph *graph;
 
   int timeIndex;
@@ -328,13 +331,26 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
 
   if (arrlen(ar->circuit->vertices) == 0) {
     arrsetlen(ar->circuit->vertices, 1024);
+    arrsetlen(ar->prevVertices, 1024);
   }
   if (arrlen(ar->circuit->wires) == 0) {
     arrsetlen(ar->circuit->wires, 1024);
+    arrsetlen(ar->prevWires, 1024);
   }
 
-  memset(
-    ar->circuit->wires, 0, arrlen(ar->circuit->wires) * sizeof(RT_WireView));
+  {
+    // swap wires
+    arr(Wire) tmp = ar->prevWires;
+    ar->prevWires = ar->circuit->wires;
+    ar->circuit->wires = tmp;
+  }
+
+  {
+    // swap vertices
+    arr(HMM_Vec2) tmp = ar->prevVertices;
+    ar->prevVertices = ar->circuit->vertices;
+    ar->circuit->vertices = tmp;
+  }
 
   assert(ar->graph);
   assert(ar->circuit->wires);
@@ -393,9 +409,11 @@ void autoroute_route(AutoRoute *ar, bool betterRoutes) {
       break;
     case RT_RESULT_VERTEX_BUFFER_OVERFLOW_ERROR:
       arrsetlen(ar->circuit->vertices, arrlen(ar->circuit->vertices) * 2);
+      arrsetlen(ar->prevVertices, arrlen(ar->prevVertices) * 2);
       continue;
     case RT_RESULT_WIRE_VIEW_BUFFER_OVERFLOW_ERROR:
       arrsetlen(ar->circuit->wires, arrlen(ar->circuit->wires) * 2);
+      arrsetlen(ar->prevWires, arrlen(ar->prevWires) * 2);
       continue;
     }
     break;

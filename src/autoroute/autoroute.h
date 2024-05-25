@@ -17,7 +17,7 @@
 #ifndef AUTOROUTE_H
 #define AUTOROUTE_H
 
-#include "view/view.h"
+#include "core/core.h"
 
 typedef struct AutoRoute AutoRoute;
 
