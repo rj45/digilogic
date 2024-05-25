@@ -36,7 +36,7 @@ typedef struct RouteTimeStats {
 } RouteTimeStats;
 
 void autoroute_global_init();
-AutoRoute *autoroute_create(CircuitView *view);
+AutoRoute *autoroute_create(Circuit *circuit);
 void autoroute_free(AutoRoute *ar);
 void autoroute_route(AutoRoute *ar, bool betterRoutes);
 
