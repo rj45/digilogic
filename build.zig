@@ -21,6 +21,7 @@
 
 const std = @import("std");
 const zcc = @import("compile_commands");
+const globlin = @import("globlin");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
@@ -51,32 +52,27 @@ pub fn build(b: *std.Build) void {
 
     if (optimize == .Debug and target.result.abi != .msvc) {
         digilogic.root_module.addCMacro("DEBUG", "1");
-        cflags.append("-g") catch @panic("OOM");
-        cflags.append("-O1") catch @panic("OOM");
-        cflags.append("-fno-omit-frame-pointer") catch @panic("OOM");
-        cflags.append("-Wall") catch @panic("OOM");
-        cflags.append("-Werror") catch @panic("OOM");
-        if (target.result.os.tag.isDarwin()) {
+        cflags.appendSlice(&.{
+            "-g",
+            "-O1",
+            "-fno-omit-frame-pointer",
+            "-Wall",
+            "-Werror",
+        }) catch @panic("OOM");
+
+        if (find_llvm_lib_path(b)) |llvm_lib_path| {
             // turn on address and undefined behaviour sanitizers
             cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
-            const brew_cellar = (std.ChildProcess.run(.{
-                .allocator = b.allocator,
-                .argv = &.{
-                    "brew",
-                    "--cellar",
-                },
-                .cwd = b.pathFromRoot("."),
-                .expand_arg0 = .expand,
-            }) catch @panic("Could not find homebrew cellar")).stdout;
-            // todo: figure out how to search for the version so it's not hard-coded
-            //       major version needs to match zig's version, minor/patch don't matter
-            // todo: not sure how to make a lazypath for an absolute path
-            digilogic.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
-            digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-            digilogic_test.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
-            digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-        } else {
-            // todo: turn on address sanitizer for linux?
+            digilogic.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+            digilogic_test.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+
+            if (target.result.os.tag.isDarwin()) {
+                digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+            } else {
+                digilogic.linkSystemLibrary("clang_rt.asan");
+                digilogic_test.linkSystemLibrary("clang_rt.asan");
+            }
         }
     }
 
@@ -493,4 +489,54 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
     nvdialog.installHeadersDirectory(b.path("thirdparty/nvdialog/include"), "", .{});
 
     return nvdialog;
+}
+
+fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
+    var maybe_best_path: ?[]const u8 = null;
+    var maybe_best_version: ?std.SemanticVersion = null;
+
+    const zig_version = @import("builtin").zig_version;
+    const llvm_version = if (zig_version.major == 0 and zig_version.minor < 13) 17 else 18;
+
+    var base_path: []const u8 = undefined;
+    var glob_pattern: []const u8 = undefined;
+
+    if (b.host.result.os.tag.isDarwin()) {
+        glob_pattern = b.fmt("llvm@{}/*/lib/clang/*/lib/darwin", .{ llvm_version });
+        const result = std.ChildProcess.run(.{
+            .allocator = b.allocator,
+            .argv = &.{
+                "brew",
+                "--cellar",
+            },
+            .cwd = b.pathFromRoot("."),
+            .expand_arg0 = .expand,
+        }) catch return null;
+        switch (result.term) {
+            .Exited => |status| if (status != 0) return null,
+            else => return null,
+        }
+        base_path = result.stdout;
+    } else {
+        // todo: turn on address sanitizer for linux/windows?
+        return null;
+    }
+
+    const base_dir = std.fs.cwd().openDir(base_path, .{ .iterate = true }) catch return null;
+    var iter = base_dir.walk(b.allocator) catch return null;
+    while (iter.next() catch return null) |entry| {
+        if (entry.kind == .directory and globlin.match(glob_pattern, entry.path)) {
+            var parts = std.fs.path.componentIterator(entry.path) catch continue;
+            _ = parts.next(); // llvm@xx
+            const version_str = parts.next().?.name;
+            const version = std.SemanticVersion.parse(version_str) catch continue;
+            const is_new_best = if (maybe_best_version) |best_version| version.order(best_version) == .gt else true;
+            if (is_new_best) {
+                maybe_best_version = version;
+                maybe_best_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
+            }
+        }
+    }
+
+    return maybe_best_path;
 }
