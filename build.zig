@@ -128,25 +128,6 @@ pub fn build(b: *std.Build) void {
         .flags = cflags.items,
     });
 
-    // create an assets.zip from the contents of res/assets
-    var asset_zip: std.Build.LazyPath = undefined;
-    if (b.host.result.os.tag == .windows) {
-        const asset_zip_cmd = b.addSystemCommand(&.{
-            "powershell",
-            "Compress-Archive",
-            "-Path",
-            "assets",
-            "-DestinationPath",
-        });
-        asset_zip_cmd.setCwd(b.path("res"));
-        asset_zip = asset_zip_cmd.addOutputFileArg("assets.zip");
-    } else {
-        const asset_zip_cmd = b.addSystemCommand(&.{ "zip", "-r", "-9" });
-        asset_zip_cmd.setCwd(b.path("res"));
-        asset_zip = asset_zip_cmd.addOutputFileArg("assets.zip");
-        asset_zip_cmd.addArg("assets");
-    }
-
     // complile src/gen.c to generate C code
     const asset_gen = b.addExecutable(.{
         .name = "gen",
@@ -156,10 +137,16 @@ pub fn build(b: *std.Build) void {
         .file = b.path("src/gen.c"),
         .flags = &.{"-std=gnu11"},
     });
+    asset_gen.addIncludePath(b.path("thirdparty"));
+    asset_gen.linkLibC();
 
     // generate assets.c from assets.zip
     const asset_gen_step = b.addRunArtifact(asset_gen);
-    asset_gen_step.addFileArg(asset_zip);
+    asset_gen_step.addFileArg(b.path("res/assets/NotoSans-Regular.ttf"));
+    asset_gen_step.addFileArg(b.path("res/assets/symbols.ttf"));
+    asset_gen_step.addFileArg(b.path("res/assets/testdata/simple_test.dig"));
+    asset_gen_step.addFileArg(b.path("res/assets/testdata/alu_1bit_2inpgate.dig"));
+    asset_gen_step.addFileArg(b.path("res/assets/testdata/alu_1bit_2gatemux.dig"));
     const assets_c = asset_gen_step.addOutputFileArg("assets.c");
     digilogic.addCSourceFile(.{
         .file = assets_c,

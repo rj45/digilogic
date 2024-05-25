@@ -17,27 +17,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ASSETSYS_IMPLEMENTATION
+#define STRPOOL_IMPLEMENTATION
+
+#include "strpool.h"
+
+#include "assetsys.h"
+
 int main(int argc, char **argv) {
   char *buffer = 0;
+  size_t length = 0;
 
-  FILE *fp = fopen(argv[1], "rb");
-  if (fp == NULL) {
-    fprintf(stderr, "File not found\n");
+  mz_zip_archive zip = {0};
+
+  if (!mz_zip_writer_init_heap(&zip, 0, 0)) {
+    fprintf(stderr, "Failed to initialize zip writer\n");
     return 1;
   }
-  fseek(fp, 0, SEEK_END);
-  size_t length = ftell(fp);
-  fseek(fp, 0, SEEK_SET);
-  buffer = malloc(length + 1);
-  if (fread(buffer, 1, length, fp) != length) {
-    fclose(fp);
-    free(buffer);
-    fprintf(stderr, "Error reading file\n");
-    return 1;
-  }
-  fclose(fp);
 
-  fp = fopen(argv[2], "wt");
+  for (int i = 1; i < (argc - 1); i++) {
+    char *archiveFile = strstr(argv[i], "assets");
+    mz_zip_writer_add_file(
+      &zip, archiveFile, argv[i], "", 0, MZ_BEST_COMPRESSION);
+  }
+
+  mz_zip_writer_finalize_heap_archive(&zip, (void **)&buffer, &length);
+
+  FILE *fp = fopen(argv[argc - 1], "wt");
 
   fprintf(
     fp,
@@ -54,7 +60,7 @@ int main(int argc, char **argv) {
   fprintf(fp, "\n};\n");
 
   fclose(fp);
-  free(buffer);
+  mz_zip_writer_end(&zip);
 
   return 0;
 }
