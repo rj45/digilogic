@@ -16,5 +16,9 @@
             .url = "git+https://github.com/bcrist/globlin#5232937d014b63fc1d7e53a7a8751306696a64f1",
             .hash = "12208be74c8d4d86a323ba371a0e063dc87f9d4ce2b7c2b7e745e3bce99487ec11c7",
         },
+        .@"build.crab" = .{
+            .url = "git+https://github.com/akarpovskii/build.crab#6f170fd7bc8845aeef58ff05c6d1ffa253445622",
+            .hash = "1220ac26da133ec83df00f0f0065f5cc74c8ac7bb2925096856ed27dce511ec6744a",
+        },
     },
 }

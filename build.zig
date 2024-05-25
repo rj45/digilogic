@@ -335,24 +335,19 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    const cargo_build = b.addSystemCommand(&.{
-        "cargo",
-        "build",
-        "--target",
-        rust_target,
-        "--profile",
-        if (optimize == .Debug) "dev" else "release",
+    const rust_lib_path = @import("build.crab").addCargoBuild(b, .{
+        .name = "libcrate.a",
+        .manifest_path = b.path("thirdparty/routing/Cargo.toml"),
+        .cargo_args = &.{
+            "--profile",
+            if (optimize == .Debug) "dev" else "release",
+            //"--quiet",
+        },
     });
-    cargo_build.stdio = .inherit;
-    cargo_build.setCwd(b.path("thirdparty/routing"));
-    digilogic.step.dependOn(&cargo_build.step);
-    digilogic_test.step.dependOn(&cargo_build.step);
 
-    const rust_profile = if (optimize == .Debug) "debug" else "release";
-    const library_path = b.fmt("thirdparty/routing/target/{s}/{s}", .{ rust_target, rust_profile });
-    digilogic.addLibraryPath(b.path(library_path));
+    digilogic.addLibraryPath(rust_lib_path.dirname());
     digilogic.linkSystemLibrary("digilogic_routing");
-    digilogic_test.addLibraryPath(b.path(library_path));
+    digilogic_test.addLibraryPath(rust_lib_path.dirname());
     digilogic_test.linkSystemLibrary("digilogic_routing");
 
     if (target.result.os.tag.isDarwin()) {
