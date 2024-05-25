@@ -494,6 +494,7 @@ void ux_update(CircuitUX *ux) {
     printf(
       "Minimize routing graph: %s\n",
       ux->routingConfig.minimizeGraph ? "on" : "off");
+    ux_route(ux);
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_C)) {
@@ -501,6 +502,7 @@ void ux_update(CircuitUX *ux) {
     printf(
       "Perform Centering: %s\n",
       ux->routingConfig.performCentering ? "on" : "off");
+    ux_route(ux);
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_V)) {
@@ -525,7 +527,7 @@ void ux_update(CircuitUX *ux) {
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_F3)) {
-    ux->showFPS = true;
+    ux->showFPS = !ux->showFPS;
   }
 
   if (ux->input.scroll.Y > 0.001 || ux->input.scroll.Y < -0.001) {
