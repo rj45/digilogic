@@ -21,17 +21,11 @@
 
 const std = @import("std");
 const zcc = @import("compile_commands");
+const globlin = @import("globlin");
+const crab = @import("build.crab");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{
-        .default_target = switch (b.host.result.os.tag) {
-            .windows => switch (b.host.result.cpu.arch) {
-                .x86_64 => std.Target.Query.parse(.{ .arch_os_abi = "x86_64-windows-msvc" }) catch @panic("invalid default target"),
-                else => b.host.query,
-            },
-            else => b.host.query,
-        },
-    });
+    const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
     const digilogic = b.addExecutable(.{
@@ -49,34 +43,38 @@ pub fn build(b: *std.Build) void {
     var cflags = std.ArrayList([]const u8).init(b.allocator);
     cflags.append("-std=gnu11") catch @panic("OOM");
 
-    if (optimize == .Debug and target.result.abi != .msvc) {
+    if (optimize == .Debug) {
         digilogic.root_module.addCMacro("DEBUG", "1");
-        cflags.append("-g") catch @panic("OOM");
-        cflags.append("-O1") catch @panic("OOM");
-        cflags.append("-fno-omit-frame-pointer") catch @panic("OOM");
-        cflags.append("-Wall") catch @panic("OOM");
-        cflags.append("-Werror") catch @panic("OOM");
-        if (target.result.os.tag.isDarwin()) {
-            // turn on address and undefined behaviour sanitizers
-            cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
-            const brew_cellar = (std.ChildProcess.run(.{
-                .allocator = b.allocator,
-                .argv = &.{
-                    "brew",
-                    "--cellar",
-                },
-                .cwd = b.pathFromRoot("."),
-                .expand_arg0 = .expand,
-            }) catch @panic("Could not find homebrew cellar")).stdout;
-            // todo: figure out how to search for the version so it's not hard-coded
-            //       major version needs to match zig's version, minor/patch don't matter
-            // todo: not sure how to make a lazypath for an absolute path
-            digilogic.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
-            digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-            digilogic_test.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/llvm@17/17.0.6/lib/clang/17/lib/darwin/", .{brew_cellar[0 .. brew_cellar.len - 1]}) });
-            digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+
+        if (target.result.abi == .msvc) {
+            cflags.appendSlice(&.{
+                "-g",
+                "-O1",
+            }) catch @panic("OOM");
         } else {
-            // todo: turn on address sanitizer for linux?
+            cflags.appendSlice(&.{
+                "-g",
+                "-O1",
+                "-fno-omit-frame-pointer",
+                "-Wall",
+                "-Werror",
+                "-Wno-unused-function",
+            }) catch @panic("OOM");
+
+            if (find_llvm_lib_path(b)) |llvm_lib_path| {
+                // turn on address and undefined behaviour sanitizers
+                cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
+                digilogic.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+                digilogic_test.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+
+                if (target.result.os.tag.isDarwin()) {
+                    digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                    digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                } else {
+                    digilogic.linkSystemLibrary("clang_rt.asan");
+                    digilogic_test.linkSystemLibrary("clang_rt.asan");
+                }
+            }
         }
     }
 
@@ -175,20 +173,10 @@ pub fn build(b: *std.Build) void {
     };
     const renderer = b.option(Renderer, "renderer", "Specify which rendering API to use (not all renderers work on all platforms");
 
-    var rust_target: []const u8 = target.result.linuxTriple(b.allocator) catch @panic("OOM");
-
     const msaa_sample_count = b.option(u32, "msaa_sample_count", "Number of MSAA samples to use (1 for no MSAA, default 4)") orelse 4;
     digilogic.root_module.addCMacro("MSAA_SAMPLE_COUNT", b.fmt("{d}", .{msaa_sample_count}));
 
     if (target.result.os.tag.isDarwin()) {
-        if (target.result.cpu.arch.isAARCH64()) {
-            rust_target = "aarch64-apple-darwin";
-        } else if (target.result.cpu.arch.isX86()) {
-            rust_target = "x86_64-apple-darwin";
-        } else {
-            @panic("Unsupported CPU architecture for macOS");
-        }
-
         // add apple.m (a copy of nonapple.c) to the build
         // this is required in order for the file to be compiled as Objective-C
         var mflags2 = std.ArrayList([]const u8).init(b.allocator);
@@ -212,15 +200,6 @@ pub fn build(b: *std.Build) void {
         digilogic.linkFramework("Cocoa");
         digilogic.linkFramework("UniformTypeIdentifiers");
     } else if (target.result.os.tag == .windows) {
-        // TODO this is just for testing; need a more robust way to map zig->rust targets if this ever works
-        if (target.result.abi == .msvc) {
-            // `zig build -Dtarget=x86_64-windows-msvc`
-            rust_target = "x86_64-pc-windows-msvc";
-        } else if (target.result.abi == .gnu) {
-            // `zig build -Dtarget=x86_64-windows-gnu`
-            rust_target = "x86_64-pc-windows-gnu";
-        }
-
         digilogic.addWin32ResourceFile(.{
             .file = b.path("res/app.rc"),
         });
@@ -254,9 +233,19 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("ws2_32"); // required by rust
         digilogic.linkSystemLibrary("userenv"); // required by rust
         digilogic.linkSystemLibrary("advapi32"); // required by rust
+
+        switch (target.result.abi) {
+            .msvc => {
+                //digilogic.linkSystemLibrary("Synchronization");
+            },
+            .gnu => {
+                digilogic.linkSystemLibrary("winmm"); // required by rust
+                digilogic.linkSystemLibrary("unwind"); // required by rust
+            },
+            else => @panic("Unsupported target"),
+        }
     } else {
         // assuming linux
-        rust_target = "x86_64-unknown-linux-gnu";
 
         digilogic.addCSourceFiles(.{
             .root = b.path("src"),
@@ -339,24 +328,17 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    const cargo_build = b.addSystemCommand(&.{
-        "cargo",
-        "build",
-        "--target",
-        rust_target,
-        "--profile",
-        if (optimize == .Debug) "dev" else "release",
+    const rust_lib_path = crab.addRustStaticlib(b, .{
+        .name = if (target.result.os.tag == .windows) "digilogic_routing.lib" else "digilogic_routing.a",
+        .manifest_path = b.path("thirdparty/routing/Cargo.toml"),
+        .target = .{ .zig = target },
+        .profile = crab.Profile.fromOptimizeMode(optimize),
+        .cargo_args = &.{ "--quiet" },
     });
-    cargo_build.stdio = .inherit;
-    cargo_build.setCwd(b.path("thirdparty/routing"));
-    digilogic.step.dependOn(&cargo_build.step);
-    digilogic_test.step.dependOn(&cargo_build.step);
 
-    const rust_profile = if (optimize == .Debug) "debug" else "release";
-    const library_path = b.fmt("thirdparty/routing/target/{s}/{s}", .{ rust_target, rust_profile });
-    digilogic.addLibraryPath(b.path(library_path));
+    digilogic.addLibraryPath(rust_lib_path.dirname());
     digilogic.linkSystemLibrary("digilogic_routing");
-    digilogic_test.addLibraryPath(b.path(library_path));
+    digilogic_test.addLibraryPath(rust_lib_path.dirname());
     digilogic_test.linkSystemLibrary("digilogic_routing");
 
     if (target.result.os.tag.isDarwin()) {
@@ -493,4 +475,54 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
     nvdialog.installHeadersDirectory(b.path("thirdparty/nvdialog/include"), "", .{});
 
     return nvdialog;
+}
+
+fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
+    var maybe_best_path: ?[]const u8 = null;
+    var maybe_best_version: ?std.SemanticVersion = null;
+
+    const zig_version = @import("builtin").zig_version;
+    const llvm_version = if (zig_version.major == 0 and zig_version.minor < 13) 17 else 18;
+
+    var base_path: []const u8 = undefined;
+    var glob_pattern: []const u8 = undefined;
+
+    if (b.host.result.os.tag.isDarwin()) {
+        glob_pattern = b.fmt("llvm@{}/*/lib/clang/*/lib/darwin", .{ llvm_version });
+        const result = std.ChildProcess.run(.{
+            .allocator = b.allocator,
+            .argv = &.{
+                "brew",
+                "--cellar",
+            },
+            .cwd = b.pathFromRoot("."),
+            .expand_arg0 = .expand,
+        }) catch return null;
+        switch (result.term) {
+            .Exited => |status| if (status != 0) return null,
+            else => return null,
+        }
+        base_path = result.stdout;
+    } else {
+        // todo: turn on address sanitizer for linux/windows?
+        return null;
+    }
+
+    const base_dir = std.fs.cwd().openDir(base_path, .{ .iterate = true }) catch return null;
+    var iter = base_dir.walk(b.allocator) catch return null;
+    while (iter.next() catch return null) |entry| {
+        if (entry.kind == .directory and globlin.match(glob_pattern, entry.path)) {
+            var parts = std.fs.path.componentIterator(entry.path) catch continue;
+            _ = parts.next(); // llvm@xx
+            const version_str = parts.next().?.name;
+            const version = std.SemanticVersion.parse(version_str) catch continue;
+            const is_new_best = if (maybe_best_version) |best_version| version.order(best_version) == .gt else true;
+            if (is_new_best) {
+                maybe_best_version = version;
+                maybe_best_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
+            }
+        }
+    }
+
+    return maybe_best_path;
 }

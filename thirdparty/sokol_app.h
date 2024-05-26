@@ -2098,15 +2098,18 @@ inline void sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #include <windowsx.h>
     #include <shellapi.h>
     #if !defined(SOKOL_NO_ENTRY)    // if SOKOL_NO_ENTRY is defined, it's the applications' responsibility to use the right subsystem
+        #ifdef _MSC_VER
         #if defined(SOKOL_WIN32_FORCE_MAIN)
             #pragma comment (linker, "/subsystem:console")
         #else
             #pragma comment (linker, "/subsystem:windows")
         #endif
+        #endif
     #endif
     #include <stdio.h>  /* freopen_s() */
     #include <wchar.h>  /* wcslen() */
 
+    #ifdef _MSC_VER
     #pragma comment (lib, "kernel32")
     #pragma comment (lib, "user32")
     #pragma comment (lib, "shell32")    /* CommandLineToArgvW, DragQueryFileW, DragFinished */
@@ -2114,6 +2117,7 @@ inline void sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #if defined(SOKOL_D3D11)
         #pragma comment (lib, "dxgi")
         #pragma comment (lib, "d3d11")
+    #endif
     #endif
 
     #if defined(SOKOL_D3D11)
