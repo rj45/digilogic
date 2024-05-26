@@ -74,6 +74,8 @@ pub fn build(b: *std.Build) void {
                     digilogic.linkSystemLibrary("clang_rt.asan");
                     digilogic_test.linkSystemLibrary("clang_rt.asan");
                 }
+            } else if (target.result.os.tag.isDarwin() and optimize == .Debug) {
+                @panic("Failed to find LLVM memory sanitizer libraries. Please install LLVM via Homebrew.");
             }
         }
     }
@@ -329,11 +331,11 @@ pub fn build(b: *std.Build) void {
     }
 
     const rust_lib_path = crab.addRustStaticlib(b, .{
-        .name = if (target.result.os.tag == .windows) "digilogic_routing.lib" else "digilogic_routing.a",
+        .name = if (target.result.os.tag == .windows) "digilogic_routing.lib" else "libdigilogic_routing.a",
         .manifest_path = b.path("thirdparty/routing/Cargo.toml"),
         .target = .{ .zig = target },
         .profile = crab.Profile.fromOptimizeMode(optimize),
-        .cargo_args = &.{ "--quiet" },
+        .cargo_args = &.{"--quiet"},
     });
 
     digilogic.addLibraryPath(rust_lib_path.dirname());
@@ -478,8 +480,7 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
 }
 
 fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
-    var maybe_best_path: ?[]const u8 = null;
-    var maybe_best_version: ?std.SemanticVersion = null;
+    var found_path: ?[]const u8 = null;
 
     const zig_version = @import("builtin").zig_version;
     const llvm_version = if (zig_version.major == 0 and zig_version.minor < 13) 17 else 18;
@@ -488,7 +489,7 @@ fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
     var glob_pattern: []const u8 = undefined;
 
     if (b.host.result.os.tag.isDarwin()) {
-        glob_pattern = b.fmt("llvm@{}/*/lib/clang/*/lib/darwin", .{ llvm_version });
+        glob_pattern = b.fmt("llvm@{}/*/lib/clang/*/lib/darwin", .{llvm_version});
         const result = std.ChildProcess.run(.{
             .allocator = b.allocator,
             .argv = &.{
@@ -502,7 +503,7 @@ fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
             .Exited => |status| if (status != 0) return null,
             else => return null,
         }
-        base_path = result.stdout;
+        base_path = std.mem.trim(u8, result.stdout, &std.ascii.whitespace);
     } else {
         // todo: turn on address sanitizer for linux/windows?
         return null;
@@ -512,17 +513,12 @@ fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
     var iter = base_dir.walk(b.allocator) catch return null;
     while (iter.next() catch return null) |entry| {
         if (entry.kind == .directory and globlin.match(glob_pattern, entry.path)) {
-            var parts = std.fs.path.componentIterator(entry.path) catch continue;
-            _ = parts.next(); // llvm@xx
-            const version_str = parts.next().?.name;
-            const version = std.SemanticVersion.parse(version_str) catch continue;
-            const is_new_best = if (maybe_best_version) |best_version| version.order(best_version) == .gt else true;
-            if (is_new_best) {
-                maybe_best_version = version;
-                maybe_best_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
-            }
+            found_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
+            break;
         }
     }
-
-    return maybe_best_path;
+    if (found_path) |subpath| {
+        return b.fmt("{s}/{s}", .{ base_path, subpath });
+    }
+    return null;
 }
