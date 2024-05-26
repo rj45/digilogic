@@ -235,6 +235,7 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("ws2_32"); // required by rust
         digilogic.linkSystemLibrary("userenv"); // required by rust
         digilogic.linkSystemLibrary("advapi32"); // required by rust
+        digilogic.linkSystemLibrary("API-MS-Win-Core-Synch-l1-2-0"); // required by rust
 
         switch (target.result.abi) {
             .msvc => {

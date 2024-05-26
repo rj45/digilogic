@@ -444,7 +444,7 @@ typedef struct Circuit {
   // important: keep in sync with IDType
   union {
     struct {
-      void *none;
+      uint32_t *none;
       Component *components;
       Port *ports;
       Net *nets;

@@ -303,6 +303,10 @@ static void circuit_endpoint_deleted(void *user, ID id, void *ptr) {
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
   *circuit = (Circuit){.componentDescs = componentDescs};
 
+  smap_init(&circuit->sm.none, ID_NONE);
+  smap_add_synced_array(
+    &circuit->sm.none, (void **)&circuit->none, sizeof(*circuit->none));
+
   smap_init(&circuit->sm.components, ID_COMPONENT);
   smap_add_synced_array(
     &circuit->sm.components, (void **)&circuit->components,
