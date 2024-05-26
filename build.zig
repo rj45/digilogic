@@ -379,7 +379,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Build and run tests");
     test_step.dependOn(&test_run.step);
 
-    zcc.createStep(b, "cdb", .{ .targets = &.{ digilogic, digilogic_test } });
+    zcc.createStep(b, "cdb", .{ .targets = &.{ digilogic, digilogic_test, asset_gen } });
 }
 
 fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
