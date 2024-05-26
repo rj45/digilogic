@@ -3421,8 +3421,12 @@ static mz_bool tdefl_compress_lz_codes(tdefl_compressor *d) {
 
     if (flags & 1) {
       mz_uint s0, s1, n0, n1, sym, num_extra_bits;
-      mz_uint match_len = pLZ_codes[0],
-              match_dist = *(const mz_uint16 *)(pLZ_codes + 1);
+      mz_uint match_len = pLZ_codes[0], match_dist;
+      {
+        mz_uint16 tmp;
+        memcpy(&tmp, pLZ_codes + 1, sizeof(mz_uint16));
+        match_dist = tmp;
+      }
       pLZ_codes += 3;
 
       MZ_ASSERT(d->m_huff_code_sizes[0][s_tdefl_len_sym[match_len]]);
@@ -3472,7 +3476,7 @@ static mz_bool tdefl_compress_lz_codes(tdefl_compressor *d) {
     if (pOutput_buf >= d->m_pOutput_buf_end)
       return MZ_FALSE;
 
-    *(mz_uint64 *)pOutput_buf = bit_buffer;
+    memcpy(pOutput_buf, &bit_buffer, sizeof(bit_buffer));
     pOutput_buf += (bits_in >> 3);
     bit_buffer >>= (bits_in & ~7);
     bits_in &= 7;
@@ -3848,8 +3852,8 @@ static mz_bool tdefl_compress_fast(tdefl_compressor *d) {
       if (
         ((cur_match_dist = (mz_uint16)(lookahead_pos - probe_pos)) <=
          dict_size) &&
-        ((*(const mz_uint32 *)(d->m_dict +
-                               (probe_pos &= TDEFL_LZ_DICT_SIZE_MASK)) &
+        ((*(const mz_uint32
+              *)(d->m_dict + (probe_pos &= TDEFL_LZ_DICT_SIZE_MASK)) &
           0xFFFFFF) == first_trigram)) {
         const mz_uint16 *p = (const mz_uint16 *)pCur_dict;
         const mz_uint16 *q = (const mz_uint16 *)(d->m_dict + probe_pos);
@@ -4041,7 +4045,7 @@ static mz_bool tdefl_compress_normal(tdefl_compressor *d) {
         d->m_dict[(ins_pos + 1) & TDEFL_LZ_DICT_SIZE_MASK];
       mz_uint num_bytes_to_process = (mz_uint)MZ_MIN(
         src_buf_left, TDEFL_MAX_MATCH_LEN - d->m_lookahead_size);
-      const mz_uint8 *pSrc_end = pSrc + num_bytes_to_process;
+      const mz_uint8 *pSrc_end = pSrc ? pSrc + num_bytes_to_process : NULL;
       src_buf_left -= num_bytes_to_process;
       d->m_lookahead_size += num_bytes_to_process;
       while (pSrc != pSrc_end) {
@@ -4854,10 +4858,10 @@ static void mz_zip_time_to_dos_time(
 #else
   struct tm *tm = localtime(&time);
 #endif
-  *pDOS_time = (mz_uint16)(((tm->tm_hour) << 11) + ((tm->tm_min) << 5) +
-                           ((tm->tm_sec) >> 1));
-  *pDOS_date = (mz_uint16)(((tm->tm_year + 1900 - 1980) << 9) +
-                           ((tm->tm_mon + 1) << 5) + tm->tm_mday);
+  *pDOS_time =
+    (mz_uint16)(((tm->tm_hour) << 11) + ((tm->tm_min) << 5) + ((tm->tm_sec) >> 1));
+  *pDOS_date =
+    (mz_uint16)(((tm->tm_year + 1900 - 1980) << 9) + ((tm->tm_mon + 1) << 5) + tm->tm_mday);
 }
 #endif
 

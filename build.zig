@@ -480,8 +480,6 @@ fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
 }
 
 fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
-    var found_path: ?[]const u8 = null;
-
     const zig_version = @import("builtin").zig_version;
     const llvm_version = if (zig_version.major == 0 and zig_version.minor < 13) 17 else 18;
 
@@ -509,16 +507,14 @@ fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
         return null;
     }
 
-    const base_dir = std.fs.cwd().openDir(base_path, .{ .iterate = true }) catch return null;
+    var base_dir = std.fs.cwd().openDir(base_path, .{ .iterate = true }) catch return null;
+    defer base_dir.close();
+
     var iter = base_dir.walk(b.allocator) catch return null;
     while (iter.next() catch return null) |entry| {
         if (entry.kind == .directory and globlin.match(glob_pattern, entry.path)) {
-            found_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
-            break;
+            return std.fs.path.join(b.allocator, &.{ base_path, entry.path }) catch @panic("OOM");
         }
-    }
-    if (found_path) |subpath| {
-        return b.fmt("{s}/{s}", .{ base_path, subpath });
     }
     return null;
 }
