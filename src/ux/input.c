@@ -312,11 +312,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       ux->selectionCenter = area.center;
     }
 
-    ux_do(
-      ux, (UndoCommand){
-            .verb = UNDO_SELECT_AREA,
-            .area = area,
-          });
+    ux_do(ux, undo_cmd_select_area(area));
     break;
   }
 
