@@ -177,6 +177,10 @@ ID smap_add(SparseMap *smap, void *value) {
 
 void smap_del(SparseMap *smap, ID id) {
   if (!smap_has(smap, id)) {
+    printf(
+      "Attempt to delete: %x %d, %x vs %x\n", id, id_valid(id),
+      id_typegen(smap->sparse[id_index(id)]), id_typegen(id));
+    assert(0);
     return;
   }
 
@@ -264,8 +268,12 @@ void smap_clone_from(SparseMap *dst, SparseMap *src) {
   memcpy(dst->ids, src->ids, src->length * sizeof(ID));
 
   arrsetlen(dst->sparse, arrlen(src->sparse));
-  memcpy(dst->sparse, src->sparse, arrlen(src->sparse) * sizeof(ID));
+  if (dst->sparse != NULL && src->sparse != NULL) {
+    memcpy(dst->sparse, src->sparse, arrlen(src->sparse) * sizeof(ID));
+  }
 
   arrsetlen(dst->freeList, arrlen(src->freeList));
-  memcpy(dst->freeList, src->freeList, arrlen(src->freeList) * sizeof(ID));
+  if (dst->freeList != NULL && src->freeList != NULL) {
+    memcpy(dst->freeList, src->freeList, arrlen(src->freeList) * sizeof(ID));
+  }
 }
