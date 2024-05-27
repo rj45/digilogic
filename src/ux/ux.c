@@ -76,18 +76,12 @@ void ux_route(CircuitUX *ux) { autoroute_route(ux->router, ux->routingConfig); }
 
 void ux_select_none(CircuitUX *ux) {
   if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
-    ux_do(
-      ux, (UndoCommand){
-            .verb = UNDO_DESELECT_AREA,
-            .area = ux->view.selectionBox,
-          });
+    ux_do(ux, undo_cmd_deselect_area(ux->view.selectionBox));
   } else {
     while (arrlen(ux->view.selected) > 0) {
       ux_do(
-        ux, (UndoCommand){
-              .verb = UNDO_DESELECT_ITEM,
-              .itemID = ux->view.selected[arrlen(ux->view.selected) - 1],
-            });
+        ux, undo_cmd_deselect_item(
+              ux->view.selected[arrlen(ux->view.selected) - 1]));
     }
   }
 }
@@ -113,11 +107,7 @@ void ux_select_all(CircuitUX *ux) {
     max.X = HMM_MAX(max.X, cmax.X);
     max.Y = HMM_MAX(max.Y, cmax.Y);
   }
-  ux_do(
-    ux, (UndoCommand){
-          .verb = UNDO_SELECT_AREA,
-          .area = box_from_tlbr(min, max),
-        });
+  ux_do(ux, undo_cmd_select_area(box_from_tlbr(min, max)));
 }
 
 static void ux_bvh_draw(BVH *bvh, DrawContext *drawCtx, int drawLevel);

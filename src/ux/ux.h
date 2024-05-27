@@ -186,6 +186,26 @@ typedef struct Input {
   HMM_Vec2 scroll;
 } Input;
 
+typedef struct UndoMoveSelection {
+  HMM_Vec2 oldCenter;
+  HMM_Vec2 newCenter;
+  bool snap;
+} UndoMoveSelection;
+
+typedef struct UndoSelectDeselectItem {
+  ID itemID;
+} UndoSelectDeselectItem;
+
+typedef struct UndoSelectDeselectArea {
+  Box area;
+} UndoSelectDeselectArea;
+
+typedef struct UndoAddDelComponent {
+  HMM_Vec2 center;
+  ID itemID;
+  ComponentDescID descID;
+} UndoAddDelComponent;
+
 typedef struct UndoCommand {
   enum {
     UNDO_NONE,
@@ -199,16 +219,81 @@ typedef struct UndoCommand {
   } verb;
 
   union {
-    HMM_Vec2 oldCenter;
-    ID itemID;
-    Box area;
+    struct { // for UNDO_MOVE_SELECTION
+      HMM_Vec2 oldCenter;
+      HMM_Vec2 newCenter;
+      bool snap;
+    };
+    struct { // for UNDO_SELECT_ITEM, UNDO_DESELECT_ITEM
+      ID selectedID;
+    };
+    struct { // for UNDO_SELECT_AREA, UNDO_DESELECT_AREA
+      Box area;
+    };
+    struct { // for UNDO_ADD_COMPONENT, UNDO_DEL_COMPONENT
+      HMM_Vec2 center;
+      ComponentID componentID;
+      ComponentDescID descID;
+    };
   };
-
-  HMM_Vec2 newCenter;
-  ComponentDescID descID;
-
-  bool snap;
 } UndoCommand;
+
+static inline UndoCommand
+undo_cmd_move_selection(HMM_Vec2 oldCenter, HMM_Vec2 newCenter, bool snap) {
+  return (UndoCommand){
+    .verb = UNDO_MOVE_SELECTION,
+    .oldCenter = oldCenter,
+    .newCenter = newCenter,
+    .snap = false,
+  };
+}
+
+static inline UndoCommand undo_cmd_select_item(ID selectedID) {
+  return (UndoCommand){
+    .verb = UNDO_SELECT_ITEM,
+    .selectedID = selectedID,
+  };
+}
+static inline UndoCommand undo_cmd_deselect_item(ID selectedID) {
+  return (UndoCommand){
+    .verb = UNDO_DESELECT_ITEM,
+    .selectedID = selectedID,
+  };
+}
+
+static inline UndoCommand undo_cmd_select_area(Box area) {
+  return (UndoCommand){
+    .verb = UNDO_SELECT_AREA,
+    .area = area,
+  };
+}
+
+static inline UndoCommand undo_cmd_deselect_area(Box area) {
+  return (UndoCommand){
+    .verb = UNDO_DESELECT_AREA,
+    .area = area,
+  };
+}
+
+static inline UndoCommand undo_cmd_add_component(
+  HMM_Vec2 center, ID componentID, ComponentDescID descID) {
+  return (UndoCommand){
+    .verb = UNDO_ADD_COMPONENT,
+    .center = center,
+    .componentID = componentID,
+    .descID = descID,
+  };
+}
+
+static inline UndoCommand undo_cmd_del_component(
+  HMM_Vec2 center, ID componentID, ComponentDescID descID) {
+  return (UndoCommand){
+    .verb = UNDO_DEL_COMPONENT,
+    .center = center,
+    .componentID = componentID,
+    .descID = descID,
+  };
+}
 
 typedef void AvoidRouter;
 

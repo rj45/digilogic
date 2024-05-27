@@ -223,12 +223,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           circuit_component_ptr(&ux->view.circuit, ux->addingComponent);
         ComponentDescID descID = component->desc;
         ux_do(
-          ux, (UndoCommand){
-                .verb = UNDO_ADD_COMPONENT,
-                .itemID = ux->addingComponent,
-                .descID = descID,
-                .newCenter = component->box.center,
-              });
+          ux, undo_cmd_add_component(
+                component->box.center, ux->addingComponent, descID));
         ux_start_adding_component(ux, descID);
 
         // rebuild the BVH after adding things
@@ -244,32 +240,21 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       case STATE_SELECT_ONE: // fallthrough
       case STATE_DESELECT:
         if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
-          ux_do(
-            ux, (UndoCommand){
-                  .verb = UNDO_DESELECT_AREA,
-                  .area = ux->view.selectionBox,
-                });
+          ux_do(ux, undo_cmd_deselect_area(ux->view.selectionBox));
         } else {
           if (
             state == STATE_DESELECT ||
             (ux->input.modifiers & MODIFIER_SHIFT) == 0) {
             while (arrlen(ux->view.selected) > 0) {
               ux_do(
-                ux,
-                (UndoCommand){
-                  .verb = UNDO_DESELECT_ITEM,
-                  .itemID = ux->view.selected[arrlen(ux->view.selected) - 1],
-                });
+                ux, undo_cmd_deselect_item(
+                      ux->view.selected[arrlen(ux->view.selected) - 1]));
             }
           }
         }
 
         if (state == STATE_SELECT_ONE) {
-          ux_do(
-            ux, (UndoCommand){
-                  .verb = UNDO_SELECT_ITEM,
-                  .itemID = ux->view.hovered,
-                });
+          ux_do(ux, undo_cmd_select_item(ux->view.hovered));
           ux->selectionCenter = ux_calc_selection_center(ux);
         }
         break;
@@ -311,12 +296,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
     HMM_Vec2 newCenter = HMM_AddV2(oldCenter, delta);
     if (HMM_LenSqrV2(delta) > 0.01f) {
       ux_do(
-        ux, (UndoCommand){
-              .verb = UNDO_MOVE_SELECTION,
-              .oldCenter = oldCenter,
-              .newCenter = newCenter,
-              .snap = (ux->input.modifiers & MODIFIER_CTRL) == 0,
-            });
+        ux,
+        undo_cmd_move_selection(
+          oldCenter, newCenter, (ux->input.modifiers & MODIFIER_CTRL) == 0));
     }
 
     break;

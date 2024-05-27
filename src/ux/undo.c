@@ -60,8 +60,8 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     break;
   }
   case UNDO_SELECT_ITEM:
-    log_debug("Performing select item: %x", command.itemID);
-    arrput(ux->view.selected, command.itemID);
+    log_debug("Performing select item: %x", command.selectedID);
+    arrput(ux->view.selected, command.selectedID);
     break;
   case UNDO_SELECT_AREA:
     log_debug(
@@ -84,9 +84,9 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     }
     break;
   case UNDO_DESELECT_ITEM:
-    log_debug("Performing deselect item: %x", command.itemID);
+    log_debug("Performing deselect item: %x", command.selectedID);
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
-      if (ux->view.selected[i] == command.itemID) {
+      if (ux->view.selected[i] == command.selectedID) {
         arrdel(ux->view.selected, i);
         break;
       }
@@ -101,30 +101,34 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     break;
   case UNDO_ADD_COMPONENT:
     log_debug(
-      "Performing add component: %x %d %f %f", command.itemID, command.descID,
-      command.newCenter.X, command.newCenter.Y);
-    if (!circuit_has(&ux->view.circuit, command.itemID)) {
+      "Performing add component: %x %d %f %f", command.componentID,
+      command.descID, command.center.X, command.center.Y);
+    if (!circuit_has(&ux->view.circuit, command.componentID)) {
       ID id = circuit_add_component(
-        &ux->view.circuit, command.descID, command.newCenter);
+        &ux->view.circuit, command.descID, command.center);
       size_t lastUndo = arrlen(ux->undoStack) - 1;
-      if (lastUndo >= 0 && ux->undoStack[lastUndo].itemID == command.itemID) {
-        ux->undoStack[lastUndo].itemID = id;
+      if (
+        lastUndo >= 0 &&
+        ux->undoStack[lastUndo].componentID == command.componentID) {
+        ux->undoStack[lastUndo].componentID = id;
         break;
       }
       size_t lastRedo = arrlen(ux->redoStack) - 1;
-      if (lastRedo >= 0 && ux->redoStack[lastRedo].itemID == command.itemID) {
-        ux->redoStack[lastRedo].itemID = id;
+      if (
+        lastRedo >= 0 &&
+        ux->redoStack[lastRedo].componentID == command.componentID) {
+        ux->redoStack[lastRedo].componentID = id;
       }
     }
 
     break;
 
   case UNDO_DEL_COMPONENT:
-    log_debug("Performing del component: %x", command.itemID);
-    if (circuit_has(&ux->view.circuit, command.itemID)) {
+    log_debug("Performing del component: %x", command.componentID);
+    if (circuit_has(&ux->view.circuit, command.componentID)) {
       // todo: if adding component, replace it with the component removed
       // and delete the adding component instead
-      circuit_del(&ux->view.circuit, command.itemID);
+      circuit_del(&ux->view.circuit, command.componentID);
     }
     break;
   }
@@ -143,13 +147,13 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
         lastCommand->newCenter = command.newCenter;
         return;
       case UNDO_SELECT_ITEM:
-        lastCommand->itemID = command.itemID;
+        lastCommand->selectedID = command.selectedID;
         return;
       case UNDO_SELECT_AREA:
         lastCommand->area = command.area;
         return;
       case UNDO_DESELECT_ITEM:
-        if (lastCommand->itemID == command.itemID) {
+        if (lastCommand->selectedID == command.selectedID) {
           return;
         }
         break;
@@ -177,38 +181,25 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
   case UNDO_NONE:
     break;
   case UNDO_MOVE_SELECTION:
-    flip.verb = UNDO_MOVE_SELECTION;
-    HMM_Vec2 tmp = cmd.oldCenter;
-    flip.oldCenter = cmd.newCenter;
-    flip.newCenter = tmp;
+    flip = undo_cmd_move_selection(cmd.newCenter, cmd.oldCenter, cmd.snap);
     break;
   case UNDO_SELECT_ITEM:
-    flip.verb = UNDO_DESELECT_ITEM;
-    flip.itemID = cmd.itemID;
+    flip = undo_cmd_deselect_item(cmd.selectedID);
     break;
   case UNDO_SELECT_AREA:
-    flip.verb = UNDO_DESELECT_AREA;
-    flip.area = cmd.area;
+    flip = undo_cmd_deselect_area(cmd.area);
     break;
   case UNDO_DESELECT_ITEM:
-    flip.verb = UNDO_SELECT_ITEM;
-    flip.itemID = cmd.itemID;
+    flip = undo_cmd_select_item(cmd.selectedID);
     break;
   case UNDO_DESELECT_AREA:
-    flip.verb = UNDO_SELECT_AREA;
-    flip.area = cmd.area;
+    flip = undo_cmd_select_area(cmd.area);
     break;
   case UNDO_ADD_COMPONENT:
-    flip.verb = UNDO_DEL_COMPONENT;
-    flip.itemID = cmd.itemID;
-    flip.descID = cmd.descID;
-    flip.newCenter = cmd.newCenter;
+    flip = undo_cmd_del_component(cmd.center, cmd.componentID, cmd.descID);
     break;
   case UNDO_DEL_COMPONENT:
-    flip.verb = UNDO_ADD_COMPONENT;
-    flip.itemID = cmd.itemID;
-    flip.descID = cmd.descID;
-    flip.newCenter = cmd.newCenter;
+    flip = undo_cmd_add_component(cmd.center, cmd.componentID, cmd.descID);
     break;
   }
   return flip;

@@ -41,6 +41,8 @@ struct AutoRoute {
 
   arr(RT_Anchor) anchors;
 
+  // todo: this is for nudging, so that we can diff the new state from the
+  // previous state and know what wires to update in the BVH
   arr(Wire) prevWires;
   arr(HMM_Vec2) prevVertices;
 
