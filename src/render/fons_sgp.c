@@ -277,9 +277,6 @@ void fsgp_flush(FONScontext *ctx) {
         (size_t)(fsgp->cur_width * fsgp->cur_height * sizeof(uint32_t));
       fsgp->img_buffer =
         (uint8_t *)_fsgp_malloc(&fsgp->desc.allocator, fsgp->img_buffer_size);
-      printf(
-        "fsgp_flush: created new img_buffer of size %d %d\n", fsgp->cur_width,
-        fsgp->cur_height);
     }
 
     uint8_t *ptr = ctx->texData;

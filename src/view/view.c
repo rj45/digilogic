@@ -458,7 +458,9 @@ void view_draw(CircuitView *view) {
       flags |= DRAW_HOVERED;
     }
 
-    if ((flags & DRAW_HOVERED) || view_is_hovered(view, waypoint->net)) {
+    if (
+      (flags & (DRAW_HOVERED | DRAW_SELECTED)) ||
+      view_is_hovered(view, waypoint->net)) {
       draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
     }
   }
