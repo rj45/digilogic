@@ -217,6 +217,7 @@ UndoCommand ux_undo(CircuitUX *ux) {
   arrput(ux->redoStack, redoCmd);
 
   ux_perform_command(ux, redoCmd);
+  ux_build_bvh(ux);
   return cmd;
 }
 
@@ -232,5 +233,6 @@ UndoCommand ux_redo(CircuitUX *ux) {
   arrput(ux->undoStack, undoCmd);
 
   ux_perform_command(ux, undoCmd);
+  ux_build_bvh(ux);
   return cmd;
 }
