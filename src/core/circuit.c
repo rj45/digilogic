@@ -344,6 +344,7 @@ void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs) {
 }
 
 void circuit_free(Circuit *circuit) {
+  smap_free(&circuit->sm.none);
   smap_free(&circuit->sm.components);
   smap_free(&circuit->sm.ports);
   smap_free(&circuit->sm.nets);
@@ -357,6 +358,7 @@ void circuit_free(Circuit *circuit) {
 }
 
 void circuit_clear(Circuit *circuit) {
+  smap_clear(&circuit->sm.none);
   smap_clear(&circuit->sm.components);
   smap_clear(&circuit->sm.ports);
   smap_clear(&circuit->sm.nets);
@@ -374,15 +376,12 @@ void circuit_clear(Circuit *circuit) {
 void circuit_clone_from(Circuit *dst, Circuit *src) {
   circuit_clear(dst);
   dst->componentDescs = src->componentDescs;
-  for (int i = 0; i < ID_TYPE_COUNT; i++) {
+  for (int i = 1; i < ID_TYPE_COUNT; i++) {
     smap_clone_from(&dst->sparsemaps[i], &src->sparsemaps[i]);
   }
   arrsetlen(dst->text, arrlen(src->text));
   memcpy(dst->text, src->text, arrlen(src->text));
 
-  for (int i = 0; i < hmlen(dst->nextName); i++) {
-    hmdel(dst->nextName, dst->nextName[i].key);
-  }
   for (int i = 0; i < hmlen(src->nextName); i++) {
     hmput(dst->nextName, src->nextName[i].key, src->nextName[i].value);
   }
