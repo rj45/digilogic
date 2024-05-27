@@ -40,6 +40,17 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const Sanitizer = enum {
+        none,
+        address,
+        // note: memory sanitizer requires the whole world be built with it
+        // including Xorg, OpenGL, etc. This isn't very practical for `digilogic`
+        // but `digilogic_test` can use it.
+        memory,
+        thread,
+    };
+    const sanitizer = b.option(Sanitizer, "sanitize", "Specify which sanitizer to use on linux in debug mode") orelse .address;
+
     var cflags = std.ArrayList([]const u8).init(b.allocator);
     cflags.append("-std=gnu11") catch @panic("OOM");
 
@@ -56,26 +67,48 @@ pub fn build(b: *std.Build) void {
                 "-g",
                 "-O1",
                 "-fno-omit-frame-pointer",
+                "-fno-optimize-sibling-calls",
                 "-Wall",
                 "-Werror",
                 "-Wno-unused-function",
             }) catch @panic("OOM");
 
-            if (find_llvm_lib_path(b)) |llvm_lib_path| {
-                // turn on address and undefined behaviour sanitizers
-                cflags.append("-fsanitize=address,undefined") catch @panic("OOM");
-                digilogic.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
-                digilogic_test.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
+            if (sanitizer != .none) {
+                if (find_llvm_lib_path(b)) |llvm_lib_path| {
+                    // turn on address and undefined behaviour sanitizers
+                    const sanstr = switch (sanitizer) {
+                        .address => "address",
+                        .memory => "memory",
+                        .thread => "thread",
+                        else => "",
+                    };
+                    cflags.append(b.fmt("-fsanitize={s},undefined", .{sanstr})) catch @panic("OOM");
+                    if (sanitizer == .memory) {
+                        cflags.append("-fsanitize-memory-track-origins=2") catch @panic("OOM");
+                    }
+                    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test }) |exe| {
+                        exe.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
 
-                if (target.result.os.tag.isDarwin()) {
-                    digilogic.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-                    digilogic_test.linkSystemLibrary("clang_rt.asan_osx_dynamic");
-                } else {
-                    digilogic.linkSystemLibrary("clang_rt.asan");
-                    digilogic_test.linkSystemLibrary("clang_rt.asan");
+                        if (target.result.os.tag.isDarwin()) {
+                            // todo: figure out libraries for other sanitizers
+                            exe.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                        } else if (target.result.os.tag == .linux) {
+                            if (sanitizer == .address) {
+                                exe.linkSystemLibrary("clang_rt.asan_static-x86_64");
+                                exe.linkSystemLibrary("clang_rt.asan-x86_64");
+                            } else if (sanitizer == .memory) {
+                                exe.linkSystemLibrary("clang_rt.msan-x86_64");
+                            } else if (sanitizer == .thread) {
+                                exe.linkSystemLibrary("clang_rt.tsan-x86_64");
+                            }
+                            exe.linkSystemLibrary("pthread");
+                            exe.linkSystemLibrary("rt");
+                            exe.linkSystemLibrary("m");
+                            exe.linkSystemLibrary("dl");
+                            exe.linkSystemLibrary("resolv");
+                        }
+                    }
                 }
-            } else if (target.result.os.tag.isDarwin() and optimize == .Debug) {
-                @panic("Failed to find LLVM memory sanitizer libraries. Please install LLVM via Homebrew.");
             }
         }
     }
@@ -269,6 +302,7 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("GL");
 
         digilogic.linkSystemLibrary("unwind"); // required by rust
+        digilogic_test.linkSystemLibrary("unwind");
 
         const use_egl = b.option(bool, "egl", "Force Sokol to use EGL instead of GLX for OpenGL context creation") orelse use_wayland;
         if (use_egl) {
@@ -503,9 +537,11 @@ fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
             else => return null,
         }
         base_path = std.mem.trim(u8, result.stdout, &std.ascii.whitespace);
-    } else {
-        // todo: turn on address sanitizer for linux/windows?
+    } else if (b.host.result.os.tag == .windows) {
         return null;
+    } else {
+        glob_pattern = b.fmt("llvm-{}/lib/clang/*/lib/linux", .{llvm_version});
+        base_path = "/usr/lib";
     }
 
     var base_dir = std.fs.cwd().openDir(base_path, .{ .iterate = true }) catch return null;
