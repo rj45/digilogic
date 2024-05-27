@@ -24,6 +24,16 @@
 #define LOG_LEVEL LL_INFO
 #include "log.h"
 
+static inline UndoCommand *ux_undo_stack_top(CircuitUX *ux) {
+  if (arrlen(ux->redoStack) > 0) {
+    return &ux->redoStack[arrlen(ux->redoStack) - 1];
+  }
+  if (arrlen(ux->undoStack) == 0) {
+    return NULL;
+  }
+  return &ux->undoStack[arrlen(ux->undoStack) - 1];
+}
+
 static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   ux->changed = true;
 
@@ -106,19 +116,8 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     if (!circuit_has(&ux->view.circuit, command.componentID)) {
       ID id = circuit_add_component(
         &ux->view.circuit, command.descID, command.center);
-      size_t lastUndo = arrlen(ux->undoStack) - 1;
-      if (
-        lastUndo >= 0 &&
-        ux->undoStack[lastUndo].componentID == command.componentID) {
-        ux->undoStack[lastUndo].componentID = id;
-        break;
-      }
-      size_t lastRedo = arrlen(ux->redoStack) - 1;
-      if (
-        lastRedo >= 0 &&
-        ux->redoStack[lastRedo].componentID == command.componentID) {
-        ux->redoStack[lastRedo].componentID = id;
-      }
+      UndoCommand *top = ux_undo_stack_top(ux);
+      top->componentID = id;
     }
 
     break;
