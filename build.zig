@@ -171,6 +171,7 @@ pub fn build(b: *std.Build) void {
         .flags = &.{"-std=gnu11"},
     });
     asset_gen.addIncludePath(b.path("thirdparty"));
+    asset_gen.addIncludePath(b.path("src"));
     asset_gen.linkLibC();
 
     // generate assets.c from assets.zip
@@ -268,13 +269,13 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("ws2_32"); // required by rust
         digilogic.linkSystemLibrary("userenv"); // required by rust
         digilogic.linkSystemLibrary("advapi32"); // required by rust
-        digilogic.linkSystemLibrary("API-MS-Win-Core-Synch-l1-2-0"); // required by rust
 
         switch (target.result.abi) {
             .msvc => {
-                //digilogic.linkSystemLibrary("Synchronization");
+                digilogic.linkSystemLibrary("synchronization");
             },
             .gnu => {
+                digilogic.linkSystemLibrary("API-MS-Win-Core-Synch-l1-2-0"); // required by rust
                 digilogic.linkSystemLibrary("winmm"); // required by rust
                 digilogic.linkSystemLibrary("unwind"); // required by rust
             },
@@ -370,7 +371,7 @@ pub fn build(b: *std.Build) void {
         .manifest_path = b.path("thirdparty/routing/Cargo.toml"),
         .target = .{ .zig = target },
         .profile = crab.Profile.fromOptimizeMode(optimize),
-        .cargo_args = &.{"--quiet"},
+        .cargo_args = &.{},
     });
 
     digilogic.addLibraryPath(rust_lib_path.dirname());
