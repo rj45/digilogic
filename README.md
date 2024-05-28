@@ -27,7 +27,7 @@ You will need rust installed via rustup, zig, and on windows you'll need MSVC.
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
-zig build
+zig build --release
 open zig-out/digilogic.app
 ```
 
@@ -38,14 +38,14 @@ You can move the app in `zig-out` to your `Applications` folder if you want to.
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
-zig build "-Dtarget=x86_64-windows-msvc"
+zig build --release
 zig-out\digilogic.exe
 ```
 
 If you get a crash immediately, try disabling MSAA:
 
 ```sh
-zig build "-Dtarget=x86_64-windows-msvc" "-Dmsaa_sample_count=1"
+zig build --release "-Dmsaa_sample_count=1"
 ```
 
 #### Linux
@@ -55,7 +55,7 @@ Only the X11 mode works in the zig build. If you need wayland, it's highly recom
 ```sh
 git clone --recurse-submodules https://github.com/rj45/digilogic.git
 cd digilogic
-zig build
+zig build --release
 zig-out\digilogic
 ```
 
