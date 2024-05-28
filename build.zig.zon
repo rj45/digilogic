@@ -17,8 +17,8 @@
             .hash = "12208be74c8d4d86a323ba371a0e063dc87f9d4ce2b7c2b7e745e3bce99487ec11c7",
         },
         .@"build.crab" = .{
-            .url = "git+https://github.com/bcrist/build.crab#e6584ef1d50d70a7fd04b48c769f0bfb13e046ca",
-            .hash = "1220250870afb0635da169b7b9f67178e57e640c86ddf5fae9c0d7e07ef0980880ed",
+            .url = "git+https://github.com/bcrist/build.crab#91dbd0c8f7d92d17d19ac831d686bf24939da0f0",
+            .hash = "12202adaeca67c611f2116a5edfa1053ae4cd3f24603f97a559b47d263cd07d6279a",
         },
     },
 }
