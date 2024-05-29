@@ -120,25 +120,19 @@ int main(int argc, char **argv) {
   bool prevComment = false;
   for (int i = 0; i < sizeof(typeList) / sizeof(typeList[0]); i++) {
     bool hasComment = false;
-    char *dup = strdup(typeList[i].desc);
 
-    char *line2 = dup;
-    char *line1 = strsep(&line2, "\n");
-    if (line1 && line1[0] != '\0') {
+    char *dup = strdup(typeList[i].desc);
+    char *line = strtok(dup, "\n");
+    while (line && line[0] != '\0') {
       if (i != 0 && !prevComment) {
         fprintf(fp, "\n");
       }
-      fprintf(fp, "// %s\n", line1);
+      fprintf(fp, "// %s\n", line);
       hasComment = true;
+      line = strtok(NULL, "\n");
     }
-    while (line2) {
-      line1 = strsep(&line2, "\n");
-      if (line1) {
-        fprintf(fp, "// %s\n", line1);
-      }
-    }
-
     free(dup);
+
     fprintf(fp, "typedef %s %s;\n", typeList[i].type, typeList[i].name);
     if (hasComment) {
       fprintf(fp, "\n");
@@ -174,19 +168,14 @@ int main(int argc, char **argv) {
       }
 
       char *dup = strdup(desc->desc);
-
-      char *line2 = dup;
-      char *line1 = strsep(&line2, "\n");
-      if (line1) {
-        fprintf(fp, "// %s\n", line1);
-      }
-      while (line2) {
-        line1 = strsep(&line2, "\n");
-        if (line1) {
-          fprintf(fp, "// %s\n", line1);
+      char *line = strtok(dup, "\n");
+      while (line && line[0] != '\0') {
+        if (i != 0 && !prevComment) {
+          fprintf(fp, "\n");
         }
+        fprintf(fp, "// %s\n", line);
+        line = strtok(NULL, "\n");
       }
-
       free(dup);
 
       fprintf(fp, "typedef struct %s {\n", desc->name);
@@ -196,19 +185,14 @@ int main(int argc, char **argv) {
         }
 
         char *dup = strdup(desc->descs[j]);
-
-        char *line2 = dup;
-        char *line1 = strsep(&line2, "\n");
-        if (line1) {
-          fprintf(fp, "  // %s\n", line1);
-        }
-        while (line2) {
-          line1 = strsep(&line2, "\n");
-          if (line1) {
-            fprintf(fp, "  // %s\n", line1);
+        char *line = strtok(dup, "\n");
+        while (line && line[0] != '\0') {
+          if (i != 0 && !prevComment) {
+            fprintf(fp, "\n");
           }
+          fprintf(fp, "  // %s\n", line);
+          line = strtok(NULL, "\n");
         }
-
         free(dup);
 
         fprintf(fp, "  %s %s;\n", desc->types[j], desc->names[j]);
@@ -230,10 +214,10 @@ int main(int argc, char **argv) {
         "} StructDesc;\n\n");
 
   fprintf(
-    fp, "extern const StructDesc helperDescs[%lu];\n",
+    fp, "extern const StructDesc helperDescs[%zu];\n",
     sizeof(helperDescs) / sizeof(helperDescs[0]));
   fprintf(
-    fp, "extern const StructDesc structDescs[%lu];\n\n",
+    fp, "extern const StructDesc structDescs[%zu];\n\n",
     sizeof(structDescs) / sizeof(structDescs[0]));
 
   fprintf(fp, "#endif // STRUCTS_H\n");
