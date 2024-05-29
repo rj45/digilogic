@@ -100,19 +100,20 @@ static void fons_error(void *user_ptr, int error, int val) {
 
   switch (error) {
   case FONS_ATLAS_FULL:
-    log_error("FONS_ATLAS_FULL: Fontstash atlas full: %d\n", val);
+    log_warning("FONS_ATLAS_FULL: Fontstash atlas is full, resetting it");
+    fonsResetAtlas(app->fsctx, FONT_ATLAS_WIDTH, FONT_ATLAS_HEIGHT);
     break;
   case FONS_SCRATCH_FULL:
-    log_error("FONS_SCRATCH_FULL: Fontstash scratch full: %d\n", val);
+    log_error("FONS_SCRATCH_FULL: Fontstash scratch full: %d", val);
     break;
   case FONS_STATES_OVERFLOW:
-    log_error("FONS_STATES_OVERFLOW: Fontstash state overflow: %d\n", val);
+    log_error("FONS_STATES_OVERFLOW: Fontstash state overflow: %d", val);
     break;
   case FONS_STATES_UNDERFLOW:
-    log_error("FONS_STATES_UNDERFLOW: Fonstash state underflow: %d\n", val);
+    log_error("FONS_STATES_UNDERFLOW: Fonstash state underflow: %d", val);
     break;
   default:
-    log_error("Unknown fonstash error: %d %d\n", error, val);
+    log_error("Unknown fonstash error: %d %d", error, val);
     break;
   }
 }
@@ -271,7 +272,7 @@ void frame(void *user_data) {
   if (app->pzoom != draw_get_zoom(&app->draw)) {
     // on zoom change, reset the font atlas
     app->pzoom = draw_get_zoom(&app->draw);
-    fonsResetAtlas(app->fsctx, FONT_ATLAS_WIDTH, FONT_ATLAS_HEIGHT);
+    // fonsResetAtlas(app->fsctx, FONT_ATLAS_WIDTH, FONT_ATLAS_HEIGHT);
   }
 
   struct nk_context *ctx = snk_new_frame();
