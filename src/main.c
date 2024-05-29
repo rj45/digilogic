@@ -497,6 +497,6 @@ sapp_desc sokol_main(int argc, char *argv[]) {
     .logger.func = slog_func,
     .window_title = "digilogic",
     .sample_count = MSAA_SAMPLE_COUNT,
-    .win32_console_attach = true,
+    .win32_console_create = true,
   };
 }

@@ -281,6 +281,8 @@ pub fn build(b: *std.Build) void {
             },
             else => @panic("Unsupported target"),
         }
+
+        digilogic.subsystem = .windows;
     } else {
         // assuming linux
 
