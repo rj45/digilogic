@@ -8,6 +8,7 @@ set(DIGILOGIC_SRCS
     src/core/save.c
     src/core/load.c
     src/core/bvh.c
+    src/core/structdescs.c
     src/ux/ux.c
     src/ux/input.c
     src/ux/snap.c

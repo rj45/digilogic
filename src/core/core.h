@@ -24,6 +24,7 @@
 
 #include "handmade_math.h"
 #include "stb_ds.h"
+#include "structs.h"
 
 // defines an STB array
 #define arr(type) type *
@@ -64,7 +65,8 @@ IDType;
 
 #define ID_TYPE_COUNT 7
 
-typedef uint32_t ID;
+// ID is defined in structs.h
+
 #define NO_ID 0
 
 typedef uint32_t Gen;
@@ -95,10 +97,7 @@ typedef uint32_t Gen;
 // Bounding Boxes
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct Box {
-  HMM_Vec2 center;
-  HMM_Vec2 halfSize;
-} Box;
+// Box is defined in structs.h
 
 static inline HMM_Vec2 box_top_left(Box box) {
   return HMM_SubV2(box.center, box.halfSize);
@@ -288,32 +287,13 @@ enum {
   COMP_COUNT,
 };
 
-typedef uint32_t ComponentDescID;
-
-typedef uint32_t PortDescID;
-
-typedef ID ComponentID;
 #define NO_COMPONENT NO_ID
-
-typedef ID NetID;
 #define NO_NET NO_ID
-
-typedef ID PortID;
 #define NO_PORT NO_ID
-
-typedef ID EndpointID;
 #define NO_ENDPOINT NO_ID
-
-typedef ID WaypointID;
 #define NO_WAYPOINT NO_ID
-
-typedef ID LabelID;
 #define NO_LABEL NO_ID
-
-typedef uint32_t VertexIndex;
 #define NO_VERTEX UINT32_MAX
-
-typedef uint32_t WireIndex;
 #define NO_VERTEX UINT32_MAX
 
 typedef enum PortDirection {
@@ -343,88 +323,6 @@ typedef struct ComponentDesc {
   ShapeType shape;
   PortDesc *ports;
 } ComponentDesc;
-
-typedef struct Component {
-  Box box;
-
-  ComponentDescID desc;
-
-  PortID portFirst;
-  PortID portLast;
-
-  LabelID typeLabel;
-  LabelID nameLabel;
-} Component;
-
-typedef struct Port {
-  HMM_Vec2 position;
-
-  ComponentID component;
-  PortDescID desc; // index into the component's port descriptions
-  LabelID label;
-
-  // linked list of all ports in the component
-  PortID next;
-  PortID prev;
-
-  // the net the port is connected to.
-  NetID net;
-
-  // the endpoint the port is connected to.
-  // ports must have an endpoint.
-  EndpointID endpoint;
-} Port;
-
-typedef struct Endpoint {
-  HMM_Vec2 position;
-
-  NetID net;
-
-  // optional port connected to this endpoint
-  // endpoints do not need to have a port.
-  PortID port;
-
-  EndpointID next;
-  EndpointID prev;
-} Endpoint;
-
-typedef struct Waypoint {
-  HMM_Vec2 position;
-
-  NetID net;
-
-  // linked list of all waypoints in the net
-  WaypointID next;
-  WaypointID prev;
-} Waypoint;
-
-typedef struct Net {
-  // head and tail of the linked list of endpoints connected to this net
-  EndpointID endpointFirst;
-  EndpointID endpointLast;
-
-  // head and tail of the linked list of waypoints in this net
-  WaypointID waypointFirst;
-  WaypointID waypointLast;
-
-  LabelID label;
-
-  WireIndex wireOffset;
-  uint32_t wireCount;
-  VertexIndex vertexOffset;
-} Net;
-
-#define circuit_wire_vertex_count(wire_view) ((wire_view)&0x7FFF)
-#define circuit_wire_ends_in_junction(wire_view) ((bool)((wire_view) >> 15))
-
-typedef struct Wire {
-  uint16_t vertexCount;
-} Wire;
-
-typedef struct Label {
-  Box box;
-  uint32_t textOffset;
-} Label;
 
 typedef struct Circuit {
   // important: keep in sync with IDType
@@ -603,6 +501,9 @@ typedef struct Circuit {
 #define circuit_on_label_delete(circuit, user, callback)                       \
   smap_on_delete(                                                              \
     &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
+
+#define circuit_wire_vertex_count(wire_view) ((wire_view)&0x7FFF)
+#define circuit_wire_ends_in_junction(wire_view) ((bool)((wire_view) >> 15))
 
 const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);

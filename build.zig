@@ -120,6 +120,7 @@ pub fn build(b: *std.Build) void {
         "core/save.c",
         "core/load.c",
         "core/bvh.c",
+        "core/structdescs.c",
         "ux/ux.c",
         "ux/input.c",
         "ux/snap.c",
