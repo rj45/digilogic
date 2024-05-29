@@ -459,6 +459,8 @@ void event(const sapp_event *event, void *user_data) {
 
 #ifndef _WIN32
 #include "stacktrace.h"
+#else
+#include <windows.h>
 #endif
 
 void platform_init();
@@ -473,6 +475,24 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 
 #ifndef _WIN32
   init_exceptions(argv[0]);
+#else
+
+  BOOL con_valid = FALSE;
+  con_valid = AttachConsole(ATTACH_PARENT_PROCESS);
+  if (con_valid) {
+    FreeConsole();
+    con_valid = AllocConsole();
+
+    if (con_valid) {
+      FILE *res_fp = 0;
+      errno_t err;
+      err = freopen_s(&res_fp, "CON", "w", stdout);
+      (void)err;
+      err = freopen_s(&res_fp, "CON", "w", stderr);
+      (void)err;
+    }
+  }
+
 #endif
 
   my_app_t *app = malloc(sizeof(my_app_t));
@@ -497,6 +517,5 @@ sapp_desc sokol_main(int argc, char *argv[]) {
     .logger.func = slog_func,
     .window_title = "digilogic",
     .sample_count = MSAA_SAMPLE_COUNT,
-    .win32_console_create = true,
   };
 }
