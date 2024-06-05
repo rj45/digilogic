@@ -83,15 +83,23 @@ pub fn build(b: *std.Build) void {
                         else => "",
                     };
                     cflags.append(b.fmt("-fsanitize={s},undefined", .{sanstr})) catch @panic("OOM");
+
+                    // by default many UB sanitizers will just trap, but
+                    // that is super confusing to debug. So instead we tell it to
+                    // print a stacktrace instead of trapping.
+                    cflags.append("-fno-sanitize-trap=all") catch @panic("OOM");
+
                     if (sanitizer == .memory) {
                         cflags.append("-fsanitize-memory-track-origins=2") catch @panic("OOM");
                     }
+
                     inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test }) |exe| {
                         exe.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
 
                         if (target.result.os.tag.isDarwin()) {
                             // todo: figure out libraries for other sanitizers
                             exe.linkSystemLibrary("clang_rt.asan_osx_dynamic");
+                            exe.linkSystemLibrary("clang_rt.ubsan_osx_dynamic");
                         } else if (target.result.os.tag == .linux) {
                             if (sanitizer == .address) {
                                 exe.linkSystemLibrary("clang_rt.asan_static-x86_64");
@@ -101,6 +109,7 @@ pub fn build(b: *std.Build) void {
                             } else if (sanitizer == .thread) {
                                 exe.linkSystemLibrary("clang_rt.tsan-x86_64");
                             }
+                            exe.linkSystemLibrary("clang_rt.ubsan-x86_64");
                             exe.linkSystemLibrary("pthread");
                             exe.linkSystemLibrary("rt");
                             exe.linkSystemLibrary("m");
@@ -114,39 +123,32 @@ pub fn build(b: *std.Build) void {
     }
 
     // add files common to both the main and test executables
-    const common_files = &.{
-        "core/circuit.c",
-        "core/smap.c",
-        "core/save.c",
-        "core/load.c",
-        "core/bvh.c",
-        "core/structdescs.c",
-        "ux/ux.c",
-        "ux/input.c",
-        "ux/snap.c",
-        "ux/undo.c",
-        "view/view.c",
-        "import/digital.c",
-        "autoroute/autoroute.c",
-    };
-    digilogic.addCSourceFiles(.{
-        .root = b.path("src"),
-        .files = common_files,
-        .flags = cflags.items,
-    });
-    digilogic.addCSourceFile(.{
-        .file = b.path("thirdparty/yyjson.c"),
-        .flags = cflags.items,
-    });
-    digilogic_test.addCSourceFiles(.{
-        .root = b.path("src"),
-        .files = common_files,
-        .flags = cflags.items,
-    });
-    digilogic_test.addCSourceFile(.{
-        .file = b.path("thirdparty/yyjson.c"),
-        .flags = cflags.items,
-    });
+    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test }) |exe| {
+        exe.addCSourceFiles(.{
+            .root = b.path("src"),
+            .files = &.{
+                "core/circuit.c",
+                "core/smap.c",
+                "core/save.c",
+                "core/load.c",
+                "core/bvh.c",
+                "core/structdescs.c",
+                "ux/ux.c",
+                "ux/input.c",
+                "ux/snap.c",
+                "ux/undo.c",
+                "view/view.c",
+                "import/digital.c",
+                "autoroute/autoroute.c",
+            },
+            .flags = cflags.items,
+        });
+        exe.addCSourceFiles(.{
+            .root = b.path("thirdparty"),
+            .files = &.{ "yyjson.c", "flecs.c" },
+            .flags = cflags.items,
+        });
+    }
 
     digilogic.addCSourceFiles(.{
         .root = b.path("src"),
