@@ -334,25 +334,18 @@ pub fn build(b: *std.Build) void {
                 const generate_header = b.addSystemCommand(&.{ wayland_scanner_path, "client-header" });
                 generate_header.setStdIn(.{ .lazy_path = b.path(source.xml_path) });
                 const header_file = generate_header.captureStdOut();
-                // This is pretty fragile; really captureStdOut() should take an options struct so that the basename
-                // can be specified directly...  maybe I'll submit a PR to zig
-                const header_output: *std.Build.Step.Run.Output = @fieldParentPtr("generated_file", @constCast(header_file.generated));
-                header_output.basename = source.basename ++ ".h";
+                const header_wf = b.addWriteFiles();
+                _ = header_wf.addCopyFile(header_file, source.basename ++ ".h");
 
                 const generate_source = b.addSystemCommand(&.{ wayland_scanner_path, "private-code" });
                 generate_source.setStdIn(.{ .lazy_path = b.path(source.xml_path) });
                 const source_file = generate_source.captureStdOut();
-                const source_output: *std.Build.Step.Run.Output = @fieldParentPtr("generated_file", @constCast(source_file.generated));
-                source_output.basename = source.basename ++ ".c";
 
                 digilogic.addCSourceFile(.{
                     .file = source_file,
                     .flags = cflags.items,
                 });
-                digilogic.addIncludePath(.{ .generated_dirname = .{
-                    .generated = header_file.generated,
-                    .up = 0,
-                } });
+                digilogic.addIncludePath(header_wf.getDirectory());
             }
 
             digilogic.linkSystemLibrary("wayland-client");
@@ -527,7 +520,7 @@ fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {
 
     if (b.host.result.os.tag.isDarwin()) {
         glob_pattern = b.fmt("llvm@{}/*/lib/clang/*/lib/darwin", .{llvm_version});
-        const result = std.ChildProcess.run(.{
+        const result = std.process.Child.run(.{
             .allocator = b.allocator,
             .argv = &.{
                 "brew",

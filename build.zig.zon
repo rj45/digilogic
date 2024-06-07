@@ -5,20 +5,20 @@
     .paths = .{""},
     .dependencies = .{
         .freetype = .{
-            .url = "git+https://github.com/bcrist/freetype#ba36fc3d3ce94ffcda37e87bc4cc51ee0b7e365e",
-            .hash = "1220d14057af1a9d6dde4643293527bd5ee5099517d655251a066666a4320737ea7c",
+            .url = "git+https://github.com/bcrist/freetype#96a5d0239b6e96e738bebb8eb09462702d719248",
+            .hash = "1220aafed3b81307647d3d1fe84accb6cbd5a274e2eaac1f75aa47efedef917b00c9",
         },
         .compile_commands = .{
-            .url = "git+https://github.com/bcrist/zig-compile-commands#20372137e6d63f39cece19ee1e91ae4a3151875c",
-            .hash = "1220a2e71dce460ce3ebaca36565893bc14e8d89177ec568c5efd6444f03118cc090",
+            .url = "git+https://github.com/bcrist/zig-compile-commands#a64abd947b58655f118884709d939645871e94fc",
+            .hash = "1220d3150db10226f4d853eb519468de5c49cb820f08c722608a500b9f7d64e4c780",
         },
         .globlin = .{
             .url = "git+https://github.com/bcrist/globlin#5232937d014b63fc1d7e53a7a8751306696a64f1",
             .hash = "12208be74c8d4d86a323ba371a0e063dc87f9d4ce2b7c2b7e745e3bce99487ec11c7",
         },
         .@"build.crab" = .{
-            .url = "git+https://github.com/bcrist/build.crab#91dbd0c8f7d92d17d19ac831d686bf24939da0f0",
-            .hash = "12202adaeca67c611f2116a5edfa1053ae4cd3f24603f97a559b47d263cd07d6279a",
+            .url = "git+https://github.com/bcrist/build.crab#1499af8cf2c25ad00b025928516b9f67898340e3",
+            .hash = "1220f776f9ebf467e269cbe8aefb6a5c4401dea8912d241eef25d8d46361762073f3",
         },
     },
 }
