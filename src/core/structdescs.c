@@ -21,7 +21,7 @@
 const StructDesc helperDescs[3] = {
   (StructDesc){
     .name = "HMM_Vec2",
-    .size = sizeof(HMM_Vec2),
+    .size = 8,
     .numFields = 2,
     .offsets = (size_t[]){
       0, 4,
@@ -40,7 +40,7 @@ const StructDesc helperDescs[3] = {
   },
   (StructDesc){
     .name = "Box",
-    .size = sizeof(Box),
+    .size = 16,
     .numFields = 2,
     .offsets = (size_t[]){
       0, 8,
@@ -59,7 +59,7 @@ const StructDesc helperDescs[3] = {
   },
   (StructDesc){
     .name = "Wire",
-    .size = sizeof(Wire),
+    .size = 2,
     .numFields = 1,
     .offsets = (size_t[]){
       0,
@@ -79,7 +79,7 @@ const StructDesc helperDescs[3] = {
 const StructDesc structDescs[7] = {
   (StructDesc){
     .name = "None",
-    .size = sizeof(None),
+    .size = 4,
     .numFields = 1,
     .offsets = (size_t[]){
       0,
@@ -96,7 +96,7 @@ const StructDesc structDescs[7] = {
   },
   (StructDesc){
     .name = "Component",
-    .size = sizeof(Component),
+    .size = 36,
     .numFields = 6,
     .offsets = (size_t[]){
       0, 16, 20, 24, 28, 32,
@@ -123,7 +123,7 @@ const StructDesc structDescs[7] = {
   },
   (StructDesc){
     .name = "Port",
-    .size = sizeof(Port),
+    .size = 36,
     .numFields = 8,
     .offsets = (size_t[]){
       0, 8, 12, 16, 20, 24, 28, 32,
@@ -154,7 +154,7 @@ const StructDesc structDescs[7] = {
   },
   (StructDesc){
     .name = "Net",
-    .size = sizeof(Net),
+    .size = 32,
     .numFields = 8,
     .offsets = (size_t[]){
       0, 4, 8, 12, 16, 20, 24, 28,
@@ -185,7 +185,7 @@ const StructDesc structDescs[7] = {
   },
   (StructDesc){
     .name = "Endpoint",
-    .size = sizeof(Endpoint),
+    .size = 24,
     .numFields = 5,
     .offsets = (size_t[]){
       0, 8, 12, 16, 20,
@@ -210,7 +210,7 @@ const StructDesc structDescs[7] = {
   },
   (StructDesc){
     .name = "Waypoint",
-    .size = sizeof(Waypoint),
+    .size = 20,
     .numFields = 4,
     .offsets = (size_t[]){
       0, 8, 12, 16,
@@ -233,7 +233,7 @@ const StructDesc structDescs[7] = {
   },
   (StructDesc){
     .name = "Label",
-    .size = sizeof(Label),
+    .size = 20,
     .numFields = 2,
     .offsets = (size_t[]){
       0, 16,

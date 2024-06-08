@@ -251,7 +251,7 @@ int main(int argc, char **argv) {
       const StructDesc *desc = &descs[i];
       fprintf(fp, "  (StructDesc){\n");
       fprintf(fp, "    .name = \"%s\",\n", desc->name);
-      fprintf(fp, "    .size = sizeof(%s),\n", desc->name);
+      fprintf(fp, "    .size = %zu,\n", desc->size);
       fprintf(fp, "    .numFields = %lu,\n", desc->numFields);
       fprintf(fp, "    .offsets = (size_t[]){\n      ");
       for (int j = 0; j < desc->numFields; j++) {
