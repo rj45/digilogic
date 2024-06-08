@@ -118,6 +118,25 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
         &ux->view.circuit, command.descID, command.center);
       UndoCommand *top = ux_undo_stack_top(ux);
       top->componentID = id;
+
+      // check ports to see if there are endpoints there and reconnect those
+      // endpoints to the ports
+      Component *component = circuit_component_ptr(&ux->view.circuit, id);
+      PortID portID = component->portFirst;
+      while (circuit_has(&ux->view.circuit, portID)) {
+        Port *port = circuit_port_ptr(&ux->view.circuit, portID);
+        for (size_t i = 0; i < circuit_endpoint_len(&ux->view.circuit); i++) {
+          Endpoint *endpoint = &ux->view.circuit.endpoints[i];
+          HMM_Vec2 portPos = HMM_AddV2(component->box.center, port->position);
+          float dist = HMM_LenSqr(HMM_SubV2(portPos, endpoint->position));
+          if (dist < 0.1) {
+            endpoint->port = portID;
+            port->endpoint = circuit_endpoint_id(&ux->view.circuit, i);
+            break;
+          }
+        }
+        portID = port->next;
+      }
     }
 
     break;
