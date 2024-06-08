@@ -145,7 +145,7 @@ pub fn build(b: *std.Build) void {
         });
         exe.addCSourceFiles(.{
             .root = b.path("thirdparty"),
-            .files = &.{ "yyjson.c", "flecs.c" },
+            .files = &.{"yyjson.c"},
             .flags = cflags.items,
         });
     }
