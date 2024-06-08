@@ -6,6 +6,9 @@
 
 #include "handmade_math.h"
 
+// defines an STB array
+#define arr(type) type *
+
 typedef uint32_t ID;
 typedef ID PortID;
 typedef ID SymbolKindID;
@@ -16,22 +19,35 @@ typedef ID EndpointID;
 typedef ID WaypointID;
 typedef uint32_t StringHandle;
 
+typedef struct TableHeader {
+  size_t length;
+  ID *id;
+} TableHeader;
+
+#define id_index(id) ((ID)(id)&0x00FFFFFF)
+#define id_gen(id) (((ID)(id) >> 24) & 0xFF)
+#define id_make(index, gen) (((ID)(gen) << 24) | (ID)(index)&0x00FFFFFF)
+
+#define tagtype_tag(tag) ((tag)&0xFF00)
+#define tagtype_type(tag) ((tag)&0x00FF)
+
+//////////////////////////////////////////
 // ECS Tags
+//////////////////////////////////////////
 
 typedef enum EntityType {
-  TYPE_NONE = 0,
-  TYPE_PORT = 1,
-  TYPE_SYMBOL_KIND = 2,
-  TYPE_SYMBOL = 3,
-  TYPE_WAYPOINT = 4,
-  TYPE_ENDPOINT = 5,
-  TYPE_SUBNET_BIT = 6,
-  TYPE_SUBNET_BITS = 7,
-  TYPE_SUBNET = 8,
-  TYPE_NET = 9,
-  TYPE_NETLIST = 10,
-  TYPE_SUBCIRCUIT = 11,
-  TYPE_COUNT = 12,
+  TYPE_PORT,
+  TYPE_SYMBOL_KIND,
+  TYPE_SYMBOL,
+  TYPE_WAYPOINT,
+  TYPE_ENDPOINT,
+  TYPE_SUBNET_BIT,
+  TYPE_SUBNET_BITS,
+  TYPE_SUBNET,
+  TYPE_NET,
+  TYPE_NETLIST,
+  TYPE_SUBCIRCUIT,
+  TYPE_COUNT,
 } EntityType;
 
 typedef enum Tag {
@@ -46,7 +62,44 @@ typedef enum Tag {
   TAG_DEBUG = 1 << 15,
 } Tag;
 
+//////////////////////////////////////////
+// ECS Events
+//////////////////////////////////////////
+
+typedef enum EventType {
+  EVENT_CREATE,
+  EVENT_DELETE,
+  EVENT_UPDATE,
+  EVENT_COUNT,
+} EventType;
+
+typedef struct EventCreateDelete {
+  EntityType entityType;
+} EventCreateDelete;
+
+typedef struct EventUpdate {
+  uint32_t columnOffset;
+  uint32_t fieldOffset;
+  uint32_t fieldSize;
+} EventUpdate;
+
+typedef struct EventChange {
+  EventType type;
+  ID id;
+
+  union {
+    EventCreateDelete createDelete;
+    EventUpdate update;
+  };
+} EventChange;
+
+typedef struct EventQueue {
+  arr(ID) ids;
+} EventQueue;
+
+//////////////////////////////////////////
 // ECS components
+//////////////////////////////////////////
 
 typedef ID SubcircuitID;
 typedef ID SubnetBitsID;
@@ -84,10 +137,13 @@ typedef struct WireVertices {
   HMM_Vec2 *vertices;
 } WireVertices;
 
+//////////////////////////////////////////
 // tables / entities
+//////////////////////////////////////////
 
 typedef struct Port {
   size_t length;
+  ID *id;
   Parent *symbolKind;
   Position *position;
   ListNode *list;
@@ -97,6 +153,7 @@ typedef struct Port {
 
 typedef struct SymbolKind {
   size_t length;
+  ID *id;
   SubcircuitID *subcircuit;
   Size *size;
   Name *name;
@@ -106,6 +163,7 @@ typedef struct SymbolKind {
 
 typedef struct Symbol {
   size_t length;
+  ID *id;
   Parent *symbolKind;
   Position *position;
   Number *number; // combined with prefix to get the name
@@ -113,6 +171,7 @@ typedef struct Symbol {
 
 typedef struct Waypoint {
   size_t length;
+  ID *id;
   Parent *endpoint;
   Position *position;
   ListNode *list;
@@ -120,6 +179,7 @@ typedef struct Waypoint {
 
 typedef struct Endpoint {
   size_t length;
+  ID *id;
   Parent *subnet;
   PortRef *port;
   Position *position;
@@ -128,12 +188,14 @@ typedef struct Endpoint {
 
 typedef struct SubnetBit {
   size_t length;
+  ID *id;
   Number *bit;
   ListNode *list;
 } SubnetBit;
 
 typedef struct SubnetBits {
   size_t length;
+  ID *id;
   Parent *subnet;
   SubnetBitsID *override;
   LinkedList *bits;
@@ -141,6 +203,7 @@ typedef struct SubnetBits {
 
 typedef struct Subnet {
   size_t length;
+  ID *id;
   Parent *net;
   Name *name;
   SubnetBitsID *bits;
@@ -150,6 +213,7 @@ typedef struct Subnet {
 
 typedef struct Net {
   size_t length;
+  ID *id;
   Parent *Netlist;
   LinkedList *subnets;
   Name *name;
@@ -159,11 +223,13 @@ typedef struct Net {
 
 typedef struct NetList {
   size_t length;
+  ID *id;
   LinkedList *nets;
 } NetList;
 
 typedef struct Subcircuit {
   size_t length;
+  ID *id;
   LinkedList *symbols;
   NetlistID *nets;
   ListNode *list;
@@ -173,7 +239,7 @@ typedef struct Circuit {
   SubcircuitID top;
 
   // entities
-  ID *entities;
+  uint8_t *generations;
   uint16_t *typeTags; // EntityType | Tag
   uint32_t *rows;
   uint32_t numEntities;
@@ -190,6 +256,9 @@ typedef struct Circuit {
   Net net;
   NetList netList;
   Subcircuit subcircuit;
+
+  // indices
+  TableHeader *header[TYPE_COUNT];
 } Circuit;
 
 #endif // STRUCTS_H
