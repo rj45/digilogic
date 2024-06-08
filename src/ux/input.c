@@ -453,13 +453,17 @@ void ux_update(CircuitUX *ux) {
     }
   }
 
-  // cmd + y or ctrl + y: redo (common on windows / linux)
+  // ctrl + y: redo (common on windows / linux)
   if (bv_is_set(ux->input.keysPressed, KEYCODE_Y)) {
-    if (
-      ux->input.modifiers & MODIFIER_CTRL ||
-      ux->input.modifiers & MODIFIER_SUPER) {
+    if (ux->input.modifiers & MODIFIER_CTRL) {
       ux_redo(ux);
     }
+  }
+
+  if (
+    bv_is_set(ux->input.keysPressed, KEYCODE_DELETE) ||
+    bv_is_set(ux->input.keysPressed, KEYCODE_BACKSPACE)) {
+    ux_delete_selected(ux);
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_SPACE)) {

@@ -348,6 +348,7 @@ UndoCommand ux_undo(CircuitUX *ux);
 UndoCommand ux_redo(CircuitUX *ux);
 void ux_select_none(CircuitUX *ux);
 void ux_select_all(CircuitUX *ux);
+void ux_delete_selected(CircuitUX *ux);
 
 void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID);
 void ux_stop_adding_component(CircuitUX *ux);

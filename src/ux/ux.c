@@ -110,6 +110,20 @@ void ux_select_all(CircuitUX *ux) {
   ux_do(ux, undo_cmd_select_area(box_from_tlbr(min, max)));
 }
 
+void ux_delete_selected(CircuitUX *ux) {
+  for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
+    ID id = ux->view.selected[i];
+    if (id_type(id) == ID_COMPONENT) {
+      Component *component = circuit_component_ptr(&ux->view.circuit, id);
+      ux_do(
+        ux, undo_cmd_del_component(component->box.center, id, component->desc));
+    } else if (id_type(id) == ID_WAYPOINT) {
+      // Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
+      // ux_do(ux, undo_cmd_del_waypoint(waypoint->position, id));
+    }
+  }
+}
+
 static void ux_bvh_draw(BVH *bvh, DrawContext *drawCtx, int drawLevel);
 
 void ux_draw(CircuitUX *ux) {
