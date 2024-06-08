@@ -19,7 +19,7 @@
 #include "core/structs.h"
 
 const StructDesc helperDescs[3] = {
-  (StructDesc){
+  {
     .name = "HMM_Vec2",
     .size = 8,
     .numFields = 2,
@@ -38,7 +38,7 @@ const StructDesc helperDescs[3] = {
       "float",
     },
   },
-  (StructDesc){
+  {
     .name = "Box",
     .size = 16,
     .numFields = 2,
@@ -57,7 +57,7 @@ const StructDesc helperDescs[3] = {
       "HMM_Vec2",
     },
   },
-  (StructDesc){
+  {
     .name = "Wire",
     .size = 2,
     .numFields = 1,
@@ -77,7 +77,7 @@ const StructDesc helperDescs[3] = {
 };
 
 const StructDesc structDescs[7] = {
-  (StructDesc){
+  {
     .name = "None",
     .size = 4,
     .numFields = 1,
@@ -94,7 +94,7 @@ const StructDesc structDescs[7] = {
       "uint32_t",
     },
   },
-  (StructDesc){
+  {
     .name = "Component",
     .size = 36,
     .numFields = 6,
@@ -121,7 +121,7 @@ const StructDesc structDescs[7] = {
       "LabelID",
     },
   },
-  (StructDesc){
+  {
     .name = "Port",
     .size = 36,
     .numFields = 8,
@@ -152,7 +152,7 @@ const StructDesc structDescs[7] = {
       "EndpointID",
     },
   },
-  (StructDesc){
+  {
     .name = "Net",
     .size = 32,
     .numFields = 8,
@@ -183,7 +183,7 @@ const StructDesc structDescs[7] = {
       "VertexIndex",
     },
   },
-  (StructDesc){
+  {
     .name = "Endpoint",
     .size = 24,
     .numFields = 5,
@@ -208,7 +208,7 @@ const StructDesc structDescs[7] = {
       "EndpointID",
     },
   },
-  (StructDesc){
+  {
     .name = "Waypoint",
     .size = 20,
     .numFields = 4,
@@ -231,7 +231,7 @@ const StructDesc structDescs[7] = {
       "WaypointID",
     },
   },
-  (StructDesc){
+  {
     .name = "Label",
     .size = 20,
     .numFields = 2,

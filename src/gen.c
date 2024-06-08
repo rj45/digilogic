@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
     fprintf(fp, "const StructDesc %s[%lu] = {\n", name, num);
     for (int i = 0; i < num; i++) {
       const StructDesc *desc = &descs[i];
-      fprintf(fp, "  (StructDesc){\n");
+      fprintf(fp, "  {\n");
       fprintf(fp, "    .name = \"%s\",\n", desc->name);
       fprintf(fp, "    .size = %zu,\n", desc->size);
       fprintf(fp, "    .numFields = %lu,\n", desc->numFields);
