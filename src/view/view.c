@@ -190,9 +190,7 @@ void view_init(
   FontHandle font) {
   *view = (CircuitView){
     .drawCtx = drawCtx,
-    .hovered = NO_ID,
     .selectedPort = NO_PORT,
-    .hoveredPort = NO_PORT,
   };
   circuit_init(&view->circuit, componentDescs);
   circuit_on_component_create(&view->circuit, view, view_augment_component);
@@ -204,7 +202,7 @@ void view_init(
 
 void view_free(CircuitView *view) {
   arrfree(view->selected);
-  arrfree(view->hovered2);
+  arrfree(view->hovered);
   circuit_free(&view->circuit);
 }
 
@@ -323,8 +321,8 @@ void view_direct_wire_nets(CircuitView *view) {
 }
 
 static bool view_is_hovered(CircuitView *view, ID id) {
-  for (int i = 0; i < arrlen(view->hovered2); i++) {
-    if (view->hovered2[i] == id) {
+  for (int i = 0; i < arrlen(view->hovered); i++) {
+    if (view->hovered[i] == id) {
       return true;
     }
   }

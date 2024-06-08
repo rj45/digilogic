@@ -52,8 +52,18 @@ static const char *stateNames[] = {
 static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool rightDown = ux->input.modifiers & MODIFIER_RMB;
   bool leftDown = ux->input.modifiers & MODIFIER_LMB;
-  bool overPort = circuit_has(&ux->view.circuit, ux->view.hoveredPort);
-  bool overItem = circuit_has(&ux->view.circuit, ux->view.hovered);
+
+  bool overPort = false;
+  bool overItem = false;
+
+  for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
+    ID id = ux->view.hovered[i];
+    if (id_type(id) == ID_PORT) {
+      overPort = true;
+    } else if (id_type(id) == ID_COMPONENT || id_type(id) == ID_WAYPOINT) {
+      overItem = true;
+    }
+  }
 
   MouseDownState oldState = ux->mouseDownState;
   MouseDownState state = oldState;
@@ -254,13 +264,36 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         }
 
         if (state == STATE_SELECT_ONE) {
-          ux_do(ux, undo_cmd_select_item(ux->view.hovered));
-          ux->selectionCenter = ux_calc_selection_center(ux);
+          static const IDType typePriority[] = {
+            ID_COMPONENT,
+            ID_WAYPOINT,
+          };
+          ID found = NO_ID;
+          for (size_t i = 0; found == NO_ID && i < 2; i++) {
+            IDType type = typePriority[i];
+            for (size_t j = 0; j < arrlen(ux->view.hovered); j++) {
+              ID id = ux->view.hovered[j];
+              if (id_type(id) == type) {
+                found = id;
+                break;
+              }
+            }
+          }
+          if (found != NO_ID) {
+            ux_do(ux, undo_cmd_select_item(found));
+            ux->selectionCenter = ux_calc_selection_center(ux);
+          }
         }
         break;
 
       case STATE_CLICK_PORT:
-        ux->clickedPort = ux->view.hoveredPort;
+        for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
+          ID id = ux->view.hovered[i];
+          if (id_type(id) == ID_PORT) {
+            ux->clickedPort = id;
+            break;
+          }
+        }
         break;
 
       case STATE_START_CLICK_WIRING:
@@ -272,8 +305,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         break;
 
       case STATE_CONNECT_PORT:
-        if (circuit_has(&ux->view.circuit, ux->view.hoveredPort)) {
-          ux_connect_wire(ux, ux->view.hoveredPort);
+        for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
+          ID id = ux->view.hovered[i];
+          if (id_type(id) == ID_PORT) {
+            ux_connect_wire(ux, id);
+            break;
+          }
         }
         break;
 
@@ -341,9 +378,6 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 }
 
 static void ux_handle_mouse(CircuitUX *ux) {
-  ux->view.hovered = NO_ID;
-  ux->view.hoveredPort = NO_PORT;
-
   HMM_Vec2 worldMousePos =
     draw_screen_to_world(ux->view.drawCtx, ux->input.mousePos);
 
@@ -352,40 +386,8 @@ static void ux_handle_mouse(CircuitUX *ux) {
     .halfSize = HMM_V2(MOUSE_FUDGE, MOUSE_FUDGE),
   };
 
-  arrsetlen(ux->view.hovered2, 0);
-  ux->view.hovered2 = bvh_query(&ux->bvh, mouseBox, ux->view.hovered2);
-
-  for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-    Component *component = &ux->view.circuit.components[i];
-    if (box_intersect_box(component->box, mouseBox)) {
-      ux->view.hovered = circuit_component_id(&ux->view.circuit, i);
-    }
-    PortID portID = ux->view.circuit.components[i].portFirst;
-    while (circuit_has(&ux->view.circuit, portID)) {
-      Port *port = circuit_port_ptr(&ux->view.circuit, portID);
-      Box portBox = {
-        .center = HMM_AddV2(port->position, component->box.center),
-        .halfSize = HMM_V2(
-          ux->view.theme.portWidth / 2.0f, ux->view.theme.portWidth / 2.0f),
-      };
-      if (box_intersect_box(portBox, mouseBox)) {
-        ux->view.hoveredPort = portID;
-      }
-
-      portID = circuit_port_ptr(&ux->view.circuit, portID)->next;
-    }
-  }
-
-  for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
-    Waypoint *waypoint = &ux->view.circuit.waypoints[i];
-    Box waypointBox = {
-      .center = waypoint->position,
-      .halfSize = HMM_V2(MOUSE_WP_FUDGE, MOUSE_WP_FUDGE),
-    };
-    if (box_intersect_box(waypointBox, mouseBox)) {
-      ux->view.hovered = circuit_waypoint_id(&ux->view.circuit, i);
-    }
-  }
+  arrsetlen(ux->view.hovered, 0);
+  ux->view.hovered = bvh_query(&ux->bvh, mouseBox, ux->view.hovered);
 
   ux_mouse_down_state_machine(ux, worldMousePos);
 }

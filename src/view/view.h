@@ -25,12 +25,9 @@ typedef struct CircuitView {
   Theme theme;
   DrawContext *drawCtx;
 
-  // todo: replace hovered with hovered2, and rename
-  arr(ID) hovered2;
-  ID hovered;
+  arr(ID) hovered;
   arr(ID) selected;
 
-  PortID hoveredPort;
   PortID selectedPort;
 
   Box selectionBox;
