@@ -80,16 +80,18 @@ const StructDesc structDescs[7] = {
   (StructDesc){
     .name = "None",
     .size = sizeof(None),
-    .numFields = 0,
+    .numFields = 1,
     .offsets = (size_t[]){
-      
+      0,
     },
     .sizes = (size_t[]){
-      
+      4,
     },
     .names = (char const *[]){
+      "nothing",
     },
     .types = (char const *[]){
+      "uint32_t",
     },
   },
   (StructDesc){

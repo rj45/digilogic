@@ -91,7 +91,7 @@ static const TypeDesc typeList[] = {
 
 #define STRUCT_DESC "Nothing."
 #define STRUCT_NAME None
-#define STRUCT_FIELDS
+#define STRUCT_FIELDS X(uint32_t, nothing, "Nothing (to fix a MSVC error).")
 #include "core/structdesc.h"
 
 #define STRUCT_DESC "A circuit component or gate."

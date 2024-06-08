@@ -64,6 +64,8 @@ typedef struct Wire {
 
 // Nothing.
 typedef struct None {
+  // Nothing (to fix a MSVC error).
+  uint32_t nothing;
 } None;
 
 // A circuit component or gate.
