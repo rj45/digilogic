@@ -15,6 +15,7 @@
 */
 
 #include "core/core.h"
+#include "core/structs.h"
 #include "handmade_math.h"
 #include "render/draw.h"
 #include "stb_ds.h"
@@ -39,12 +40,14 @@ static const char *stateNames[] = {
   [STATE_SELECT_AREA] = "SelArea",
   [STATE_SELECT_ONE] = "SelOne",
   [STATE_MOVE_SELECTION] = "MoveSel",
+  [STATE_CLICK_ENDPOINT] = "ClickEndpoint",
   [STATE_CLICK_PORT] = "ClickPort",
   [STATE_DRAG_WIRING] = "DragWiring",
   [STATE_START_CLICK_WIRING] = "StartClickWiring",
   [STATE_CLICK_WIRING] = "ClickWiring",
   [STATE_CONNECT_PORT] = "ConnectPort",
   [STATE_FLOATING_WIRE] = "FloatingWire",
+  [STATE_CANCEL_WIRE] = "CancelWire",
   [STATE_ADDING_COMPONENT] = "AddingComponent",
   [STATE_ADD_COMPONENT] = "AddComponent",
 };
@@ -52,9 +55,12 @@ static const char *stateNames[] = {
 static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool rightDown = ux->input.modifiers & MODIFIER_RMB;
   bool leftDown = ux->input.modifiers & MODIFIER_LMB;
+  bool shiftDown = ux->input.modifiers & MODIFIER_SHIFT;
+  bool escDown = bv_is_set(ux->input.keysDown, KEYCODE_ESCAPE);
 
   bool overPort = false;
   bool overItem = false;
+  bool overEndpoint = false;
 
   for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
     ID id = ux->view.hovered[i];
@@ -62,6 +68,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       overPort = true;
     } else if (id_type(id) == ID_COMPONENT || id_type(id) == ID_WAYPOINT) {
       overItem = true;
+    } else if (id_type(id) == ID_ENDPOINT) {
+      overEndpoint = true;
     }
   }
 
@@ -102,6 +110,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       if (leftDown) {
         if (inSelection) {
           state = STATE_MOVE_SELECTION;
+        } else if (overEndpoint) {
+          if (shiftDown && overPort) {
+            state = STATE_CLICK_PORT;
+          } else {
+            state = STATE_CLICK_ENDPOINT;
+          }
         } else if (overPort) {
           state = STATE_CLICK_PORT;
         } else if (overItem) {
@@ -152,6 +166,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         state = STATE_UP;
       }
       break;
+    case STATE_CLICK_ENDPOINT: // fallthrough
     case STATE_CLICK_PORT:
       if (!leftDown) {
         state = STATE_START_CLICK_WIRING;
@@ -160,7 +175,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       }
       break;
     case STATE_DRAG_WIRING:
-      if (overPort && !leftDown) {
+      if (escDown) {
+        state = STATE_CANCEL_WIRE;
+      } else if (overPort && !leftDown) {
         state = STATE_CONNECT_PORT;
       } else if (!overPort && !leftDown) {
         state = STATE_FLOATING_WIRE;
@@ -178,6 +195,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         } else if (!overPort) {
           state = STATE_FLOATING_WIRE;
         }
+      } else if (escDown) {
+        state = STATE_CANCEL_WIRE;
       }
       break;
     case STATE_CONNECT_PORT:
@@ -187,6 +206,11 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       break;
     case STATE_FLOATING_WIRE:
       if (!leftDown) {
+        state = STATE_UP;
+      }
+      break;
+    case STATE_CANCEL_WIRE:
+      if (!leftDown && !escDown) {
         state = STATE_UP;
       }
       break;
@@ -282,6 +306,16 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         }
         break;
 
+      case STATE_CLICK_ENDPOINT:
+        for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
+          ID id = ux->view.hovered[i];
+          if (id_type(id) == ID_ENDPOINT) {
+            ux_continue_wire(ux, id);
+            break;
+          }
+        }
+        break;
+
       case STATE_CLICK_PORT:
         for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
           ID id = ux->view.hovered[i];
@@ -305,9 +339,21 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           ID id = ux->view.hovered[i];
           if (id_type(id) == ID_PORT) {
             ux_connect_wire(ux, id);
+            ux_route(ux);
             break;
           }
         }
+        break;
+
+      case STATE_CANCEL_WIRE:
+        ux_cancel_wire(ux);
+
+        // rebuild the BVH after removing things
+        ux_build_bvh(ux);
+
+        log_debug("routing after cancel");
+        ux_route(ux);
+        log_debug("cancelled wire, finished routing");
         break;
 
       default:
@@ -559,19 +605,48 @@ void ux_start_wire(CircuitUX *ux, PortID portID) {
     circuit_add_endpoint(&ux->view.circuit, netID, NO_PORT, HMM_V2(0, 0));
 }
 
+void ux_continue_wire(CircuitUX *ux, EndpointID endpointID) {
+  ux->newNet = false;
+  ux->endpointStart = NO_ENDPOINT;
+  ux->endpointEnd = endpointID;
+  Endpoint *endpoint = circuit_endpoint_ptr(&ux->view.circuit, endpointID);
+  if (endpoint->port != NO_PORT) {
+    // disconnect endpoint from port
+    Port *port = circuit_port_ptr(&ux->view.circuit, endpoint->port);
+    port->endpoint = NO_ENDPOINT;
+    endpoint->port = NO_PORT;
+  }
+  Net *net = circuit_net_ptr(&ux->view.circuit, endpoint->net);
+  int count = 0;
+  EndpointID netEndpointID = net->endpointFirst;
+  EndpointID otherEndpointID = NO_ENDPOINT;
+  while (circuit_has(&ux->view.circuit, netEndpointID)) {
+    Endpoint *endpoint = circuit_endpoint_ptr(&ux->view.circuit, netEndpointID);
+    if (netEndpointID != endpointID) {
+      otherEndpointID = netEndpointID;
+    }
+    count++;
+    netEndpointID = endpoint->next;
+  }
+  if (count <= 2) {
+    ux->newNet = true;
+    ux->endpointStart = otherEndpointID;
+  }
+}
+
 void ux_cancel_wire(CircuitUX *ux) {
+  NetID netID = circuit_endpoint_ptr(&ux->view.circuit, ux->endpointEnd)->net;
   circuit_del(&ux->view.circuit, ux->endpointEnd);
   if (ux->newNet) {
-    Endpoint *endpoint =
-      circuit_endpoint_ptr(&ux->view.circuit, ux->endpointStart);
-    NetID netID = endpoint->net;
-    circuit_del(&ux->view.circuit, ux->endpointStart);
+    if (circuit_has(&ux->view.circuit, ux->endpointStart)) {
+      circuit_del(&ux->view.circuit, ux->endpointStart);
+    }
     circuit_del(&ux->view.circuit, netID);
   }
+
   ux->newNet = false;
   ux->endpointStart = NO_ENDPOINT;
   ux->endpointEnd = NO_ENDPOINT;
-  ux_route(ux);
 }
 
 void ux_connect_wire(CircuitUX *ux, PortID portID) {
@@ -583,7 +658,6 @@ void ux_connect_wire(CircuitUX *ux, PortID portID) {
   }
 
   circuit_endpoint_connect(&ux->view.circuit, ux->endpointEnd, portID);
-  ux_route(ux);
 
   ux->newNet = false;
   ux->endpointStart = NO_ENDPOINT;

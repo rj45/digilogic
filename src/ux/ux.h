@@ -166,11 +166,13 @@ typedef enum MouseDownState {
   STATE_SELECT_AREA,
   STATE_SELECT_ONE,
   STATE_MOVE_SELECTION,
+  STATE_CLICK_ENDPOINT,
   STATE_CLICK_PORT,
   STATE_DRAG_WIRING,
   STATE_START_CLICK_WIRING,
   STATE_CLICK_WIRING,
   STATE_CONNECT_PORT,
+  STATE_CANCEL_WIRE,
   STATE_FLOATING_WIRE,
   STATE_ADDING_COMPONENT,
   STATE_ADD_COMPONENT,
@@ -355,6 +357,7 @@ void ux_stop_adding_component(CircuitUX *ux);
 void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID);
 
 void ux_start_wire(CircuitUX *ux, PortID portID);
+void ux_continue_wire(CircuitUX *ux, EndpointID endpointID);
 void ux_cancel_wire(CircuitUX *ux);
 void ux_connect_wire(CircuitUX *ux, PortID portID);
 

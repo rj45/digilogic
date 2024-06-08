@@ -65,7 +65,7 @@ pub fn build(b: *std.Build) void {
         } else {
             cflags.appendSlice(&.{
                 "-g",
-                "-O1",
+                "-O0",
                 "-fno-omit-frame-pointer",
                 "-fno-optimize-sibling-calls",
                 "-Wall",

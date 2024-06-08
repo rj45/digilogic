@@ -48,6 +48,8 @@ struct AutoRoute {
 
   RT_Graph *graph;
 
+  bool needsRefresh;
+
   int timeIndex;
   int timeLength;
   uint64_t buildTimes[TIME_SAMPLES];
@@ -171,6 +173,34 @@ static void autoroute_on_waypoint_update(void *user, WaypointID id, void *ptr) {
     ar, waypoint->net, circuit_net_ptr(ar->circuit, waypoint->net));
 }
 
+static void autoroute_on_any_delete(void *user, ID id, void *ptr) {
+  AutoRoute *ar = user;
+  ar->needsRefresh = true;
+}
+
+static void autoroute_refresh_data(AutoRoute *ar) {
+  for (int i = 0; i < circuit_component_len(ar->circuit); i++) {
+    Component *comp = &ar->circuit->components[i];
+    autoroute_on_component_update(
+      ar, circuit_component_id(ar->circuit, i), comp);
+  }
+  for (int i = 0; i < circuit_net_len(ar->circuit); i++) {
+    Net *net = &ar->circuit->nets[i];
+    autoroute_on_net_update(ar, circuit_net_id(ar->circuit, i), net);
+  }
+  for (int i = 0; i < circuit_endpoint_len(ar->circuit); i++) {
+    Endpoint *endpoint = &ar->circuit->endpoints[i];
+    autoroute_on_endpoint_update(
+      ar, circuit_endpoint_id(ar->circuit, i), endpoint);
+  }
+  for (int i = 0; i < circuit_waypoint_len(ar->circuit); i++) {
+    Waypoint *waypoint = &ar->circuit->waypoints[i];
+    autoroute_on_waypoint_update(
+      ar, circuit_waypoint_id(ar->circuit, i), waypoint);
+  }
+  ar->needsRefresh = false;
+}
+
 AutoRoute *autoroute_create(Circuit *circuit) {
   AutoRoute *ar = malloc(sizeof(AutoRoute));
   *ar = (AutoRoute){
@@ -180,6 +210,7 @@ AutoRoute *autoroute_create(Circuit *circuit) {
     &circuit->sm.components, (void **)&ar->boxes, sizeof(*ar->boxes));
   circuit_on_component_create(circuit, ar, autoroute_on_component_update);
   circuit_on_component_update(circuit, ar, autoroute_on_component_update);
+  circuit_on_component_delete(circuit, ar, autoroute_on_any_delete);
 
   smap_add_synced_array(
     &circuit->sm.nets, (void **)&ar->nets, sizeof(*ar->nets));
@@ -187,16 +218,19 @@ AutoRoute *autoroute_create(Circuit *circuit) {
     &circuit->sm.nets, (void **)&ar->netViews, sizeof(*ar->netViews));
   circuit_on_net_create(circuit, ar, autoroute_on_net_update);
   circuit_on_net_update(circuit, ar, autoroute_on_net_update);
+  circuit_on_net_delete(circuit, ar, autoroute_on_any_delete);
 
   smap_add_synced_array(
     &circuit->sm.endpoints, (void **)&ar->endpoints, sizeof(*ar->endpoints));
   circuit_on_endpoint_create(circuit, ar, autoroute_on_endpoint_update);
   circuit_on_endpoint_update(circuit, ar, autoroute_on_endpoint_update);
+  circuit_on_endpoint_delete(circuit, ar, autoroute_on_any_delete);
 
   smap_add_synced_array(
     &circuit->sm.waypoints, (void **)&ar->waypoints, sizeof(*ar->waypoints));
   circuit_on_waypoint_create(circuit, ar, autoroute_on_waypoint_update);
   circuit_on_waypoint_update(circuit, ar, autoroute_on_waypoint_update);
+  circuit_on_waypoint_delete(circuit, ar, autoroute_on_any_delete);
 
   RT_Result res = RT_graph_new(&ar->graph);
   assert(res == RT_RESULT_SUCCESS);
@@ -315,6 +349,10 @@ static void autoroute_prepare_routing(AutoRoute *ar, RoutingConfig config) {
 
   if (arrlen(ar->anchors) == 0) {
     return;
+  }
+
+  if (ar->needsRefresh) {
+    autoroute_refresh_data(ar);
   }
 
   RT_Result res = RT_graph_build(

@@ -218,8 +218,8 @@ static void circuit_port_deleted(void *user, ID id, void *ptr) {
 
   if (circuit_has(circuit, port->endpoint)) {
     Endpoint *endpoint = circuit_endpoint_ptr(circuit, port->endpoint);
-    circuit_update_id(circuit, port->endpoint);
     endpoint->port = NO_PORT;
+    circuit_update_id(circuit, port->endpoint);
   }
 
   circuit_del(circuit, port->label);

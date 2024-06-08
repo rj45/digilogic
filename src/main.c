@@ -424,9 +424,9 @@ void event(const sapp_event *event, void *user_data) {
     bv_set(app->circuit.ux.input.keysDown, event->key_code);
     bv_set(app->circuit.ux.input.keysPressed, event->key_code);
     app->circuit.ux.input.modifiers = event->modifiers;
-    if (event->key_code == SAPP_KEYCODE_ESCAPE) {
-      sapp_request_quit();
-    }
+    // if (event->key_code == SAPP_KEYCODE_ESCAPE) {
+    //   sapp_request_quit();
+    // }
     break;
 
   case SAPP_EVENTTYPE_KEY_UP:
@@ -471,6 +471,11 @@ sapp_desc sokol_main(int argc, char *argv[]) {
   platform_init();
 
   log_info("Global setup complete");
+
+#ifndef _WIN32
+  init_exceptions(argv[0]);
+  log_info("Exceptions hooked");
+#endif
 
   my_app_t *app = malloc(sizeof(my_app_t));
   *app = (my_app_t){
