@@ -145,11 +145,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       }
       break;
     case STATE_SELECT_ONE:
-      if (!leftDown) {
-        state = STATE_UP;
-      } else if (move) {
-        state = STATE_MOVE_SELECTION;
-      }
+      state = STATE_MOVE_SELECTION;
       break;
     case STATE_MOVE_SELECTION:
       if (!leftDown) {
