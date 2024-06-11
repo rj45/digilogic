@@ -175,7 +175,7 @@ typedef enum ComponentID2 {
 extern const size_t componentSizes[COMPONENT_COUNT];
 
 //////////////////////////////////////////
-// tables / entities
+// tables
 //////////////////////////////////////////
 
 typedef struct Port2 {
@@ -400,8 +400,9 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
 
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
-void circ_add_entity_id(Circuit2 *circ, EntityType type, ID id);
-ID circ_add_entity(Circuit2 *circ, EntityType type);
+void circ_add_id(Circuit2 *circ, EntityType type, ID id);
+ID circ_add(Circuit2 *circ, EntityType type);
+void circ_remove(Circuit2 *circ, ID id);
 
 static inline void
 circ_set_(Circuit2 *circuit, int table, int row, int column, void *value) {

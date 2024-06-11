@@ -21,12 +21,8 @@
 #include <stdbool.h>
 
 // todo:
-// - iterators and a way to let code using iterators be
-//   agnostic to whether COW is used or paged memory
-// - mark a row as deleted but don't actually remove it
-//   until later. Let iterators skip such rows, and circ_has return false,
-//   but yet allow event queue iterators to see the memory for destructors to
-//   run
+// - component destructors
+// - finish integrating componentIDs to allow dynamic tables
 
 const size_t componentSizes[COMPONENT_COUNT] = {COMPONENT_SIZES_LIST};
 
@@ -139,7 +135,7 @@ static void circ_grow_table(Circuit2 *circ, EntityType type, size_t newLength) {
   header->capacity = newCapacity;
 }
 
-static void circ_add_entity_impl(Circuit2 *circ, EntityType type, ID id) {
+static void circ_add_impl(Circuit2 *circ, EntityType type, ID id) {
   Table *header = circ->table[type];
 
   int index = id_index(id);
@@ -162,7 +158,7 @@ static void circ_add_entity_impl(Circuit2 *circ, EntityType type, ID id) {
   header->id[row] = id;
 }
 
-void circ_add_entity_id(Circuit2 *circ, EntityType type, ID id) {
+void circ_add_id(Circuit2 *circ, EntityType type, ID id) {
   assert(id_gen(id) > 0);
   circ_grow_entities(circ, id_index(id) + 1);
   assert(circ->generations[id_index(id)] == 0); // id must be unique
@@ -174,18 +170,35 @@ void circ_add_entity_id(Circuit2 *circ, EntityType type, ID id) {
     }
   }
 
-  circ_add_entity_impl(circ, type, id);
+  circ_add_impl(circ, type, id);
 }
 
-ID circ_add_entity(Circuit2 *circ, EntityType type) {
+ID circ_add(Circuit2 *circ, EntityType type) {
   circ_grow_entities(circ, circ->numEntities + 1);
   ID id = arrpop(circ->freelist);
-  circ_add_entity_impl(circ, type, id);
+  circ_add_impl(circ, type, id);
   return id;
 }
 
-void circ_remove_entity(Circuit2 *circ, ID id) {
+void circ_remove(Circuit2 *circ, ID id) {
   assert(circ_has(circ, id));
+
+  // remove the entity from table
+  EntityType type = tagtype_type(circ->typeTags[id_index(id)]);
+  Table *table = circ->table[type];
+  int row = circ->rows[id_index(id)];
+  int lastRow = table->length - 1;
+  if (row != lastRow) {
+    for (size_t i = 0; i < circ->tableMeta[type].componentCount; i++) {
+      void *src = circ_table_component_ptr(circ, type, i, lastRow);
+      void *dst = circ_table_component_ptr(circ, type, i, row);
+      memcpy(dst, src, circ->tableMeta[type].componentSizes[i]);
+    }
+    table->id[row] = table->id[lastRow];
+    circ->rows[id_index(table->id[row])] = row;
+  }
+  table->length--;
+
   circ->generations[id_index(id)] = 0;
   circ->typeTags[id_index(id)] = 0;
   circ->rows[id_index(id)] = 0;

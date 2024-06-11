@@ -297,8 +297,8 @@ UTEST(Circuit2, circ_table_components_ptr) {
 UTEST(Circuit2, circ_table_component_ptr) {
   Circuit2 circuit;
   circ_init(&circuit);
-  circ_add_entity(&circuit, TYPE_ENDPOINT);
-  circ_add_entity(&circuit, TYPE_ENDPOINT);
+  circ_add(&circuit, TYPE_ENDPOINT);
+  circ_add(&circuit, TYPE_ENDPOINT);
   void *ptr = circ_table_component_ptr(&circuit, TYPE_ENDPOINT, 3, 1);
   ASSERT_EQ(ptr, (void *)&circuit.endpoint.port[1]);
   circ_free(&circuit);
@@ -307,7 +307,7 @@ UTEST(Circuit2, circ_table_component_ptr) {
 UTEST(Circuit2, circ_add_entity_id) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  ID id = circ_add(&circuit, TYPE_ENDPOINT);
   ASSERT_EQ(circuit.endpoint.id[0], id);
   ASSERT_EQ(circuit.generations[id_index(id)], id_gen(id));
   ASSERT_EQ(circuit.endpoint.length, 1);
@@ -318,18 +318,39 @@ UTEST(Circuit2, circ_add_entity_id) {
 UTEST(Circuit2, circ_set) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  ID id = circ_add(&circuit, TYPE_ENDPOINT);
   circuit.endpoint.port[circuit.rows[id_index(id)]] = (PortRef){.symbol = 1};
   // circ_set(&circuit, id, endpoint, port, (&(PortRef){.symbol = 1}));
   ASSERT_EQ(circuit.endpoint.port[0].symbol, 1);
   circ_free(&circuit);
 }
 
+UTEST(Circuit2, circ_remove_enitity_end) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID id = circ_add(&circuit, TYPE_ENDPOINT);
+  circ_remove(&circuit, id);
+  ASSERT_EQ(circuit.endpoint.length, 0);
+  ASSERT_EQ(circuit.generations[id_index(id)], 0);
+  circ_free(&circuit);
+}
+UTEST(Circuit2, circ_remove_enitity_middle) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID id1 = circ_add(&circuit, TYPE_ENDPOINT);
+  ID id2 = circ_add(&circuit, TYPE_ENDPOINT);
+  circ_remove(&circuit, id1);
+  ASSERT_EQ(circuit.endpoint.length, 1);
+  ASSERT_EQ(circuit.generations[id_index(id1)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id2)], id_gen(id2));
+  circ_free(&circuit);
+}
+
 UTEST(Circuit2, circ_iter) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id1 = circ_add_entity(&circuit, TYPE_ENDPOINT);
-  ID id2 = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  ID id1 = circ_add(&circuit, TYPE_ENDPOINT);
+  ID id2 = circ_add(&circuit, TYPE_ENDPOINT);
   circ_set(&circuit, id1, PortRef, {.symbol = 1});
   circ_set(&circuit, id2, PortRef, {.symbol = 2});
   ID id;
