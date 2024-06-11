@@ -214,3 +214,141 @@ UTEST(bv, clear_bit) {
   ASSERT_FALSE(bv_is_set(bv, 10));
   bv_free(bv);
 }
+
+////////////////////////
+// ChangeLog tests
+////////////////////////
+
+UTEST(ChangeLog, new) {
+  ChangeLog log;
+  cl_init(&log);
+  ASSERT_EQ(arrlen(log.log), 0);
+  ASSERT_EQ(log.redoIndex, 0);
+  cl_free(&log);
+}
+
+UTEST(ChangeLog, commit) {
+  ChangeLog log;
+  cl_init(&log);
+  cl_commit(&log);
+  ASSERT_EQ(arrlen(log.commitPoints), 1);
+  ASSERT_EQ(log.redoIndex, 1);
+  cl_free(&log);
+}
+
+UTEST(ChangeLog, create) {
+  ChangeLog log;
+  cl_init(&log);
+  cl_create(&log, id_make(0, 1, 1), 2);
+  ASSERT_EQ(arrlen(log.log), 1);
+  ASSERT_EQ(log.log[0].verb, LOG_CREATE);
+  ASSERT_EQ(log.log[0].id, id_make(0, 1, 1));
+  ASSERT_EQ(log.log[0].table, 2);
+  cl_free(&log);
+}
+
+UTEST(ChangeLog, delete) {
+  ChangeLog log;
+  cl_init(&log);
+  cl_delete(&log, id_make(0, 1, 1));
+  ASSERT_EQ(arrlen(log.log), 1);
+  ASSERT_EQ(log.log[0].verb, LOG_DELETE);
+  ASSERT_EQ(log.log[0].id, id_make(0, 1, 1));
+  cl_free(&log);
+}
+
+UTEST(ChangeLog, update) {
+  ChangeLog log;
+  cl_init(&log);
+  cl_update(&log, id_make(0, 1, 1), 1, 2, 3, &(int){4}, sizeof(int));
+  ASSERT_EQ(arrlen(log.log), 1);
+  ASSERT_EQ(log.log[0].verb, LOG_UPDATE);
+  ASSERT_EQ(log.log[0].id, id_make(0, 1, 1));
+  ASSERT_EQ(log.log[0].table, 1);
+  ASSERT_EQ(log.updates[0].column, 2);
+  ASSERT_EQ(log.updates[0].row, 3);
+  ASSERT_EQ(log.updates[0].size, sizeof(int));
+  ASSERT_EQ(*(int *)log.updates[0].newValue, 4);
+  cl_free(&log);
+}
+
+////////////////////////
+// Circuit2 tests
+////////////////////////
+
+#include "core/newstructs.h"
+
+UTEST(Circuit2, circ_table_components_ptr_ptr) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  void **ptr = circ_table_components_ptr_ptr(&circuit, TYPE_ENDPOINT, 3);
+  ASSERT_EQ(ptr, (void **)&circuit.endpoint.port);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, circ_table_components_ptr) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  void *ptr = circ_table_components_ptr(&circuit, TYPE_ENDPOINT, 3);
+  ASSERT_EQ(ptr, (void *)circuit.endpoint.port);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, circ_table_component_ptr) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  circ_add_entity(&circuit, TYPE_ENDPOINT);
+  circ_add_entity(&circuit, TYPE_ENDPOINT);
+  printf("circuit.endpoint.port: %p\n", circuit.endpoint.port);
+  void *ptr = circ_table_component_ptr(&circuit, TYPE_ENDPOINT, 3, 1);
+  ASSERT_EQ(ptr, (void *)&circuit.endpoint.port[1]);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, circ_add_entity_id) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID id = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  ASSERT_EQ(circuit.endpoint.id[0], id);
+  ASSERT_EQ(circuit.generations[id_index(id)], id_gen(id));
+  ASSERT_EQ(circuit.endpoint.length, 1);
+  ASSERT_EQ(circuit.rows[id_index(id)], 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, circ_set) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID id = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  circuit.endpoint.port[circuit.rows[id_index(id)]] = (PortRef){.symbol = 1};
+  // circ_set(&circuit, id, endpoint, port, (&(PortRef){.symbol = 1}));
+  ASSERT_EQ(circuit.endpoint.port[0].symbol, 1);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, circ_iter) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID id1 = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  ID id2 = circ_add_entity(&circuit, TYPE_ENDPOINT);
+  circ_set(&circuit, id1, endpoint, port, (&(PortRef){.symbol = 1}));
+  circ_set(&circuit, id2, endpoint, port, (&(PortRef){.symbol = 2}));
+  ID id;
+  size_t i = 0;
+  CircuitIter it;
+  for (Endpoint2 *endpoints = circ_iter(&circuit, &it, Endpoint2);
+       endpoints != NULL; endpoints = circ_iter_next(&it, Endpoint2)) {
+    for (size_t j = 0; j < endpoints->length; j++) {
+      id = endpoints->id[j];
+      if (i == 0) {
+        ASSERT_EQ(id, id1);
+        ASSERT_EQ(endpoints->port[j].symbol, 1);
+      } else if (i == 1) {
+        ASSERT_EQ(id, id2);
+        ASSERT_EQ(endpoints->port[j].symbol, 2);
+      }
+      i++;
+    }
+  }
+  circ_free(&circuit);
+}

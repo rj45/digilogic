@@ -133,6 +133,8 @@ pub fn build(b: *std.Build) void {
                 "core/load.c",
                 "core/bvh.c",
                 "core/structdescs.c",
+                "core/newcircuit.c",
+                "core/changelog.c",
                 "ux/ux.c",
                 "ux/input.c",
                 "ux/snap.c",

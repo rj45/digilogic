@@ -16,52 +16,12 @@
 
 #include "core/core.h"
 
-#define MAX_COMPONENT_SIZE 8
-
-typedef struct LogUpdate {
-  uint16_t table;
-  uint8_t column;
-  uint8_t size;
-  uint32_t row;
-  uint8_t newValue[MAX_COMPONENT_SIZE];
-} LogUpdate;
-
-typedef struct LogEntry {
-  enum {
-    LOG_CREATE,
-    LOG_DELETE,
-    LOG_UPDATE,
-  } verb;
-  ID id;
-  uint32_t dataIndex;
-} LogEntry;
-
-typedef struct ChangeLog {
-  arr(LogEntry) log;
-  arr(LogUpdate) updates;
-  arr(size_t) commitPoints;
-  size_t redoIndex;
-
-  void *user;
-  void (*cl_revert_snapshot)(void *user);
-  void (*cl_replay_create)(void *user, ID id);
-  void (*cl_replay_delete)(void *user, ID id);
-  void (*cl_replay_update)(
-    void *user, ID id, uint16_t table, uint16_t column, uint32_t row,
-    void *data, size_t size);
-} ChangeLog;
-
-ChangeLog *cl_new() {
-  ChangeLog *log = malloc(sizeof(ChangeLog));
-  *log = (ChangeLog){0};
-  return log;
-}
+void cl_init(ChangeLog *log) { *log = (ChangeLog){0}; }
 
 void cl_free(ChangeLog *log) {
   arrfree(log->log);
   arrfree(log->updates);
   arrfree(log->commitPoints);
-  free(log);
 }
 
 void cl_commit(ChangeLog *log) {
@@ -86,17 +46,17 @@ static void cl_truncate_redo(ChangeLog *log) {
   arrsetlen(log->commitPoints, log->redoIndex);
 }
 
-void cl_create(ChangeLog *log, ID id) {
+void cl_create(ChangeLog *log, ID id, uint16_t table) {
   cl_truncate_redo(log);
 
-  LogEntry entry = (LogEntry){LOG_CREATE, id};
+  LogEntry entry = (LogEntry){.verb = LOG_CREATE, .id = id, .table = table};
   arrput(log->log, entry);
 }
 
 void cl_delete(ChangeLog *log, ID id) {
   cl_truncate_redo(log);
 
-  LogEntry entry = (LogEntry){LOG_DELETE, id};
+  LogEntry entry = (LogEntry){.verb = LOG_DELETE, .id = id};
   arrput(log->log, entry);
 }
 
@@ -109,9 +69,10 @@ void cl_update(
   // prevent bad things if asserts are turned off
   size = size > MAX_COMPONENT_SIZE ? MAX_COMPONENT_SIZE : size;
 
-  LogEntry entry = (LogEntry){LOG_UPDATE, id, arrlen(log->updates)};
+  LogEntry entry = (LogEntry){LOG_UPDATE, table, id};
   arrput(log->log, entry);
-  LogUpdate update = (LogUpdate){table, column, (uint8_t)size, row, {0}};
+  LogUpdate update = (LogUpdate){
+    .column = column, .size = (uint8_t)size, .row = row, .newValue = {0}};
   memcpy(update.newValue, newValue, size);
   arrput(log->updates, update);
 }
@@ -129,7 +90,7 @@ static void cl_redo_range(ChangeLog *log, size_t start, size_t end) {
     case LOG_UPDATE: {
       LogUpdate *update = &log->updates[entry->dataIndex];
       log->cl_replay_update(
-        log->user, entry->id, update->table, update->column, update->row,
+        log->user, entry->id, entry->table, update->column, update->row,
         update->newValue, update->size);
       break;
     }

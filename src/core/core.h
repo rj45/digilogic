@@ -22,9 +22,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "core/structs.h"
 #include "handmade_math.h"
 #include "stb_ds.h"
-#include "structs.h"
 
 // defines an STB array
 #define arr(type) type *
@@ -270,6 +270,59 @@ static inline int smap_index(SparseMap *smap, ID id) {
 static inline ID smap_id(SparseMap *smap, int index) {
   return smap->ids[index];
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// ChangeLog
+////////////////////////////////////////////////////////////////////////////////
+
+#define MAX_COMPONENT_SIZE 10
+
+typedef struct LogUpdate {
+  uint32_t row;
+  uint8_t column;
+  uint8_t size;
+  uint8_t newValue[MAX_COMPONENT_SIZE];
+} LogUpdate;
+
+typedef struct LogEntry {
+  PACK(enum {
+    LOG_CREATE,
+    LOG_DELETE,
+    LOG_UPDATE,
+  })
+  verb;
+  uint16_t table;
+  ID id;
+  uint32_t dataIndex;
+} LogEntry;
+
+typedef struct ChangeLog {
+  arr(LogEntry) log;
+  arr(LogUpdate) updates;
+  arr(size_t) commitPoints;
+  size_t redoIndex;
+
+  void *user;
+  void (*cl_revert_snapshot)(void *user);
+  void (*cl_replay_create)(void *user, ID id);
+  void (*cl_replay_delete)(void *user, ID id);
+  void (*cl_replay_update)(
+    void *user, ID id, uint16_t table, uint16_t column, uint32_t row,
+    void *data, size_t size);
+} ChangeLog;
+
+void cl_init(ChangeLog *log);
+void cl_free(ChangeLog *log);
+
+void cl_commit(ChangeLog *log);
+void cl_create(ChangeLog *log, ID id, uint16_t table);
+void cl_delete(ChangeLog *log, ID id);
+void cl_update(
+  ChangeLog *log, ID id, uint16_t table, uint16_t column, uint32_t row,
+  void *newValue, size_t size);
+
+void cl_undo(ChangeLog *log);
+void cl_redo(ChangeLog *log);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Circuit
