@@ -141,23 +141,21 @@ typedef enum ComponentID2 {
   COMPONENT_COUNT,
 } ComponentID2;
 
-#define circ_component_id(type)                                                \
-  _Generic(                                                                    \
-    type,                                                                      \
-    Parent: COMPONENT_PARENT,                                                  \
-    ModuleID: COMPONENT_MODULE_ID,                                             \
-    SubnetBitsID: COMPONENT_SUBNET_BITS_ID,                                    \
-    NetlistID: COMPONENT_NETLIST_ID,                                           \
-    Position: COMPONENT_POSITON,                                               \
-    Size: COMPONENT_SIZE,                                                      \
-    Name: COMPONENT_NAME,                                                      \
-    Prefix: COMPONENT_PREFIX,                                                  \
-    Number: COMPONENT_NUMBER,                                                  \
-    ListNode: COMPONENT_LIST_NODE,                                             \
-    LinkedList: COMPONENT_LINKED_LIST,                                         \
-    PortRef: COMPONENT_PORT_REF,                                               \
-    WireVertices: COMPONENT_WIRE_VERTICES,                                     \
-    default: 0)
+#define COMPONENT_ID_Parent COMPONENT_PARENT
+#define COMPONENT_ID_ModuleID COMPONENT_MODULE_ID
+#define COMPONENT_ID_SubnetBitsID COMPONENT_SUBNET_BITS_ID
+#define COMPONENT_ID_NetlistID COMPONENT_NETLIST_ID
+#define COMPONENT_ID_Position COMPONENT_POSITON
+#define COMPONENT_ID_Size COMPONENT_SIZE
+#define COMPONENT_ID_Name COMPONENT_NAME
+#define COMPONENT_ID_Prefix COMPONENT_PREFIX
+#define COMPONENT_ID_Number COMPONENT_NUMBER
+#define COMPONENT_ID_ListNode COMPONENT_LIST_NODE
+#define COMPONENT_ID_LinkedList COMPONENT_LINKED_LIST
+#define COMPONENT_ID_PortRef COMPONENT_PORT_REF
+#define COMPONENT_ID_WireVertices COMPONENT_WIRE_VERTICES
+
+#define circ_component_id(type) COMPONENT_ID_##type
 
 // this is here to make it easier to keep in sync with the above, but it ends up
 // being in the componentSizes variable below
@@ -378,42 +376,82 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
   (void *)((char *)circ_table_components_ptr(circuit, type, componentIndex) +  \
            (circuit)->tableMeta[type].componentSizes[componentIndex] * (row))
 
-#define circ_set(circuit, id, table, component, value)                         \
-  ((circuit)->table.component[(circuit)->rows[id_index(id)]] = *(value))
+#define circ_type_for_id(circuit, id)                                          \
+  ((EntityType)(circuit)->typeTags[id_index(id)])
+
+#define circ_row_for_id(circuit, id) ((EntityType)(circuit)->rows[id_index(id)])
+
+#define circ_table_for_id(circuit, id)                                         \
+  ((circuit)->table[circ_type_for_id(circuit, id)])
+
+#define circ_table_meta_for_id(circuit, id)                                    \
+  ((circuit)->tableMeta[circ_type_for_id(circuit, id)])
+
+#define circ_set_ptr(circuit, id, componentType, ptr)                          \
+  circ_set_(                                                                   \
+    (circuit), circ_type_for_id((circuit), (id)),                              \
+    circ_row_for_id((circuit), (id)),                                          \
+    circ_table_meta_for_id(circuit, id)                                        \
+      .componentIndices[circ_component_id(componentType)],                     \
+    ptr)
+
+#define circ_set(circuit, id, componentType, ...)                              \
+  circ_set_ptr(circuit, id, componentType, &(componentType)__VA_ARGS__)
 
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
 void circ_add_entity_id(Circuit2 *circ, EntityType type, ID id);
 ID circ_add_entity(Circuit2 *circ, EntityType type);
 
+static inline void
+circ_set_(Circuit2 *circuit, int table, int row, int column, void *value) {
+  memcpy(
+    circ_table_component_ptr(circuit, table, column, row), value,
+    circuit->tableMeta[table].componentSizes[column]);
+}
+
+//////////////////////////////////////////
+
+// this is an abstraction to allow things like paged tables or skipping
+// deleted rows in the future. it could also be used to allow multi-table
+// iterations over common subset of components. for now this is a stub
+// implementation
 typedef struct CircuitIter {
   // private:
   Circuit2 *circuit;
+  EntityType type;
   int index;
 } CircuitIter;
 
-static inline Table *circ_iter_next_(CircuitIter *iter, EntityType type) {
-  // this is an abstraction to allow things like paged tables or skipping
-  // deleted rows in the future. it could also be used to allow multi-table
-  // iterations over common subset of components. for now this is a stub
-  // implementation
+static inline CircuitIter circ_iter_(Circuit2 *circuit, EntityType type) {
+  return (CircuitIter){.circuit = circuit, .type = type, .index = -1};
+}
+
+static inline bool circ_iter_next(CircuitIter *iter) {
   iter->index++;
-  if (iter->index > 0) {
+  return iter->index == 0;
+}
+
+static inline Table *circ_iter_table_(CircuitIter *iter, EntityType type) {
+  assert(iter->type == type); // make sure the type matches the iterator
+  if (iter->index != 0) {
     return NULL;
   }
-  return iter->circuit->table[type];
+  return iter->circuit->table[iter->type];
 }
 
-static inline Table *
-circ_iter_(Circuit2 *circuit, CircuitIter *it, EntityType type) {
-  *it = (CircuitIter){.circuit = circuit, .index = -1};
-  return circ_iter_next_(it, type);
+static inline void circ_iter_set_(
+  CircuitIter *it, int index, ComponentID2 componentID, void *value) {
+  int column = it->circuit->tableMeta[it->type].componentIndices[componentID];
+  circ_set_(it->circuit, it->type, index, column, value);
 }
 
-#define circ_iter(circuit, iter, type)                                         \
-  (type *)circ_iter_(circuit, iter, circ_entity_type(type))
-
-#define circ_iter_next(iter, type)                                             \
-  (type *)circ_iter_next_(iter, circ_entity_type(type))
+#define circ_iter(circuit, type) circ_iter_(circuit, circ_entity_type(type))
+#define circ_iter_table(iter, type)                                            \
+  (type *)circ_iter_table_(iter, circ_entity_type(type))
+#define circ_iter_set_ptr(iter, index, componentType, ptr)                     \
+  circ_iter_set_(iter, index, circ_component_id(componentType), ptr)
+#define circ_iter_set(iter, index, componentType, ...)                         \
+  circ_iter_set_ptr(iter, index, componentType, &(componentType)__VA_ARGS__)
 
 #endif // NEWSTRUCTS_H

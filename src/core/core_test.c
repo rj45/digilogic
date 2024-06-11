@@ -299,7 +299,6 @@ UTEST(Circuit2, circ_table_component_ptr) {
   circ_init(&circuit);
   circ_add_entity(&circuit, TYPE_ENDPOINT);
   circ_add_entity(&circuit, TYPE_ENDPOINT);
-  printf("circuit.endpoint.port: %p\n", circuit.endpoint.port);
   void *ptr = circ_table_component_ptr(&circuit, TYPE_ENDPOINT, 3, 1);
   ASSERT_EQ(ptr, (void *)&circuit.endpoint.port[1]);
   circ_free(&circuit);
@@ -331,24 +330,25 @@ UTEST(Circuit2, circ_iter) {
   circ_init(&circuit);
   ID id1 = circ_add_entity(&circuit, TYPE_ENDPOINT);
   ID id2 = circ_add_entity(&circuit, TYPE_ENDPOINT);
-  circ_set(&circuit, id1, endpoint, port, (&(PortRef){.symbol = 1}));
-  circ_set(&circuit, id2, endpoint, port, (&(PortRef){.symbol = 2}));
+  circ_set(&circuit, id1, PortRef, {.symbol = 1});
+  circ_set(&circuit, id2, PortRef, {.symbol = 2});
   ID id;
   size_t i = 0;
-  CircuitIter it;
-  for (Endpoint2 *endpoints = circ_iter(&circuit, &it, Endpoint2);
-       endpoints != NULL; endpoints = circ_iter_next(&it, Endpoint2)) {
-    for (size_t j = 0; j < endpoints->length; j++) {
-      id = endpoints->id[j];
-      if (i == 0) {
-        ASSERT_EQ(id, id1);
-        ASSERT_EQ(endpoints->port[j].symbol, 1);
-      } else if (i == 1) {
-        ASSERT_EQ(id, id2);
-        ASSERT_EQ(endpoints->port[j].symbol, 2);
+  for (CircuitIter it = circ_iter(&circuit, Endpoint2); circ_iter_next(&it);) {
+    Endpoint2 *endpoints = circ_iter_table(&it, Endpoint2);
+    {
+      for (size_t j = 0; j < endpoints->length; j++) {
+        id = endpoints->id[j];
+        if (i == 0) {
+          ASSERT_EQ(id, id1);
+          ASSERT_EQ(endpoints->port[j].symbol, 1);
+        } else if (i == 1) {
+          ASSERT_EQ(id, id2);
+          ASSERT_EQ(endpoints->port[j].symbol, 2);
+        }
+        i++;
       }
-      i++;
     }
+    circ_free(&circuit);
   }
-  circ_free(&circuit);
 }

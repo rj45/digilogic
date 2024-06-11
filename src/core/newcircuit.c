@@ -26,7 +26,7 @@
 // - mark a row as deleted but don't actually remove it
 //   until later. Let iterators skip such rows, and circ_has return false,
 //   but yet allow event queue iterators to see the memory for destructors to
-//   run12
+//   run
 
 const size_t componentSizes[COMPONENT_COUNT] = {COMPONENT_SIZES_LIST};
 
