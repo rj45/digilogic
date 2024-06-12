@@ -27,6 +27,9 @@
 #include "stacktrace.h"
 #endif
 
+#define STRPOOL_IMPLEMENTATION
+#include "strpool.h"
+
 UTEST_STATE();
 int main(int argc, const char *const argv[]) {
 

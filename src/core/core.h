@@ -26,6 +26,8 @@
 #include "handmade_math.h"
 #include "stb_ds.h"
 
+#include "strpool.h"
+
 // defines an STB array
 #define arr(type) type *
 
@@ -680,6 +682,15 @@ typedef StringHandle Name;
 typedef StringHandle Prefix;
 typedef int32_t Number;
 
+PACK(typedef enum SymbolShape{
+  SYMSHAPE_DEFAULT,
+  SYMSHAPE_AND,
+  SYMSHAPE_OR,
+  SYMSHAPE_XOR,
+  SYMSHAPE_NOT,
+})
+SymbolShape;
+
 typedef struct ListNode {
   ID next;
   ID prev;
@@ -711,6 +722,7 @@ typedef enum ComponentID2 {
   COMPONENT_NAME,
   COMPONENT_PREFIX,
   COMPONENT_NUMBER,
+  COMPONENT_SYMBOL_SHAPE,
   COMPONENT_LIST_NODE,
   COMPONENT_LINKED_LIST,
   COMPONENT_PORT_REF,
@@ -727,6 +739,7 @@ typedef enum ComponentID2 {
 #define COMPONENT_ID_Name COMPONENT_NAME
 #define COMPONENT_ID_Prefix COMPONENT_PREFIX
 #define COMPONENT_ID_Number COMPONENT_NUMBER
+#define COMPONENT_ID_SymbolShape COMPONENT_SYMBOL_SHAPE
 #define COMPONENT_ID_ListNode COMPONENT_LIST_NODE
 #define COMPONENT_ID_LinkedList COMPONENT_LINKED_LIST
 #define COMPONENT_ID_PortRef COMPONENT_PORT_REF
@@ -744,6 +757,7 @@ typedef enum ComponentID2 {
   [COMPONENT_POSITON] = sizeof(Position), [COMPONENT_SIZE] = sizeof(Size),     \
   [COMPONENT_NAME] = sizeof(Name), [COMPONENT_PREFIX] = sizeof(Prefix),        \
   [COMPONENT_NUMBER] = sizeof(Number),                                         \
+  [COMPONENT_SYMBOL_SHAPE] = sizeof(SymbolShape),                              \
   [COMPONENT_LIST_NODE] = sizeof(ListNode),                                    \
   [COMPONENT_LINKED_LIST] = sizeof(LinkedList),                                \
   [COMPONENT_PORT_REF] = sizeof(PortRef),                                      \
@@ -773,11 +787,13 @@ typedef struct SymbolKind2 {
   Size *size;
   Name *name;
   Prefix *prefix;
+  SymbolShape *shape;
   LinkedList *ports;
 } SymbolKind2;
 #define SYMBOL_KIND_COMPONENTS                                                 \
   1 << COMPONENT_MODULE_ID | 1 << COMPONENT_SIZE | 1 << COMPONENT_NAME |       \
-    1 << COMPONENT_PREFIX | 1 << COMPONENT_LINKED_LIST
+    1 << COMPONENT_PREFIX | 1 << COMPONENT_SYMBOL_SHAPE |                      \
+    1 << COMPONENT_LINKED_LIST
 
 typedef struct Symbol2 {
   TABLE_HEADER
@@ -867,7 +883,7 @@ typedef struct Module2 {
   1 << COMPONENT_NETLIST_ID | 1 << COMPONENT_LIST_NODE |                       \
     1 << COMPONENT_LINKED_LIST
 
-#define MAX_COMPONENT_COUNT 5
+#define MAX_COMPONENT_COUNT 6
 
 #define STANDARD_TABLE_LIST                                                    \
   [TYPE_PORT] = {.components = PORT_COMPONENTS},                               \
@@ -917,6 +933,7 @@ typedef struct Circuit2 {
   Table **table;
   TableMeta *tableMeta;
   int numTables;
+  strpool_t strpool;
 
   // changelog & events
   ChangeLog log;
@@ -954,7 +971,7 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
            (circuit)->tableMeta[type].componentSizes[componentIndex] * (row))
 
 #define circ_type_for_id(circuit, id)                                          \
-  ((EntityType)(circuit)->typeTags[id_index(id)])
+  ((EntityType)tagtype_type((circuit)->typeTags[id_index(id)]))
 
 #define circ_row_for_id(circuit, id) ((EntityType)(circuit)->rows[id_index(id)])
 
@@ -975,11 +992,28 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
 #define circ_set(circuit, id, componentType, ...)                              \
   circ_set_ptr(circuit, id, componentType, &(componentType)__VA_ARGS__)
 
+#define circ_get(circuit, id, componentType)                                   \
+  *((componentType *)circ_table_component_ptr(                                 \
+    circuit, circ_type_for_id(circuit, id),                                    \
+    circ_table_meta_for_id(circuit, id)                                        \
+      .componentIndices[circ_component_id(componentType)],                     \
+    circ_row_for_id(circuit, id)))
+
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
+void circ_load_symbol_descs(
+  Circuit2 *circ, const ComponentDesc *descs, size_t count);
 void circ_add_id(Circuit2 *circ, EntityType type, ID id);
 ID circ_add(Circuit2 *circ, EntityType type);
 void circ_remove(Circuit2 *circ, ID id);
+void circ_add_tags(Circuit2 *circ, ID id, Tag tags);
+
+StringHandle circ_str(Circuit2 *circ, const char *str, size_t len);
+StringHandle circ_str_c(Circuit2 *circ, const char *str);
+void circ_str_free(Circuit2 *circ, StringHandle handle);
+const char *circ_str_get(Circuit2 *circ, StringHandle handle);
+
+void circ_linked_list_append(Circuit2 *circ, ID parent, ID child);
 
 static inline void
 circ_set_(Circuit2 *circuit, int table, int row, int column, void *value) {

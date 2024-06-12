@@ -28,6 +28,15 @@ const size_t componentSizes[COMPONENT_COUNT] = {COMPONENT_SIZES_LIST};
 void circ_init(Circuit2 *circ) {
   *circ = (Circuit2){0};
 
+  strpool_init(
+    &circ->strpool, &(strpool_config_t){
+                      .counter_bits = 8,
+                      .index_bits = 24,
+                      .entry_capacity = 128,
+                      .block_size = 4096,
+                      .min_length = 8,
+                    });
+
   circ->numTables = TYPE_COUNT;
   circ->table = malloc(TYPE_COUNT * sizeof(Table *));
   circ->tableMeta = malloc(TYPE_COUNT * sizeof(TableMeta));
@@ -79,6 +88,37 @@ void circ_free(Circuit2 *circ) {
     free(circ->rows);
   }
   arrfree(circ->freelist);
+  strpool_term(&circ->strpool);
+}
+
+void circ_load_symbol_descs(
+  Circuit2 *circ, const ComponentDesc *descs, size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    const ComponentDesc *symDesc = &descs[i];
+    ID symID = circ_add(circ, TYPE_SYMBOL_KIND);
+    int compRow = circ_row_for_id(circ, symID);
+    circ->symbolKind.name[compRow] = circ_str_c(circ, symDesc->typeName);
+    circ->symbolKind.prefix[compRow] =
+      circ_str(circ, (char[]){symDesc->namePrefix}, 1);
+    circ->symbolKind.shape[compRow] = symDesc->shape;
+
+    for (size_t j = 0; j < symDesc->numPorts; j++) {
+      PortDesc portDesc = symDesc->ports[j];
+      ID portID = circ_add(circ, TYPE_PORT);
+      int portRow = circ_row_for_id(circ, portID);
+      circ->port.symbolKind[portRow] = symID;
+      circ->port.name[portRow] = circ_str_c(circ, portDesc.name);
+      if (portDesc.direction == PORT_IN || portDesc.direction == PORT_INOUT) {
+        circ_add_tags(circ, portID, TAG_IN);
+      }
+      if (portDesc.direction == PORT_OUT || portDesc.direction == PORT_INOUT) {
+        circ_add_tags(circ, portID, TAG_OUT);
+      }
+      circ->port.pin[portRow] = portDesc.number;
+
+      circ_linked_list_append(circ, symID, portID);
+    }
+  }
 }
 
 static void circ_grow_entities(Circuit2 *circ, size_t newLength) {
@@ -207,4 +247,49 @@ void circ_remove(Circuit2 *circ, ID id) {
   }
   arrput(circ->freelist, id_make(0, gen, id_index(id)));
   circ->numEntities--;
+}
+
+void circ_add_tags(Circuit2 *circ, ID id, Tag tags) {
+  assert(circ_has(circ, id));
+  circ->typeTags[id_index(id)] |= tags;
+}
+
+StringHandle circ_str(Circuit2 *circ, const char *str, size_t len) {
+  StringHandle handle = (StringHandle)strpool_inject(&circ->strpool, str, len);
+  strpool_incref(&circ->strpool, handle);
+  return handle;
+}
+
+StringHandle circ_str_c(Circuit2 *circ, const char *str) {
+  return circ_str(circ, str, strlen(str));
+}
+
+void circ_str_free(Circuit2 *circ, StringHandle handle) {
+  int count = strpool_decref(&circ->strpool, handle);
+  if (count == 0) {
+    strpool_discard(&circ->strpool, handle);
+  }
+}
+
+const char *circ_str_get(Circuit2 *circ, StringHandle handle) {
+  return strpool_cstr(&circ->strpool, handle);
+}
+
+void circ_linked_list_append(Circuit2 *circ, ID parent, ID child) {
+  assert(circ_has(circ, parent));
+  assert(circ_has(circ, child));
+
+  LinkedList list = circ_get(circ, parent, LinkedList);
+  ListNode node = circ_get(circ, child, ListNode);
+  node.prev = list.tail;
+  list.tail = child;
+  if (node.prev == NO_ID) {
+    list.head = child;
+  } else {
+    ListNode prev = circ_get(circ, node.prev, ListNode);
+    prev.next = child;
+    circ_set_ptr(circ, node.prev, ListNode, &prev);
+  }
+  circ_set_ptr(circ, child, ListNode, &node);
+  circ_set_ptr(circ, parent, LinkedList, &list);
 }

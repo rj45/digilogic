@@ -344,6 +344,31 @@ UTEST(Circuit2, circ_remove_enitity_middle) {
   circ_free(&circuit);
 }
 
+UTEST(Circuit2, circ_load_symbol_descs) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  circ_load_symbol_descs(&circuit, circuit_component_descs(), COMP_COUNT);
+
+  // todo: make more thorough
+
+  ASSERT_EQ(circuit.symbolKind.length, COMP_COUNT);
+  ASSERT_STREQ(
+    circ_str_get(&circuit, circuit.symbolKind.name[COMP_AND]), "AND");
+  ASSERT_STREQ(
+    circ_str_get(&circuit, circuit.symbolKind.prefix[COMP_AND]), "X");
+  ASSERT_EQ(circuit.symbolKind.shape[COMP_AND], SYMSHAPE_AND);
+
+  int count = 0;
+  PortID portID = circuit.symbolKind.ports[COMP_AND].head;
+  while (circ_has(&circuit, portID)) {
+    count++;
+    portID = circuit.port.list[circ_row_for_id(&circuit, portID)].next;
+  }
+  ASSERT_EQ(count, 3);
+
+  circ_free(&circuit);
+}
+
 UTEST(Circuit2, circ_iter) {
   Circuit2 circuit;
   circ_init(&circuit);
@@ -355,19 +380,18 @@ UTEST(Circuit2, circ_iter) {
   size_t i = 0;
   for (CircuitIter it = circ_iter(&circuit, Endpoint2); circ_iter_next(&it);) {
     Endpoint2 *endpoints = circ_iter_table(&it, Endpoint2);
-    {
-      for (size_t j = 0; j < endpoints->length; j++) {
-        id = endpoints->id[j];
-        if (i == 0) {
-          ASSERT_EQ(id, id1);
-          ASSERT_EQ(endpoints->port[j].symbol, 1);
-        } else if (i == 1) {
-          ASSERT_EQ(id, id2);
-          ASSERT_EQ(endpoints->port[j].symbol, 2);
-        }
-        i++;
+
+    for (size_t j = 0; j < endpoints->length; j++) {
+      id = endpoints->id[j];
+      if (i == 0) {
+        ASSERT_EQ(id, id1);
+        ASSERT_EQ(endpoints->port[j].symbol, 1);
+      } else if (i == 1) {
+        ASSERT_EQ(id, id2);
+        ASSERT_EQ(endpoints->port[j].symbol, 2);
       }
+      i++;
     }
-    circ_free(&circuit);
   }
+  circ_free(&circuit);
 }
