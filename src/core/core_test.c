@@ -276,8 +276,6 @@ UTEST(ChangeLog, update) {
 // Circuit2 tests
 ////////////////////////
 
-#include "core/newstructs.h"
-
 UTEST(Circuit2, circ_table_components_ptr_ptr) {
   Circuit2 circuit;
   circ_init(&circuit);

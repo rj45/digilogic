@@ -169,7 +169,7 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
   }
 }
 
-void import_digital(CircuitUX *ux, char *buffer) {
+void import_digital(Circuit *circuit, char *buffer) {
   arr(uint32_t) stack = 0;
   arr(PortID) inPorts = 0;
   arr(PortID) outPorts = 0;
@@ -194,13 +194,13 @@ void import_digital(CircuitUX *ux, char *buffer) {
     goto fail;
   }
 
-  LXMLNode *circuit = find_node(root, "circuit");
-  if (!circuit) {
+  LXMLNode *circuitNode = find_node(root, "circuit");
+  if (!circuitNode) {
     log_debug("No circuit node");
     goto fail;
   }
 
-  LXMLNode *wires = find_node(circuit, "wires");
+  LXMLNode *wires = find_node(circuitNode, "wires");
   if (!wires) {
     log_debug("No wires node");
     goto fail;
@@ -271,7 +271,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
 
   log_debug("Loading components");
 
-  LXMLNode *visualElements = find_node(circuit, "visualElements");
+  LXMLNode *visualElements = find_node(circuitNode, "visualElements");
   if (!visualElements) {
     log_debug("No visualElements node");
     goto fail;
@@ -319,22 +319,20 @@ void import_digital(CircuitUX *ux, char *buffer) {
 
       log_debug("Adding component %s at %d, %d\n", typeName, x, y);
       ComponentID componentID =
-        circuit_add_component(&ux->view.circuit, descID, HMM_V2(x, y));
+        circuit_add_component(circuit, descID, HMM_V2(x, y));
 
       // digital's components are placed relative to the first port
-      Component *component =
-        circuit_component_ptr(&ux->view.circuit, componentID);
+      Component *component = circuit_component_ptr(circuit, componentID);
 
       PortID firstPort = component->portFirst;
-      Port *port = circuit_port_ptr(&ux->view.circuit, firstPort);
+      Port *port = circuit_port_ptr(circuit, firstPort);
       circuit_move_component(
-        &ux->view.circuit, componentID,
-        HMM_SubV2(HMM_V2(0, 0), port->position));
+        circuit, componentID, HMM_SubV2(HMM_V2(0, 0), port->position));
 
       HMM_Vec2 portPos = HMM_AddV2(component->box.center, port->position);
       log_debug("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
 
-      const ComponentDesc *desc = &ux->view.circuit.componentDescs[descID];
+      const ComponentDesc *desc = &circuit->componentDescs[descID];
       switch (descID) {
       case COMP_INPUT:
       case COMP_OUTPUT: {
@@ -355,7 +353,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
         }
         PortID portID = component->portFirst;
         int j = 0;
-        while (circuit_has(&ux->view.circuit, portID)) {
+        while (circuit_has(circuit, portID)) {
           IVec2 pos = nextInput;
           if (desc->ports[j].direction == PORT_OUT) {
             pos = nextOutput;
@@ -369,7 +367,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
             digWires, digWireEnds, portID, pos,
             desc->ports[j].direction == PORT_IN);
 
-          portID = circuit_port_ptr(&ux->view.circuit, portID)->next;
+          portID = circuit_port_ptr(circuit, portID)->next;
           j++;
         }
         break;
@@ -617,20 +615,20 @@ void import_digital(CircuitUX *ux, char *buffer) {
       }
     }
 
-    NetID netID = circuit_add_net(&ux->view.circuit);
+    NetID netID = circuit_add_net(circuit);
     log_debug("Net %d", netID);
 
     for (int j = 0; j < arrlen(inPorts); j++) {
       log_debug("  * In port %d", inPorts[j]);
-      circuit_add_endpoint(&ux->view.circuit, netID, inPorts[j], HMM_V2(0, 0));
+      circuit_add_endpoint(circuit, netID, inPorts[j], HMM_V2(0, 0));
     }
     for (int j = 0; j < arrlen(waypoints); j++) {
       log_debug("  * Waypoint %f %f", waypoints[j].X, waypoints[j].Y);
-      circuit_add_waypoint(&ux->view.circuit, netID, waypoints[j]);
+      circuit_add_waypoint(circuit, netID, waypoints[j]);
     }
     for (int j = 0; j < arrlen(outPorts); j++) {
       log_debug("  * Out port %d", outPorts[j]);
-      circuit_add_endpoint(&ux->view.circuit, netID, outPorts[j], HMM_V2(0, 0));
+      circuit_add_endpoint(circuit, netID, outPorts[j], HMM_V2(0, 0));
     }
 
     arrsetlen(inPorts, 0);
