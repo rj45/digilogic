@@ -989,6 +989,8 @@ circ_set_(Circuit2 *circuit, int table, int row, int column, void *value) {
 }
 
 //////////////////////////////////////////
+// Iterator
+//////////////////////////////////////////
 
 // this is an abstraction to allow things like paged tables or skipping
 // deleted rows in the future. it could also be used to allow multi-table

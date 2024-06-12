@@ -15,7 +15,6 @@
 */
 
 #include "core/core.h"
-#include "core/newstructs.h"
 
 #include <assert.h>
 #include <stdbool.h>

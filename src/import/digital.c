@@ -17,8 +17,6 @@
 #include "core/core.h"
 #include "handmade_math.h"
 #include "import.h"
-#include "ux/ux.h"
-#include "view/view.h"
 
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
