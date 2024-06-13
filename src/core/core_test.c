@@ -279,7 +279,7 @@ UTEST(ChangeLog, update) {
 UTEST(Circuit2, circ_table_components_ptr_ptr) {
   Circuit2 circuit;
   circ_init(&circuit);
-  void **ptr = circ_table_components_ptr_ptr(&circuit, TYPE_ENDPOINT, 3);
+  void **ptr = circ_table_components_ptr_ptr(&circuit, TYPE_ENDPOINT, 4);
   ASSERT_EQ(ptr, (void **)&circuit.endpoint.port);
   circ_free(&circuit);
 }
@@ -287,7 +287,7 @@ UTEST(Circuit2, circ_table_components_ptr_ptr) {
 UTEST(Circuit2, circ_table_components_ptr) {
   Circuit2 circuit;
   circ_init(&circuit);
-  void *ptr = circ_table_components_ptr(&circuit, TYPE_ENDPOINT, 3);
+  void *ptr = circ_table_components_ptr(&circuit, TYPE_ENDPOINT, 4);
   ASSERT_EQ(ptr, (void *)circuit.endpoint.port);
   circ_free(&circuit);
 }
@@ -295,9 +295,9 @@ UTEST(Circuit2, circ_table_components_ptr) {
 UTEST(Circuit2, circ_table_component_ptr) {
   Circuit2 circuit;
   circ_init(&circuit);
-  circ_add(&circuit, TYPE_ENDPOINT);
-  circ_add(&circuit, TYPE_ENDPOINT);
-  void *ptr = circ_table_component_ptr(&circuit, TYPE_ENDPOINT, 3, 1);
+  circ_add(&circuit, Endpoint2);
+  circ_add(&circuit, Endpoint2);
+  void *ptr = circ_table_component_ptr(&circuit, TYPE_ENDPOINT, 4, 1);
   ASSERT_EQ(ptr, (void *)&circuit.endpoint.port[1]);
   circ_free(&circuit);
 }
@@ -305,7 +305,7 @@ UTEST(Circuit2, circ_table_component_ptr) {
 UTEST(Circuit2, circ_add_entity_id) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id = circ_add(&circuit, TYPE_ENDPOINT);
+  ID id = circ_add(&circuit, Endpoint2);
   ASSERT_EQ(circuit.endpoint.id[0], id);
   ASSERT_EQ(circuit.generations[id_index(id)], id_gen(id));
   ASSERT_EQ(circuit.endpoint.length, 1);
@@ -316,7 +316,7 @@ UTEST(Circuit2, circ_add_entity_id) {
 UTEST(Circuit2, circ_set) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id = circ_add(&circuit, TYPE_ENDPOINT);
+  ID id = circ_add(&circuit, Endpoint2);
   circuit.endpoint.port[circuit.rows[id_index(id)]] = (PortRef){.symbol = 1};
   // circ_set(&circuit, id, endpoint, port, (&(PortRef){.symbol = 1}));
   ASSERT_EQ(circuit.endpoint.port[0].symbol, 1);
@@ -326,21 +326,105 @@ UTEST(Circuit2, circ_set) {
 UTEST(Circuit2, circ_remove_enitity_end) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id = circ_add(&circuit, TYPE_ENDPOINT);
-  circ_remove(&circuit, id);
+  ID id1 = circ_add(&circuit, Endpoint2);
+  ID id2 = circ_add(&circuit, Endpoint2);
+  ID id3 = circ_add(&circuit, Endpoint2);
+
+  ASSERT_EQ(circuit.endpoint.length, 3);
+
+  circ_remove(&circuit, id3);
+
+  ASSERT_EQ(circuit.endpoint.length, 2);
+  ASSERT_TRUE(circ_has(&circuit, id1));
+  ASSERT_TRUE(circ_has(&circuit, id2));
+  ASSERT_FALSE(circ_has(&circuit, id3));
+
+  circ_remove(&circuit, id2);
+
+  ASSERT_EQ(circuit.endpoint.length, 1);
+  ASSERT_TRUE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_FALSE(circ_has(&circuit, id3));
+
+  circ_remove(&circuit, id1);
+
   ASSERT_EQ(circuit.endpoint.length, 0);
-  ASSERT_EQ(circuit.generations[id_index(id)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id1)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id2)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id3)], 0);
+  ASSERT_FALSE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_FALSE(circ_has(&circuit, id3));
   circ_free(&circuit);
 }
+
 UTEST(Circuit2, circ_remove_enitity_middle) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id1 = circ_add(&circuit, TYPE_ENDPOINT);
-  ID id2 = circ_add(&circuit, TYPE_ENDPOINT);
+  ID id1 = circ_add(&circuit, Endpoint2);
+  ID id2 = circ_add(&circuit, Endpoint2);
+  ID id3 = circ_add(&circuit, Endpoint2);
+
+  ASSERT_EQ(circuit.endpoint.length, 3);
+
+  circ_remove(&circuit, id2);
+
+  ASSERT_EQ(circuit.endpoint.length, 2);
+  ASSERT_TRUE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_TRUE(circ_has(&circuit, id3));
+
   circ_remove(&circuit, id1);
+
   ASSERT_EQ(circuit.endpoint.length, 1);
+  ASSERT_FALSE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_TRUE(circ_has(&circuit, id3));
+
+  circ_remove(&circuit, id3);
+
+  ASSERT_EQ(circuit.endpoint.length, 0);
   ASSERT_EQ(circuit.generations[id_index(id1)], 0);
-  ASSERT_EQ(circuit.generations[id_index(id2)], id_gen(id2));
+  ASSERT_EQ(circuit.generations[id_index(id2)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id3)], 0);
+  ASSERT_FALSE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_FALSE(circ_has(&circuit, id3));
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, circ_remove_enitity_beginning) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID id1 = circ_add(&circuit, Endpoint2);
+  ID id2 = circ_add(&circuit, Endpoint2);
+  ID id3 = circ_add(&circuit, Endpoint2);
+
+  ASSERT_EQ(circuit.endpoint.length, 3);
+
+  circ_remove(&circuit, id1);
+
+  ASSERT_EQ(circuit.endpoint.length, 2);
+  ASSERT_FALSE(circ_has(&circuit, id1));
+  ASSERT_TRUE(circ_has(&circuit, id2));
+  ASSERT_TRUE(circ_has(&circuit, id3));
+
+  circ_remove(&circuit, id2);
+
+  ASSERT_EQ(circuit.endpoint.length, 1);
+  ASSERT_FALSE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_TRUE(circ_has(&circuit, id3));
+
+  circ_remove(&circuit, id3);
+
+  ASSERT_EQ(circuit.endpoint.length, 0);
+  ASSERT_EQ(circuit.generations[id_index(id1)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id2)], 0);
+  ASSERT_EQ(circuit.generations[id_index(id3)], 0);
+  ASSERT_FALSE(circ_has(&circuit, id1));
+  ASSERT_FALSE(circ_has(&circuit, id2));
+  ASSERT_FALSE(circ_has(&circuit, id3));
   circ_free(&circuit);
 }
 
@@ -372,8 +456,8 @@ UTEST(Circuit2, circ_load_symbol_descs) {
 UTEST(Circuit2, circ_iter) {
   Circuit2 circuit;
   circ_init(&circuit);
-  ID id1 = circ_add(&circuit, TYPE_ENDPOINT);
-  ID id2 = circ_add(&circuit, TYPE_ENDPOINT);
+  ID id1 = circ_add(&circuit, Endpoint2);
+  ID id2 = circ_add(&circuit, Endpoint2);
   circ_set(&circuit, id1, PortRef, {.symbol = 1});
   circ_set(&circuit, id2, PortRef, {.symbol = 2});
   ID id;
@@ -393,5 +477,211 @@ UTEST(Circuit2, circ_iter) {
       i++;
     }
   }
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_port) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  ID portID = circ_add_port(&circuit, symbolKindID);
+  ASSERT_EQ(circuit.port.length, 1);
+  ASSERT_EQ(circuit.port.id[0], portID);
+  ASSERT_EQ(circuit.port.symbolKind[0], symbolKindID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_port) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  ID portID = circ_add_port(&circuit, symbolKindID);
+  circ_remove_port(&circuit, portID);
+  ASSERT_EQ(circuit.port.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_symbol_kind) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  ASSERT_EQ(circuit.symbolKind.length, 1);
+  ASSERT_EQ(circuit.symbolKind.id[0], symbolKindID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_symbol_kind) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  circ_add_port(&circuit, symbolKindID);
+  circ_add_port(&circuit, symbolKindID);
+  circ_add_port(&circuit, symbolKindID);
+  circ_remove_symbol_kind(&circuit, symbolKindID);
+  ASSERT_EQ(circuit.symbolKind.length, 0);
+  ASSERT_EQ(circuit.port.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_symbol) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  ID symbolID = circ_add_symbol(&circuit, moduleID, symbolKindID);
+  ASSERT_EQ(circuit.symbol.length, 1);
+  ASSERT_EQ(circuit.symbol.id[0], symbolID);
+  ASSERT_EQ(circuit.symbol.module[0], moduleID);
+  ASSERT_EQ(circuit.symbol.symbolKind[0], symbolKindID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_symbol) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  ID symbolID = circ_add_symbol(&circuit, moduleID, symbolKindID);
+  circ_remove_symbol(&circuit, symbolID);
+  ASSERT_EQ(circuit.symbol.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, removing_symbol_kind_removes_all_linked_symbols) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID symbolKindID = circ_add_symbol_kind(&circuit);
+  ID symbolKindID2 = circ_add_symbol_kind(&circuit);
+  ID symbolID1 = circ_add_symbol(&circuit, moduleID, symbolKindID);
+  ID symbolID2 = circ_add_symbol(&circuit, moduleID, symbolKindID2);
+  ID symbolID3 = circ_add_symbol(&circuit, moduleID, symbolKindID);
+  circ_remove_symbol_kind(&circuit, symbolKindID);
+  ASSERT_EQ(circuit.symbol.length, 1);
+  ASSERT_FALSE(circ_has(&circuit, symbolID1));
+  ASSERT_TRUE(circ_has(&circuit, symbolID2));
+  ASSERT_FALSE(circ_has(&circuit, symbolID3));
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_waypoint) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ID subnetID = circ_add_subnet(&circuit, netID);
+  ID endpointID = circ_add_endpoint(&circuit, subnetID);
+  ID waypointID = circ_add_waypoint(&circuit, endpointID);
+  ASSERT_EQ(circuit.waypoint.length, 1);
+  ASSERT_EQ(circuit.waypoint.id[0], waypointID);
+  ASSERT_EQ(circuit.waypoint.endpoint[0], endpointID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_waypoint) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ID subnetID = circ_add_subnet(&circuit, netID);
+  ID endpointID = circ_add_endpoint(&circuit, subnetID);
+  ID waypointID = circ_add_waypoint(&circuit, endpointID);
+  circ_remove_waypoint(&circuit, waypointID);
+  ASSERT_EQ(circuit.waypoint.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_endpoint) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ID subnetID = circ_add_subnet(&circuit, netID);
+  ID endpointID = circ_add_endpoint(&circuit, subnetID);
+  ASSERT_EQ(circuit.endpoint.length, 1);
+  ASSERT_EQ(circuit.endpoint.id[0], endpointID);
+  ASSERT_EQ(circuit.endpoint.subnet[0], subnetID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_endpoint) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ID subnetID = circ_add_subnet(&circuit, netID);
+  ID endpointID = circ_add_endpoint(&circuit, subnetID);
+  circ_remove_endpoint(&circuit, endpointID);
+  ASSERT_EQ(circuit.endpoint.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_subnet) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ID subnetID = circ_add_subnet(&circuit, netID);
+  ASSERT_EQ(circuit.subnet.length, 1);
+  ASSERT_EQ(circuit.subnet.id[0], subnetID);
+  ASSERT_EQ(circuit.subnet.net[0], netID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_subnet) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ID subnetID = circ_add_subnet(&circuit, netID);
+  circ_remove_subnet(&circuit, subnetID);
+  ASSERT_EQ(circuit.subnet.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_net) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  ASSERT_EQ(circuit.net.length, 1);
+  ASSERT_EQ(circuit.net.id[0], netID);
+  ID netlistID = circuit.module.nets[0];
+  ASSERT_EQ(circuit.net.netlist[0], netlistID);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_net) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ID netID = circ_add_net(&circuit, moduleID);
+  circ_remove_net(&circuit, netID);
+  ASSERT_EQ(circuit.net.length, 0);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, add_module) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  ASSERT_EQ(circuit.module.length, 1);
+  ASSERT_EQ(circuit.netlist.length, 1);
+  ASSERT_EQ(circuit.symbolKind.length, 1);
+
+  ASSERT_EQ(circuit.module.id[0], moduleID);
+  ASSERT_EQ(circuit.netlist.module[0], moduleID);
+  ASSERT_EQ(circuit.symbolKind.module[0], moduleID);
+  ASSERT_EQ(circuit.module.symbolKind[0], circuit.symbolKind.id[0]);
+  circ_free(&circuit);
+}
+
+UTEST(Circuit2, remove_module) {
+  Circuit2 circuit;
+  circ_init(&circuit);
+  ID moduleID = circ_add_module(&circuit);
+  circ_remove_module(&circuit, moduleID);
+  ASSERT_EQ(circuit.module.length, 0);
+  ASSERT_EQ(circuit.netlist.length, 0);
   circ_free(&circuit);
 }
