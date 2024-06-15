@@ -32,7 +32,11 @@
 #define arr(type) type *
 
 // defines an STB hash map
-#define hmap(type) type *
+#define hashmap(keyType, valueType)                                            \
+  struct {                                                                     \
+    keyType key;                                                               \
+    valueType value;                                                           \
+  } *
 
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 #define MUST_USE_RETURN __attribute__((warn_unused_result))
@@ -948,6 +952,10 @@ typedef struct Circuit2 {
   // changelog & events
   ChangeLog log;
 
+  // temporary crossover code
+  Circuit *oldCircuit;
+  hashmap(ID, ID) oldToNew;
+  hashmap(ID, ID) newToOld;
 } Circuit2;
 
 static inline bool circ_has(Circuit2 *circuit, ID id) {
@@ -1099,12 +1107,16 @@ void circ_remove_symbol_kind(Circuit2 *circ, ID id);
 
 ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind);
 void circ_remove_symbol(Circuit2 *circ, ID id);
+void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position);
 
 ID circ_add_waypoint(Circuit2 *circ, ID endpoint);
 void circ_remove_waypoint(Circuit2 *circ, ID id);
+void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position);
 
 ID circ_add_endpoint(Circuit2 *circ, ID subnet);
 void circ_remove_endpoint(Circuit2 *circ, ID id);
+void circ_connect_endpoint_to_port(
+  Circuit2 *circ, ID endpointID, ID symbolID, ID portID);
 
 ID circ_add_subnet_bit(Circuit2 *circ, ID subnetBits);
 void circ_remove_subnet_bit(Circuit2 *circ, ID id);

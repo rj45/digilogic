@@ -15,6 +15,8 @@
 */
 
 #include "core/core.h"
+#include "core/structs.h"
+#include "handmade_math.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -406,13 +408,45 @@ ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind) {
   circ_set(circ, symbolID, Parent, {module});
   circ_set(circ, symbolID, SymbolKindID, {symbolKind});
   circ_linked_list_append(circ, module, symbolID);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    ComponentDescID desc = 0;
+    const char *name = circ_str_get(circ, circ_get(circ, symbolKind, Name));
+    for (size_t i = 0; i < COMP_COUNT; i++) {
+      if (strcmp(name, circ->oldCircuit->componentDescs[i].typeName) == 0) {
+        desc = i;
+        break;
+      }
+    }
+    ComponentID compID =
+      circuit_add_component(circ->oldCircuit, desc, HMM_V2(0, 0));
+    hmput(circ->oldToNew, compID, symbolID);
+    hmput(circ->newToOld, symbolID, compID);
+  }
   return symbolID;
 }
 
 void circ_remove_symbol(Circuit2 *circ, ID id) {
   Parent module = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, module, id);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    ComponentID compID = hmget(circ->newToOld, id);
+    circuit_del(circ->oldCircuit, compID);
+
+    hmdel(circ->oldToNew, compID);
+    hmdel(circ->newToOld, id);
+  }
   circ_remove(circ, id);
+}
+
+void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+  circ_set_ptr(circ, id, Position, &position);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    ComponentID compID = hmget(circ->newToOld, id);
+    circuit_move_component_to(circ->oldCircuit, compID, position);
+  }
 }
 
 // ---
@@ -421,6 +455,18 @@ ID circ_add_waypoint(Circuit2 *circ, ID endpoint) {
   ID waypointID = circ_add(circ, Waypoint2);
   circ_set(circ, waypointID, Parent, {endpoint});
   circ_linked_list_append(circ, endpoint, waypointID);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    ID subnetID = circ_get(circ, endpoint, Parent);
+    ID netID = circ_get(circ, subnetID, Parent);
+    NetID oldNetID = hmget(circ->newToOld, netID);
+
+    WaypointID oldWaypoint =
+      circuit_add_waypoint(circ->oldCircuit, oldNetID, HMM_V2(0, 0));
+
+    hmput(circ->oldToNew, oldWaypoint, waypointID);
+    hmput(circ->newToOld, waypointID, oldWaypoint);
+  }
   return waypointID;
 }
 
@@ -428,6 +474,27 @@ void circ_remove_waypoint(Circuit2 *circ, ID id) {
   Parent endpoint = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, endpoint, id);
   circ_remove(circ, id);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    WaypointID waypointID = hmget(circ->newToOld, id);
+    circuit_del(circ->oldCircuit, waypointID);
+
+    hmdel(circ->oldToNew, waypointID);
+    hmdel(circ->newToOld, id);
+  }
+}
+
+void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+  circ_set_ptr(circ, id, Position, &position);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    WaypointID waypointID = hmget(circ->newToOld, id);
+    HMM_Vec2 oldPosition =
+      circ->oldCircuit->waypoints[circuit_index(circ->oldCircuit, waypointID)]
+        .position;
+    circuit_move_waypoint(
+      circ->oldCircuit, waypointID, HMM_Sub(oldPosition, position));
+  }
 }
 
 // ---
@@ -436,6 +503,17 @@ ID circ_add_endpoint(Circuit2 *circ, ID subnet) {
   ID endpointID = circ_add(circ, Endpoint2);
   circ_set(circ, endpointID, Parent, {subnet});
   circ_linked_list_append(circ, subnet, endpointID);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    ID netID = circ_get(circ, subnet, Parent);
+    NetID oldNetID = hmget(circ->newToOld, netID);
+
+    EndpointID oldEndpoint =
+      circuit_add_endpoint(circ->oldCircuit, oldNetID, NO_ID, HMM_V2(0, 0));
+
+    hmput(circ->oldToNew, oldEndpoint, endpointID);
+    hmput(circ->newToOld, endpointID, oldEndpoint);
+  }
   return endpointID;
 }
 
@@ -443,6 +521,55 @@ void circ_remove_endpoint(Circuit2 *circ, ID id) {
   Parent subnet = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, subnet, id);
   circ_remove(circ, id);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    EndpointID endpointID = hmget(circ->newToOld, id);
+    circuit_del(circ->oldCircuit, endpointID);
+
+    hmdel(circ->oldToNew, endpointID);
+    hmdel(circ->newToOld, id);
+  }
+}
+
+void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+  circ_set_ptr(circ, id, Position, &position);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    EndpointID endpointID = hmget(circ->newToOld, id);
+    circuit_move_endpoint_to(circ->oldCircuit, endpointID, position);
+  }
+}
+
+void circ_connect_endpoint_to_port(
+  Circuit2 *circ, ID endpointID, ID symbolID, ID portID) {
+  assert(circ_has(circ, endpointID));
+  assert(circ_has(circ, symbolID));
+  assert(circ_has(circ, portID));
+
+  PortRef ref = (PortRef){.symbol = symbolID, .port = portID};
+  circ_set_ptr(circ, endpointID, PortRef, &ref);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    ComponentID oldCompID = hmget(circ->newToOld, symbolID);
+    const char *portName = circ_str_get(circ, circ_get(circ, portID, Name));
+    Component *oldComp = circuit_component_ptr(circ->oldCircuit, oldCompID);
+    PortID portID = oldComp->portFirst;
+    while (circuit_has(circ->oldCircuit, portID)) {
+      Port *port = circuit_port_ptr(circ->oldCircuit, portID);
+      if (
+        strcmp(
+          circ->oldCircuit->componentDescs[oldComp->desc]
+            .ports[port->desc]
+            .name,
+          portName) == 0) {
+        break;
+      }
+      portID = port->next;
+    }
+    assert(circuit_has(circ->oldCircuit, portID));
+    EndpointID oldEndpointID = hmget(circ->newToOld, endpointID);
+    circuit_endpoint_connect(circ->oldCircuit, oldEndpointID, portID);
+  }
 }
 
 // ---
@@ -497,6 +624,13 @@ ID circ_add_net(Circuit2 *circ, ID module) {
   ID netlistID = circ_get(circ, module, NetlistID);
   circ_set(circ, netID, Parent, {netlistID});
   circ_linked_list_append(circ, netlistID, netID);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    NetID oldNetID = circuit_add_net(circ->oldCircuit);
+
+    hmput(circ->oldToNew, oldNetID, netID);
+    hmput(circ->newToOld, netID, oldNetID);
+  }
   return netID;
 }
 
@@ -504,6 +638,14 @@ void circ_remove_net(Circuit2 *circ, ID id) {
   Parent module = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, module, id);
   circ_remove(circ, id);
+  if (circ->oldCircuit) {
+    // todo: remove this when transition is over
+    EndpointID netID = hmget(circ->newToOld, id);
+    circuit_del(circ->oldCircuit, netID);
+
+    hmdel(circ->oldToNew, netID);
+    hmdel(circ->newToOld, id);
+  }
 }
 
 // ---
