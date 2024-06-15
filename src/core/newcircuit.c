@@ -96,33 +96,80 @@ void circ_free(Circuit2 *circ) {
   strpool_term(&circ->strpool);
 }
 
+// todo: split symbol layout from loading symbol descs
 void circ_load_symbol_descs(
-  Circuit2 *circ, const ComponentDesc *descs, size_t count) {
+  Circuit2 *circ, SymbolLayout *layout, const ComponentDesc *descs,
+  size_t count) {
+  float labelPadding = layout->labelPadding;
   for (size_t i = 0; i < count; i++) {
     const ComponentDesc *symDesc = &descs[i];
     ID symID = circ_add(circ, SymbolKind2);
-    int compRow = circ_row_for_id(circ, symID);
-    circ->symbolKind.name[compRow] = circ_str_c(circ, symDesc->typeName);
-    circ->symbolKind.prefix[compRow] =
-      circ_str(circ, (char[]){symDesc->namePrefix}, 1);
-    circ->symbolKind.shape[compRow] = symDesc->shape;
+    circ_set(circ, symID, Name, {circ_str_c(circ, symDesc->typeName)});
+    circ_set(
+      circ, symID, Prefix, {circ_str(circ, (char[]){symDesc->namePrefix}, 1)});
+    circ_set(circ, symID, SymbolShape, {symDesc->shape});
+
+    float width = layout->symbolWidth;
+
+    HMM_Vec2 labelSize = layout->textSize(layout->user, symDesc->typeName);
+    if (labelSize.X + labelPadding * 2 > width) {
+      width = labelSize.X + labelPadding * 2;
+    }
+
+    int numInputPorts = 0;
+    int numOutputPorts = 0;
+    for (int j = 0; j < symDesc->numPorts; j++) {
+      if (symDesc->ports[j].direction == PORT_IN) {
+        numInputPorts++;
+      } else if (symDesc->ports[j].direction != PORT_IN) {
+        numOutputPorts++;
+      }
+      labelSize = layout->textSize(layout->user, symDesc->ports[j].name);
+      float desiredHalfWidth = labelSize.X * 0.5f + labelPadding * 3;
+      if (desiredHalfWidth > width / 2) {
+        width = desiredHalfWidth * 2;
+      }
+    }
+
+    float height = fmaxf(numInputPorts, numOutputPorts) * layout->portSpacing +
+                   layout->portSpacing;
+
+    float leftInc = (height) / (numInputPorts + 1);
+    float rightInc = (height) / (numOutputPorts + 1);
+    float leftY = leftInc - height / 2;
+    float rightY = rightInc - height / 2;
+    float borderWidth = layout->borderWidth;
 
     for (size_t j = 0; j < symDesc->numPorts; j++) {
       PortDesc portDesc = symDesc->ports[j];
       ID portID = circ_add(circ, Port2);
-      int portRow = circ_row_for_id(circ, portID);
-      circ->port.symbolKind[portRow] = symID;
-      circ->port.name[portRow] = circ_str_c(circ, portDesc.name);
+      circ_set(circ, portID, Parent, {symID});
+      circ_set(circ, portID, Name, {circ_str_c(circ, portDesc.name)});
+      circ_set(circ, portID, Number, {portDesc.number});
       if (portDesc.direction == PORT_IN || portDesc.direction == PORT_INOUT) {
         circ_add_tags(circ, portID, TAG_IN);
+        Position position = HMM_V2(-width / 2 + borderWidth / 2, leftY);
+        circ_set_ptr(circ, portID, Position, &position);
+        leftY += leftInc;
       }
       if (portDesc.direction == PORT_OUT || portDesc.direction == PORT_INOUT) {
         circ_add_tags(circ, portID, TAG_OUT);
+
+        Position position = HMM_V2(width / 2 - borderWidth / 2, rightY);
+        circ_set_ptr(circ, portID, Position, &position);
+        rightY += rightInc;
       }
-      circ->port.pin[portRow] = portDesc.number;
 
       circ_linked_list_append(circ, symID, portID);
     }
+
+    if (symDesc->shape != SHAPE_DEFAULT) {
+      // compensate for font based shapes being smaller
+      height -= height * 2.0f / 5.0f;
+    }
+
+    Size size = (Size){.Width = width, .Height = height};
+    circ_set_ptr(circ, symID, Size, &size);
   }
 }
 
@@ -258,6 +305,11 @@ void circ_remove(Circuit2 *circ, ID id) {
 void circ_add_tags(Circuit2 *circ, ID id, Tag tags) {
   assert(circ_has(circ, id));
   circ->typeTags[id_index(id)] |= tags;
+}
+
+bool circ_has_tags(Circuit2 *circ, ID id, Tag tags) {
+  assert(circ_has(circ, id));
+  return (circ->typeTags[id_index(id)] & tags) == tags;
 }
 
 StringHandle circ_str(Circuit2 *circ, const char *str, size_t len) {
@@ -493,7 +545,7 @@ void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
       circ->oldCircuit->waypoints[circuit_index(circ->oldCircuit, waypointID)]
         .position;
     circuit_move_waypoint(
-      circ->oldCircuit, waypointID, HMM_Sub(oldPosition, position));
+      circ->oldCircuit, waypointID, HMM_Sub(position, oldPosition));
   }
 }
 

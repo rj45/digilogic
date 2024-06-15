@@ -623,6 +623,15 @@ typedef struct Table {
 #define tagtype_tag(tag) ((tag) & 0xFF00)
 #define tagtype_type(tag) ((tag) & 0x00FF)
 
+typedef struct SymbolLayout {
+  float portSpacing;
+  float symbolWidth;
+  float borderWidth;
+  float labelPadding;
+  void *user;
+  HMM_Vec2 (*textSize)(void *user, const char *text);
+} SymbolLayout;
+
 //////////////////////////////////////////
 // ECS Tags
 //////////////////////////////////////////
@@ -1011,14 +1020,14 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
   circ_set_ptr(circuit, id, componentType, &(componentType)__VA_ARGS__)
 
 #define circ_get_ptr(circuit, id, componentType)                               \
-  (const componentType *)((componentType *)circ_table_component_ptr(           \
+  ((const componentType *)((componentType *)circ_table_component_ptr(          \
     circuit, circ_type_for_id(circuit, id),                                    \
     circ_table_meta_for_id(circuit, id)                                        \
       .componentIndices[circ_component_id(componentType)],                     \
-    circ_row_for_id(circuit, id)))
+    circ_row_for_id(circuit, id))))
 
 #define circ_get(circuit, id, componentType)                                   \
-  *circ_get_ptr(circuit, id, componentType)
+  (*circ_get_ptr(circuit, id, componentType))
 
 #define circ_add(circuit, tableType)                                           \
   circ_add_type(circuit, circ_entity_type(tableType))
@@ -1028,11 +1037,13 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
 void circ_load_symbol_descs(
-  Circuit2 *circ, const ComponentDesc *descs, size_t count);
+  Circuit2 *circ, SymbolLayout *layout, const ComponentDesc *descs,
+  size_t count);
 void circ_add_type_id(Circuit2 *circ, EntityType type, ID id);
 ID circ_add_type(Circuit2 *circ, EntityType type);
 void circ_remove(Circuit2 *circ, ID id);
 void circ_add_tags(Circuit2 *circ, ID id, Tag tags);
+bool circ_has_tags(Circuit2 *circ, ID id, Tag tags);
 
 StringHandle circ_str(Circuit2 *circ, const char *str, size_t len);
 StringHandle circ_str_c(Circuit2 *circ, const char *str);

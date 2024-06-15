@@ -428,10 +428,23 @@ UTEST(Circuit2, circ_remove_enitity_beginning) {
   circ_free(&circuit);
 }
 
+static HMM_Vec2 testTextSize(void *user, const char *text) {
+  return HMM_V2(strlen(text) * 8, 8);
+}
+
 UTEST(Circuit2, circ_load_symbol_descs) {
   Circuit2 circuit;
   circ_init(&circuit);
-  circ_load_symbol_descs(&circuit, circuit_component_descs(), COMP_COUNT);
+  SymbolLayout layout = (SymbolLayout){
+    .portSpacing = 20.0f,
+    .symbolWidth = 55.0f,
+    .borderWidth = 1.0f,
+    .labelPadding = 2.0f,
+    .user = NULL,
+    .textSize = testTextSize,
+  };
+  circ_load_symbol_descs(
+    &circuit, &layout, circuit_component_descs(), COMP_COUNT);
 
   // todo: make more thorough
 
