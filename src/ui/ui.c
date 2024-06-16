@@ -176,17 +176,22 @@ ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
       nk_label(ctx, "", NK_TEXT_CENTERED);
       nk_label(
         ctx,
-        "Note: This is open source software, but it took a lot of effort to "
-        "create!",
+        "Note: This is open source software, but it took a lot of time and "
+        "effort to create!",
         NK_TEXT_CENTERED);
       nk_label(
         ctx,
-        "Please consider donating to support the development of this software!",
+        "Please consider paying for this software to support its development.",
         NK_TEXT_CENTERED);
       nk_label(ctx, "", NK_TEXT_CENTERED);
       nk_label(
-        ctx, "You can donate at: https://ko-fi.com/rj45_creates",
+        ctx,
+        "You can donate what you would pay for software like this at one of "
+        "these links:",
         NK_TEXT_CENTERED);
+      nk_label(ctx, "https://ko-fi.com/rj45_creates", NK_TEXT_CENTERED);
+      nk_label(ctx, "https://github.com/sponsors/rj45", NK_TEXT_CENTERED);
+      nk_label(ctx, "https://www.patreon.com/rj45Creates", NK_TEXT_CENTERED);
     } else {
       ui->showAbout = false;
     }
