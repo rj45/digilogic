@@ -423,6 +423,12 @@ void circ_remove_port(Circuit2 *circ, ID id) {
   circ_remove(circ, id);
 }
 
+HMM_Vec2 circ_port_position(Circuit2 *circ, PortRef portRef) {
+  Position portPosition = circ_get(circ, portRef.port, Position);
+  Position symbolPosition = circ_get(circ, portRef.symbol, Position);
+  return HMM_AddV2(symbolPosition, portPosition);
+}
+
 // ---
 
 ID circ_add_symbol_kind(Circuit2 *circ) {
@@ -600,6 +606,9 @@ void circ_connect_endpoint_to_port(
 
   PortRef ref = (PortRef){.symbol = symbolID, .port = portID};
   circ_set_ptr(circ, endpointID, PortRef, &ref);
+  Position position = circ_port_position(circ, ref);
+  circ_set_ptr(circ, endpointID, Position, &position);
+
   if (circ->oldCircuit) {
     // todo: remove this when transition is over
     ComponentID oldCompID = hmget(circ->newToOld, symbolID);

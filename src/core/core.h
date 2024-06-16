@@ -1112,6 +1112,7 @@ static inline void circ_iter_set_(
 
 ID circ_add_port(Circuit2 *circ, ID symbolKind);
 void circ_remove_port(Circuit2 *circ, ID id);
+HMM_Vec2 circ_port_position(Circuit2 *circ, PortRef portRef);
 
 ID circ_add_symbol_kind(Circuit2 *circ);
 void circ_remove_symbol_kind(Circuit2 *circ, ID id);
@@ -1126,6 +1127,7 @@ void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position);
 
 ID circ_add_endpoint(Circuit2 *circ, ID subnet);
 void circ_remove_endpoint(Circuit2 *circ, ID id);
+void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position);
 void circ_connect_endpoint_to_port(
   Circuit2 *circ, ID endpointID, ID symbolID, ID portID);
 
