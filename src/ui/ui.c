@@ -39,6 +39,7 @@ void ui_init(
 void ui_free(CircuitUI *ui) {
   ux_free(&ui->ux);
   circ_free(&ui->saveCopy);
+  thread_mutex_term(&ui->saveMutex);
 }
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
@@ -209,7 +210,7 @@ void ui_update(
   ui_about(ui, ctx, width, height);
 
   if (nk_begin(
-        ctx, "Toolbar", nk_rect(0, 30, 180, 480),
+        ctx, "Toolbar", nk_rect(0, 40, 180, 480),
         NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
           NK_WINDOW_TITLE)) {
 
