@@ -354,6 +354,15 @@ StringHandle circ_str_c(Circuit2 *circ, const char *str) {
   return circ_str(circ, str, strlen(str));
 }
 
+StringHandle circ_str_tmp(Circuit2 *circ, const char *str, size_t len) {
+  StringHandle handle = (StringHandle)strpool_inject(&circ->strpool, str, len);
+  return handle;
+}
+
+StringHandle circ_str_tmp_c(Circuit2 *circ, const char *str) {
+  return circ_str_tmp(circ, str, strlen(str));
+}
+
 void circ_str_free(Circuit2 *circ, StringHandle handle) {
   int count = strpool_decref(&circ->strpool, handle);
   if (count == 0) {

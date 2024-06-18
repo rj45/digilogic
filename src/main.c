@@ -309,7 +309,7 @@ void frame(void *user_data) {
 
       if (hasAutoSave) {
         if (nk_button_label(ctx, "Load auto-save")) {
-          circuit_load_file(&app->ui.ux.view.circuit, platform_autosave_path());
+          circ_load_file(&app->ui.ux.view.circuit2, platform_autosave_path());
           ux_route(&app->ui.ux);
           ux_build_bvh(&app->ui.ux);
           app->loaded = true;

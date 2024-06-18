@@ -1044,6 +1044,8 @@ bool circ_has_tags(Circuit2 *circ, ID id, Tag tags);
 
 StringHandle circ_str(Circuit2 *circ, const char *str, size_t len);
 StringHandle circ_str_c(Circuit2 *circ, const char *str);
+StringHandle circ_str_tmp(Circuit2 *circ, const char *str, size_t len);
+StringHandle circ_str_tmp_c(Circuit2 *circ, const char *str);
 void circ_str_free(Circuit2 *circ, StringHandle handle);
 const char *circ_str_get(Circuit2 *circ, StringHandle handle);
 
@@ -1175,7 +1177,7 @@ void circ_remove_module(Circuit2 *circ, ID id);
 #define SAVE_VERSION 2
 
 bool circ_save_file(Circuit2 *circ, const char *filename);
-bool circuit_load_file(Circuit *circ, const char *filename);
+bool circ_load_file(Circuit2 *circ, const char *filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Platform

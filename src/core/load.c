@@ -28,132 +28,368 @@ typedef struct IDLookup {
 } IDLookup;
 
 typedef struct LoadContext {
-  Circuit *circuit;
+  Circuit2 *circ;
   yyjson_doc *doc;
   yyjson_val *root;
   IDLookup *ids;
   int version;
 } LoadContext;
 
-static bool circuit_deserialize(LoadContext *ctx) {
-  Circuit *circuit = ctx->circuit;
-  yyjson_val *root = ctx->root;
+static const char *load_string(yyjson_val *val) {
+  if (val == NULL) {
+    return NULL;
+  }
 
-  log_debug("Deserializing circuit");
+  const char *str = yyjson_get_str(val);
+  if (str == NULL) {
+    return NULL;
+  }
+  return str;
+}
 
-  yyjson_val *componentsVal = yyjson_obj_get(root, "components");
-  if (componentsVal == NULL) {
-    fprintf(stderr, "Failed to read circuit: Missing components\n");
+static bool load_id(LoadContext *ctc, yyjson_val *val, ID id) {
+  if (val == NULL) {
     return false;
   }
 
-  log_debug("Components...");
+  const char *idStr = load_string(val);
+  if (idStr == NULL) {
+    return false;
+  }
+  shput(ctc->ids, idStr, id);
 
-  for (size_t i = 0; i < yyjson_arr_size(componentsVal); i++) {
-    yyjson_val *componentVal = yyjson_arr_get(componentsVal, i);
+  return true;
+}
 
-    log_debug("Component %zu", i);
+static bool
+load_module_symbol_kind(LoadContext *ctc, yyjson_val *moduleVal, ID moduleID) {
+  Circuit2 *circ = ctc->circ;
 
-    yyjson_val *idVal = yyjson_obj_get(componentVal, "id");
-    if (idVal == NULL) {
-      fprintf(stderr, "Failed to read circuit: Component missing id\n");
-      return false;
-    }
+  if (!load_id(ctc, yyjson_obj_get(moduleVal, "id"), moduleID)) {
+    fprintf(stderr, "Failed to read circuit: Module missing id\n");
+    return false;
+  }
 
-    log_debug("ID: %s", yyjson_get_str(idVal));
+  ID symbolKindID = circ_get(circ, moduleID, SymbolKindID);
+  if (!load_id(ctc, yyjson_obj_get(moduleVal, "symbolKind"), symbolKindID)) {
+    fprintf(stderr, "Failed to read circuit: Module missing symbolKind\n");
+    return false;
+  }
 
-    yyjson_val *typeVal = yyjson_obj_get(componentVal, "type");
-    if (typeVal == NULL) {
-      fprintf(stderr, "Failed to read circuit: Component missing type\n");
-      return false;
-    }
+  const char *name = load_string(yyjson_obj_get(moduleVal, "name"));
+  if (name == NULL) {
+    fprintf(stderr, "Failed to read circuit: Module missing name\n");
+    return false;
+  }
+  StringHandle nameHndl = circ_str_c(circ, name);
+  circ_set(circ, symbolKindID, Name, {nameHndl});
 
-    log_debug("type: %s", yyjson_get_str(typeVal));
+  const char *prefix = load_string(yyjson_obj_get(moduleVal, "prefix"));
+  if (prefix == NULL) {
+    fprintf(stderr, "Failed to read circuit: Module missing prefix\n");
+    return false;
+  }
+  StringHandle prefixHndl = circ_str_c(circ, prefix);
+  circ_set(circ, symbolKindID, Prefix, {prefixHndl});
 
-    const char *idStr = yyjson_get_str(idVal);
-    const char *type = yyjson_get_str(typeVal);
+  // todo: load shape
 
-    if (idStr == NULL) {
-      fprintf(stderr, "Failed to read circuit: Component missing id\n");
-      return false;
-    }
+  // todo: load ports
 
-    if (type == NULL) {
-      fprintf(stderr, "Failed to read circuit: Component missing type\n");
-      return false;
-    }
+  return true;
+}
 
-    HMM_Vec2 position;
-    yyjson_val *positionVal = yyjson_obj_get(componentVal, "position");
-    if (positionVal == NULL) {
-      fprintf(stderr, "Failed to read circuit: Component missing position\n");
-      return false;
-    }
-    if (
-      yyjson_arr_get(positionVal, 0) == NULL ||
-      yyjson_arr_get(positionVal, 1) == NULL) {
+static bool
+load_position(LoadContext *ctx, yyjson_val *val, HMM_Vec2 *position) {
+  if (val == NULL) {
+    return false;
+  }
+
+  if (yyjson_arr_get(val, 0) == NULL || yyjson_arr_get(val, 1) == NULL) {
+    return false;
+  }
+
+  position->X = yyjson_get_real(yyjson_arr_get(val, 0));
+  position->Y = yyjson_get_real(yyjson_arr_get(val, 1));
+
+  return true;
+}
+
+static bool load_int(LoadContext *ctx, yyjson_val *val, int *result) {
+  if (val == NULL) {
+    return false;
+  }
+
+  *result = yyjson_get_int(val);
+  return true;
+}
+
+static bool load_symbol(LoadContext *ctx, yyjson_val *symbolVal, ID moduleID) {
+  Circuit2 *circ = ctx->circ;
+
+  ID symbolKindID = NO_ID;
+  const char *symbolKind =
+    load_string(yyjson_obj_get(symbolVal, "symbolKindID"));
+  if (symbolKind == NULL) {
+    symbolKind = load_string(yyjson_obj_get(symbolVal, "symbolKindName"));
+    if (symbolKind == NULL) {
       fprintf(
-        stderr,
-        "Failed to read circuit: Component missing position coordinate\n");
+        stderr, "Failed to read circuit: Symbol missing symbolKindID and "
+                "symbolKindName\n");
       return false;
     }
-    position.X = yyjson_get_real(yyjson_arr_get(positionVal, 0));
-    position.Y = yyjson_get_real(yyjson_arr_get(positionVal, 1));
-    const ComponentDesc *desc;
-    ComponentDescID descID = COMP_COUNT;
 
-    log_debug("position: %f %f", position.X, position.Y);
+    StringHandle handle = circ_str_tmp_c(circ, symbolKind);
 
-    for (ComponentDescID j = 0; j < COMP_COUNT; j++) {
-      desc = &circuit->componentDescs[j];
-      if (!desc->typeName) {
-        continue;
+    CircuitIter it = circ_iter(circ, SymbolKind2);
+    while (symbolKindID == NO_ID && circ_iter_next(&it)) {
+      SymbolKind2 *table = circ_iter_table(&it, SymbolKind2);
+      for (size_t i = 0; i < table->length; i++) {
+        if (table->name[i] == handle) {
+          symbolKindID = table->id[i];
+          break;
+        }
       }
-      log_debug("Comparing %s to %s", type, desc->typeName);
-      if (strncmp(type, desc->typeName, strlen(type)) == 0) {
-        descID = j;
+    }
+  } else {
+    symbolKindID = shget(ctx->ids, symbolKind);
+  }
+
+  ID symbolID = circ_add_symbol(circ, moduleID, symbolKindID);
+  if (!load_id(ctx, yyjson_obj_get(symbolVal, "id"), symbolID)) {
+    fprintf(stderr, "Failed to read circuit: Symbol missing id\n");
+    return false;
+  }
+
+  HMM_Vec2 position;
+  if (!load_position(ctx, yyjson_obj_get(symbolVal, "position"), &position)) {
+    fprintf(stderr, "Failed to read circuit: Symbol missing position\n");
+    return false;
+  }
+  circ_set_symbol_position(circ, symbolID, position);
+
+  Number number;
+  if (!load_int(ctx, yyjson_obj_get(symbolVal, "number"), &number)) {
+    fprintf(stderr, "Failed to read circuit: Symbol missing number\n");
+    return false;
+  }
+  circ_set(circ, symbolID, Number, {number});
+
+  log_debug("Added symbol %x at %f %f", symbolID, position.X, position.Y);
+  return true;
+}
+
+static bool
+load_waypoint(LoadContext *ctx, yyjson_val *waypointVal, ID endpointID) {
+  Circuit2 *circ = ctx->circ;
+
+  ID waypointID = circ_add_waypoint(circ, endpointID);
+  if (!load_id(ctx, yyjson_obj_get(waypointVal, "id"), waypointID)) {
+    fprintf(stderr, "Failed to read circuit: Waypoint missing id\n");
+    return false;
+  }
+
+  HMM_Vec2 position;
+  if (!load_position(ctx, yyjson_obj_get(waypointVal, "position"), &position)) {
+    fprintf(stderr, "Failed to read circuit: Waypoint missing position\n");
+    return false;
+  }
+  circ_set_waypoint_position(circ, waypointID, position);
+
+  log_debug(
+    "    * Added waypoint %x at %f %f", waypointID, position.X, position.Y);
+
+  return true;
+}
+
+static bool
+load_endpoint(LoadContext *ctx, yyjson_val *endpointVal, ID subnetID) {
+  Circuit2 *circ = ctx->circ;
+
+  ID endpointID = circ_add_endpoint(circ, subnetID);
+  if (!load_id(ctx, yyjson_obj_get(endpointVal, "id"), endpointID)) {
+    fprintf(stderr, "Failed to read circuit: Endpoint missing id\n");
+    return false;
+  }
+
+  HMM_Vec2 position;
+  if (!load_position(ctx, yyjson_obj_get(endpointVal, "position"), &position)) {
+    fprintf(stderr, "Failed to read circuit: Endpoint missing position\n");
+    return false;
+  }
+  circ_set_endpoint_position(circ, endpointID, position);
+
+  PortRef portRef = {NO_ID, NO_ID};
+
+  yyjson_val *portRefVal = yyjson_obj_get(endpointVal, "portref");
+
+  const char *symbolIDStr = load_string(yyjson_obj_get(portRefVal, "symbol"));
+  if (symbolIDStr == NULL) {
+    fprintf(
+      stderr, "Failed to read circuit: Endpoint missing portRef.symbol\n");
+    return false;
+  }
+
+  portRef.symbol = shget(ctx->ids, symbolIDStr);
+
+  const char *port = load_string(yyjson_obj_get(portRefVal, "port"));
+  if (port == NULL) {
+    port = load_string(yyjson_obj_get(portRefVal, "portName"));
+    if (port == NULL) {
+      fprintf(
+        stderr, "Failed to read circuit: Endpoint missing portRef.port and "
+                "portRef.portName\n");
+      return false;
+    }
+
+    StringHandle handle = circ_str_tmp_c(circ, port);
+
+    SymbolKindID symbolKind = circ_get(circ, portRef.symbol, SymbolKindID);
+
+    LinkedListIter it = circ_lliter(circ, symbolKind);
+    while (circ_lliter_next(&it)) {
+      Name portName = circ_get(circ, circ_lliter_get(&it), Name);
+      if (portName == handle) {
+        portRef.port = circ_lliter_get(&it);
         break;
       }
     }
-    if (descID >= COMP_COUNT) {
-      fprintf(
-        stderr, "Failed to read circuit: Unknown component type %s\n", type);
+    if (portRef.port == NO_ID) {
+      fprintf(stderr, "Failed to read circuit: Invalid portRef.portName\n");
+      return false;
+    }
+  } else {
+    portRef.port = shget(ctx->ids, port);
+  }
+
+  circ_connect_endpoint_to_port(circ, endpointID, portRef.symbol, portRef.port);
+
+  log_debug(
+    "  * Added endpoint %x ref {%x, %x} at %f %f", endpointID, portRef.symbol,
+    portRef.port, position.X, position.Y);
+
+  yyjson_val *waypointsVal = yyjson_obj_get(endpointVal, "waypoints");
+  if (waypointsVal == NULL) {
+    fprintf(stderr, "Failed to read circuit: Endpoint missing waypoints\n");
+    return false;
+  }
+
+  for (size_t waypointIndex = 0; waypointIndex < yyjson_arr_size(waypointsVal);
+       waypointIndex++) {
+    yyjson_val *waypointVal = yyjson_arr_get(waypointsVal, waypointIndex);
+    if (waypointVal == NULL) {
+      fprintf(stderr, "Failed to read circuit: Net missing waypoint\n");
       return false;
     }
 
-    log_debug("Adding component %s at %f %f", type, position.X, position.Y);
+    if (!load_waypoint(ctx, waypointVal, endpointID)) {
+      return false;
+    }
+  }
+  return true;
+}
 
-    ComponentID componentID = circuit_add_component(circuit, descID, position);
-    shput(ctx->ids, idStr, componentID);
+static bool load_subnet(LoadContext *ctx, yyjson_val *subnetVal, ID netID) {
+  Circuit2 *circ = ctx->circ;
 
-    Component *component = circuit_component_ptr(circuit, componentID);
+  ID subnetID = circ_add_subnet(circ, netID);
+  if (!load_id(ctx, yyjson_obj_get(subnetVal, "id"), subnetID)) {
+    fprintf(stderr, "Failed to read circuit: Subnet missing id\n");
+    return false;
+  }
 
-    yyjson_val *portsVal = yyjson_obj_get(componentVal, "ports");
+  // todo: load subnet bits
 
-    int portIndex = 0;
-    PortID portID = component->portFirst;
-    while (circuit_has(circuit, portID)) {
-      Port *port = circuit_port_ptr(circuit, portID);
-      yyjson_val *portIDVal = yyjson_arr_get(portsVal, portIndex);
-      if (portIDVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Component missing port ID\n");
-        return false;
-      }
+  const char *name = load_string(yyjson_obj_get(subnetVal, "name"));
+  if (name == NULL) {
+    fprintf(stderr, "Failed to read circuit: Subnet missing name\n");
+    return false;
+  }
+  StringHandle nameHndl = circ_str_c(circ, name);
+  circ_set(circ, subnetID, Name, {nameHndl});
 
-      const char *portIdstr = yyjson_get_str(portIDVal);
-      if (portIdstr == NULL) {
-        fprintf(stderr, "Failed to read circuit: Port missing id\n");
-        return false;
-      }
+  yyjson_val *endpointsVal = yyjson_obj_get(subnetVal, "endpoints");
+  if (endpointsVal == NULL) {
+    fprintf(stderr, "Failed to read circuit: Subnet missing endpoints\n");
+    return false;
+  }
 
-      shput(ctx->ids, portIdstr, portID);
+  log_debug(" Subnet %x", subnetID);
 
-      portID = port->next;
-      portIndex++;
+  for (size_t endpointIndex = 0; endpointIndex < yyjson_arr_size(endpointsVal);
+       endpointIndex++) {
+    yyjson_val *endpointVal = yyjson_arr_get(endpointsVal, endpointIndex);
+    if (endpointVal == NULL) {
+      fprintf(stderr, "Failed to read circuit: Subnet missing endpoint\n");
+      return false;
+    }
+
+    if (!load_endpoint(ctx, endpointVal, subnetID)) {
+      return false;
     }
   }
 
-  yyjson_val *netsVal = yyjson_obj_get(root, "nets");
+  return true;
+}
+
+static bool load_net(LoadContext *ctx, yyjson_val *netVal, ID moduleID) {
+  Circuit2 *circ = ctx->circ;
+
+  ID netID = circ_add_net(circ, moduleID);
+  if (!load_id(ctx, yyjson_obj_get(netVal, "id"), netID)) {
+    fprintf(stderr, "Failed to read circuit: Net missing id\n");
+    return false;
+  }
+
+  const char *name = load_string(yyjson_obj_get(netVal, "name"));
+  if (name == NULL) {
+    fprintf(stderr, "Failed to read circuit: Net missing name\n");
+    return false;
+  }
+  StringHandle nameHndl = circ_str_c(circ, name);
+  circ_set(circ, netID, Name, {nameHndl});
+
+  yyjson_val *subnetsVal = yyjson_obj_get(netVal, "subnets");
+  if (subnetsVal == NULL) {
+    fprintf(stderr, "Failed to read circuit: Net missing subnets\n");
+    return false;
+  }
+
+  log_debug("Net %x", netID);
+
+  for (size_t i = 0; i < yyjson_arr_size(subnetsVal); i++) {
+    yyjson_val *subnetVal = yyjson_arr_get(subnetsVal, i);
+
+    if (!load_subnet(ctx, subnetVal, netID)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool load_module(LoadContext *ctx, yyjson_val *moduleVal) {
+  ID moduleID = shget(ctx->ids, load_string(yyjson_obj_get(moduleVal, "id")));
+
+  yyjson_val *symbolsVal = yyjson_obj_get(moduleVal, "symbols");
+  if (symbolsVal == NULL) {
+    fprintf(stderr, "Failed to read circuit: Missing symbols\n");
+    return false;
+  }
+
+  log_debug("Symbols...");
+
+  for (size_t i = 0; i < yyjson_arr_size(symbolsVal); i++) {
+    yyjson_val *symbolVal = yyjson_arr_get(symbolsVal, i);
+
+    log_debug("Symbol %zu", i);
+
+    if (!load_symbol(ctx, symbolVal, moduleID)) {
+      return false;
+    }
+  }
+
+  yyjson_val *netsVal = yyjson_obj_get(moduleVal, "nets");
   if (netsVal == NULL) {
     fprintf(stderr, "Failed to read circuit: Missing nets\n");
     return false;
@@ -164,148 +400,55 @@ static bool circuit_deserialize(LoadContext *ctx) {
   for (size_t i = 0; i < yyjson_arr_size(netsVal); i++) {
     yyjson_val *netVal = yyjson_arr_get(netsVal, i);
 
-    yyjson_val *idVal = yyjson_obj_get(netVal, "id");
-    if (idVal == NULL) {
-      fprintf(stderr, "Failed to read circuit: Net missing id\n");
+    if (!load_net(ctx, netVal, moduleID)) {
       return false;
-    }
-
-    log_debug("ID: %s", yyjson_get_str(idVal));
-
-    const char *idStr = yyjson_get_str(idVal);
-    if (idStr == NULL) {
-      fprintf(stderr, "Failed to read circuit: Net missing id\n");
-      return false;
-    }
-
-    NetID netID = circuit_add_net(circuit);
-    shput(ctx->ids, idStr, netID);
-
-    yyjson_val *endpointsVal = yyjson_obj_get(netVal, "endpoints");
-    if (endpointsVal == NULL) {
-      fprintf(stderr, "Failed to read circuit: Net missing endpoints\n");
-      return false;
-    }
-
-    for (size_t endpointIndex = 0;
-         endpointIndex < yyjson_arr_size(endpointsVal); endpointIndex++) {
-      yyjson_val *endpointVal = yyjson_arr_get(endpointsVal, endpointIndex);
-      if (endpointVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Net missing endpoint\n");
-        return false;
-      }
-
-      yyjson_val *endpointIDVal = yyjson_obj_get(endpointVal, "id");
-      if (endpointIDVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Endpoint missing id\n");
-        return false;
-      }
-
-      const char *endpointIDStr = yyjson_get_str(endpointIDVal);
-      if (endpointIDStr == NULL) {
-        fprintf(stderr, "Failed to read circuit: Endpoint missing id\n");
-        return false;
-      }
-
-      PortID portID = NO_PORT;
-
-      yyjson_val *portIDVal = yyjson_obj_get(endpointVal, "port");
-      if (portIDVal != NULL) {
-        // port is optional
-        const char *portIDStr = yyjson_get_str(portIDVal);
-        if (portIDStr != NULL) {
-          portID = shget(ctx->ids, portIDStr);
-        }
-      }
-
-      HMM_Vec2 position;
-      yyjson_val *positionVal = yyjson_obj_get(endpointVal, "position");
-      if (positionVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Endpoint missing position\n");
-        return false;
-      }
-
-      if (
-        yyjson_arr_get(positionVal, 0) == NULL ||
-        yyjson_arr_get(positionVal, 1) == NULL) {
-        fprintf(
-          stderr,
-          "Failed to read circuit: Endpoint missing position coordinate\n");
-        return false;
-      }
-
-      position.X = yyjson_get_real(yyjson_arr_get(positionVal, 0));
-      position.Y = yyjson_get_real(yyjson_arr_get(positionVal, 1));
-
-      log_debug(
-        "Adding endpoint %s at %f %f to net %d", endpointIDStr, position.X,
-        position.Y, netID);
-
-      EndpointID endpointID =
-        circuit_add_endpoint(circuit, netID, portID, position);
-      shput(ctx->ids, endpointIDStr, endpointID);
-    }
-
-    log_debug("Waypoints...");
-
-    yyjson_val *waypointsVal = yyjson_obj_get(netVal, "waypoints");
-    if (waypointsVal == NULL) {
-      fprintf(stderr, "Failed to read circuit: Net missing waypoints\n");
-      return false;
-    }
-
-    for (size_t waypointIndex = 0;
-         waypointIndex < yyjson_arr_size(waypointsVal); waypointIndex++) {
-      yyjson_val *waypointVal = yyjson_arr_get(waypointsVal, waypointIndex);
-      if (waypointVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Net missing waypoint\n");
-        return false;
-      }
-
-      yyjson_val *waypointIDVal = yyjson_obj_get(waypointVal, "id");
-      if (waypointIDVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Endpoint missing id\n");
-        return false;
-      }
-
-      const char *waypointIDStr = yyjson_get_str(waypointIDVal);
-      if (waypointIDStr == NULL) {
-        fprintf(stderr, "Failed to read circuit: Endpoint missing id\n");
-        return false;
-      }
-
-      HMM_Vec2 position;
-      yyjson_val *positionVal = yyjson_obj_get(waypointVal, "position");
-      if (positionVal == NULL) {
-        fprintf(stderr, "Failed to read circuit: Endpoint missing position\n");
-        return false;
-      }
-
-      if (
-        yyjson_arr_get(positionVal, 0) == NULL ||
-        yyjson_arr_get(positionVal, 1) == NULL) {
-        fprintf(
-          stderr,
-          "Failed to read circuit: Endpoint missing position coordinate\n");
-        return false;
-      }
-
-      position.X = yyjson_get_real(yyjson_arr_get(positionVal, 0));
-      position.Y = yyjson_get_real(yyjson_arr_get(positionVal, 1));
-
-      log_debug(
-        "Adding waypoint %s at %f %f to net %d", waypointIDStr, position.X,
-        position.Y, netID);
-
-      EndpointID waypointID = circuit_add_waypoint(circuit, netID, position);
-      shput(ctx->ids, waypointIDStr, waypointID);
     }
   }
 
   return true;
 }
 
-bool circuit_load_file(Circuit *circuit, const char *filename) {
+static bool circ_deserialize(LoadContext *ctx) {
+  yyjson_val *root = ctx->root;
+  Circuit2 *circ = ctx->circ;
+
+  log_debug("Deserializing circuit");
+
+  yyjson_val *modulesVal = yyjson_obj_get(root, "modules");
+  if (modulesVal == NULL) {
+    fprintf(stderr, "Failed to read circuit: Missing modules\n");
+    return false;
+  }
+
+  // first load all module SymbolKinds so they can be referenced
+  for (size_t i = 0; i < yyjson_arr_size(modulesVal); i++) {
+    yyjson_val *moduleVal = yyjson_arr_get(modulesVal, i);
+    if (moduleVal == NULL) {
+      fprintf(stderr, "Failed to read circuit: Missing module value\n");
+      return false;
+    }
+
+    ID moduleID = circ->top;
+    if (i != 0) {
+      moduleID = circ_add_module(circ);
+    }
+    load_module_symbol_kind(ctx, moduleVal, moduleID);
+  }
+
+  // next load the contents of each module
+  for (size_t i = 0; i < yyjson_arr_size(modulesVal); i++) {
+    yyjson_val *moduleVal = yyjson_arr_get(modulesVal, i);
+    if (moduleVal == NULL) {
+      fprintf(stderr, "Failed to read circuit: Missing module value\n");
+      return false;
+    }
+    load_module(ctx, moduleVal);
+  }
+
+  return true;
+}
+
+bool circ_load_file(Circuit2 *circ, const char *filename) {
   yyjson_read_err err;
 
   yyjson_read_flag flags =
@@ -322,7 +465,7 @@ bool circuit_load_file(Circuit *circuit, const char *filename) {
   int version = yyjson_get_int(yyjson_obj_get(root, "version"));
 
   LoadContext ctx = {
-    .circuit = circuit,
+    .circ = circ,
     .doc = doc,
     .root = root,
     .ids = NULL,
@@ -337,7 +480,7 @@ bool circuit_load_file(Circuit *circuit, const char *filename) {
     result = false;
     break;
   case SAVE_VERSION:
-    result = circuit_deserialize(&ctx);
+    result = circ_deserialize(&ctx);
     break;
   default:
     fprintf(stderr, "Failed to read circuit: Unknown version %d\n", version);

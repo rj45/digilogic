@@ -104,7 +104,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
             strncat(loadfile, ".dlc", 1024);
           }
           circ_clear(&ui->ux.view.circuit2);
-          circuit_load_file(&ui->ux.view.circuit, loadfile);
+          circ_load_file(&ui->ux.view.circuit2, loadfile);
           ux_route(&ui->ux);
           ux_build_bvh(&ui->ux);
         }

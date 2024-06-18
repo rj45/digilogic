@@ -62,6 +62,9 @@ static void save_symbol(
   }
 
   save_vec2(doc, symbolNode, "position", circ_get(circ, symbolID, Position));
+
+  yyjson_mut_obj_add_int(
+    doc, symbolNode, "number", circ_get(circ, symbolID, Number));
 }
 
 static void save_endpoint(
