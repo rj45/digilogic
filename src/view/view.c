@@ -185,6 +185,15 @@ static void view_waypoint_deleted(void *user, WaypointID id, void *ptr) {
   }
 }
 
+static HMM_Vec2 calcTextSize(void *user, const char *text) {
+  CircuitView *view = (CircuitView *)user;
+  Theme *theme = &view->theme;
+  Box box = draw_text_bounds(
+    view->drawCtx, HMM_V2(0, 0), text, strlen(text), ALIGN_LEFT, ALIGN_TOP,
+    theme->labelFontSize, theme->font);
+  return HMM_V2(box.halfSize.X * 2, box.halfSize.Y * 2);
+}
+
 void view_init(
   CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
@@ -193,11 +202,26 @@ void view_init(
     .selectedPort = NO_PORT,
   };
   circuit_init(&view->circuit, componentDescs);
+  circ_init(&view->circuit2);
+  view->circuit2.oldCircuit = &view->circuit;
+
   circuit_on_component_create(&view->circuit, view, view_augment_component);
   circuit_on_component_delete(&view->circuit, view, view_component_deleted);
   circuit_on_waypoint_delete(&view->circuit, view, view_waypoint_deleted);
 
   theme_init(&view->theme, font);
+
+  SymbolLayout layout = (SymbolLayout){
+    .portSpacing = view->theme.portSpacing,
+    .symbolWidth = view->theme.componentWidth,
+    .borderWidth = view->theme.borderWidth,
+    .labelPadding = view->theme.labelPadding,
+    .user = view,
+    .textSize = calcTextSize,
+  };
+  circ_load_symbol_descs(&view->circuit2, &layout, componentDescs, COMP_COUNT);
+
+  view->circuit2.top = circ_add_module(&view->circuit2);
 }
 
 void view_free(CircuitView *view) {

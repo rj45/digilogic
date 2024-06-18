@@ -590,15 +590,6 @@ const char *circuit_label_text(Circuit *circuit, LabelID id);
 void circuit_write_dot(Circuit *circuit, FILE *file);
 
 ////////////////////////////////////////////////////////////////////////////////
-// Save / Load
-////////////////////////////////////////////////////////////////////////////////
-
-#define SAVE_VERSION 1
-
-bool circuit_save_file(Circuit *circuit, const char *filename);
-bool circuit_load_file(Circuit *circuit, const char *filename);
-
-////////////////////////////////////////////////////////////////////////////////
 // New circuit ECS
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -956,6 +947,11 @@ typedef struct Circuit2 {
   Table **table;
   TableMeta *tableMeta;
   int numTables;
+
+  // todo: strpool is not a good fit because it can't be easily cloned, which
+  // is important for snapshots. Need to probably make a custom string pool.
+  // It would also be nice to use entity IDs for strings, so the string pool
+  // could be a table like any other.
   strpool_t strpool;
 
   // changelog & events
@@ -1036,6 +1032,7 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
 
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
+void circ_clone(Circuit2 *dst, Circuit2 *src);
 void circ_load_symbol_descs(
   Circuit2 *circ, SymbolLayout *layout, const ComponentDesc *descs,
   size_t count);
@@ -1106,9 +1103,34 @@ static inline void circ_iter_set_(
 #define circ_iter_set(iter, index, componentType, ...)                         \
   circ_iter_set_ptr(iter, index, componentType, &(componentType)__VA_ARGS__)
 
+typedef struct LinkedListIter {
+  Circuit2 *circ;
+  ID current;
+  ID next;
+} LinkedListIter;
+
+static inline LinkedListIter circ_lliter(Circuit2 *circ, ID parent) {
+  LinkedList list = circ_get(circ, parent, LinkedList);
+  return (LinkedListIter){circ, .next = list.head};
+}
+
+static inline bool circ_lliter_next(LinkedListIter *iter) {
+  if (!circ_has(iter->circ, iter->next)) {
+    return false;
+  }
+  ListNode node = circ_get(iter->circ, iter->next, ListNode);
+  iter->current = iter->next;
+  iter->next = node.next;
+  return true;
+}
+
+static inline ID circ_lliter_get(LinkedListIter *iter) { return iter->current; }
+
 ////////////////////////////////////////////////////////////////////////////////
 // Higher level functions
 ////////////////////////////////////////////////////////////////////////////////
+
+void circ_clear(Circuit2 *circ);
 
 ID circ_add_port(Circuit2 *circ, ID symbolKind);
 void circ_remove_port(Circuit2 *circ, ID id);
@@ -1145,6 +1167,15 @@ void circ_remove_net(Circuit2 *circ, ID id);
 
 ID circ_add_module(Circuit2 *circ);
 void circ_remove_module(Circuit2 *circ, ID id);
+
+////////////////////////////////////////////////////////////////////////////////
+// Save / Load
+////////////////////////////////////////////////////////////////////////////////
+
+#define SAVE_VERSION 2
+
+bool circ_save_file(Circuit2 *circ, const char *filename);
+bool circuit_load_file(Circuit *circ, const char *filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Platform

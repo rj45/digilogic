@@ -22,6 +22,8 @@
 
 typedef struct CircuitView {
   Circuit circuit;
+  Circuit2 circuit2;
+
   Theme theme;
   DrawContext *drawCtx;
 

@@ -243,15 +243,6 @@ void cleanup(void *user_data) {
   free(app);
 }
 
-static HMM_Vec2 calcTextSize(void *user, const char *text) {
-  my_app_t *app = (my_app_t *)user;
-  Theme *theme = &app->ui.ux.view.theme;
-  Box box = draw_text_bounds(
-    app->ui.ux.view.drawCtx, HMM_V2(0, 0), text, strlen(text), ALIGN_LEFT,
-    ALIGN_TOP, theme->labelFontSize, theme->font);
-  return HMM_V2(box.halfSize.X * 2, box.halfSize.Y * 2);
-}
-
 void load_file(my_app_t *app, const char *filename) {
   assetsys_file_t file;
   assetsys_file(app->assetsys, filename, &file);
@@ -262,29 +253,9 @@ void load_file(my_app_t *app, const char *filename) {
 
   log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  Circuit2 circ;
-  circ_init(&circ);
-  circ.oldCircuit = &app->ui.ux.view.circuit;
-
-  circ.top = circ_add_module(&circ);
-
-  Theme *theme = &app->ui.ux.view.theme;
-  SymbolLayout layout = (SymbolLayout){
-    .portSpacing = theme->portSpacing,
-    .symbolWidth = theme->componentWidth,
-    .borderWidth = theme->borderWidth,
-    .labelPadding = theme->labelPadding,
-    .user = app,
-    .textSize = calcTextSize,
-  };
-  circ_load_symbol_descs(
-    &circ, &layout, app->ui.ux.view.circuit.componentDescs, COMP_COUNT);
-
-  import_digital(&circ, buffer);
+  import_digital(&app->ui.ux.view.circuit2, buffer);
 
   free(buffer);
-  circ_free(&circ);
-
   ux_route(&app->ui.ux);
   ux_build_bvh(&app->ui.ux);
 

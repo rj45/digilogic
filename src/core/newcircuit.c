@@ -17,9 +17,11 @@
 #include "core/core.h"
 #include "core/structs.h"
 #include "handmade_math.h"
+#include "strpool.h"
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
@@ -226,6 +228,36 @@ static void circ_grow_table(Circuit2 *circ, EntityType type, size_t newLength) {
   header->capacity = newCapacity;
 }
 
+void circ_clone(Circuit2 *dst, Circuit2 *src) {
+  // todo: this should look at the logs and play back new log entries in dst
+
+  circ_grow_entities(dst, src->capacity);
+  memcpy(dst->generations, src->generations, src->capacity * sizeof(uint8_t));
+  memcpy(dst->typeTags, src->typeTags, src->capacity * sizeof(uint16_t));
+  memcpy(dst->rows, src->rows, src->capacity * sizeof(uint32_t));
+  dst->numEntities = src->numEntities;
+  arrsetlen(dst->freelist, arrlen(src->freelist));
+  memcpy(dst->freelist, src->freelist, arrlen(src->freelist) * sizeof(ID));
+
+  for (size_t i = 0; i < src->numTables; i++) {
+    Table *srcTable = src->table[i];
+    Table *dstTable = dst->table[i];
+    circ_grow_table(dst, i, srcTable->length);
+    memcpy(dstTable->id, srcTable->id, srcTable->length * sizeof(ID));
+    dstTable->length = srcTable->length;
+    for (size_t j = 0; j < dst->tableMeta[i].componentCount; j++) {
+      memcpy(
+        circ_table_components_ptr(dst, i, j),
+        circ_table_components_ptr(src, i, j),
+        srcTable->length * dst->tableMeta[i].componentSizes[j]);
+    }
+  }
+
+  // todo: must be something better than this.... probably will be solved by
+  // log playback
+  memcpy(&dst->strpool, &src->strpool, sizeof(strpool_t));
+}
+
 static void circ_add_impl(Circuit2 *circ, EntityType type, ID id) {
   Table *header = circ->table[type];
 
@@ -330,6 +362,9 @@ void circ_str_free(Circuit2 *circ, StringHandle handle) {
 }
 
 const char *circ_str_get(Circuit2 *circ, StringHandle handle) {
+  if (handle == 0) {
+    return "";
+  }
   return strpool_cstr(&circ->strpool, handle);
 }
 
@@ -384,28 +419,18 @@ void circ_linked_list_remove(Circuit2 *circ, ID parent, ID child) {
   }
 }
 
-typedef struct LinkedListIter {
-  Circuit2 *circ;
-  ID current;
-  ID next;
-} LinkedListIter;
+// ---
 
-LinkedListIter circ_lliter(Circuit2 *circ, ID parent) {
-  LinkedList list = circ_get(circ, parent, LinkedList);
-  return (LinkedListIter){circ, .next = list.head};
-}
-
-bool circ_lliter_next(LinkedListIter *iter) {
-  if (!circ_has(iter->circ, iter->next)) {
-    return false;
+void circ_clear(Circuit2 *circ) {
+  CircuitIter it = circ_iter(circ, Module2);
+  while (circ_iter_next(&it)) {
+    Module2 *table = circ_iter_table(&it, Module2);
+    for (ptrdiff_t i = table->length - 1; i >= 0; i--) {
+      circ_remove_module(circ, table->id[i]);
+    }
   }
-  ListNode node = circ_get(iter->circ, iter->next, ListNode);
-  iter->current = iter->next;
-  iter->next = node.next;
-  return true;
+  circ->top = circ_add_module(circ);
 }
-
-ID circ_lliter_get(LinkedListIter *iter) { return iter->current; }
 
 // ---
 

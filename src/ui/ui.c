@@ -32,11 +32,14 @@ void ui_init(
   FontHandle font) {
   *ui = (CircuitUI){0};
   ux_init(&ui->ux, componentDescs, drawCtx, font);
-  circuit_init(&ui->saveCopy, componentDescs);
+  circ_init(&ui->saveCopy);
   thread_mutex_init(&ui->saveMutex);
 }
 
-void ui_free(CircuitUI *ui) { ux_free(&ui->ux); }
+void ui_free(CircuitUI *ui) {
+  ux_free(&ui->ux);
+  circ_free(&ui->saveCopy);
+}
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
   const char *filters = ".dlc;.dig";
@@ -84,7 +87,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
     if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
-        circuit_clear(&ui->ux.view.circuit);
+        circ_clear(&ui->ux.view.circuit2);
         ux_route(&ui->ux);
         ux_build_bvh(&ui->ux);
         log_info("New");
@@ -100,7 +103,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           if (strncmp(loadfile + strlen(loadfile) - 4, ".dlc", 4) != 0) {
             strncat(loadfile, ".dlc", 1024);
           }
-          circuit_clear(&ui->ux.view.circuit);
+          circ_clear(&ui->ux.view.circuit2);
           circuit_load_file(&ui->ux.view.circuit, loadfile);
           ux_route(&ui->ux);
           ux_build_bvh(&ui->ux);
@@ -250,7 +253,7 @@ void ui_draw(CircuitUI *ui) { ux_draw(&ui->ux); }
 static int ui_do_save(void *data) {
   CircuitUI *ui = (CircuitUI *)data;
   thread_mutex_lock(&ui->saveMutex);
-  circuit_save_file(&ui->saveCopy, ui->saveFilename);
+  circ_save_file(&ui->saveCopy, ui->saveFilename);
   thread_atomic_int_store(&ui->saveThreadBusy, 0);
   thread_mutex_unlock(&ui->saveMutex);
   return 0;
@@ -262,8 +265,8 @@ bool ui_background_save(
     return false;
   }
   thread_mutex_lock(&ui->saveMutex);
-  circuit_clone_from(&ui->saveCopy, &ui->ux.view.circuit);
-  memcpy(ui->saveFilename, filename, 1024);
+  circ_clone(&ui->saveCopy, &ui->ux.view.circuit2);
+  strncpy(ui->saveFilename, filename, 1024);
   thread_atomic_int_store(&ui->saveThreadBusy, 1);
   thread_mutex_unlock(&ui->saveMutex);
 

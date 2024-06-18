@@ -176,7 +176,6 @@ ID find_symbol_kind(Circuit2 *circ, const char *name) {
         continue;
       }
       const char *name2 = circ_str_get(circ, table->name[i]);
-      assert(name2 != NULL);
       if (strcmp(name, name2) == 0) {
         return table->id[i];
       }
