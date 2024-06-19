@@ -63,12 +63,17 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool overEndpoint = false;
 
   for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
-    ID id = ux->view.hovered[i];
-    if (id_type(id) == ID_PORT) {
+    ID id = ux->view.hovered[i].subitem;
+    if (id == NO_ID) {
+      id = ux->view.hovered[i].item;
+    }
+
+    EntityType type = circ_type_for_id(&ux->view.circuit2, id);
+    if (type == TYPE_PORT) {
       overPort = true;
-    } else if (id_type(id) == ID_COMPONENT || id_type(id) == ID_WAYPOINT) {
+    } else if (type == TYPE_SYMBOL || type == TYPE_WAYPOINT) {
       overItem = true;
-    } else if (id_type(id) == ID_ENDPOINT) {
+    } else if (type == TYPE_ENDPOINT) {
       overEndpoint = true;
     }
   }
@@ -84,19 +89,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
     bool inSelection =
       box_intersect_point(ux->view.selectionBox, worldMousePos);
-    for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
-      ID id = ux->view.selected[i];
-      if (id_type(id) == ID_COMPONENT) {
-        Component *component = circuit_component_ptr(&ux->view.circuit, id);
-        if (box_intersect_point(component->box, worldMousePos)) {
-          inSelection = true;
-          break;
-        }
-      } else if (id_type(id) == ID_WAYPOINT) {
-        Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
-        if (
-          HMM_LenSqrV2(HMM_SubV2(waypoint->position, worldMousePos)) <
-          MOUSE_WP_FUDGE) {
+    for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
+      for (size_t j = 0; j < arrlen(ux->view.selected); j++) {
+        if (ux->view.hovered[i].item == ux->view.selected[j]) {
           inSelection = true;
           break;
         }
@@ -248,14 +243,12 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         break;
 
       case STATE_ADD_COMPONENT: {
-        // "drop" the component here and start adding a new one
-        Component *component =
-          circuit_component_ptr(&ux->view.circuit, ux->addingComponent);
-        ComponentDescID descID = component->desc;
-        ux_do(
-          ux, undo_cmd_add_component(
-                component->box.center, ux->addingComponent, descID));
-        ux_start_adding_component(ux, descID);
+        // "drop" the symbol here and start adding a new one
+        SymbolKindID kindID =
+          circ_get(&ux->view.circuit2, ux->addingSymbol, SymbolKindID);
+        Position pos = circ_get(&ux->view.circuit2, ux->addingSymbol, Position);
+        ux_do(ux, undo_cmd_add_symbol(pos, ux->addingSymbol, kindID));
+        ux_start_adding_symbol(ux, kindID);
 
         // rebuild the BVH after adding things
         ux_build_bvh(ux);
@@ -284,16 +277,16 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         }
 
         if (state == STATE_SELECT_ONE) {
-          static const IDType typePriority[] = {
-            ID_COMPONENT,
-            ID_WAYPOINT,
+          static const EntityType typePriority[] = {
+            TYPE_SYMBOL,
+            TYPE_WAYPOINT,
           };
           ID found = NO_ID;
           for (size_t i = 0; found == NO_ID && i < 2; i++) {
-            IDType type = typePriority[i];
+            EntityType type = typePriority[i];
             for (size_t j = 0; j < arrlen(ux->view.hovered); j++) {
-              ID id = ux->view.hovered[j];
-              if (id_type(id) == type) {
+              ID id = ux->view.hovered[j].item;
+              if (circ_type_for_id(&ux->view.circuit2, id) == type) {
                 found = id;
                 break;
               }
@@ -308,8 +301,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
       case STATE_CLICK_ENDPOINT:
         for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
-          ID id = ux->view.hovered[i];
-          if (id_type(id) == ID_ENDPOINT) {
+          ID id = ux->view.hovered[i].item;
+          if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_ENDPOINT) {
             ux_continue_wire(ux, id);
             break;
           }
@@ -318,9 +311,10 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
       case STATE_CLICK_PORT:
         for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
-          ID id = ux->view.hovered[i];
-          if (id_type(id) == ID_PORT) {
-            ux->clickedPort = id;
+          ID id = ux->view.hovered[i].subitem;
+          if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_PORT) {
+            ux->clickedPort =
+              (PortRef){.symbol = ux->view.hovered[i].item, .port = id};
             break;
           }
         }
@@ -328,17 +322,18 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
       case STATE_START_CLICK_WIRING:
       case STATE_DRAG_WIRING:
-        if (circuit_has(&ux->view.circuit, ux->clickedPort)) {
+        if (circ_has(&ux->view.circuit2, ux->clickedPort.port)) {
           ux_start_wire(ux, ux->clickedPort);
-          ux->clickedPort = NO_PORT;
+          ux->clickedPort = (PortRef){0};
         }
         break;
 
       case STATE_CONNECT_PORT:
         for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
-          ID id = ux->view.hovered[i];
-          if (id_type(id) == ID_PORT) {
-            ux_connect_wire(ux, id);
+          ID id = ux->view.hovered[i].subitem;
+          if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_PORT) {
+            ux_connect_wire(
+              ux, (PortRef){.symbol = ux->view.hovered[i].item, .port = id});
             ux_route(ux);
             break;
           }
@@ -351,9 +346,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         // rebuild the BVH after removing things
         ux_build_bvh(ux);
 
-        log_debug("routing after cancel");
         ux_route(ux);
-        log_debug("cancelled wire, finished routing");
         break;
 
       default:
@@ -402,13 +395,14 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   }
 
   case STATE_ADDING_COMPONENT:
-    circuit_move_component_to(
-      &ux->view.circuit, ux->addingComponent, worldMousePos);
+    circ_set_symbol_position(
+      &ux->view.circuit2, ux->addingSymbol, worldMousePos);
     break;
 
   case STATE_DRAG_WIRING:
   case STATE_CLICK_WIRING:
-    circuit_move_endpoint_to(&ux->view.circuit, ux->endpointEnd, worldMousePos);
+    circ_set_endpoint_position(
+      &ux->view.circuit2, ux->endpointEnd, worldMousePos);
     ux_route(ux);
     break;
 
@@ -517,23 +511,23 @@ void ux_update(CircuitUX *ux) {
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_B)) {
     ux->routingConfig.minimizeGraph = !ux->routingConfig.minimizeGraph;
-    printf(
-      "Minimize routing graph: %s\n",
+    log_info(
+      "Minimize routing graph: %s",
       ux->routingConfig.minimizeGraph ? "on" : "off");
     ux_route(ux);
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_C)) {
     ux->routingConfig.performCentering = !ux->routingConfig.performCentering;
-    printf(
-      "Perform Centering: %s\n",
+    log_info(
+      "Perform Centering: %s",
       ux->routingConfig.performCentering ? "on" : "off");
     ux_route(ux);
   }
 
   if (bv_is_set(ux->input.keysPressed, KEYCODE_V)) {
     ux->bvhDebugLines = !ux->bvhDebugLines;
-    printf("BVH debug lines: %s\n", ux->bvhDebugLines ? "on" : "off");
+    log_info("BVH debug lines: %s", ux->bvhDebugLines ? "on" : "off");
     if (ux->bvhDebugLines) {
       ux_build_bvh(ux);
     }
@@ -542,7 +536,7 @@ void ux_update(CircuitUX *ux) {
   if (bv_is_set(ux->input.keysPressed, KEYCODE_X)) {
     autoroute_dump_routing_data(
       ux->router, ux->routingConfig, "routing_data.dat");
-    printf("Dumped routing data to routing_data.dat\n");
+    log_info("Dumped routing data to routing_data.dat");
   }
 
   if (ux->bvhDebugLines) {
@@ -551,10 +545,10 @@ void ux_update(CircuitUX *ux) {
       if (ux->bvhDebugLevel < 0) {
         ux->bvhDebugLevel = 0;
       }
-      printf("BVH debug level: %d\n", ux->bvhDebugLevel);
+      log_info("BVH debug level: %d", ux->bvhDebugLevel);
     } else if (bv_is_set(ux->input.keysPressed, KEYCODE_PERIOD)) {
       ux->bvhDebugLevel++;
-      printf("BVH debug level: %d\n", ux->bvhDebugLevel);
+      log_info("BVH debug level: %d", ux->bvhDebugLevel);
     }
   }
 
@@ -569,65 +563,84 @@ void ux_update(CircuitUX *ux) {
   ux_handle_mouse(ux);
 }
 
-void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID) {
+void ux_start_adding_symbol(CircuitUX *ux, ID symbolKindID) {
   ux->mouseDownState = STATE_ADDING_COMPONENT;
-  ux->addingComponent =
-    circuit_add_component(&ux->view.circuit, descID, HMM_V2(0, 0));
+  ux->addingSymbol =
+    circ_add_symbol(&ux->view.circuit2, ux->view.circuit2.top, symbolKindID);
 }
 
-void ux_stop_adding_component(CircuitUX *ux) {
+void ux_stop_adding_symbol(CircuitUX *ux) {
   ux->mouseDownState = STATE_UP;
-  circuit_del(&ux->view.circuit, ux->addingComponent);
-  ux->addingComponent = NO_COMPONENT;
+  circ_remove_symbol(&ux->view.circuit2, ux->addingSymbol);
+  ux->addingSymbol = NO_ID;
 }
 
-void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID) {
-  ux_stop_adding_component(ux);
-  ux_start_adding_component(ux, descID);
+void ux_change_adding_symbol(CircuitUX *ux, ID symbolKindID) {
+  ux_stop_adding_symbol(ux);
+  ux_start_adding_symbol(ux, symbolKindID);
 }
 
-void ux_start_wire(CircuitUX *ux, PortID portID) {
-  Port *port = circuit_port_ptr(&ux->view.circuit, portID);
-  NetID netID;
-  if (circuit_has(&ux->view.circuit, port->endpoint)) {
-    Endpoint *endpoint =
-      circuit_endpoint_ptr(&ux->view.circuit, port->endpoint);
-    netID = endpoint->net;
-    ux->endpointStart = port->endpoint;
-    ux->newNet = false;
-  } else {
-    netID = circuit_add_net(&ux->view.circuit);
-    ux->endpointStart =
-      circuit_add_endpoint(&ux->view.circuit, netID, portID, port->position);
-    ux->newNet = true;
-  }
-  ux->endpointEnd =
-    circuit_add_endpoint(&ux->view.circuit, netID, NO_PORT, HMM_V2(0, 0));
-}
+void ux_start_wire(CircuitUX *ux, PortRef portRef) {
+  ID moduleID = circ_get(&ux->view.circuit2, portRef.symbol, Parent);
+  ID netlistID = circ_get(&ux->view.circuit2, moduleID, NetlistID);
 
-void ux_continue_wire(CircuitUX *ux, EndpointID endpointID) {
-  ux->newNet = false;
-  ux->endpointStart = NO_ENDPOINT;
-  ux->endpointEnd = endpointID;
-  Endpoint *endpoint = circuit_endpoint_ptr(&ux->view.circuit, endpointID);
-  if (endpoint->port != NO_PORT) {
-    // disconnect endpoint from port
-    Port *port = circuit_port_ptr(&ux->view.circuit, endpoint->port);
-    port->endpoint = NO_ENDPOINT;
-    endpoint->port = NO_PORT;
-  }
-  Net *net = circuit_net_ptr(&ux->view.circuit, endpoint->net);
-  int count = 0;
-  EndpointID netEndpointID = net->endpointFirst;
-  EndpointID otherEndpointID = NO_ENDPOINT;
-  while (circuit_has(&ux->view.circuit, netEndpointID)) {
-    Endpoint *endpoint = circuit_endpoint_ptr(&ux->view.circuit, netEndpointID);
-    if (netEndpointID != endpointID) {
-      otherEndpointID = netEndpointID;
+  LinkedListIter netit = circ_lliter(&ux->view.circuit2, netlistID);
+  while (circ_lliter_next(&netit)) {
+    ID netID = netit.current;
+    LinkedListIter subnetit = circ_lliter(&ux->view.circuit2, netID);
+    while (circ_lliter_next(&subnetit)) {
+      ID subnetID = subnetit.current;
+      LinkedListIter endpointit = circ_lliter(&ux->view.circuit2, subnetID);
+      while (circ_lliter_next(&endpointit)) {
+        ID endpointID = endpointit.current;
+        PortRef endpointPortRef =
+          circ_get(&ux->view.circuit2, endpointID, PortRef);
+        if (
+          endpointPortRef.port == portRef.port &&
+          endpointPortRef.symbol == portRef.symbol) {
+          ux->endpointStart = endpointID;
+          ux->newNet = false;
+          ux->endpointEnd = circ_add_endpoint(&ux->view.circuit2, subnetID);
+          return;
+        }
+      }
     }
-    count++;
-    netEndpointID = endpoint->next;
   }
+
+  ux->newNet = true;
+  ID netID = circ_add_net(&ux->view.circuit2, ux->view.circuit2.top);
+  ID subnetID = circ_add_subnet(&ux->view.circuit2, netID);
+  ux->endpointStart = circ_add_endpoint(&ux->view.circuit2, subnetID);
+  circ_connect_endpoint_to_port(
+    &ux->view.circuit2, ux->endpointStart, portRef.symbol, portRef.port);
+  ux->endpointEnd = circ_add_endpoint(&ux->view.circuit2, subnetID);
+}
+
+void ux_continue_wire(CircuitUX *ux, ID endpointID) {
+  ux->newNet = false;
+  ux->endpointStart = NO_ID;
+  ux->endpointEnd = endpointID;
+
+  PortRef portRef = circ_get(&ux->view.circuit2, endpointID, PortRef);
+  if (circ_has(&ux->view.circuit2, portRef.port)) {
+    circ_disconnect_endpoint_from_port(&ux->view.circuit2, endpointID);
+  }
+  ID subnetID = circ_get(&ux->view.circuit2, endpointID, Parent);
+  ID netID = circ_get(&ux->view.circuit2, subnetID, Parent);
+  int count = 0;
+  ID otherEndpointID = NO_ID;
+  LinkedListIter subnetit = circ_lliter(&ux->view.circuit2, netID);
+  while (circ_lliter_next(&subnetit)) {
+    LinkedListIter endpointit =
+      circ_lliter(&ux->view.circuit2, subnetit.current);
+    while (circ_lliter_next(&endpointit)) {
+      if (endpointit.current != endpointID) {
+        otherEndpointID = endpointit.current;
+      }
+      count++;
+    }
+  }
+
   if (count <= 2) {
     ux->newNet = true;
     ux->endpointStart = otherEndpointID;
@@ -635,29 +648,25 @@ void ux_continue_wire(CircuitUX *ux, EndpointID endpointID) {
 }
 
 void ux_cancel_wire(CircuitUX *ux) {
-  NetID netID = circuit_endpoint_ptr(&ux->view.circuit, ux->endpointEnd)->net;
-  circuit_del(&ux->view.circuit, ux->endpointEnd);
+
   if (ux->newNet) {
-    if (circuit_has(&ux->view.circuit, ux->endpointStart)) {
-      circuit_del(&ux->view.circuit, ux->endpointStart);
-    }
-    circuit_del(&ux->view.circuit, netID);
+    ID subnetID = circ_get(&ux->view.circuit2, ux->endpointEnd, Parent);
+    ID netID = circ_get(&ux->view.circuit2, subnetID, Parent);
+
+    // endpoints and subnet are recursively removed
+    circ_remove_net(&ux->view.circuit2, netID);
+  } else {
+    circ_remove_endpoint(&ux->view.circuit2, ux->endpointEnd);
   }
 
   ux->newNet = false;
-  ux->endpointStart = NO_ENDPOINT;
-  ux->endpointEnd = NO_ENDPOINT;
+  ux->endpointStart = NO_ID;
+  ux->endpointEnd = NO_ID;
 }
 
-void ux_connect_wire(CircuitUX *ux, PortID portID) {
-  Port *port = circuit_port_ptr(&ux->view.circuit, portID);
-  if (circuit_has(&ux->view.circuit, port->endpoint)) {
-    log_error("TODO: add merging of nets. For now, cancelling wire");
-    ux_cancel_wire(ux);
-    return;
-  }
-
-  circuit_endpoint_connect(&ux->view.circuit, ux->endpointEnd, portID);
+void ux_connect_wire(CircuitUX *ux, PortRef portRef) {
+  circ_connect_endpoint_to_port(
+    &ux->view.circuit2, ux->endpointEnd, portRef.symbol, portRef.port);
 
   ux->newNet = false;
   ux->endpointStart = NO_ENDPOINT;

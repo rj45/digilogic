@@ -61,7 +61,7 @@ void bvh_query_leaf_nodes(BVH *bvh, HMM_Vec2 point) {
   }
 }
 
-arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result) {
+arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result) {
   if (bvh->needsRebuild) {
     bvh_rebuild(bvh);
   }
@@ -80,18 +80,21 @@ arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result) {
       } else {
         for (uint32_t i = 0; i < node->numLeaves; i++) {
           if (box_intersect_box(box, bvh->leaves[node->firstLeaf + i].box)) {
-            // item may be in the BVH multiple times, so we need to check
+            // leaf may be in the BVH multiple times, so we need to check
             // if it's already in the result array
-            ID item = bvh->leaves[node->firstLeaf + i].item;
+            BVHLeaf leaf = bvh->leaves[node->firstLeaf + i];
             bool found = false;
             for (size_t j = 0; j < arrlen(result); j++) {
-              if (result[j] == item) {
+              if (
+                result[j].item == leaf.item &&
+                result[j].subitem == leaf.subitem &&
+                box_equal(result[j].box, leaf.box)) {
                 found = true;
                 break;
               }
             }
             if (!found) {
-              arrput(result, item);
+              arrput(result, leaf);
             }
           }
         }
@@ -101,8 +104,8 @@ arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result) {
   return result;
 }
 
-void bvh_add(BVH *bvh, ID item, Box box) {
-  BVHLeaf leaf = {.box = box, .item = item};
+void bvh_add(BVH *bvh, ID item, ID subitem, Box box) {
+  BVHLeaf leaf = {.box = box, .item = item, .subitem = subitem};
   bvh_query_leaf_nodes(bvh, box.center);
   for (size_t i = 0; i < arrlen(bvh->scratch); i++) {
     uint32_t index = bvh->scratch[i];
@@ -125,7 +128,7 @@ void bvh_add(BVH *bvh, ID item, Box box) {
   bvh->needsRebuild = true;
 }
 
-void bvh_remove(BVH *bvh, ID item, Box box) {
+void bvh_remove(BVH *bvh, ID item, ID subitem, Box box) {
   bvh_query_leaf_nodes(bvh, box.center);
   for (size_t i = 0; i < arrlen(bvh->scratch); i++) {
     uint32_t index = bvh->scratch[i];
@@ -133,7 +136,9 @@ void bvh_remove(BVH *bvh, ID item, Box box) {
     if (node->numLeaves > 0) {
       for (size_t j = 0; j < node->numLeaves; j++) {
         BVHLeaf leaf = bvh->leaves[node->firstLeaf + j];
-        if (leaf.item == item && box_equal(leaf.box, box)) {
+        if (
+          leaf.item == item && leaf.subitem == subitem &&
+          box_equal(leaf.box, box)) {
           arrdel(bvh->leaves, node->firstLeaf + j);
           node->numLeaves--;
           for (size_t k = index + 1; k < arrlen(bvh->nodeHeap); k++) {
@@ -146,10 +151,10 @@ void bvh_remove(BVH *bvh, ID item, Box box) {
   }
 }
 
-void bvh_update(BVH *bvh, ID item, Box oldBox, Box newBox) {
+void bvh_update(BVH *bvh, ID item, ID subitem, Box oldBox, Box newBox) {
   // todo: a more efficient algorithm
-  bvh_remove(bvh, item, oldBox);
-  bvh_add(bvh, item, newBox);
+  bvh_remove(bvh, item, subitem, oldBox);
+  bvh_add(bvh, item, subitem, newBox);
 }
 
 static int bvh_compare_x(const void *a, const void *b) {

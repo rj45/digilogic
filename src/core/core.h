@@ -184,6 +184,7 @@ typedef struct BVHNode {
 typedef struct BVHLeaf {
   Box box;
   ID item;
+  ID subitem;
 } BVHLeaf;
 
 typedef struct BVH {
@@ -200,11 +201,11 @@ typedef struct BVH {
 void bvh_init(BVH *bvh);
 void bvh_free(BVH *bvh);
 void bvh_clear(BVH *bvh);
-void bvh_add(BVH *bvh, ID item, Box box);
-void bvh_remove(BVH *bvh, ID item, Box box);
-void bvh_update(BVH *bvh, ID item, Box oldBox, Box newBox);
+void bvh_add(BVH *bvh, ID item, ID subitem, Box box);
+void bvh_remove(BVH *bvh, ID item, ID subitem, Box box);
+void bvh_update(BVH *bvh, ID item, ID subitem, Box oldBox, Box newBox);
 void bvh_rebuild(BVH *bvh);
-arr(ID) bvh_query(BVH *bvh, Box box, arr(ID) result);
+arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result);
 
 ////////////////////////////////////////////////////////////////////////////////
 // SparseMap
@@ -1030,6 +1031,10 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
 #define circ_add_id(circuit, tableType, id)                                    \
   circ_add_type_id(circuit, circ_entity_type(tableType), id)
 
+#define circ_has_component(circuit, id, componentType)                         \
+  (circ_table_meta_for_id(circuit, id).components &                            \
+   (1 << circ_component_id(componentType)))
+
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
 void circ_clone(Circuit2 *dst, Circuit2 *src);
@@ -1144,6 +1149,7 @@ void circ_remove_symbol_kind(Circuit2 *circ, ID id);
 ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind);
 void circ_remove_symbol(Circuit2 *circ, ID id);
 void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position);
+Box circ_get_symbol_box(Circuit2 *circ, ID id);
 
 ID circ_add_waypoint(Circuit2 *circ, ID endpoint);
 void circ_remove_waypoint(Circuit2 *circ, ID id);
@@ -1154,6 +1160,7 @@ void circ_remove_endpoint(Circuit2 *circ, ID id);
 void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position);
 void circ_connect_endpoint_to_port(
   Circuit2 *circ, ID endpointID, ID symbolID, ID portID);
+void circ_disconnect_endpoint_from_port(Circuit2 *circ, ID endpointID);
 
 ID circ_add_subnet_bit(Circuit2 *circ, ID subnetBits);
 void circ_remove_subnet_bit(Circuit2 *circ, ID id);

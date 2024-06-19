@@ -103,7 +103,8 @@ void circ_load_symbol_descs(
   Circuit2 *circ, SymbolLayout *layout, const ComponentDesc *descs,
   size_t count) {
   float labelPadding = layout->labelPadding;
-  for (size_t i = 0; i < count; i++) {
+  // start at 1 to skip the NONE component
+  for (size_t i = 1; i < count; i++) {
     const ComponentDesc *symDesc = &descs[i];
     ID symID = circ_add(circ, SymbolKind2);
     circ_set(circ, symID, Name, {circ_str_c(circ, symDesc->typeName)});
@@ -541,6 +542,16 @@ void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
   }
 }
 
+Box circ_get_symbol_box(Circuit2 *circ, ID id) {
+  HMM_Vec2 position = circ_get(circ, id, Position);
+  SymbolKindID kindID = circ_get(circ, id, SymbolKindID);
+  Size size = circ_get(circ, kindID, Size);
+  return (Box){
+    .center = position,
+    .halfSize = HMM_MulV2F(size, 0.5f),
+  };
+}
+
 // ---
 
 ID circ_add_waypoint(Circuit2 *circ, ID endpoint) {
@@ -664,6 +675,37 @@ void circ_connect_endpoint_to_port(
     assert(circuit_has(circ->oldCircuit, portID));
     EndpointID oldEndpointID = hmget(circ->newToOld, endpointID);
     circuit_endpoint_connect(circ->oldCircuit, oldEndpointID, portID);
+  }
+}
+
+void circ_disconnect_endpoint_from_port(Circuit2 *circ, ID endpointID) {
+  assert(circ_has(circ, endpointID));
+  PortRef ref = circ_get(circ, endpointID, PortRef);
+  circ_set(circ, endpointID, PortRef, {0});
+  if (circ->oldCircuit) {
+    ComponentID oldCompID = hmget(circ->newToOld, ref.symbol);
+    const char *portName = circ_str_get(circ, circ_get(circ, ref.port, Name));
+    Component *oldComp = circuit_component_ptr(circ->oldCircuit, oldCompID);
+    PortID portID = oldComp->portFirst;
+    while (circuit_has(circ->oldCircuit, portID)) {
+      Port *port = circuit_port_ptr(circ->oldCircuit, portID);
+      if (
+        strcmp(
+          circ->oldCircuit->componentDescs[oldComp->desc]
+            .ports[port->desc]
+            .name,
+          portName) == 0) {
+        break;
+      }
+      portID = port->next;
+    }
+    assert(circuit_has(circ->oldCircuit, portID));
+    EndpointID oldEndpointID = hmget(circ->newToOld, endpointID);
+    Endpoint *oldEndpoint =
+      circuit_endpoint_ptr(circ->oldCircuit, oldEndpointID);
+    Port *port = circuit_port_ptr(circ->oldCircuit, portID);
+    port->endpoint = NO_ENDPOINT;
+    oldEndpoint->port = NO_PORT;
   }
 }
 

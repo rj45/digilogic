@@ -27,7 +27,7 @@ typedef struct CircuitView {
   Theme theme;
   DrawContext *drawCtx;
 
-  arr(ID) hovered;
+  arr(BVHLeaf) hovered;
   arr(ID) selected;
 
   PortID selectedPort;

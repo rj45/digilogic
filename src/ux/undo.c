@@ -46,20 +46,16 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
       command.oldCenter.Y, command.newCenter.X, command.newCenter.Y);
     HMM_Vec2 initialDelta = HMM_SubV2(command.newCenter, command.oldCenter);
     HMM_Vec2 newCenter = command.newCenter;
-    HMM_Vec2 delta = initialDelta;
     if (arrlen(ux->view.selected) == 1 && command.snap) {
       newCenter = ux_calc_snap(ux, command.newCenter);
     }
 
-    HMM_Vec2 currentCenter = ux_calc_selection_center(ux);
-    delta = HMM_SubV2(newCenter, currentCenter);
-
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
       ID id = ux->view.selected[i];
-      if (id_type(id) == ID_COMPONENT) {
-        circuit_move_component(&ux->view.circuit, id, delta);
-      } else if (id_type(id) == ID_WAYPOINT) {
-        circuit_move_waypoint(&ux->view.circuit, id, delta);
+      if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_SYMBOL) {
+        circ_set_symbol_position(&ux->view.circuit2, id, newCenter);
+      } else if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_WAYPOINT) {
+        circ_set_waypoint_position(&ux->view.circuit2, id, newCenter);
       }
     }
     ux_route(ux);
@@ -79,19 +75,16 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
       command.area.center.Y, command.area.halfSize.X, command.area.halfSize.Y);
     ux->view.selectionBox = command.area;
     arrsetlen(ux->view.selected, 0);
-    for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-      Component *component = &ux->view.circuit.components[i];
-      if (box_intersect_box(component->box, command.area)) {
-        arrput(ux->view.selected, circuit_component_id(&ux->view.circuit, i));
+
+    ux->bvhQuery = bvh_query(&ux->bvh, command.area, ux->bvhQuery);
+    for (size_t i = 0; i < arrlen(ux->bvhQuery); i++) {
+      ID id = ux->bvhQuery[i].item;
+      EntityType type = circ_type_for_id(&ux->view.circuit2, id);
+      if (type == TYPE_SYMBOL || type == TYPE_WAYPOINT) {
+        arrput(ux->view.selected, id);
       }
     }
-    for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
-      Waypoint *waypoint = &ux->view.circuit.waypoints[i];
-      Box box = (Box){.center = waypoint->position, .halfSize = HMM_V2(5, 5)};
-      if (box_intersect_box(box, command.area)) {
-        arrput(ux->view.selected, circuit_waypoint_id(&ux->view.circuit, i));
-      }
-    }
+
     break;
   case UNDO_DESELECT_ITEM:
     log_debug("Performing deselect item: %x", command.selectedID);
@@ -109,44 +102,47 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     arrsetlen(ux->view.selected, 0);
     ux->view.selectionBox = (Box){0};
     break;
-  case UNDO_ADD_COMPONENT:
+  case UNDO_ADD_SYMBOL:
     log_debug(
-      "Performing add component: %x %d %f %f", command.componentID,
-      command.descID, command.center.X, command.center.Y);
-    if (!circuit_has(&ux->view.circuit, command.componentID)) {
-      ID id = circuit_add_component(
-        &ux->view.circuit, command.descID, command.center);
+      "Performing add component: %x %d %f %f", command.symbolID,
+      command.symbolKindID, command.center.X, command.center.Y);
+    if (!circ_has(&ux->view.circuit2, command.symbolID)) {
+      ID id = circ_add_symbol(
+        &ux->view.circuit2, ux->view.circuit2.top, command.symbolKindID);
+      circ_set_symbol_position(&ux->view.circuit2, id, command.center);
       UndoCommand *top = ux_undo_stack_top(ux);
-      top->componentID = id;
+      top->symbolID = id;
 
       // check ports to see if there are endpoints there and reconnect those
       // endpoints to the ports
-      Component *component = circuit_component_ptr(&ux->view.circuit, id);
-      PortID portID = component->portFirst;
-      while (circuit_has(&ux->view.circuit, portID)) {
-        Port *port = circuit_port_ptr(&ux->view.circuit, portID);
-        for (size_t i = 0; i < circuit_endpoint_len(&ux->view.circuit); i++) {
-          Endpoint *endpoint = &ux->view.circuit.endpoints[i];
-          HMM_Vec2 portPos = HMM_AddV2(component->box.center, port->position);
-          float dist = HMM_LenSqr(HMM_SubV2(portPos, endpoint->position));
-          if (dist < 0.1) {
-            endpoint->port = portID;
-            port->endpoint = circuit_endpoint_id(&ux->view.circuit, i);
-            break;
-          }
-        }
-        portID = port->next;
-      }
+      // todo: convert this to new ECS
+      // Component *component = circuit_component_ptr(&ux->view.circuit, id);
+      // PortID portID = component->portFirst;
+      // while (circuit_has(&ux->view.circuit, portID)) {
+      //   Port *port = circuit_port_ptr(&ux->view.circuit, portID);
+      //   for (size_t i = 0; i < circuit_endpoint_len(&ux->view.circuit); i++)
+      //   {
+      //     Endpoint *endpoint = &ux->view.circuit.endpoints[i];
+      //     HMM_Vec2 portPos = HMM_AddV2(component->box.center,
+      //     port->position); float dist = HMM_LenSqr(HMM_SubV2(portPos,
+      //     endpoint->position)); if (dist < 0.1) {
+      //       endpoint->port = portID;
+      //       port->endpoint = circuit_endpoint_id(&ux->view.circuit, i);
+      //       break;
+      //     }
+      //   }
+      //   portID = port->next;
+      // }
     }
 
     break;
 
-  case UNDO_DEL_COMPONENT:
-    log_debug("Performing del component: %x", command.componentID);
-    if (circuit_has(&ux->view.circuit, command.componentID)) {
+  case UNDO_DEL_SYMBOL:
+    log_debug("Performing del component: %x", command.symbolID);
+    if (circ_has(&ux->view.circuit2, command.symbolID)) {
       // todo: if adding component, replace it with the component removed
       // and delete the adding component instead
-      circuit_del(&ux->view.circuit, command.componentID);
+      circ_remove_symbol(&ux->view.circuit2, command.symbolID);
     }
     break;
   }
@@ -177,9 +173,9 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
         break;
       case UNDO_DESELECT_AREA:
         break;
-      case UNDO_ADD_COMPONENT:
+      case UNDO_ADD_SYMBOL:
         break;
-      case UNDO_DEL_COMPONENT:
+      case UNDO_DEL_SYMBOL:
         break;
       }
     }
@@ -213,11 +209,11 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
   case UNDO_DESELECT_AREA:
     flip = undo_cmd_select_area(cmd.area);
     break;
-  case UNDO_ADD_COMPONENT:
-    flip = undo_cmd_del_component(cmd.center, cmd.componentID, cmd.descID);
+  case UNDO_ADD_SYMBOL:
+    flip = undo_cmd_del_symbol(cmd.center, cmd.symbolID, cmd.symbolKindID);
     break;
-  case UNDO_DEL_COMPONENT:
-    flip = undo_cmd_add_component(cmd.center, cmd.componentID, cmd.descID);
+  case UNDO_DEL_SYMBOL:
+    flip = undo_cmd_add_symbol(cmd.center, cmd.symbolID, cmd.symbolKindID);
     break;
   }
   return flip;

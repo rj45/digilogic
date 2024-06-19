@@ -32,25 +32,43 @@ UTEST(CircuitUX, adding_components) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ux_start_adding_component(&ux, COMP_AND);
+  ID andSymbolKindID = NO_ID;
+  ID orSymbolKindID = NO_ID;
+  CircuitIter it = circ_iter(&ux.view.circuit2, SymbolKind2);
+  while (circ_iter_next(&it)) {
+    SymbolKind2 *table = circ_iter_table(&it, SymbolKind2);
+    for (size_t i = 0; i < table->length; i++) {
+      const char *name = circ_str_get(&ux.view.circuit2, table->name[i]);
+      if (strcmp(name, "AND") == 0) {
+        andSymbolKindID = table->id[i];
+      } else if (strcmp(name, "OR") == 0) {
+        orSymbolKindID = table->id[i];
+      }
+    }
+  }
 
-  ASSERT_EQ(circuit_component_len(&ux.view.circuit), 1);
-  ASSERT_TRUE(circuit_has(&ux.view.circuit, ux.addingComponent));
+  ux_start_adding_symbol(&ux, andSymbolKindID);
+
+  ASSERT_TRUE(circ_has(&ux.view.circuit2, ux.addingSymbol));
   ASSERT_EQ(
-    circuit_component_ptr(&ux.view.circuit, ux.addingComponent)->desc,
-    COMP_AND);
+    circ_get(&ux.view.circuit2, ux.addingSymbol, SymbolKindID),
+    andSymbolKindID);
 
-  ux_change_adding_component(&ux, COMP_OR);
+  ID oldID = ux.addingSymbol;
 
-  ASSERT_EQ(circuit_component_len(&ux.view.circuit), 1);
-  ASSERT_TRUE(circuit_has(&ux.view.circuit, ux.addingComponent));
+  ux_change_adding_symbol(&ux, orSymbolKindID);
+
+  ASSERT_FALSE(circ_has(&ux.view.circuit2, oldID));
+  ASSERT_TRUE(circ_has(&ux.view.circuit2, ux.addingSymbol));
   ASSERT_EQ(
-    circuit_component_ptr(&ux.view.circuit, ux.addingComponent)->desc, COMP_OR);
+    circ_get(&ux.view.circuit2, ux.addingSymbol, SymbolKindID), orSymbolKindID);
 
-  ux_stop_adding_component(&ux);
+  oldID = ux.addingSymbol;
 
-  ASSERT_EQ(circuit_component_len(&ux.view.circuit), 0);
-  ASSERT_EQ(ux.addingComponent, NO_COMPONENT);
+  ux_stop_adding_symbol(&ux);
+
+  ASSERT_FALSE(circ_has(&ux.view.circuit2, oldID));
+  ASSERT_EQ(ux.addingSymbol, NO_ID);
 
   ux_free(&ux);
 }

@@ -215,17 +215,33 @@ void ui_update(
           NK_WINDOW_TITLE)) {
 
     nk_layout_row_dynamic(ctx, 30, 1);
-    for (ComponentDescID descID = 0; descID < COMP_COUNT; descID++) {
-      const ComponentDesc *desc = &ui->ux.view.circuit.componentDescs[descID];
-      if (nk_option_label(ctx, desc->typeName, ui->addingComponent == descID)) {
-        if (ui->addingComponent == COMP_NONE && descID != COMP_NONE) {
-          ux_start_adding_component(&ui->ux, descID);
-        } else if (ui->addingComponent != COMP_NONE && descID == COMP_NONE) {
-          ux_stop_adding_component(&ui->ux);
-        } else if (ui->addingComponent != descID) {
-          ux_change_adding_component(&ui->ux, descID);
+
+    if (nk_option_label(ctx, "NONE", ui->addingSymbolKind == NO_ID)) {
+      if (ui->addingSymbolKind != NO_ID) {
+        ux_stop_adding_symbol(&ui->ux);
+      }
+      ui->addingSymbolKind = NO_ID;
+    }
+
+    CircuitIter iter = circ_iter(&ui->ux.view.circuit2, SymbolKind2);
+    while (circ_iter_next(&iter)) {
+      SymbolKind2 *table = circ_iter_table(&iter, SymbolKind2);
+      for (ptrdiff_t i = 0; i < table->length; i++) {
+        SymbolKindID symbolKindID = table->id[i];
+        Name nameID = circ_get(&ui->ux.view.circuit2, symbolKindID, Name);
+        if (nameID == 0) {
+          continue;
         }
-        ui->addingComponent = descID;
+        const char *name = circ_str_get(&ui->ux.view.circuit2, nameID);
+
+        if (nk_option_label(ctx, name, ui->addingSymbolKind == symbolKindID)) {
+          if (ui->addingSymbolKind == NO_ID) {
+            ux_start_adding_symbol(&ui->ux, symbolKindID);
+          } else if (ui->addingSymbolKind != symbolKindID) {
+            ux_change_adding_symbol(&ui->ux, symbolKindID);
+          }
+          ui->addingSymbolKind = symbolKindID;
+        }
       }
     }
   }

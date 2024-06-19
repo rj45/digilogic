@@ -346,7 +346,7 @@ void view_direct_wire_nets(CircuitView *view) {
 
 static bool view_is_hovered(CircuitView *view, ID id) {
   for (int i = 0; i < arrlen(view->hovered); i++) {
-    if (view->hovered[i] == id) {
+    if (view->hovered[i].item == id) {
       return true;
     }
   }
