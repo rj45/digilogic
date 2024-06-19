@@ -494,6 +494,22 @@ void circ_remove_symbol_kind(Circuit2 *circ, ID id) {
   circ_remove(circ, id);
 }
 
+ID circ_get_symbol_kind_by_name(Circuit2 *circuit, const char *name) {
+  ID symbolKindID = NO_ID;
+  CircuitIter it = circ_iter(circuit, SymbolKind2);
+  while (circ_iter_next(&it)) {
+    SymbolKind2 *table = circ_iter_table(&it, SymbolKind2);
+    for (size_t i = 0; i < table->length; i++) {
+      const char *symbolKindName = circ_str_get(circuit, table->name[i]);
+      if (strcmp(symbolKindName, name) == 0) {
+        symbolKindID = table->id[i];
+        break;
+      }
+    }
+  }
+  return symbolKindID;
+}
+
 // ---
 
 ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind) {

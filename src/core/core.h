@@ -1145,6 +1145,7 @@ HMM_Vec2 circ_port_position(Circuit2 *circ, PortRef portRef);
 
 ID circ_add_symbol_kind(Circuit2 *circ);
 void circ_remove_symbol_kind(Circuit2 *circ, ID id);
+ID circ_get_symbol_kind_by_name(Circuit2 *circuit, const char *name);
 
 ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind);
 void circ_remove_symbol(Circuit2 *circ, ID id);

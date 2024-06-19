@@ -37,5 +37,6 @@ int main(int argc, const char *const argv[]) {
   init_exceptions((char *)argv[0]);
 #endif
   ux_global_init();
+  stm_setup();
   return utest_main(argc, argv);
 }
