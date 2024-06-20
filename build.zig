@@ -109,7 +109,7 @@ pub fn build(b: *std.Build) void {
                             } else if (sanitizer == .thread) {
                                 exe.linkSystemLibrary("clang_rt.tsan-x86_64");
                             }
-                            exe.linkSystemLibrary("clang_rt.ubsan-x86_64");
+                            exe.linkSystemLibrary("clang_rt.ubsan_standalone-x86_64");
                             exe.linkSystemLibrary("pthread");
                             exe.linkSystemLibrary("rt");
                             exe.linkSystemLibrary("m");

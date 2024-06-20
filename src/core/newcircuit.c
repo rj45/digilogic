@@ -244,14 +244,16 @@ void circ_clone(Circuit2 *dst, Circuit2 *src) {
     Table *srcTable = src->table[i];
     Table *dstTable = dst->table[i];
     circ_grow_table(dst, i, srcTable->length);
-    memcpy(dstTable->id, srcTable->id, srcTable->length * sizeof(ID));
-    dstTable->length = srcTable->length;
-    for (size_t j = 0; j < dst->tableMeta[i].componentCount; j++) {
-      memcpy(
-        circ_table_components_ptr(dst, i, j),
-        circ_table_components_ptr(src, i, j),
-        srcTable->length * dst->tableMeta[i].componentSizes[j]);
+    if (srcTable->length > 0) {
+      memcpy(dstTable->id, srcTable->id, srcTable->length * sizeof(ID));
+      for (size_t j = 0; j < dst->tableMeta[i].componentCount; j++) {
+        memcpy(
+          circ_table_components_ptr(dst, i, j),
+          circ_table_components_ptr(src, i, j),
+          srcTable->length * dst->tableMeta[i].componentSizes[j]);
+      }
     }
+    dstTable->length = srcTable->length;
   }
 
   // todo: must be something better than this.... probably will be solved by
