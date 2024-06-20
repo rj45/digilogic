@@ -538,6 +538,20 @@ ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind) {
 void circ_remove_symbol(Circuit2 *circ, ID id) {
   Parent module = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, module, id);
+
+  // todo: when inverted indices are implemented, this can be done much faster
+  CircuitIter it = circ_iter(circ, Endpoint2);
+  while (circ_iter_next(&it)) {
+    Endpoint2 *table = circ_iter_table(&it, Endpoint2);
+    for (size_t i = 0; i < table->length; i++) {
+      ID endpointID = table->id[i];
+      PortRef ref = circ_get(circ, endpointID, PortRef);
+      if (ref.symbol == id) {
+        circ_disconnect_endpoint_from_port(circ, endpointID);
+      }
+    }
+  }
+
   if (circ->oldCircuit) {
     // todo: remove this when transition is over
     ComponentID compID = hmget(circ->newToOld, id);
@@ -546,6 +560,7 @@ void circ_remove_symbol(Circuit2 *circ, ID id) {
     hmdel(circ->oldToNew, compID);
     hmdel(circ->newToOld, id);
   }
+
   circ_remove(circ, id);
 }
 
@@ -654,6 +669,12 @@ ID circ_add_endpoint(Circuit2 *circ, ID subnet) {
 void circ_remove_endpoint(Circuit2 *circ, ID id) {
   Parent subnet = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, subnet, id);
+
+  LinkedListIter it = circ_lliter(circ, id);
+  while (circ_lliter_next(&it)) {
+    circ_remove_waypoint(circ, it.current);
+  }
+
   circ_remove(circ, id);
   if (circ->oldCircuit) {
     // todo: remove this when transition is over

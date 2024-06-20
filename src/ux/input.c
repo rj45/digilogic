@@ -56,7 +56,9 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool rightDown = ux->input.modifiers & MODIFIER_RMB;
   bool leftDown = ux->input.modifiers & MODIFIER_LMB;
   bool shiftDown = ux->input.modifiers & MODIFIER_SHIFT;
-  bool escDown = bv_is_set(ux->input.keysDown, KEYCODE_ESCAPE);
+  bool cancelDown = bv_is_set(ux->input.keysDown, KEYCODE_ESCAPE) ||
+                    bv_is_set(ux->input.keysDown, KEYCODE_BACKSPACE) ||
+                    bv_is_set(ux->input.keysDown, KEYCODE_DELETE);
 
   bool overPort = false;
   bool overItem = false;
@@ -170,7 +172,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       }
       break;
     case STATE_DRAG_WIRING:
-      if (escDown) {
+      if (cancelDown) {
         state = STATE_CANCEL_WIRE;
       } else if (overPort && !leftDown) {
         state = STATE_CONNECT_PORT;
@@ -190,7 +192,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         } else if (!overPort) {
           state = STATE_FLOATING_WIRE;
         }
-      } else if (escDown) {
+      } else if (cancelDown) {
         state = STATE_CANCEL_WIRE;
       }
       break;
@@ -205,7 +207,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       }
       break;
     case STATE_CANCEL_WIRE:
-      if (!leftDown && !escDown) {
+      if (!leftDown && !cancelDown) {
         state = STATE_UP;
       }
       break;
