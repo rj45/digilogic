@@ -104,14 +104,14 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     break;
   case UNDO_ADD_SYMBOL:
     log_debug(
-      "Performing add component: %x %d %f %f", command.symbolID,
-      command.symbolKindID, command.center.X, command.center.Y);
-    if (!circ_has(&ux->view.circuit2, command.symbolID)) {
+      "Performing add component: %x %d %f %f", command.childID,
+      command.parentID, command.center.X, command.center.Y);
+    if (!circ_has(&ux->view.circuit2, command.childID)) {
       ID id = circ_add_symbol(
-        &ux->view.circuit2, ux->view.circuit2.top, command.symbolKindID);
+        &ux->view.circuit2, ux->view.circuit2.top, command.parentID);
       circ_set_symbol_position(&ux->view.circuit2, id, command.center);
       UndoCommand *top = ux_undo_stack_top(ux);
-      top->symbolID = id;
+      top->childID = id;
 
       // check ports to see if there are endpoints there and reconnect those
       // endpoints to the ports
@@ -138,11 +138,28 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     break;
 
   case UNDO_DEL_SYMBOL:
-    log_debug("Performing del component: %x", command.symbolID);
-    if (circ_has(&ux->view.circuit2, command.symbolID)) {
+    log_debug("Performing del component: %x", command.childID);
+    if (circ_has(&ux->view.circuit2, command.childID)) {
       // todo: if adding component, replace it with the component removed
       // and delete the adding component instead
-      circ_remove_symbol(&ux->view.circuit2, command.symbolID);
+      circ_remove_symbol(&ux->view.circuit2, command.childID);
+    }
+    break;
+  case UNDO_ADD_WAYPOINT:
+    log_debug(
+      "Performing add waypoint: %x %x %f %f", command.childID, command.parentID,
+      command.center.X, command.center.Y);
+    if (!circ_has(&ux->view.circuit2, command.childID)) {
+      ID id = circ_add_waypoint(&ux->view.circuit2, command.parentID);
+      circ_set_waypoint_position(&ux->view.circuit2, id, command.center);
+      UndoCommand *top = ux_undo_stack_top(ux);
+      top->childID = id;
+    }
+    break;
+  case UNDO_DEL_WAYPOINT:
+    log_debug("Performing del waypoint: %x", command.childID);
+    if (circ_has(&ux->view.circuit2, command.childID)) {
+      circ_remove_waypoint(&ux->view.circuit2, command.childID);
     }
     break;
   }
@@ -177,6 +194,10 @@ static void ux_push_undo(CircuitUX *ux, UndoCommand command) {
         break;
       case UNDO_DEL_SYMBOL:
         break;
+      case UNDO_ADD_WAYPOINT:
+        break;
+      case UNDO_DEL_WAYPOINT:
+        break;
       }
     }
   }
@@ -210,10 +231,16 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
     flip = undo_cmd_select_area(cmd.area);
     break;
   case UNDO_ADD_SYMBOL:
-    flip = undo_cmd_del_symbol(cmd.center, cmd.symbolID, cmd.symbolKindID);
+    flip = undo_cmd_del_symbol(cmd.center, cmd.childID, cmd.parentID);
     break;
   case UNDO_DEL_SYMBOL:
-    flip = undo_cmd_add_symbol(cmd.center, cmd.symbolID, cmd.symbolKindID);
+    flip = undo_cmd_add_symbol(cmd.center, cmd.childID, cmd.parentID);
+    break;
+  case UNDO_ADD_WAYPOINT:
+    flip = undo_cmd_del_waypoint(cmd.center, cmd.childID, cmd.parentID);
+    break;
+  case UNDO_DEL_WAYPOINT:
+    flip = undo_cmd_add_waypoint(cmd.center, cmd.childID, cmd.parentID);
     break;
   }
   return flip;

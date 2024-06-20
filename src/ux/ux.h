@@ -198,6 +198,8 @@ typedef struct UndoCommand {
     UNDO_DESELECT_AREA,
     UNDO_ADD_SYMBOL,
     UNDO_DEL_SYMBOL,
+    UNDO_ADD_WAYPOINT,
+    UNDO_DEL_WAYPOINT,
   } verb;
 
   union {
@@ -212,10 +214,11 @@ typedef struct UndoCommand {
     struct { // for UNDO_SELECT_AREA, UNDO_DESELECT_AREA
       Box area;
     };
-    struct { // for UNDO_ADD_SYMBOL, UNDO_DEL_SYMBOL
+    struct { // for UNDO_ADD_SYMBOL, UNDO_DEL_SYMBOL, UNDO_ADD_WAYPONT,
+             // UNDO_DEL_WAYPOINT
       HMM_Vec2 center;
-      ID symbolID;
-      ID symbolKindID;
+      ID parentID;
+      ID childID;
     };
   };
 } UndoCommand;
@@ -262,8 +265,8 @@ undo_cmd_add_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
   return (UndoCommand){
     .verb = UNDO_ADD_SYMBOL,
     .center = center,
-    .symbolID = symbolID,
-    .symbolKindID = symbolKindID,
+    .childID = symbolID,
+    .parentID = symbolKindID,
   };
 }
 
@@ -272,8 +275,28 @@ undo_cmd_del_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
   return (UndoCommand){
     .verb = UNDO_DEL_SYMBOL,
     .center = center,
-    .symbolID = symbolID,
-    .symbolKindID = symbolKindID,
+    .childID = symbolID,
+    .parentID = symbolKindID,
+  };
+}
+
+static inline UndoCommand
+undo_cmd_add_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
+  return (UndoCommand){
+    .verb = UNDO_ADD_SYMBOL,
+    .center = center,
+    .childID = waypointID,
+    .parentID = endpointID,
+  };
+}
+
+static inline UndoCommand
+undo_cmd_del_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
+  return (UndoCommand){
+    .verb = UNDO_DEL_SYMBOL,
+    .center = center,
+    .childID = waypointID,
+    .parentID = endpointID,
   };
 }
 

@@ -125,10 +125,10 @@ void ux_delete_selected(CircuitUX *ux) {
       Position position = circ_get(&ux->view.circuit2, id, Position);
       ux_do(ux, undo_cmd_del_symbol(position, id, kind));
     } else if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_WAYPOINT) {
-      // SymbolKindID kind = circ_get(&ux->view.circuit2, id, SymbolKindID);
-      // Position position = circ_get(&ux->view.circuit2, id, Position);
-      // ux_do(
-      //   ux, undo_cmd_del_waypoint(position, id, kind));
+      Parent endpoint = circ_get(&ux->view.circuit2, id, Parent);
+      Position position = circ_get(&ux->view.circuit2, id, Position);
+      ux_do(ux, undo_cmd_del_waypoint(position, id, endpoint));
+      ux_route(ux);
     }
   }
 }
