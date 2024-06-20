@@ -97,8 +97,9 @@ const char *draw_flags(DrawFlags flags) {
   return "-";
 }
 
-void draw_component_shape(
-  DrawContext *draw, Theme *theme, Box box, ShapeType shape, DrawFlags flags) {
+void draw_symbol_shape(
+  DrawContext *draw, Theme *theme, Box box, SymbolShape shape,
+  DrawFlags flags) {
   char buff[256];
   snprintf(
     buff, 256, "component(%s, v%d, %s)\n", shapeStrings[shape],

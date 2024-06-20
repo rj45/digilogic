@@ -112,7 +112,7 @@ static void view_augment_component(void *user, ComponentID id, void *ptr) {
 
   // kludge to make the name label appear at the right place on gate shapes
   float nameY = -(height / 2) + labelPadding;
-  if (desc->shape != SHAPE_DEFAULT) {
+  if (desc->shape != SYMSHAPE_DEFAULT) {
     nameY += height / 5;
   }
 
@@ -360,70 +360,110 @@ void view_draw(CircuitView *view) {
     draw_selection_box(view->drawCtx, &view->theme, view->selectionBox, 0);
   }
 
-  for (int i = 0; i < circuit_component_len(&view->circuit); i++) {
-    ComponentID id = circuit_component_id(&view->circuit, i);
-    Component *component = &view->circuit.components[i];
-    const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
-    HMM_Vec2 center = component->box.center;
+  float labelPadding = view->theme.labelPadding;
+
+  ID moduleID = view->circuit2.top;
+  LinkedListIter moduleit = circ_lliter(&view->circuit2, moduleID);
+  while (circ_lliter_next(&moduleit)) {
+    ID symbolID = moduleit.current;
+    Position symbolPos = circ_get(&view->circuit2, symbolID, Position);
+    SymbolKindID kindID = circ_get(&view->circuit2, symbolID, SymbolKindID);
+    Size size = circ_get(&view->circuit2, kindID, Size);
+    SymbolShape shape = circ_get(&view->circuit2, kindID, SymbolShape);
 
     DrawFlags flags = 0;
 
     for (int j = 0; j < arrlen(view->selected); j++) {
-      if (view->selected[j] == id) {
+      if (view->selected[j] == symbolID) {
         flags |= DRAW_SELECTED;
         break;
       }
     }
 
-    if (view_is_hovered(view, id)) {
+    if (view_is_hovered(view, symbolID)) {
       flags |= DRAW_HOVERED;
     }
 
-    draw_component_shape(
-      view->drawCtx, &view->theme, component->box, desc->shape, flags);
+    Box box = (Box){.center = symbolPos, .halfSize = HMM_MulV2F(size, 0.5f)};
 
-    if (desc->shape == SHAPE_DEFAULT) {
-      Label *typeLabel =
-        circuit_label_ptr(&view->circuit, component->typeLabel);
-      const char *typeLabelText =
-        circuit_label_text(&view->circuit, component->typeLabel);
+    if (shape != SYMSHAPE_DEFAULT) {
+      // todo: move this hack elsewhere
+
+      // newHeight = height - (height * 2.0f / 5.0f);
+      // newHeight = (5/5)height - (2/5)height
+      // newHeight = (3/5)height
+      // newHeight / (3/5) = height
+      // newHeight * 5 / 3 = height
+      box.halfSize.Height = (box.halfSize.Height * 5.0f) / 3.0f;
+    }
+
+    draw_symbol_shape(view->drawCtx, &view->theme, box, shape, flags);
+
+    if (shape == SYMSHAPE_DEFAULT) {
+      Name typeLabel = circ_get(&view->circuit2, kindID, Name);
+      const char *typeLabelText = circ_str_get(&view->circuit2, typeLabel);
+      Box typeLabelBounds = draw_text_bounds(
+        view->drawCtx, HMM_V2(0, -(size.Height / 2) + labelPadding),
+        typeLabelText, strlen(typeLabelText), ALIGN_CENTER, ALIGN_TOP,
+        view->theme.labelFontSize, view->theme.font);
       draw_label(
-        view->drawCtx, &view->theme, box_translate(typeLabel->box, center),
+        view->drawCtx, &view->theme, box_translate(typeLabelBounds, symbolPos),
         typeLabelText, LABEL_COMPONENT_TYPE, 0);
     }
 
-    Label *nameLabel = circuit_label_ptr(&view->circuit, component->nameLabel);
-    const char *nameLabelText =
-      circuit_label_text(&view->circuit, component->nameLabel);
+    Prefix namePrefix = circ_get(&view->circuit2, kindID, Prefix);
+    Number nameNumber = circ_get(&view->circuit2, symbolID, Number);
+    char nameLabelText[256];
+    snprintf(
+      nameLabelText, 256, "%s%d", circ_str_get(&view->circuit2, namePrefix),
+      nameNumber);
+
+    Box nameLabelBounds = draw_text_bounds(
+      view->drawCtx, HMM_V2(0, -(size.Height / 2) + labelPadding),
+      nameLabelText, strlen(nameLabelText), ALIGN_CENTER, ALIGN_BOTTOM,
+      view->theme.labelFontSize, view->theme.font);
+
     draw_label(
-      view->drawCtx, &view->theme, box_translate(nameLabel->box, center),
+      view->drawCtx, &view->theme, box_translate(nameLabelBounds, symbolPos),
       nameLabelText, LABEL_COMPONENT_NAME, 0);
 
-    PortID portID = component->portFirst;
-    while (circuit_has(&view->circuit, portID)) {
-      Port *port = circuit_port_ptr(&view->circuit, portID);
-
-      HMM_Vec2 portPosition = HMM_AddV2(component->box.center, port->position);
+    LinkedListIter portit = circ_lliter(&view->circuit2, kindID);
+    while (circ_lliter_next(&portit)) {
+      ID portID = portit.current;
+      Position portPos = circ_get(&view->circuit2, portID, Position);
+      portPos = HMM_AddV2(symbolPos, portPos);
 
       DrawFlags portFlags = 0;
 
       if (view_is_hovered(view, portID)) {
         portFlags |= DRAW_HOVERED;
       }
-      draw_port(view->drawCtx, &view->theme, portPosition, portFlags);
+      draw_port(view->drawCtx, &view->theme, portPos, portFlags);
 
-      if (desc->shape == SHAPE_DEFAULT) {
-        Label *label = circuit_label_ptr(&view->circuit, port->label);
-        const char *labelText = circuit_label_text(&view->circuit, port->label);
+      if (shape == SYMSHAPE_DEFAULT) {
+        Name portLabel = circ_get(&view->circuit2, portID, Name);
+        const char *portLabelText = circ_str_get(&view->circuit2, portLabel);
 
-        Box labelBounds =
-          box_translate(label->box, HMM_AddV2(center, port->position));
+        HMM_Vec2 labelPos = HMM_V2(0, 0);
+        HorizAlign horz = ALIGN_CENTER;
+
+        if (circ_has_tags(&view->circuit2, portID, TAG_IN)) {
+          labelPos =
+            HMM_V2((labelPadding * 2.0f) + view->theme.portWidth / 2, 0);
+          horz = ALIGN_LEFT;
+        } else if (!circ_has_tags(&view->circuit2, portID, TAG_IN)) {
+          labelPos = HMM_V2(-labelPadding - view->theme.portWidth / 2, 0);
+          horz = ALIGN_RIGHT;
+        }
+
+        Box labelBounds = draw_text_bounds(
+          view->drawCtx, labelPos, portLabelText, strlen(portLabelText), horz,
+          ALIGN_MIDDLE, view->theme.labelFontSize, view->theme.font);
+
         draw_label(
-          view->drawCtx, &view->theme, labelBounds, labelText, LABEL_PORT,
-          portFlags);
+          view->drawCtx, &view->theme, box_translate(labelBounds, portPos),
+          portLabelText, LABEL_PORT, portFlags);
       }
-
-      portID = port->next;
     }
   }
 
