@@ -563,8 +563,10 @@ typedef struct Circuit {
   smap_on_delete(                                                              \
     &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
 
-#define circuit_wire_vertex_count(wire_view) ((wire_view) & 0x7FFF)
-#define circuit_wire_ends_in_junction(wire_view) ((bool)((wire_view) >> 15))
+#define circuit_wire_vertex_count(wire_view) ((wire_view) & 0x3FFF)
+#define circuit_wire_ends_in_junction(wire_view)                               \
+  ((bool)(((wire_view) >> 15) & 0x1))
+#define circuit_wire_is_root(wire_view) ((bool)(((wire_view) >> 14) & 0x1))
 
 const ComponentDesc *circuit_component_descs();
 void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);

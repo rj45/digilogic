@@ -441,7 +441,9 @@ void view_draw(CircuitView *view) {
         circuit_wire_vertex_count(wireVerts.wireVertexCounts[j]);
 
       DrawFlags flags = 0;
-      if (j == 0 && view->debugMode) {
+      if (
+        view->debugMode &&
+        circuit_wire_is_root(wireVerts.wireVertexCounts[j])) {
         flags |= DRAW_DEBUG;
       }
       if (netIsHovered) {
