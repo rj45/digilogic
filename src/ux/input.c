@@ -64,7 +64,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
   for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
     ID id = ux->view.hovered[i].subitem;
-    if (id == NO_ID) {
+    if (!circ_has(&ux->view.circuit2, id)) {
       id = ux->view.hovered[i].item;
     }
 

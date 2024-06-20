@@ -980,6 +980,10 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
   return circuit->table[type]->id[row];
 }
 
+static inline size_t circ_table_len(Circuit2 *circuit, EntityType type) {
+  return circuit->table[type]->length;
+}
+
 // Get the component array pointer within a table.
 // Component index 0 is after the ID list.
 #define circ_table_components_ptr(circuit, type, componentIndex)               \
@@ -1034,6 +1038,8 @@ static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
 #define circ_has_component(circuit, id, componentType)                         \
   (circ_table_meta_for_id(circuit, id).components &                            \
    (1 << circ_component_id(componentType)))
+
+#define circ_len(circuit, type) circ_table_len(circuit, circ_entity_type(type))
 
 void circ_init(Circuit2 *circ);
 void circ_free(Circuit2 *circ);
@@ -1174,6 +1180,8 @@ void circ_remove_subnet(Circuit2 *circ, ID id);
 
 ID circ_add_net(Circuit2 *circ, ID module);
 void circ_remove_net(Circuit2 *circ, ID id);
+void circuit_set_net_wire_vertices(
+  Circuit2 *circ, ID netID, WireVertices wireVerts);
 
 ID circ_add_module(Circuit2 *circ);
 void circ_remove_module(Circuit2 *circ, ID id);

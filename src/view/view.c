@@ -427,22 +427,20 @@ void view_draw(CircuitView *view) {
     }
   }
 
-  for (int netIdx = 0; netIdx < circuit_net_len(&view->circuit); netIdx++) {
-    Net *net = &view->circuit.nets[netIdx];
+  NetlistID netlistID =
+    circ_get(&view->circuit2, view->circuit2.top, NetlistID);
+  LinkedListIter it = circ_lliter(&view->circuit2, netlistID);
+  while (circ_lliter_next(&it)) {
+    ID netID = it.current;
+    bool netIsHovered = view_is_hovered(view, netID);
 
-    bool netIsHovered =
-      view_is_hovered(view, circuit_net_id(&view->circuit, netIdx));
-
-    VertexIndex vertexOffset = net->vertexOffset;
-    assert(vertexOffset < arrlen(view->circuit.vertices));
-
-    for (int wireIdx = net->wireOffset;
-         wireIdx < net->wireOffset + net->wireCount; wireIdx++) {
-      assert(wireIdx < arrlen(view->circuit.wires));
-      Wire *wire = &view->circuit.wires[wireIdx];
+    WireVertices wireVerts = circ_get(&view->circuit2, netID, WireVertices);
+    for (size_t j = 0; j < wireVerts.wireCount; j++) {
+      uint16_t wireCount =
+        circuit_wire_vertex_count(wireVerts.wireVertexCounts[j]);
 
       DrawFlags flags = 0;
-      if (wireIdx == net->wireOffset && view->debugMode) {
+      if (j == 0 && view->debugMode) {
         flags |= DRAW_DEBUG;
       }
       if (netIsHovered) {
@@ -450,40 +448,62 @@ void view_draw(CircuitView *view) {
       }
 
       draw_wire(
-        view->drawCtx, &view->theme, view->circuit.vertices + vertexOffset,
-        circuit_wire_vertex_count(wire->vertexCount), flags);
+        view->drawCtx, &view->theme, wireVerts.vertices, wireCount, flags);
 
-      if (circuit_wire_ends_in_junction(wire->vertexCount)) {
+      if (circuit_wire_ends_in_junction(wireVerts.wireVertexCounts[j])) {
         draw_junction(
-          view->drawCtx, &view->theme,
-          view->circuit.vertices
-            [vertexOffset + circuit_wire_vertex_count(wire->vertexCount) - 1],
+          view->drawCtx, &view->theme, wireVerts.vertices[wireCount - 1],
           flags);
       }
-
-      vertexOffset += circuit_wire_vertex_count(wire->vertexCount);
     }
-  }
-  for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
-    Waypoint *waypoint = &view->circuit.waypoints[i];
-    WaypointID id = circuit_waypoint_id(&view->circuit, i);
-    DrawFlags flags = 0;
 
-    for (int j = 0; j < arrlen(view->selected); j++) {
-      if (view->selected[j] == id) {
-        flags |= DRAW_SELECTED;
-        break;
+    LinkedListIter subnetit = circ_lliter(&view->circuit2, netID);
+    while (circ_lliter_next(&subnetit)) {
+      LinkedListIter endpointit =
+        circ_lliter(&view->circuit2, subnetit.current);
+      while (circ_lliter_next(&endpointit)) {
+        LinkedListIter waypointit =
+          circ_lliter(&view->circuit2, endpointit.current);
+        while (circ_lliter_next(&waypointit)) {
+          ID waypointID = waypointit.current;
+          DrawFlags flags = 0;
+          Position waypointPos =
+            circ_get(&view->circuit2, waypointID, Position);
+          if (view_is_hovered(view, waypointID)) {
+            flags |= DRAW_HOVERED;
+          }
+
+          draw_waypoint(view->drawCtx, &view->theme, waypointPos, flags);
+        }
       }
     }
 
-    if (view_is_hovered(view, id)) {
-      flags |= DRAW_HOVERED;
-    }
+    for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
+      Waypoint *waypoint = &view->circuit.waypoints[i];
+      WaypointID id = circuit_waypoint_id(&view->circuit, i);
+      DrawFlags flags = 0;
 
-    if (
-      (flags & (DRAW_HOVERED | DRAW_SELECTED)) ||
-      view_is_hovered(view, waypoint->net)) {
-      draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
+      for (int j = 0; j < arrlen(view->selected); j++) {
+        if (view->selected[j] == id) {
+          flags |= DRAW_SELECTED;
+          break;
+        }
+      }
+
+      if (view_is_hovered(view, id)) {
+        flags |= DRAW_HOVERED;
+      }
+
+      for (int j = 0; j < arrlen(view->selected); j++) {
+        if (view->selected[j] == id) {
+          flags |= DRAW_SELECTED;
+          break;
+        }
+      }
+
+      if (netIsHovered || flags & DRAW_SELECTED) {
+        draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
+      }
     }
   }
 }

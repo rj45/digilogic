@@ -43,7 +43,7 @@ void ux_init(
   view_init(&ux->view, componentDescs, drawCtx, font);
   bvh_init(&ux->bvh);
 
-  ux->router = autoroute_create(&ux->view.circuit);
+  ux->router = autoroute_create(&ux->view.circuit2);
 }
 
 void ux_free(CircuitUX *ux) {

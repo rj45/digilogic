@@ -556,6 +556,21 @@ void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
     ComponentID compID = hmget(circ->newToOld, id);
     circuit_move_component_to(circ->oldCircuit, compID, position);
   }
+
+  // todo: when inverted indices are implemented, this can be done much faster
+  CircuitIter it = circ_iter(circ, Endpoint2);
+  while (circ_iter_next(&it)) {
+    Endpoint2 *table = circ_iter_table(&it, Endpoint2);
+    for (size_t i = 0; i < table->length; i++) {
+      ID endpointID = table->id[i];
+      PortRef ref = circ_get(circ, endpointID, PortRef);
+      if (ref.symbol == id) {
+        Position relPosition = circ_get(circ, ref.port, Position);
+        Position portPosition = HMM_AddV2(position, relPosition);
+        circ_set_endpoint_position(circ, endpointID, portPosition);
+      }
+    }
+  }
 }
 
 Box circ_get_symbol_box(Circuit2 *circ, ID id) {
@@ -651,6 +666,8 @@ void circ_remove_endpoint(Circuit2 *circ, ID id) {
 }
 
 void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_ENDPOINT);
   circ_set_ptr(circ, id, Position, &position);
   if (circ->oldCircuit) {
     // todo: remove this when transition is over
@@ -798,6 +815,14 @@ void circ_remove_net(Circuit2 *circ, ID id) {
 
     hmdel(circ->oldToNew, netID);
     hmdel(circ->newToOld, id);
+  }
+}
+
+void circuit_set_net_wire_vertices(
+  Circuit2 *circ, ID netID, WireVertices wireVerts) {
+  circ_set_ptr(circ, netID, WireVertices, &wireVerts);
+  if (circ->oldCircuit) {
+    // todo: implement
   }
 }
 
