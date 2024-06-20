@@ -43,7 +43,7 @@ void ui_free(CircuitUI *ui) {
 }
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
-  const char *filters = ".dlc;.dig";
+  const char *filters = ".dlc";
 
   NvdFileDialog *dialog;
   if (saving) {
