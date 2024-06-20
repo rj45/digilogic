@@ -435,8 +435,9 @@ void view_draw(CircuitView *view) {
     bool netIsHovered = view_is_hovered(view, netID);
 
     WireVertices wireVerts = circ_get(&view->circuit2, netID, WireVertices);
+    HMM_Vec2 *vertices = wireVerts.vertices;
     for (size_t j = 0; j < wireVerts.wireCount; j++) {
-      uint16_t wireCount =
+      uint16_t wireVertCount =
         circuit_wire_vertex_count(wireVerts.wireVertexCounts[j]);
 
       DrawFlags flags = 0;
@@ -447,14 +448,13 @@ void view_draw(CircuitView *view) {
         flags |= DRAW_HOVERED;
       }
 
-      draw_wire(
-        view->drawCtx, &view->theme, wireVerts.vertices, wireCount, flags);
+      draw_wire(view->drawCtx, &view->theme, vertices, wireVertCount, flags);
 
       if (circuit_wire_ends_in_junction(wireVerts.wireVertexCounts[j])) {
         draw_junction(
-          view->drawCtx, &view->theme, wireVerts.vertices[wireCount - 1],
-          flags);
+          view->drawCtx, &view->theme, vertices[wireVertCount - 1], flags);
       }
+      vertices += wireVertCount;
     }
 
     LinkedListIter subnetit = circ_lliter(&view->circuit2, netID);
