@@ -607,6 +607,9 @@ ID circ_get_symbol_kind_by_name(Circuit2 *circuit, const char *name) {
 // ---
 
 ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind) {
+  assert(circ_has(circ, symbolKind));
+  assert(circ_type_for_id(circ, symbolKind) == TYPE_SYMBOL_KIND);
+
   ID symbolID = circ_add(circ, Symbol2);
   circ_set(circ, symbolID, Parent, {module});
   circ_set(circ, symbolID, SymbolKindID, {symbolKind});
@@ -615,6 +618,9 @@ ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind) {
 }
 
 void circ_remove_symbol(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_SYMBOL);
+
   Parent module = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, module, id);
 
@@ -666,6 +672,9 @@ Box circ_get_symbol_box(Circuit2 *circ, ID id) {
 // ---
 
 ID circ_add_waypoint(Circuit2 *circ, ID endpoint) {
+  assert(circ_has(circ, endpoint));
+  assert(circ_type_for_id(circ, endpoint) == TYPE_ENDPOINT);
+
   ID waypointID = circ_add(circ, Waypoint2);
   circ_set(circ, waypointID, Parent, {endpoint});
   circ_linked_list_append(circ, endpoint, waypointID);
@@ -673,6 +682,9 @@ ID circ_add_waypoint(Circuit2 *circ, ID endpoint) {
 }
 
 void circ_remove_waypoint(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_WAYPOINT);
+
   Parent endpoint = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, endpoint, id);
   circ_remove(circ, id);
@@ -685,6 +697,9 @@ void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
 // ---
 
 ID circ_add_endpoint(Circuit2 *circ, ID subnet) {
+  assert(circ_has(circ, subnet));
+  assert(circ_type_for_id(circ, subnet) == TYPE_SUBNET);
+
   ID endpointID = circ_add(circ, Endpoint2);
   circ_set(circ, endpointID, Parent, {subnet});
   circ_linked_list_append(circ, subnet, endpointID);
@@ -692,6 +707,9 @@ ID circ_add_endpoint(Circuit2 *circ, ID subnet) {
 }
 
 void circ_remove_endpoint(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_ENDPOINT);
+
   Parent subnet = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, subnet, id);
 
@@ -699,11 +717,14 @@ void circ_remove_endpoint(Circuit2 *circ, ID id) {
   while (circ_lliter_next(&it)) {
     circ_remove_waypoint(circ, it.current);
   }
+
+  circ_remove(circ, id);
 }
 
 void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_ENDPOINT);
+
   circ_set_ptr(circ, id, Position, &position);
 }
 
@@ -727,6 +748,9 @@ void circ_disconnect_endpoint_from_port(Circuit2 *circ, ID endpointID) {
 // ---
 
 ID circ_add_subnet_bit(Circuit2 *circ, ID subnetBits) {
+  assert(circ_has(circ, subnetBits));
+  assert(circ_type_for_id(circ, subnetBits) == TYPE_SUBNET_BITS);
+
   ID subnetBitID = circ_add(circ, SubnetBit2);
   circ_set(circ, subnetBitID, Parent, {subnetBits});
   circ_linked_list_append(circ, subnetBits, subnetBitID);
@@ -734,6 +758,9 @@ ID circ_add_subnet_bit(Circuit2 *circ, ID subnetBits) {
 }
 
 void circ_remove_subnet_bit(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_SUBNET_BIT);
+
   Parent subnetBits = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, subnetBits, id);
   circ_remove(circ, id);
@@ -742,6 +769,9 @@ void circ_remove_subnet_bit(Circuit2 *circ, ID id) {
 // ---
 
 ID circ_add_subnet_bits(Circuit2 *circ, ID subnet) {
+  assert(circ_has(circ, subnet));
+  assert(circ_type_for_id(circ, subnet) == TYPE_SUBNET);
+
   ID subnetBitsID = circ_add(circ, SubnetBits2);
   circ_set(circ, subnetBitsID, Parent, {subnet});
   circ_linked_list_append(circ, subnet, subnetBitsID);
@@ -749,6 +779,9 @@ ID circ_add_subnet_bits(Circuit2 *circ, ID subnet) {
 }
 
 void circ_remove_subnet_bits(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_SUBNET_BITS);
+
   Parent subnet = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, subnet, id);
   circ_remove(circ, id);
@@ -757,6 +790,9 @@ void circ_remove_subnet_bits(Circuit2 *circ, ID id) {
 // ---
 
 ID circ_add_subnet(Circuit2 *circ, ID net) {
+  assert(circ_has(circ, net));
+  assert(circ_type_for_id(circ, net) == TYPE_NET);
+
   ID subnetID = circ_add(circ, Subnet2);
   circ_set(circ, subnetID, Parent, {net});
   circ_linked_list_append(circ, net, subnetID);
@@ -764,6 +800,9 @@ ID circ_add_subnet(Circuit2 *circ, ID net) {
 }
 
 void circ_remove_subnet(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_SUBNET);
+
   Parent net = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, net, id);
   circ_remove(circ, id);
@@ -772,6 +811,9 @@ void circ_remove_subnet(Circuit2 *circ, ID id) {
 // ---
 
 ID circ_add_net(Circuit2 *circ, ID module) {
+  assert(circ_has(circ, module));
+  assert(circ_type_for_id(circ, module) == TYPE_MODULE);
+
   ID netID = circ_add(circ, Net2);
   ID netlistID = circ_get(circ, module, NetlistID);
   circ_set(circ, netID, Parent, {netlistID});
@@ -780,6 +822,9 @@ ID circ_add_net(Circuit2 *circ, ID module) {
 }
 
 void circ_remove_net(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_NET);
+
   Parent module = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, module, id);
   circ_remove(circ, id);
@@ -804,6 +849,9 @@ ID circ_add_module(Circuit2 *circ) {
 }
 
 void circ_remove_module(Circuit2 *circ, ID id) {
+  assert(circ_has(circ, id));
+  assert(circ_type_for_id(circ, id) == TYPE_MODULE);
+
   LinkedListIter it = circ_lliter(circ, id);
   while (circ_lliter_next(&it)) {
     ID symbolID = circ_lliter_get(&it);

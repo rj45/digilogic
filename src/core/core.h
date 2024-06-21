@@ -726,11 +726,12 @@ static inline size_t circ_table_len(Circuit2 *circuit, EntityType type) {
   circ_set_ptr(circuit, id, componentType, &(componentType)__VA_ARGS__)
 
 #define circ_get_ptr(circuit, id, componentType)                               \
-  ((const componentType *)((componentType *)circ_table_component_ptr(          \
-    circuit, circ_type_for_id(circuit, id),                                    \
-    circ_table_meta_for_id(circuit, id)                                        \
-      .componentIndices[circ_component_id(componentType)],                     \
-    circ_row_for_id(circuit, id))))
+  (assert(circ_has(circuit, id)),                                              \
+   (const componentType *)((componentType *)circ_table_component_ptr(          \
+     circuit, circ_type_for_id(circuit, id),                                   \
+     circ_table_meta_for_id(circuit, id)                                       \
+       .componentIndices[circ_component_id(componentType)],                    \
+     circ_row_for_id(circuit, id))))
 
 #define circ_get(circuit, id, componentType)                                   \
   (*circ_get_ptr(circuit, id, componentType))

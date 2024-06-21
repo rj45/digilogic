@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "render/draw.h"
 #include "render/draw_test.h"
@@ -67,7 +68,7 @@ UTEST(View, view_draw_symbols) {
 
   ASSERT_STREQ(
     "component(OR, v0, -)\n"
-    "label(component_name, v1, 'X1', -)\n"
+    "label(component_name, v1, 'X0', -)\n"
     "port(v2, -)\n"
     "port(v3, -)\n"
     "port(v4, -)\n",
@@ -82,6 +83,7 @@ UTEST(View, view_draw_component_with_wires) {
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
+  AutoRoute *router = autoroute_create(&view.circuit2);
 
   SymbolKindID xorKindID = circ_get_symbol_kind_by_name(&view.circuit2, "XOR");
   SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
@@ -93,36 +95,39 @@ UTEST(View, view_draw_component_with_wires) {
   circ_set_symbol_position(&view.circuit2, orID, HMM_V2(200, 200));
 
   // Get the output port of XOR (assuming it's the last port)
-  ID xorPortID = circ_get(&view.circuit2, xorID, LinkedList).tail;
+  ID xorPortID = circ_get(&view.circuit2, xorKindID, LinkedList).tail;
 
   // Get the first input port of OR
-  ID orPortID = circ_get(&view.circuit2, xorID, LinkedList).head;
+  ID orPortID = circ_get(&view.circuit2, orKindID, LinkedList).head;
 
   // Create a net and add endpoints
   ID netID = circ_add_net(&view.circuit2, view.circuit2.top);
-  ID xorEndpointID = circ_add_endpoint(&view.circuit2, netID);
+  ID subnetID = circ_add_subnet(&view.circuit2, netID);
+  ID xorEndpointID = circ_add_endpoint(&view.circuit2, subnetID);
   circ_connect_endpoint_to_port(
     &view.circuit2, xorEndpointID, xorID, xorPortID);
-  ID orEndpointID = circ_add_endpoint(&view.circuit2, netID);
+  ID orEndpointID = circ_add_endpoint(&view.circuit2, subnetID);
   circ_connect_endpoint_to_port(&view.circuit2, orEndpointID, orID, orPortID);
 
-  view_direct_wire_nets(&view);
+  autoroute_route(router, (RoutingConfig){0});
+
   view_draw(&view);
 
   ASSERT_STREQ(
     "component(XOR, v0, -)\n"
-    "label(component_name, v1, 'X1', -)\n"
+    "label(component_name, v1, 'X0', -)\n"
     "port(v2, -)\n"
     "port(v3, -)\n"
     "port(v4, -)\n"
     "component(OR, v5, -)\n"
-    "label(component_name, v6, 'X2', -)\n"
+    "label(component_name, v6, 'X0', -)\n"
     "port(v7, -)\n"
     "port(v8, -)\n"
     "port(v9, -)\n"
-    "wire(v4, v7, -)\n",
+    "wire(v4, v10, v11, v7, -)\n",
     draw_get_build_string(draw));
 
+  autoroute_free(router);
   view_free(&view);
   draw_free(draw);
 }
