@@ -355,17 +355,17 @@ typedef enum EntityType {
 #define circ_entity_type(type)                                                 \
   _Generic(                                                                    \
     type,                                                                      \
-    Port2: TYPE_PORT,                                                          \
-    SymbolKind2: TYPE_SYMBOL_KIND,                                             \
-    Symbol2: TYPE_SYMBOL,                                                      \
-    Waypoint2: TYPE_WAYPOINT,                                                  \
-    Endpoint2: TYPE_ENDPOINT,                                                  \
-    SubnetBit2: TYPE_SUBNET_BIT,                                               \
-    SubnetBits2: TYPE_SUBNET_BITS,                                             \
-    Subnet2: TYPE_SUBNET,                                                      \
-    Net2: TYPE_NET,                                                            \
-    Netlist2: TYPE_NETLIST,                                                    \
-    Module2: TYPE_MODULE,                                                      \
+    Port: TYPE_PORT,                                                           \
+    SymbolKind: TYPE_SYMBOL_KIND,                                              \
+    Symbol: TYPE_SYMBOL,                                                       \
+    Waypoint: TYPE_WAYPOINT,                                                   \
+    Endpoint: TYPE_ENDPOINT,                                                   \
+    SubnetBit: TYPE_SUBNET_BIT,                                                \
+    SubnetBits: TYPE_SUBNET_BITS,                                              \
+    Subnet: TYPE_SUBNET,                                                       \
+    Net: TYPE_NET,                                                             \
+    Netlist: TYPE_NETLIST,                                                     \
+    Module: TYPE_MODULE,                                                       \
     default: "type not found")
 
 typedef enum Tag {
@@ -487,19 +487,19 @@ extern const size_t componentSizes[COMPONENT_COUNT];
 // tables
 //////////////////////////////////////////
 
-typedef struct Port2 {
+typedef struct Port {
   TABLE_HEADER
   Parent *symbolKind;
   Position *position;
   Name *name;
   Number *pin;
   ListNode *list;
-} Port2;
+} Port;
 #define PORT_COMPONENTS                                                        \
   1 << COMPONENT_PARENT | 1 << COMPONENT_POSITON | 1 << COMPONENT_NAME |       \
     1 << COMPONENT_NUMBER | 1 << COMPONENT_LIST_NODE
 
-typedef struct SymbolKind2 {
+typedef struct SymbolKind {
   TABLE_HEADER
   ModuleID *module;
   Size *size;
@@ -507,102 +507,102 @@ typedef struct SymbolKind2 {
   Prefix *prefix;
   SymbolShape *shape;
   LinkedList *ports;
-} SymbolKind2;
+} SymbolKind;
 #define SYMBOL_KIND_COMPONENTS                                                 \
   1 << COMPONENT_MODULE_ID | 1 << COMPONENT_SIZE | 1 << COMPONENT_NAME |       \
     1 << COMPONENT_PREFIX | 1 << COMPONENT_SYMBOL_SHAPE |                      \
     1 << COMPONENT_LINKED_LIST
 
-typedef struct Symbol2 {
+typedef struct Symbol {
   TABLE_HEADER
   Parent *module;
   SymbolKindID *symbolKind;
   Position *position;
   Number *number; // combined with prefix to get the name
   ListNode *list;
-} Symbol2;
+} Symbol;
 #define SYMBOL_COMPONENTS                                                      \
   1 << COMPONENT_PARENT | 1 << COMPONENT_SYMBOL_KIND_ID |                      \
     1 << COMPONENT_POSITON | 1 << COMPONENT_NUMBER | 1 << COMPONENT_LIST_NODE
 
-typedef struct Waypoint2 {
+typedef struct Waypoint {
   TABLE_HEADER
   Parent *endpoint;
   Position *position;
   ListNode *list;
-} Waypoint2;
+} Waypoint;
 #define WAYPOINT_COMPONENTS                                                    \
   1 << COMPONENT_PARENT | 1 << COMPONENT_POSITON | 1 << COMPONENT_LIST_NODE
 
-typedef struct Endpoint2 {
+typedef struct Endpoint {
   TABLE_HEADER
   Parent *subnet;
   Position *position;
   ListNode *list;
   LinkedList *waypoints;
   PortRef *port;
-} Endpoint2;
+} Endpoint;
 #define ENDPOINT_COMPONENTS                                                    \
   1 << COMPONENT_PARENT | 1 << COMPONENT_POSITON | 1 << COMPONENT_LIST_NODE |  \
     1 << COMPONENT_LINKED_LIST | 1 << COMPONENT_PORT_REF
 
-typedef struct SubnetBit2 {
+typedef struct SubnetBit {
   TABLE_HEADER
   Number *bit;
   ListNode *list;
-} SubnetBit2;
+} SubnetBit;
 #define SUBNET_BIT_COMPONENT_COMPONENTS                                        \
   1 << COMPONENT_NUMBER | 1 << COMPONENT_LIST_NODE
 
-typedef struct SubnetBits2 {
+typedef struct SubnetBits {
   TABLE_HEADER
   Parent *subnet;
   SubnetBitsID *override;
   LinkedList *bits;
-} SubnetBits2;
+} SubnetBits;
 #define SUBNET_BITS_COMPONENTS                                                 \
   1 << COMPONENT_PARENT | 1 << COMPONENT_SUBNET_BITS_ID |                      \
     1 << COMPONENT_LINKED_LIST
 
-typedef struct Subnet2 {
+typedef struct Subnet {
   TABLE_HEADER
   Parent *net;
   SubnetBitsID *bits;
   Name *name;
   ListNode *list;
   LinkedList *endpoints;
-} Subnet2;
+} Subnet;
 #define SUBNET_COMPONENTS                                                      \
   1 << COMPONENT_PARENT | 1 << COMPONENT_SUBNET_BITS_ID |                      \
     1 << COMPONENT_NAME | 1 << COMPONENT_LIST_NODE |                           \
     1 << COMPONENT_LINKED_LIST
 
-typedef struct Net2 {
+typedef struct Net {
   TABLE_HEADER
   Parent *netlist;
   Name *name;
   ListNode *list;
   LinkedList *subnets;
   WireVertices *wires;
-} Net2;
+} Net;
 #define NET_COMPONENTS                                                         \
   1 << COMPONENT_PARENT | 1 << COMPONENT_NAME | 1 << COMPONENT_LIST_NODE |     \
     1 << COMPONENT_LINKED_LIST | 1 << COMPONENT_WIRE_VERTICES
 
-typedef struct Netlist2 {
+typedef struct Netlist {
   TABLE_HEADER
   Parent *module;
   LinkedList *nets;
-} Netlist2;
+} Netlist;
 #define NETLIST_COMPONENTS 1 << COMPONENT_PARENT | 1 << COMPONENT_LINKED_LIST
 
-typedef struct Module2 {
+typedef struct Module {
   TABLE_HEADER
   SymbolKindID *symbolKind;
   NetlistID *nets;
   ListNode *list;
   LinkedList *symbols;
-} Module2;
+} Module;
 #define MODULE_COMPONENTS                                                      \
   1 << COMPONENT_SYMBOL_KIND_ID | 1 << COMPONENT_NETLIST_ID |                  \
     1 << COMPONENT_LIST_NODE | 1 << COMPONENT_LINKED_LIST
@@ -629,7 +629,7 @@ typedef struct TableMeta {
   int32_t componentIndices[COMPONENT_COUNT];
 } TableMeta;
 
-typedef struct Circuit2 {
+typedef struct Circuit {
   ModuleID top;
 
   // entities
@@ -641,17 +641,17 @@ typedef struct Circuit2 {
   arr(ID) freelist;
 
   // standard tables
-  Port2 port;
-  SymbolKind2 symbolKind;
-  Symbol2 symbol;
-  Waypoint2 waypoint;
-  Endpoint2 endpoint;
-  SubnetBit2 subnetBit;
-  SubnetBits2 subnetBits;
-  Subnet2 subnet;
-  Net2 net;
-  Netlist2 netlist;
-  Module2 module;
+  Port port;
+  SymbolKind symbolKind;
+  Symbol symbol;
+  Waypoint waypoint;
+  Endpoint endpoint;
+  SubnetBit subnetBit;
+  SubnetBits subnetBits;
+  Subnet subnet;
+  Net net;
+  Netlist netlist;
+  Module module;
 
   // indices
   Table **table;
@@ -663,29 +663,29 @@ typedef struct Circuit2 {
   // It would also be nice to use entity IDs for strings, so the string pool
   // could be a table like any other.
   strpool_t strpool;
-  bool foreignStrpool; // is strpool owned by another Circuit2?
+  bool foreignStrpool; // is strpool owned by another Circuit?
 
   // changelog & events
   ChangeLog log;
-} Circuit2;
+} Circuit;
 
-static inline bool circ_has(Circuit2 *circuit, ID id) {
+static inline bool circ_has(Circuit *circuit, ID id) {
   return id_index(id) < circuit->capacity &&
          circuit->generations[id_index(id)] == id_gen(id);
 }
 
-static inline size_t circ_row(Circuit2 *circuit, ID id) {
+static inline size_t circ_row(Circuit *circuit, ID id) {
   assert(circ_has(circuit, id));
   return circuit->rows[id_index(id)];
 }
 
-static inline ID circ_id(Circuit2 *circuit, EntityType type, size_t row) {
+static inline ID circ_id(Circuit *circuit, EntityType type, size_t row) {
   assert(type < TYPE_COUNT && type >= 0);
   assert(row < circuit->table[type]->length);
   return circuit->table[type]->id[row];
 }
 
-static inline size_t circ_table_len(Circuit2 *circuit, EntityType type) {
+static inline size_t circ_table_len(Circuit *circuit, EntityType type) {
   return circuit->table[type]->length;
 }
 
@@ -747,30 +747,30 @@ static inline size_t circ_table_len(Circuit2 *circuit, EntityType type) {
 
 #define circ_len(circuit, type) circ_table_len(circuit, circ_entity_type(type))
 
-void circ_init(Circuit2 *circ);
-void circ_free(Circuit2 *circ);
-void circ_clone(Circuit2 *dst, Circuit2 *src);
+void circ_init(Circuit *circ);
+void circ_free(Circuit *circ);
+void circ_clone(Circuit *dst, Circuit *src);
 void circ_load_symbol_descs(
-  Circuit2 *circ, SymbolLayout *layout, const ComponentDesc *descs,
+  Circuit *circ, SymbolLayout *layout, const ComponentDesc *descs,
   size_t count);
-void circ_add_type_id(Circuit2 *circ, EntityType type, ID id);
-ID circ_add_type(Circuit2 *circ, EntityType type);
-void circ_remove(Circuit2 *circ, ID id);
-void circ_add_tags(Circuit2 *circ, ID id, Tag tags);
-bool circ_has_tags(Circuit2 *circ, ID id, Tag tags);
+void circ_add_type_id(Circuit *circ, EntityType type, ID id);
+ID circ_add_type(Circuit *circ, EntityType type);
+void circ_remove(Circuit *circ, ID id);
+void circ_add_tags(Circuit *circ, ID id, Tag tags);
+bool circ_has_tags(Circuit *circ, ID id, Tag tags);
 
-StringHandle circ_str(Circuit2 *circ, const char *str, size_t len);
-StringHandle circ_str_c(Circuit2 *circ, const char *str);
-StringHandle circ_str_tmp(Circuit2 *circ, const char *str, size_t len);
-StringHandle circ_str_tmp_c(Circuit2 *circ, const char *str);
-void circ_str_free(Circuit2 *circ, StringHandle handle);
-const char *circ_str_get(Circuit2 *circ, StringHandle handle);
+StringHandle circ_str(Circuit *circ, const char *str, size_t len);
+StringHandle circ_str_c(Circuit *circ, const char *str);
+StringHandle circ_str_tmp(Circuit *circ, const char *str, size_t len);
+StringHandle circ_str_tmp_c(Circuit *circ, const char *str);
+void circ_str_free(Circuit *circ, StringHandle handle);
+const char *circ_str_get(Circuit *circ, StringHandle handle);
 
-void circ_linked_list_append(Circuit2 *circ, ID parent, ID child);
-void circ_linked_list_remove(Circuit2 *circ, ID parent, ID child);
+void circ_linked_list_append(Circuit *circ, ID parent, ID child);
+void circ_linked_list_remove(Circuit *circ, ID parent, ID child);
 
 static inline void
-circ_set_(Circuit2 *circuit, int table, int row, int column, void *value) {
+circ_set_(Circuit *circuit, int table, int row, int column, void *value) {
   memcpy(
     circ_table_component_ptr(circuit, table, column, row), value,
     circuit->tableMeta[table].componentSizes[column]);
@@ -786,12 +786,12 @@ circ_set_(Circuit2 *circuit, int table, int row, int column, void *value) {
 // implementation
 typedef struct CircuitIter {
   // private:
-  Circuit2 *circuit;
+  Circuit *circuit;
   EntityType type;
   int index;
 } CircuitIter;
 
-static inline CircuitIter circ_iter_(Circuit2 *circuit, EntityType type) {
+static inline CircuitIter circ_iter_(Circuit *circuit, EntityType type) {
   return (CircuitIter){.circuit = circuit, .type = type, .index = -1};
 }
 
@@ -823,12 +823,12 @@ static inline void circ_iter_set_(
   circ_iter_set_ptr(iter, index, componentType, &(componentType)__VA_ARGS__)
 
 typedef struct LinkedListIter {
-  Circuit2 *circ;
+  Circuit *circ;
   ID current;
   ID next;
 } LinkedListIter;
 
-static inline LinkedListIter circ_lliter(Circuit2 *circ, ID parent) {
+static inline LinkedListIter circ_lliter(Circuit *circ, ID parent) {
   LinkedList list = circ_get(circ, parent, LinkedList);
   return (LinkedListIter){circ, .next = list.head};
 }
@@ -849,48 +849,48 @@ static inline ID circ_lliter_get(LinkedListIter *iter) { return iter->current; }
 // Higher level functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void circ_clear(Circuit2 *circ);
+void circ_clear(Circuit *circ);
 
-ID circ_add_port(Circuit2 *circ, ID symbolKind);
-void circ_remove_port(Circuit2 *circ, ID id);
-HMM_Vec2 circ_port_position(Circuit2 *circ, PortRef portRef);
+ID circ_add_port(Circuit *circ, ID symbolKind);
+void circ_remove_port(Circuit *circ, ID id);
+HMM_Vec2 circ_port_position(Circuit *circ, PortRef portRef);
 
-ID circ_add_symbol_kind(Circuit2 *circ);
-void circ_remove_symbol_kind(Circuit2 *circ, ID id);
-ID circ_get_symbol_kind_by_name(Circuit2 *circuit, const char *name);
+ID circ_add_symbol_kind(Circuit *circ);
+void circ_remove_symbol_kind(Circuit *circ, ID id);
+ID circ_get_symbol_kind_by_name(Circuit *circuit, const char *name);
 
-ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind);
-void circ_remove_symbol(Circuit2 *circ, ID id);
-void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position);
-Box circ_get_symbol_box(Circuit2 *circ, ID id);
+ID circ_add_symbol(Circuit *circ, ID module, ID symbolKind);
+void circ_remove_symbol(Circuit *circ, ID id);
+void circ_set_symbol_position(Circuit *circ, ID id, HMM_Vec2 position);
+Box circ_get_symbol_box(Circuit *circ, ID id);
 
-ID circ_add_waypoint(Circuit2 *circ, ID endpoint);
-void circ_remove_waypoint(Circuit2 *circ, ID id);
-void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position);
+ID circ_add_waypoint(Circuit *circ, ID endpoint);
+void circ_remove_waypoint(Circuit *circ, ID id);
+void circ_set_waypoint_position(Circuit *circ, ID id, HMM_Vec2 position);
 
-ID circ_add_endpoint(Circuit2 *circ, ID subnet);
-void circ_remove_endpoint(Circuit2 *circ, ID id);
-void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position);
+ID circ_add_endpoint(Circuit *circ, ID subnet);
+void circ_remove_endpoint(Circuit *circ, ID id);
+void circ_set_endpoint_position(Circuit *circ, ID id, HMM_Vec2 position);
 void circ_connect_endpoint_to_port(
-  Circuit2 *circ, ID endpointID, ID symbolID, ID portID);
-void circ_disconnect_endpoint_from_port(Circuit2 *circ, ID endpointID);
+  Circuit *circ, ID endpointID, ID symbolID, ID portID);
+void circ_disconnect_endpoint_from_port(Circuit *circ, ID endpointID);
 
-ID circ_add_subnet_bit(Circuit2 *circ, ID subnetBits);
-void circ_remove_subnet_bit(Circuit2 *circ, ID id);
+ID circ_add_subnet_bit(Circuit *circ, ID subnetBits);
+void circ_remove_subnet_bit(Circuit *circ, ID id);
 
-ID circ_add_subnet_bits(Circuit2 *circ, ID subnet);
-void circ_remove_subnet_bits(Circuit2 *circ, ID id);
+ID circ_add_subnet_bits(Circuit *circ, ID subnet);
+void circ_remove_subnet_bits(Circuit *circ, ID id);
 
-ID circ_add_subnet(Circuit2 *circ, ID net);
-void circ_remove_subnet(Circuit2 *circ, ID id);
+ID circ_add_subnet(Circuit *circ, ID net);
+void circ_remove_subnet(Circuit *circ, ID id);
 
-ID circ_add_net(Circuit2 *circ, ID module);
-void circ_remove_net(Circuit2 *circ, ID id);
+ID circ_add_net(Circuit *circ, ID module);
+void circ_remove_net(Circuit *circ, ID id);
 void circuit_set_net_wire_vertices(
-  Circuit2 *circ, ID netID, WireVertices wireVerts);
+  Circuit *circ, ID netID, WireVertices wireVerts);
 
-ID circ_add_module(Circuit2 *circ);
-void circ_remove_module(Circuit2 *circ, ID id);
+ID circ_add_module(Circuit *circ);
+void circ_remove_module(Circuit *circ, ID id);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Save / Load
@@ -898,8 +898,8 @@ void circ_remove_module(Circuit2 *circ, ID id);
 
 #define SAVE_VERSION 2
 
-bool circ_save_file(Circuit2 *circ, const char *filename);
-bool circ_load_file(Circuit2 *circ, const char *filename);
+bool circ_save_file(Circuit *circ, const char *filename);
+bool circ_load_file(Circuit *circ, const char *filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Platform

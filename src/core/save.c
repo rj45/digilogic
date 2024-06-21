@@ -45,8 +45,7 @@ static void save_vec2(
 }
 
 static void save_symbol(
-  yyjson_mut_doc *doc, yyjson_mut_val *components, Circuit2 *circ,
-  ID symbolID) {
+  yyjson_mut_doc *doc, yyjson_mut_val *components, Circuit *circ, ID symbolID) {
   yyjson_mut_val *symbolNode = yyjson_mut_arr_add_obj(doc, components);
 
   save_id(doc, symbolNode, "id", symbolID);
@@ -68,7 +67,7 @@ static void save_symbol(
 }
 
 static void save_endpoint(
-  yyjson_mut_doc *doc, yyjson_mut_val *endpoints, Circuit2 *circ,
+  yyjson_mut_doc *doc, yyjson_mut_val *endpoints, Circuit *circ,
   ID endpointID) {
   yyjson_mut_val *endpointNode = yyjson_mut_arr_add_obj(doc, endpoints);
   save_id(doc, endpointNode, "id", endpointID);
@@ -105,7 +104,7 @@ static void save_endpoint(
 }
 
 static void save_subnet(
-  yyjson_mut_doc *doc, yyjson_mut_val *subnets, Circuit2 *circ, ID subnetID) {
+  yyjson_mut_doc *doc, yyjson_mut_val *subnets, Circuit *circ, ID subnetID) {
   yyjson_mut_val *subnetNode = yyjson_mut_arr_add_obj(doc, subnets);
 
   save_id(doc, subnetNode, "id", subnetID);
@@ -137,7 +136,7 @@ static void save_subnet(
 }
 
 static void
-save_net(yyjson_mut_doc *doc, yyjson_mut_val *nets, Circuit2 *circ, ID netID) {
+save_net(yyjson_mut_doc *doc, yyjson_mut_val *nets, Circuit *circ, ID netID) {
   yyjson_mut_val *netNode = yyjson_mut_arr_add_obj(doc, nets);
 
   save_id(doc, netNode, "id", netID);
@@ -153,7 +152,7 @@ save_net(yyjson_mut_doc *doc, yyjson_mut_val *nets, Circuit2 *circ, ID netID) {
 }
 
 static void save_module(
-  yyjson_mut_doc *doc, yyjson_mut_val *modules, Circuit2 *circ, ID moduleID) {
+  yyjson_mut_doc *doc, yyjson_mut_val *modules, Circuit *circ, ID moduleID) {
   yyjson_mut_val *module = yyjson_mut_arr_add_obj(doc, modules);
 
   save_id(doc, module, "id", moduleID);
@@ -184,15 +183,15 @@ static void save_module(
   }
 }
 
-yyjson_mut_val *circ_serialize(yyjson_mut_doc *doc, Circuit2 *circ) {
+yyjson_mut_val *circ_serialize(yyjson_mut_doc *doc, Circuit *circ) {
   yyjson_mut_val *root = yyjson_mut_obj(doc);
 
   yyjson_mut_obj_add_int(doc, root, "version", SAVE_VERSION);
   yyjson_mut_val *modules = yyjson_mut_obj_add_arr(doc, root, "modules");
 
-  CircuitIter it = circ_iter(circ, Module2);
+  CircuitIter it = circ_iter(circ, Module);
   while (circ_iter_next(&it)) {
-    Module2 *module = circ_iter_table(&it, Module2);
+    Module *module = circ_iter_table(&it, Module);
     for (size_t i = 0; i < module->length; i++) {
       save_module(doc, modules, circ, module->id[i]);
     }
@@ -201,7 +200,7 @@ yyjson_mut_val *circ_serialize(yyjson_mut_doc *doc, Circuit2 *circ) {
   return root;
 }
 
-bool circ_save_file(Circuit2 *circ, const char *filename) {
+bool circ_save_file(Circuit *circ, const char *filename) {
   yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 
   yyjson_mut_val *root = circ_serialize(doc, circ);

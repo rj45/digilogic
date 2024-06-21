@@ -40,7 +40,7 @@ typedef struct CircuitUI {
   bool saving;
   bool showAbout;
 
-  Circuit2 saveCopy;
+  Circuit saveCopy;
   thread_atomic_int_t saveThreadBusy;
   char saveFilename[1024];
   thread_mutex_t saveMutex;

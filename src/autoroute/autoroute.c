@@ -31,7 +31,7 @@
 #define TIME_SAMPLES 120
 
 struct AutoRoute {
-  Circuit2 *circ;
+  Circuit *circ;
 
   arr(RT_Net) nets;
   arr(RT_NetView) netViews;
@@ -67,7 +67,7 @@ void autoroute_global_init() {
   assert(res == RT_RESULT_SUCCESS);
 }
 
-AutoRoute *autoroute_create(Circuit2 *circ) {
+AutoRoute *autoroute_create(Circuit *circ) {
   AutoRoute *ar = malloc(sizeof(AutoRoute));
   *ar = (AutoRoute){
     .circ = circ,
@@ -103,7 +103,7 @@ void autoroute_free(AutoRoute *ar) {
 static void autoroute_update(AutoRoute *ar) {
   ID top = ar->circ->top;
 
-  arrsetlen(ar->boxIndices, circ_len(ar->circ, Symbol2));
+  arrsetlen(ar->boxIndices, circ_len(ar->circ, Symbol));
   arrsetlen(ar->boxes, 0);
 
   LinkedListIter topit = circ_lliter(ar->circ, top);

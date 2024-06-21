@@ -28,7 +28,7 @@ typedef struct IDLookup {
 } IDLookup;
 
 typedef struct LoadContext {
-  Circuit2 *circ;
+  Circuit *circ;
   yyjson_doc *doc;
   yyjson_val *root;
   IDLookup *ids;
@@ -63,7 +63,7 @@ static bool load_id(LoadContext *ctc, yyjson_val *val, ID id) {
 
 static bool
 load_module_symbol_kind(LoadContext *ctc, yyjson_val *moduleVal, ID moduleID) {
-  Circuit2 *circ = ctc->circ;
+  Circuit *circ = ctc->circ;
 
   if (!load_id(ctc, yyjson_obj_get(moduleVal, "id"), moduleID)) {
     fprintf(stderr, "Failed to read circuit: Module missing id\n");
@@ -125,7 +125,7 @@ static bool load_int(LoadContext *ctx, yyjson_val *val, int *result) {
 }
 
 static bool load_symbol(LoadContext *ctx, yyjson_val *symbolVal, ID moduleID) {
-  Circuit2 *circ = ctx->circ;
+  Circuit *circ = ctx->circ;
 
   ID symbolKindID = NO_ID;
   const char *symbolKind =
@@ -141,9 +141,9 @@ static bool load_symbol(LoadContext *ctx, yyjson_val *symbolVal, ID moduleID) {
 
     StringHandle handle = circ_str_tmp_c(circ, symbolKind);
 
-    CircuitIter it = circ_iter(circ, SymbolKind2);
+    CircuitIter it = circ_iter(circ, SymbolKind);
     while (symbolKindID == NO_ID && circ_iter_next(&it)) {
-      SymbolKind2 *table = circ_iter_table(&it, SymbolKind2);
+      SymbolKind *table = circ_iter_table(&it, SymbolKind);
       for (size_t i = 0; i < table->length; i++) {
         if (table->name[i] == handle) {
           symbolKindID = table->id[i];
@@ -181,7 +181,7 @@ static bool load_symbol(LoadContext *ctx, yyjson_val *symbolVal, ID moduleID) {
 
 static bool
 load_waypoint(LoadContext *ctx, yyjson_val *waypointVal, ID endpointID) {
-  Circuit2 *circ = ctx->circ;
+  Circuit *circ = ctx->circ;
 
   ID waypointID = circ_add_waypoint(circ, endpointID);
   if (!load_id(ctx, yyjson_obj_get(waypointVal, "id"), waypointID)) {
@@ -204,7 +204,7 @@ load_waypoint(LoadContext *ctx, yyjson_val *waypointVal, ID endpointID) {
 
 static bool
 load_endpoint(LoadContext *ctx, yyjson_val *endpointVal, ID subnetID) {
-  Circuit2 *circ = ctx->circ;
+  Circuit *circ = ctx->circ;
 
   ID endpointID = circ_add_endpoint(circ, subnetID);
   if (!load_id(ctx, yyjson_obj_get(endpointVal, "id"), endpointID)) {
@@ -290,7 +290,7 @@ load_endpoint(LoadContext *ctx, yyjson_val *endpointVal, ID subnetID) {
 }
 
 static bool load_subnet(LoadContext *ctx, yyjson_val *subnetVal, ID netID) {
-  Circuit2 *circ = ctx->circ;
+  Circuit *circ = ctx->circ;
 
   ID subnetID = circ_add_subnet(circ, netID);
   if (!load_id(ctx, yyjson_obj_get(subnetVal, "id"), subnetID)) {
@@ -333,7 +333,7 @@ static bool load_subnet(LoadContext *ctx, yyjson_val *subnetVal, ID netID) {
 }
 
 static bool load_net(LoadContext *ctx, yyjson_val *netVal, ID moduleID) {
-  Circuit2 *circ = ctx->circ;
+  Circuit *circ = ctx->circ;
 
   ID netID = circ_add_net(circ, moduleID);
   if (!load_id(ctx, yyjson_obj_get(netVal, "id"), netID)) {
@@ -410,7 +410,7 @@ static bool load_module(LoadContext *ctx, yyjson_val *moduleVal) {
 
 static bool circ_deserialize(LoadContext *ctx) {
   yyjson_val *root = ctx->root;
-  Circuit2 *circ = ctx->circ;
+  Circuit *circ = ctx->circ;
 
   log_debug("Deserializing circuit");
 
@@ -448,7 +448,7 @@ static bool circ_deserialize(LoadContext *ctx) {
   return true;
 }
 
-bool circ_load_file(Circuit2 *circ, const char *filename) {
+bool circ_load_file(Circuit *circ, const char *filename) {
   yyjson_read_err err;
 
   yyjson_read_flag flags =

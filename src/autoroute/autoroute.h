@@ -41,7 +41,7 @@ typedef struct RoutingConfig {
 } RoutingConfig;
 
 void autoroute_global_init();
-AutoRoute *autoroute_create(Circuit2 *circ);
+AutoRoute *autoroute_create(Circuit *circ);
 void autoroute_free(AutoRoute *ar);
 void autoroute_route(AutoRoute *ar, RoutingConfig config);
 bool autoroute_dump_routing_data(

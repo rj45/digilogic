@@ -88,9 +88,9 @@ void ux_select_none(CircuitUX *ux) {
 void ux_select_all(CircuitUX *ux) {
   HMM_Vec2 min = HMM_V2(FLT_MAX, FLT_MAX);
   HMM_Vec2 max = HMM_V2(-FLT_MAX, -FLT_MAX);
-  CircuitIter it = circ_iter(&ux->view.circuit2, Symbol2);
+  CircuitIter it = circ_iter(&ux->view.circuit2, Symbol);
   while (circ_iter_next(&it)) {
-    Symbol2 *table = circ_iter_table(&it, Symbol2);
+    Symbol *table = circ_iter_table(&it, Symbol);
     for (size_t i = 0; i < table->length; i++) {
       Box box = circ_get_symbol_box(&ux->view.circuit2, table->id[i]);
       HMM_Vec2 cmin = HMM_SubV2(box.center, box.halfSize);
@@ -102,9 +102,9 @@ void ux_select_all(CircuitUX *ux) {
     }
   }
 
-  it = circ_iter(&ux->view.circuit2, Waypoint2);
+  it = circ_iter(&ux->view.circuit2, Waypoint);
   while (circ_iter_next(&it)) {
-    Waypoint2 *table = circ_iter_table(&it, Waypoint2);
+    Waypoint *table = circ_iter_table(&it, Waypoint);
     for (size_t i = 0; i < table->length; i++) {
       HMM_Vec2 cmin = table->position[i];
       HMM_Vec2 cmax = table->position[i];

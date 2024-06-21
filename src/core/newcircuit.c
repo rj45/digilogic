@@ -121,8 +121,8 @@ const ComponentDesc *circuit_component_descs() {
 
 const size_t componentSizes[COMPONENT_COUNT] = {COMPONENT_SIZES_LIST};
 
-void circ_init(Circuit2 *circ) {
-  *circ = (Circuit2){0};
+void circ_init(Circuit *circ) {
+  *circ = (Circuit){0};
 
   strpool_init(
     &circ->strpool, &(strpool_config_t){
@@ -166,7 +166,7 @@ void circ_init(Circuit2 *circ) {
   }
 }
 
-void circ_free(Circuit2 *circ) {
+void circ_free(Circuit *circ) {
   for (size_t i = 0; i < circ->numTables; i++) {
     if (circ->table[i]->capacity > 0) {
       free(circ->table[i]->id);
@@ -191,13 +191,13 @@ void circ_free(Circuit2 *circ) {
 
 // todo: split symbol layout from loading symbol descs
 void circ_load_symbol_descs(
-  Circuit2 *circ, SymbolLayout *layout, const ComponentDesc *descs,
+  Circuit *circ, SymbolLayout *layout, const ComponentDesc *descs,
   size_t count) {
   float labelPadding = layout->labelPadding;
   // start at 1 to skip the NONE component
   for (size_t i = 1; i < count; i++) {
     const ComponentDesc *symDesc = &descs[i];
-    ID symID = circ_add(circ, SymbolKind2);
+    ID symID = circ_add(circ, SymbolKind);
     circ_set(circ, symID, Name, {circ_str_c(circ, symDesc->typeName)});
     circ_set(
       circ, symID, Prefix, {circ_str(circ, (char[]){symDesc->namePrefix}, 1)});
@@ -236,7 +236,7 @@ void circ_load_symbol_descs(
 
     for (size_t j = 0; j < symDesc->numPorts; j++) {
       PortDesc portDesc = symDesc->ports[j];
-      ID portID = circ_add(circ, Port2);
+      ID portID = circ_add(circ, Port);
       circ_set(circ, portID, Parent, {symID});
       circ_set(circ, portID, Name, {circ_str_c(circ, portDesc.name)});
       circ_set(circ, portID, Number, {portDesc.number});
@@ -267,7 +267,7 @@ void circ_load_symbol_descs(
   }
 }
 
-static void circ_grow_entities(Circuit2 *circ, size_t newLength) {
+static void circ_grow_entities(Circuit *circ, size_t newLength) {
   ptrdiff_t newCapacity = circ->capacity;
   if (newCapacity == 0) {
     newCapacity = 1;
@@ -295,7 +295,7 @@ static void circ_grow_entities(Circuit2 *circ, size_t newLength) {
   circ->capacity = newCapacity;
 }
 
-static void circ_grow_table(Circuit2 *circ, EntityType type, size_t newLength) {
+static void circ_grow_table(Circuit *circ, EntityType type, size_t newLength) {
   Table *header = circ->table[type];
   size_t newCapacity = header->capacity;
   if (newCapacity == 0) {
@@ -320,7 +320,7 @@ static void circ_grow_table(Circuit2 *circ, EntityType type, size_t newLength) {
   header->capacity = newCapacity;
 }
 
-void circ_clone(Circuit2 *dst, Circuit2 *src) {
+void circ_clone(Circuit *dst, Circuit *src) {
   // todo: this should look at the logs and play back new log entries in dst
 
   circ_grow_entities(dst, src->capacity);
@@ -353,7 +353,7 @@ void circ_clone(Circuit2 *dst, Circuit2 *src) {
   dst->foreignStrpool = true;
 }
 
-static void circ_add_impl(Circuit2 *circ, EntityType type, ID id) {
+static void circ_add_impl(Circuit *circ, EntityType type, ID id) {
   Table *header = circ->table[type];
 
   int index = id_index(id);
@@ -376,7 +376,7 @@ static void circ_add_impl(Circuit2 *circ, EntityType type, ID id) {
   header->id[row] = id;
 }
 
-void circ_add_type_id(Circuit2 *circ, EntityType type, ID id) {
+void circ_add_type_id(Circuit *circ, EntityType type, ID id) {
   assert(id_gen(id) > 0);
   circ_grow_entities(circ, id_index(id) + 1);
   assert(circ->generations[id_index(id)] == 0); // id must be unique
@@ -391,14 +391,14 @@ void circ_add_type_id(Circuit2 *circ, EntityType type, ID id) {
   circ_add_impl(circ, type, id);
 }
 
-ID circ_add_type(Circuit2 *circ, EntityType type) {
+ID circ_add_type(Circuit *circ, EntityType type) {
   circ_grow_entities(circ, circ->numEntities + 1);
   ID id = arrpop(circ->freelist);
   circ_add_impl(circ, type, id);
   return id;
 }
 
-void circ_remove(Circuit2 *circ, ID id) {
+void circ_remove(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
 
   // remove the entity from table
@@ -429,50 +429,50 @@ void circ_remove(Circuit2 *circ, ID id) {
   circ->numEntities--;
 }
 
-void circ_add_tags(Circuit2 *circ, ID id, Tag tags) {
+void circ_add_tags(Circuit *circ, ID id, Tag tags) {
   assert(circ_has(circ, id));
   circ->typeTags[id_index(id)] |= tags;
 }
 
-bool circ_has_tags(Circuit2 *circ, ID id, Tag tags) {
+bool circ_has_tags(Circuit *circ, ID id, Tag tags) {
   assert(circ_has(circ, id));
   return (circ->typeTags[id_index(id)] & tags) == tags;
 }
 
-StringHandle circ_str(Circuit2 *circ, const char *str, size_t len) {
+StringHandle circ_str(Circuit *circ, const char *str, size_t len) {
   StringHandle handle = (StringHandle)strpool_inject(&circ->strpool, str, len);
   strpool_incref(&circ->strpool, handle);
   return handle;
 }
 
-StringHandle circ_str_c(Circuit2 *circ, const char *str) {
+StringHandle circ_str_c(Circuit *circ, const char *str) {
   return circ_str(circ, str, strlen(str));
 }
 
-StringHandle circ_str_tmp(Circuit2 *circ, const char *str, size_t len) {
+StringHandle circ_str_tmp(Circuit *circ, const char *str, size_t len) {
   StringHandle handle = (StringHandle)strpool_inject(&circ->strpool, str, len);
   return handle;
 }
 
-StringHandle circ_str_tmp_c(Circuit2 *circ, const char *str) {
+StringHandle circ_str_tmp_c(Circuit *circ, const char *str) {
   return circ_str_tmp(circ, str, strlen(str));
 }
 
-void circ_str_free(Circuit2 *circ, StringHandle handle) {
+void circ_str_free(Circuit *circ, StringHandle handle) {
   int count = strpool_decref(&circ->strpool, handle);
   if (count == 0) {
     strpool_discard(&circ->strpool, handle);
   }
 }
 
-const char *circ_str_get(Circuit2 *circ, StringHandle handle) {
+const char *circ_str_get(Circuit *circ, StringHandle handle) {
   if (handle == 0) {
     return "";
   }
   return strpool_cstr(&circ->strpool, handle);
 }
 
-void circ_linked_list_append(Circuit2 *circ, ID parent, ID child) {
+void circ_linked_list_append(Circuit *circ, ID parent, ID child) {
   assert(circ_has(circ, parent));
   assert(circ_has(circ, child));
 
@@ -491,7 +491,7 @@ void circ_linked_list_append(Circuit2 *circ, ID parent, ID child) {
   circ_set_ptr(circ, parent, LinkedList, &list);
 }
 
-void circ_linked_list_remove(Circuit2 *circ, ID parent, ID child) {
+void circ_linked_list_remove(Circuit *circ, ID parent, ID child) {
   assert(circ_has(circ, parent));
   assert(circ_has(circ, child));
 
@@ -525,10 +525,10 @@ void circ_linked_list_remove(Circuit2 *circ, ID parent, ID child) {
 
 // ---
 
-void circ_clear(Circuit2 *circ) {
-  CircuitIter it = circ_iter(circ, Module2);
+void circ_clear(Circuit *circ) {
+  CircuitIter it = circ_iter(circ, Module);
   while (circ_iter_next(&it)) {
-    Module2 *table = circ_iter_table(&it, Module2);
+    Module *table = circ_iter_table(&it, Module);
     for (ptrdiff_t i = table->length - 1; i >= 0; i--) {
       circ_remove_module(circ, table->id[i]);
     }
@@ -538,21 +538,21 @@ void circ_clear(Circuit2 *circ) {
 
 // ---
 
-ID circ_add_port(Circuit2 *circ, ID symbolKind) {
-  ID portID = circ_add(circ, Port2);
+ID circ_add_port(Circuit *circ, ID symbolKind) {
+  ID portID = circ_add(circ, Port);
   circ_set(circ, portID, Parent, {symbolKind});
   circ_linked_list_append(circ, symbolKind, portID);
   return portID;
 }
 
-void circ_remove_port(Circuit2 *circ, ID id) {
+void circ_remove_port(Circuit *circ, ID id) {
   Parent symbolKind = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, symbolKind, id);
   circ_str_free(circ, circ_get(circ, id, Name));
   circ_remove(circ, id);
 }
 
-HMM_Vec2 circ_port_position(Circuit2 *circ, PortRef portRef) {
+HMM_Vec2 circ_port_position(Circuit *circ, PortRef portRef) {
   Position portPosition = circ_get(circ, portRef.port, Position);
   Position symbolPosition = circ_get(circ, portRef.symbol, Position);
   return HMM_AddV2(symbolPosition, portPosition);
@@ -560,21 +560,21 @@ HMM_Vec2 circ_port_position(Circuit2 *circ, PortRef portRef) {
 
 // ---
 
-ID circ_add_symbol_kind(Circuit2 *circ) {
-  ID symbolKindID = circ_add(circ, SymbolKind2);
+ID circ_add_symbol_kind(Circuit *circ) {
+  ID symbolKindID = circ_add(circ, SymbolKind);
   return symbolKindID;
 }
 
-void circ_remove_symbol_kind(Circuit2 *circ, ID id) {
+void circ_remove_symbol_kind(Circuit *circ, ID id) {
   const LinkedList *ll = circ_get_ptr(circ, id, LinkedList);
   while (circ_has(circ, ll->head)) {
     circ_remove_port(circ, ll->head);
   }
 
   // todo: make this faster?
-  CircuitIter it = circ_iter(circ, Symbol2);
+  CircuitIter it = circ_iter(circ, Symbol);
   while (circ_iter_next(&it)) {
-    Symbol2 *symbols = circ_iter_table(&it, Symbol2);
+    Symbol *symbols = circ_iter_table(&it, Symbol);
     for (size_t i = 0; i < symbols->length; i++) {
       if (symbols->symbolKind[i] == id) {
         circ_remove_symbol(circ, symbols->id[i]);
@@ -588,11 +588,11 @@ void circ_remove_symbol_kind(Circuit2 *circ, ID id) {
   circ_remove(circ, id);
 }
 
-ID circ_get_symbol_kind_by_name(Circuit2 *circuit, const char *name) {
+ID circ_get_symbol_kind_by_name(Circuit *circuit, const char *name) {
   ID symbolKindID = NO_ID;
-  CircuitIter it = circ_iter(circuit, SymbolKind2);
+  CircuitIter it = circ_iter(circuit, SymbolKind);
   while (circ_iter_next(&it)) {
-    SymbolKind2 *table = circ_iter_table(&it, SymbolKind2);
+    SymbolKind *table = circ_iter_table(&it, SymbolKind);
     for (size_t i = 0; i < table->length; i++) {
       const char *symbolKindName = circ_str_get(circuit, table->name[i]);
       if (strcmp(symbolKindName, name) == 0) {
@@ -606,18 +606,18 @@ ID circ_get_symbol_kind_by_name(Circuit2 *circuit, const char *name) {
 
 // ---
 
-ID circ_add_symbol(Circuit2 *circ, ID module, ID symbolKind) {
+ID circ_add_symbol(Circuit *circ, ID module, ID symbolKind) {
   assert(circ_has(circ, symbolKind));
   assert(circ_type_for_id(circ, symbolKind) == TYPE_SYMBOL_KIND);
 
-  ID symbolID = circ_add(circ, Symbol2);
+  ID symbolID = circ_add(circ, Symbol);
   circ_set(circ, symbolID, Parent, {module});
   circ_set(circ, symbolID, SymbolKindID, {symbolKind});
   circ_linked_list_append(circ, module, symbolID);
   return symbolID;
 }
 
-void circ_remove_symbol(Circuit2 *circ, ID id) {
+void circ_remove_symbol(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_SYMBOL);
 
@@ -625,9 +625,9 @@ void circ_remove_symbol(Circuit2 *circ, ID id) {
   circ_linked_list_remove(circ, module, id);
 
   // todo: when inverted indices are implemented, this can be done much faster
-  CircuitIter it = circ_iter(circ, Endpoint2);
+  CircuitIter it = circ_iter(circ, Endpoint);
   while (circ_iter_next(&it)) {
-    Endpoint2 *table = circ_iter_table(&it, Endpoint2);
+    Endpoint *table = circ_iter_table(&it, Endpoint);
     for (size_t i = 0; i < table->length; i++) {
       ID endpointID = table->id[i];
       PortRef ref = circ_get(circ, endpointID, PortRef);
@@ -640,13 +640,13 @@ void circ_remove_symbol(Circuit2 *circ, ID id) {
   circ_remove(circ, id);
 }
 
-void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+void circ_set_symbol_position(Circuit *circ, ID id, HMM_Vec2 position) {
   circ_set_ptr(circ, id, Position, &position);
 
   // todo: when inverted indices are implemented, this can be done much faster
-  CircuitIter it = circ_iter(circ, Endpoint2);
+  CircuitIter it = circ_iter(circ, Endpoint);
   while (circ_iter_next(&it)) {
-    Endpoint2 *table = circ_iter_table(&it, Endpoint2);
+    Endpoint *table = circ_iter_table(&it, Endpoint);
     for (size_t i = 0; i < table->length; i++) {
       ID endpointID = table->id[i];
       PortRef ref = circ_get(circ, endpointID, PortRef);
@@ -659,7 +659,7 @@ void circ_set_symbol_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
   }
 }
 
-Box circ_get_symbol_box(Circuit2 *circ, ID id) {
+Box circ_get_symbol_box(Circuit *circ, ID id) {
   HMM_Vec2 position = circ_get(circ, id, Position);
   SymbolKindID kindID = circ_get(circ, id, SymbolKindID);
   Size size = circ_get(circ, kindID, Size);
@@ -671,17 +671,17 @@ Box circ_get_symbol_box(Circuit2 *circ, ID id) {
 
 // ---
 
-ID circ_add_waypoint(Circuit2 *circ, ID endpoint) {
+ID circ_add_waypoint(Circuit *circ, ID endpoint) {
   assert(circ_has(circ, endpoint));
   assert(circ_type_for_id(circ, endpoint) == TYPE_ENDPOINT);
 
-  ID waypointID = circ_add(circ, Waypoint2);
+  ID waypointID = circ_add(circ, Waypoint);
   circ_set(circ, waypointID, Parent, {endpoint});
   circ_linked_list_append(circ, endpoint, waypointID);
   return waypointID;
 }
 
-void circ_remove_waypoint(Circuit2 *circ, ID id) {
+void circ_remove_waypoint(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_WAYPOINT);
 
@@ -690,23 +690,23 @@ void circ_remove_waypoint(Circuit2 *circ, ID id) {
   circ_remove(circ, id);
 }
 
-void circ_set_waypoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+void circ_set_waypoint_position(Circuit *circ, ID id, HMM_Vec2 position) {
   circ_set_ptr(circ, id, Position, &position);
 }
 
 // ---
 
-ID circ_add_endpoint(Circuit2 *circ, ID subnet) {
+ID circ_add_endpoint(Circuit *circ, ID subnet) {
   assert(circ_has(circ, subnet));
   assert(circ_type_for_id(circ, subnet) == TYPE_SUBNET);
 
-  ID endpointID = circ_add(circ, Endpoint2);
+  ID endpointID = circ_add(circ, Endpoint);
   circ_set(circ, endpointID, Parent, {subnet});
   circ_linked_list_append(circ, subnet, endpointID);
   return endpointID;
 }
 
-void circ_remove_endpoint(Circuit2 *circ, ID id) {
+void circ_remove_endpoint(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_ENDPOINT);
 
@@ -721,7 +721,7 @@ void circ_remove_endpoint(Circuit2 *circ, ID id) {
   circ_remove(circ, id);
 }
 
-void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
+void circ_set_endpoint_position(Circuit *circ, ID id, HMM_Vec2 position) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_ENDPOINT);
 
@@ -729,7 +729,7 @@ void circ_set_endpoint_position(Circuit2 *circ, ID id, HMM_Vec2 position) {
 }
 
 void circ_connect_endpoint_to_port(
-  Circuit2 *circ, ID endpointID, ID symbolID, ID portID) {
+  Circuit *circ, ID endpointID, ID symbolID, ID portID) {
   assert(circ_has(circ, endpointID));
   assert(circ_has(circ, symbolID));
   assert(circ_has(circ, portID));
@@ -740,24 +740,24 @@ void circ_connect_endpoint_to_port(
   circ_set_ptr(circ, endpointID, Position, &position);
 }
 
-void circ_disconnect_endpoint_from_port(Circuit2 *circ, ID endpointID) {
+void circ_disconnect_endpoint_from_port(Circuit *circ, ID endpointID) {
   assert(circ_has(circ, endpointID));
   circ_set(circ, endpointID, PortRef, {0});
 }
 
 // ---
 
-ID circ_add_subnet_bit(Circuit2 *circ, ID subnetBits) {
+ID circ_add_subnet_bit(Circuit *circ, ID subnetBits) {
   assert(circ_has(circ, subnetBits));
   assert(circ_type_for_id(circ, subnetBits) == TYPE_SUBNET_BITS);
 
-  ID subnetBitID = circ_add(circ, SubnetBit2);
+  ID subnetBitID = circ_add(circ, SubnetBit);
   circ_set(circ, subnetBitID, Parent, {subnetBits});
   circ_linked_list_append(circ, subnetBits, subnetBitID);
   return subnetBitID;
 }
 
-void circ_remove_subnet_bit(Circuit2 *circ, ID id) {
+void circ_remove_subnet_bit(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_SUBNET_BIT);
 
@@ -768,17 +768,17 @@ void circ_remove_subnet_bit(Circuit2 *circ, ID id) {
 
 // ---
 
-ID circ_add_subnet_bits(Circuit2 *circ, ID subnet) {
+ID circ_add_subnet_bits(Circuit *circ, ID subnet) {
   assert(circ_has(circ, subnet));
   assert(circ_type_for_id(circ, subnet) == TYPE_SUBNET);
 
-  ID subnetBitsID = circ_add(circ, SubnetBits2);
+  ID subnetBitsID = circ_add(circ, SubnetBits);
   circ_set(circ, subnetBitsID, Parent, {subnet});
   circ_linked_list_append(circ, subnet, subnetBitsID);
   return subnetBitsID;
 }
 
-void circ_remove_subnet_bits(Circuit2 *circ, ID id) {
+void circ_remove_subnet_bits(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_SUBNET_BITS);
 
@@ -789,17 +789,17 @@ void circ_remove_subnet_bits(Circuit2 *circ, ID id) {
 
 // ---
 
-ID circ_add_subnet(Circuit2 *circ, ID net) {
+ID circ_add_subnet(Circuit *circ, ID net) {
   assert(circ_has(circ, net));
   assert(circ_type_for_id(circ, net) == TYPE_NET);
 
-  ID subnetID = circ_add(circ, Subnet2);
+  ID subnetID = circ_add(circ, Subnet);
   circ_set(circ, subnetID, Parent, {net});
   circ_linked_list_append(circ, net, subnetID);
   return subnetID;
 }
 
-void circ_remove_subnet(Circuit2 *circ, ID id) {
+void circ_remove_subnet(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_SUBNET);
 
@@ -810,18 +810,18 @@ void circ_remove_subnet(Circuit2 *circ, ID id) {
 
 // ---
 
-ID circ_add_net(Circuit2 *circ, ID module) {
+ID circ_add_net(Circuit *circ, ID module) {
   assert(circ_has(circ, module));
   assert(circ_type_for_id(circ, module) == TYPE_MODULE);
 
-  ID netID = circ_add(circ, Net2);
+  ID netID = circ_add(circ, Net);
   ID netlistID = circ_get(circ, module, NetlistID);
   circ_set(circ, netID, Parent, {netlistID});
   circ_linked_list_append(circ, netlistID, netID);
   return netID;
 }
 
-void circ_remove_net(Circuit2 *circ, ID id) {
+void circ_remove_net(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_NET);
 
@@ -831,15 +831,15 @@ void circ_remove_net(Circuit2 *circ, ID id) {
 }
 
 void circuit_set_net_wire_vertices(
-  Circuit2 *circ, ID netID, WireVertices wireVerts) {
+  Circuit *circ, ID netID, WireVertices wireVerts) {
   circ_set_ptr(circ, netID, WireVertices, &wireVerts);
 }
 
 // ---
 
-ID circ_add_module(Circuit2 *circ) {
-  ID moduleID = circ_add(circ, Module2);
-  ID netlistID = circ_add(circ, Netlist2);
+ID circ_add_module(Circuit *circ) {
+  ID moduleID = circ_add(circ, Module);
+  ID netlistID = circ_add(circ, Netlist);
   circ_set(circ, moduleID, NetlistID, {netlistID});
   circ_set(circ, netlistID, Parent, {moduleID});
   ID symbolKindID = circ_add_symbol_kind(circ);
@@ -848,7 +848,7 @@ ID circ_add_module(Circuit2 *circ) {
   return moduleID;
 }
 
-void circ_remove_module(Circuit2 *circ, ID id) {
+void circ_remove_module(Circuit *circ, ID id) {
   assert(circ_has(circ, id));
   assert(circ_type_for_id(circ, id) == TYPE_MODULE);
 

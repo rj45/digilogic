@@ -21,7 +21,7 @@
 #include "render/draw.h"
 
 typedef struct CircuitView {
-  Circuit2 circuit2;
+  Circuit circuit2;
 
   Theme theme;
   DrawContext *drawCtx;

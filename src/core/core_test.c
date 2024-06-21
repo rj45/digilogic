@@ -111,39 +111,39 @@ UTEST(ChangeLog, update) {
 }
 
 ////////////////////////
-// Circuit2 tests
+// Circuit tests
 ////////////////////////
 
-UTEST(Circuit2, circ_table_components_ptr_ptr) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_table_components_ptr_ptr) {
+  Circuit circuit;
   circ_init(&circuit);
   void **ptr = circ_table_components_ptr_ptr(&circuit, TYPE_ENDPOINT, 4);
   ASSERT_EQ(ptr, (void **)&circuit.endpoint.port);
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_table_components_ptr) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_table_components_ptr) {
+  Circuit circuit;
   circ_init(&circuit);
   void *ptr = circ_table_components_ptr(&circuit, TYPE_ENDPOINT, 4);
   ASSERT_EQ(ptr, (void *)circuit.endpoint.port);
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_table_component_ptr) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_table_component_ptr) {
+  Circuit circuit;
   circ_init(&circuit);
-  circ_add(&circuit, Endpoint2);
-  circ_add(&circuit, Endpoint2);
+  circ_add(&circuit, Endpoint);
+  circ_add(&circuit, Endpoint);
   void *ptr = circ_table_component_ptr(&circuit, TYPE_ENDPOINT, 4, 1);
   ASSERT_EQ(ptr, (void *)&circuit.endpoint.port[1]);
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_add_entity_id) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_add_entity_id) {
+  Circuit circuit;
   circ_init(&circuit);
-  ID id = circ_add(&circuit, Endpoint2);
+  ID id = circ_add(&circuit, Endpoint);
   ASSERT_EQ(circuit.endpoint.id[0], id);
   ASSERT_EQ(circuit.generations[id_index(id)], id_gen(id));
   ASSERT_EQ(circuit.endpoint.length, 1);
@@ -151,22 +151,22 @@ UTEST(Circuit2, circ_add_entity_id) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_set) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_set) {
+  Circuit circuit;
   circ_init(&circuit);
-  ID id = circ_add(&circuit, Endpoint2);
+  ID id = circ_add(&circuit, Endpoint);
   circuit.endpoint.port[circuit.rows[id_index(id)]] = (PortRef){.symbol = 1};
   // circ_set(&circuit, id, endpoint, port, (&(PortRef){.symbol = 1}));
   ASSERT_EQ(circuit.endpoint.port[0].symbol, 1);
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_remove_enitity_end) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_remove_enitity_end) {
+  Circuit circuit;
   circ_init(&circuit);
-  ID id1 = circ_add(&circuit, Endpoint2);
-  ID id2 = circ_add(&circuit, Endpoint2);
-  ID id3 = circ_add(&circuit, Endpoint2);
+  ID id1 = circ_add(&circuit, Endpoint);
+  ID id2 = circ_add(&circuit, Endpoint);
+  ID id3 = circ_add(&circuit, Endpoint);
 
   ASSERT_EQ(circuit.endpoint.length, 3);
 
@@ -196,12 +196,12 @@ UTEST(Circuit2, circ_remove_enitity_end) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_remove_enitity_middle) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_remove_enitity_middle) {
+  Circuit circuit;
   circ_init(&circuit);
-  ID id1 = circ_add(&circuit, Endpoint2);
-  ID id2 = circ_add(&circuit, Endpoint2);
-  ID id3 = circ_add(&circuit, Endpoint2);
+  ID id1 = circ_add(&circuit, Endpoint);
+  ID id2 = circ_add(&circuit, Endpoint);
+  ID id3 = circ_add(&circuit, Endpoint);
 
   ASSERT_EQ(circuit.endpoint.length, 3);
 
@@ -231,12 +231,12 @@ UTEST(Circuit2, circ_remove_enitity_middle) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_remove_enitity_beginning) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_remove_enitity_beginning) {
+  Circuit circuit;
   circ_init(&circuit);
-  ID id1 = circ_add(&circuit, Endpoint2);
-  ID id2 = circ_add(&circuit, Endpoint2);
-  ID id3 = circ_add(&circuit, Endpoint2);
+  ID id1 = circ_add(&circuit, Endpoint);
+  ID id2 = circ_add(&circuit, Endpoint);
+  ID id3 = circ_add(&circuit, Endpoint);
 
   ASSERT_EQ(circuit.endpoint.length, 3);
 
@@ -270,8 +270,8 @@ static HMM_Vec2 testTextSize(void *user, const char *text) {
   return HMM_V2(strlen(text) * 8, 8);
 }
 
-UTEST(Circuit2, circ_load_symbol_descs) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_load_symbol_descs) {
+  Circuit circuit;
   circ_init(&circuit);
   SymbolLayout layout = (SymbolLayout){
     .portSpacing = 20.0f,
@@ -304,17 +304,17 @@ UTEST(Circuit2, circ_load_symbol_descs) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, circ_iter) {
-  Circuit2 circuit;
+UTEST(Circuit, circ_iter) {
+  Circuit circuit;
   circ_init(&circuit);
-  ID id1 = circ_add(&circuit, Endpoint2);
-  ID id2 = circ_add(&circuit, Endpoint2);
+  ID id1 = circ_add(&circuit, Endpoint);
+  ID id2 = circ_add(&circuit, Endpoint);
   circ_set(&circuit, id1, PortRef, {.symbol = 1});
   circ_set(&circuit, id2, PortRef, {.symbol = 2});
   ID id;
   size_t i = 0;
-  for (CircuitIter it = circ_iter(&circuit, Endpoint2); circ_iter_next(&it);) {
-    Endpoint2 *endpoints = circ_iter_table(&it, Endpoint2);
+  for (CircuitIter it = circ_iter(&circuit, Endpoint); circ_iter_next(&it);) {
+    Endpoint *endpoints = circ_iter_table(&it, Endpoint);
 
     for (size_t j = 0; j < endpoints->length; j++) {
       id = endpoints->id[j];
@@ -331,8 +331,8 @@ UTEST(Circuit2, circ_iter) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_port) {
-  Circuit2 circuit;
+UTEST(Circuit, add_port) {
+  Circuit circuit;
   circ_init(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
   ID portID = circ_add_port(&circuit, symbolKindID);
@@ -342,8 +342,8 @@ UTEST(Circuit2, add_port) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_port) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_port) {
+  Circuit circuit;
   circ_init(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
   ID portID = circ_add_port(&circuit, symbolKindID);
@@ -352,8 +352,8 @@ UTEST(Circuit2, remove_port) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_symbol_kind) {
-  Circuit2 circuit;
+UTEST(Circuit, add_symbol_kind) {
+  Circuit circuit;
   circ_init(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
   ASSERT_EQ(circuit.symbolKind.length, 1);
@@ -361,8 +361,8 @@ UTEST(Circuit2, add_symbol_kind) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_symbol_kind) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_symbol_kind) {
+  Circuit circuit;
   circ_init(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
   circ_add_port(&circuit, symbolKindID);
@@ -374,8 +374,8 @@ UTEST(Circuit2, remove_symbol_kind) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_symbol) {
-  Circuit2 circuit;
+UTEST(Circuit, add_symbol) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
@@ -387,8 +387,8 @@ UTEST(Circuit2, add_symbol) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_symbol) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_symbol) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
@@ -398,8 +398,8 @@ UTEST(Circuit2, remove_symbol) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, removing_symbol_kind_removes_all_linked_symbols) {
-  Circuit2 circuit;
+UTEST(Circuit, removing_symbol_kind_removes_all_linked_symbols) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID symbolKindID = circ_add_symbol_kind(&circuit);
@@ -415,8 +415,8 @@ UTEST(Circuit2, removing_symbol_kind_removes_all_linked_symbols) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_waypoint) {
-  Circuit2 circuit;
+UTEST(Circuit, add_waypoint) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -429,8 +429,8 @@ UTEST(Circuit2, add_waypoint) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_waypoint) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_waypoint) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -442,8 +442,8 @@ UTEST(Circuit2, remove_waypoint) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_endpoint) {
-  Circuit2 circuit;
+UTEST(Circuit, add_endpoint) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -455,8 +455,8 @@ UTEST(Circuit2, add_endpoint) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_endpoint) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_endpoint) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -467,8 +467,8 @@ UTEST(Circuit2, remove_endpoint) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_subnet) {
-  Circuit2 circuit;
+UTEST(Circuit, add_subnet) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -479,8 +479,8 @@ UTEST(Circuit2, add_subnet) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_subnet) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_subnet) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -490,8 +490,8 @@ UTEST(Circuit2, remove_subnet) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_net) {
-  Circuit2 circuit;
+UTEST(Circuit, add_net) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -502,8 +502,8 @@ UTEST(Circuit2, add_net) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_net) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_net) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ID netID = circ_add_net(&circuit, moduleID);
@@ -512,8 +512,8 @@ UTEST(Circuit2, remove_net) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, add_module) {
-  Circuit2 circuit;
+UTEST(Circuit, add_module) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   ASSERT_EQ(circuit.module.length, 1);
@@ -527,8 +527,8 @@ UTEST(Circuit2, add_module) {
   circ_free(&circuit);
 }
 
-UTEST(Circuit2, remove_module) {
-  Circuit2 circuit;
+UTEST(Circuit, remove_module) {
+  Circuit circuit;
   circ_init(&circuit);
   ID moduleID = circ_add_module(&circuit);
   circ_remove_module(&circuit, moduleID);

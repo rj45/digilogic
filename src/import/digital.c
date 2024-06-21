@@ -167,10 +167,10 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
   }
 }
 
-ID find_symbol_kind(Circuit2 *circ, const char *name) {
-  CircuitIter it = circ_iter(circ, SymbolKind2);
+ID find_symbol_kind(Circuit *circ, const char *name) {
+  CircuitIter it = circ_iter(circ, SymbolKind);
   while (circ_iter_next(&it)) {
-    SymbolKind2 *table = circ_iter_table(&it, SymbolKind2);
+    SymbolKind *table = circ_iter_table(&it, SymbolKind);
     for (int i = 0; i < table->length; i++) {
       if (table->name[i] == 0) {
         continue;
@@ -184,7 +184,7 @@ ID find_symbol_kind(Circuit2 *circ, const char *name) {
   return NO_ID;
 }
 
-void import_digital(Circuit2 *circ, char *buffer) {
+void import_digital(Circuit *circ, char *buffer) {
   arr(uint32_t) stack = 0;
   arr(WireEnd) inPorts = 0;
   arr(WireEnd) outPorts = 0;

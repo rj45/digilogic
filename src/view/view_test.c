@@ -41,7 +41,7 @@ UTEST(View, view_add_symbols) {
   ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
   circ_set_symbol_position(&view.circuit2, orID, HMM_V2(200, 250));
 
-  ASSERT_EQ(circ_len(&view.circuit2, Symbol2), 2);
+  ASSERT_EQ(circ_len(&view.circuit2, Symbol), 2);
 
   Position pos = circ_get(&view.circuit2, andID, Position);
   ASSERT_EQ(pos.X, 100);

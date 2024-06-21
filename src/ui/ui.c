@@ -223,9 +223,9 @@ void ui_update(
       ui->addingSymbolKind = NO_ID;
     }
 
-    CircuitIter iter = circ_iter(&ui->ux.view.circuit2, SymbolKind2);
+    CircuitIter iter = circ_iter(&ui->ux.view.circuit2, SymbolKind);
     while (circ_iter_next(&iter)) {
-      SymbolKind2 *table = circ_iter_table(&iter, SymbolKind2);
+      SymbolKind *table = circ_iter_table(&iter, SymbolKind);
       for (ptrdiff_t i = 0; i < table->length; i++) {
         SymbolKindID symbolKindID = table->id[i];
         Name nameID = circ_get(&ui->ux.view.circuit2, symbolKindID, Name);
