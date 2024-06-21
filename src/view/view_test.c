@@ -82,25 +82,31 @@ UTEST(View, view_draw_component_with_wires) {
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
-  ComponentID and =
-    circuit_add_component(&view.circuit, COMP_XOR, HMM_V2(100, 100));
-  ComponentID or
-    = circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
 
-  Component *andComp = circuit_component_ptr(&view.circuit, and);
-  PortID from =
-    circuit_port_ptr(
-      &view.circuit, circuit_port_ptr(&view.circuit, andComp->portFirst)->next)
-      ->next;
+  SymbolKindID xorKindID = circ_get_symbol_kind_by_name(&view.circuit2, "XOR");
+  SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
 
-  Component *orComp = circuit_component_ptr(&view.circuit, or);
-  PortID to = orComp->portFirst;
+  ID xorID = circ_add_symbol(&view.circuit2, view.circuit2.top, xorKindID);
+  circ_set_symbol_position(&view.circuit2, xorID, HMM_V2(100, 100));
 
-  NetID net = circuit_add_net(&view.circuit);
-  circuit_add_endpoint(&view.circuit, net, from, HMM_V2(0, 0));
-  circuit_add_endpoint(&view.circuit, net, to, HMM_V2(0, 0));
+  ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
+  circ_set_symbol_position(&view.circuit2, orID, HMM_V2(200, 200));
+
+  // Get the output port of XOR (assuming it's the last port)
+  ID xorPortID = circ_get(&view.circuit2, xorID, LinkedList).tail;
+
+  // Get the first input port of OR
+  ID orPortID = circ_get(&view.circuit2, xorID, LinkedList).head;
+
+  // Create a net and add endpoints
+  ID netID = circ_add_net(&view.circuit2, view.circuit2.top);
+  ID xorEndpointID = circ_add_endpoint(&view.circuit2, netID);
+  circ_connect_endpoint_to_port(
+    &view.circuit2, xorEndpointID, xorID, xorPortID);
+  ID orEndpointID = circ_add_endpoint(&view.circuit2, netID);
+  circ_connect_endpoint_to_port(&view.circuit2, orEndpointID, orID, orPortID);
+
   view_direct_wire_nets(&view);
-
   view_draw(&view);
 
   ASSERT_STREQ(
