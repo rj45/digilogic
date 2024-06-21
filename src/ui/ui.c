@@ -32,14 +32,18 @@ void ui_init(
   FontHandle font) {
   *ui = (CircuitUI){0};
   ux_init(&ui->ux, componentDescs, drawCtx, font);
-  circuit_init(&ui->saveCopy, componentDescs);
+  circ_init(&ui->saveCopy);
   thread_mutex_init(&ui->saveMutex);
 }
 
-void ui_free(CircuitUI *ui) { ux_free(&ui->ux); }
+void ui_free(CircuitUI *ui) {
+  ux_free(&ui->ux);
+  circ_free(&ui->saveCopy);
+  thread_mutex_term(&ui->saveMutex);
+}
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
-  const char *filters = ".dlc;.dig";
+  const char *filters = NULL; // "dlc";
 
   NvdFileDialog *dialog;
   if (saving) {
@@ -84,7 +88,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
     if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
-        circuit_clear(&ui->ux.view.circuit);
+        circ_clear(&ui->ux.view.circuit2);
         ux_route(&ui->ux);
         ux_build_bvh(&ui->ux);
         log_info("New");
@@ -100,8 +104,8 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           if (strncmp(loadfile + strlen(loadfile) - 4, ".dlc", 4) != 0) {
             strncat(loadfile, ".dlc", 1024);
           }
-          circuit_clear(&ui->ux.view.circuit);
-          circuit_load_file(&ui->ux.view.circuit, loadfile);
+          circ_clear(&ui->ux.view.circuit2);
+          circ_load_file(&ui->ux.view.circuit2, loadfile);
           ux_route(&ui->ux);
           ux_build_bvh(&ui->ux);
         }
@@ -176,17 +180,22 @@ ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
       nk_label(ctx, "", NK_TEXT_CENTERED);
       nk_label(
         ctx,
-        "Note: This is open source software, but it took a lot of effort to "
-        "create!",
+        "Note: This is open source software, but it took a lot of time and "
+        "effort to create!",
         NK_TEXT_CENTERED);
       nk_label(
         ctx,
-        "Please consider donating to support the development of this software!",
+        "Please consider paying for this software to support its development.",
         NK_TEXT_CENTERED);
       nk_label(ctx, "", NK_TEXT_CENTERED);
       nk_label(
-        ctx, "You can donate at: https://ko-fi.com/rj45_creates",
+        ctx,
+        "You can donate what you would pay for software like this at one of "
+        "these links:",
         NK_TEXT_CENTERED);
+      nk_label(ctx, "https://ko-fi.com/rj45_creates", NK_TEXT_CENTERED);
+      nk_label(ctx, "https://github.com/sponsors/rj45", NK_TEXT_CENTERED);
+      nk_label(ctx, "https://www.patreon.com/rj45Creates", NK_TEXT_CENTERED);
     } else {
       ui->showAbout = false;
     }
@@ -201,22 +210,38 @@ void ui_update(
   ui_about(ui, ctx, width, height);
 
   if (nk_begin(
-        ctx, "Toolbar", nk_rect(0, 30, 180, 480),
+        ctx, "Toolbar", nk_rect(0, 40, 180, 480),
         NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
           NK_WINDOW_TITLE)) {
 
     nk_layout_row_dynamic(ctx, 30, 1);
-    for (ComponentDescID descID = 0; descID < COMP_COUNT; descID++) {
-      const ComponentDesc *desc = &ui->ux.view.circuit.componentDescs[descID];
-      if (nk_option_label(ctx, desc->typeName, ui->addingComponent == descID)) {
-        if (ui->addingComponent == COMP_NONE && descID != COMP_NONE) {
-          ux_start_adding_component(&ui->ux, descID);
-        } else if (ui->addingComponent != COMP_NONE && descID == COMP_NONE) {
-          ux_stop_adding_component(&ui->ux);
-        } else if (ui->addingComponent != descID) {
-          ux_change_adding_component(&ui->ux, descID);
+
+    if (nk_option_label(ctx, "NONE", ui->addingSymbolKind == NO_ID)) {
+      if (ui->addingSymbolKind != NO_ID) {
+        ux_stop_adding_symbol(&ui->ux);
+      }
+      ui->addingSymbolKind = NO_ID;
+    }
+
+    CircuitIter iter = circ_iter(&ui->ux.view.circuit2, SymbolKind);
+    while (circ_iter_next(&iter)) {
+      SymbolKind *table = circ_iter_table(&iter, SymbolKind);
+      for (ptrdiff_t i = 0; i < table->length; i++) {
+        SymbolKindID symbolKindID = table->id[i];
+        Name nameID = circ_get(&ui->ux.view.circuit2, symbolKindID, Name);
+        if (nameID == 0) {
+          continue;
         }
-        ui->addingComponent = descID;
+        const char *name = circ_str_get(&ui->ux.view.circuit2, nameID);
+
+        if (nk_option_label(ctx, name, ui->addingSymbolKind == symbolKindID)) {
+          if (ui->addingSymbolKind == NO_ID) {
+            ux_start_adding_symbol(&ui->ux, symbolKindID);
+          } else if (ui->addingSymbolKind != symbolKindID) {
+            ux_change_adding_symbol(&ui->ux, symbolKindID);
+          }
+          ui->addingSymbolKind = symbolKindID;
+        }
       }
     }
   }
@@ -245,7 +270,7 @@ void ui_draw(CircuitUI *ui) { ux_draw(&ui->ux); }
 static int ui_do_save(void *data) {
   CircuitUI *ui = (CircuitUI *)data;
   thread_mutex_lock(&ui->saveMutex);
-  circuit_save_file(&ui->saveCopy, ui->saveFilename);
+  circ_save_file(&ui->saveCopy, ui->saveFilename);
   thread_atomic_int_store(&ui->saveThreadBusy, 0);
   thread_mutex_unlock(&ui->saveMutex);
   return 0;
@@ -257,8 +282,8 @@ bool ui_background_save(
     return false;
   }
   thread_mutex_lock(&ui->saveMutex);
-  circuit_clone_from(&ui->saveCopy, &ui->ux.view.circuit);
-  memcpy(ui->saveFilename, filename, 1024);
+  circ_clone(&ui->saveCopy, &ui->ux.view.circuit2);
+  strncpy(ui->saveFilename, filename, 1024);
   thread_atomic_int_store(&ui->saveThreadBusy, 1);
   thread_mutex_unlock(&ui->saveMutex);
 

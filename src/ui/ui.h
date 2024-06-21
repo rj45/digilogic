@@ -31,21 +31,11 @@
 // Circuit UI
 ////////////////////////////////////////
 
-typedef enum ToolMode {
-  TOOL_SELECT,
-  TOOL_MOVE,
-  TOOL_WIRE,
-  TOOL_COMPONENT,
-  TOOL_PAN,
-} ToolMode;
-
 typedef struct CircuitUI {
   CircuitUX ux;
   struct nk_context *nk;
 
-  ToolMode tool;
-
-  ComponentDescID addingComponent;
+  ID addingSymbolKind;
 
   bool saving;
   bool showAbout;

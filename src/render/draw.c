@@ -279,23 +279,25 @@ typedef struct Symbol {
 } Symbol;
 
 const Symbol symbolSolid[] = {
-  [SHAPE_DEFAULT] = {.text = "", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
-  [SHAPE_AND] = {.text = "\x01", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
-  [SHAPE_OR] = {.text = "\x03", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
-  [SHAPE_XOR] = {.text = "\x05", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
-  [SHAPE_NOT] = {.text = "\x07", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
+  [SYMSHAPE_DEFAULT] = {.text = "", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_AND] = {.text = "\x01", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_OR] = {.text = "\x03", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_XOR] = {.text = "\x05", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_NOT] =
+    {.text = "\x07", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
 };
 
 const Symbol symbolOutline[] = {
-  [SHAPE_DEFAULT] = {.text = "", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
-  [SHAPE_AND] = {.text = "\x02", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
-  [SHAPE_OR] = {.text = "\x04", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
-  [SHAPE_XOR] = {.text = "\x06", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
-  [SHAPE_NOT] = {.text = "\x08", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
+  [SYMSHAPE_DEFAULT] = {.text = "", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_AND] = {.text = "\x02", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_OR] = {.text = "\x04", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_XOR] = {.text = "\x06", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
+  [SYMSHAPE_NOT] =
+    {.text = "\x08", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
 };
 
 static void draw_symbol(
-  DrawContext *draw, Theme *theme, Box box, HMM_Vec4 color, ShapeType shape,
+  DrawContext *draw, Theme *theme, Box box, HMM_Vec4 color, SymbolShape shape,
   bool outline) {
 
   const Symbol symbol = outline ? symbolOutline[shape] : symbolSolid[shape];
@@ -312,9 +314,10 @@ static void draw_symbol(
     HMM_V4(0, 0, 0, 0));
 }
 
-void draw_component_shape(
-  DrawContext *draw, Theme *theme, Box box, ShapeType shape, DrawFlags flags) {
-  if (shape == SHAPE_DEFAULT) {
+void draw_symbol_shape(
+  DrawContext *draw, Theme *theme, Box box, SymbolShape shape,
+  DrawFlags flags) {
+  if (shape == SYMSHAPE_DEFAULT) {
     draw_chip(draw, theme, box, flags);
     return;
   }

@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "core/core.h"
 #include "handmade_math.h"
 #include "ux.h"
 
@@ -27,14 +28,12 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
 
   float snapDistance = SNAP_DISTANCE / draw_get_zoom(ux->view.drawCtx);
 
-  if (id_type(selected) == ID_COMPONENT) {
-    Component *component = circuit_component_ptr(&ux->view.circuit, selected);
-    oldCenter = component->box.center;
-    halfSize = component->box.halfSize;
-
-  } else if (id_type(selected) == ID_WAYPOINT) {
-    Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, selected);
-    oldCenter = waypoint->position;
+  if (circ_type_for_id(&ux->view.circuit2, selected) == TYPE_SYMBOL) {
+    oldCenter = circ_get(&ux->view.circuit2, selected, Position);
+    SymbolKindID kind = circ_get(&ux->view.circuit2, selected, SymbolKindID);
+    halfSize = HMM_MulV2F(circ_get(&ux->view.circuit2, kind, Size), 0.5f);
+  } else if (circ_type_for_id(&ux->view.circuit2, selected) == TYPE_WAYPOINT) {
+    oldCenter = circ_get(&ux->view.circuit2, selected, Position);
     halfSize = HMM_V2(0, 0);
   } else {
     return newCenter;
@@ -49,42 +48,46 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
 
   float snapDistanceThreshold =
     SNAP_DISTANCE_THRESHOLD / draw_get_zoom(ux->view.drawCtx);
-  for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-    Component *component = &ux->view.circuit.components[i];
-    if (circuit_component_id(&ux->view.circuit, i) == selected) {
+
+  Box snapDistanceBox = {
+    .center = oldCenter,
+    .halfSize = HMM_V2(snapDistanceThreshold, snapDistanceThreshold),
+  };
+
+  ux->bvhQuery = bvh_query(&ux->bvh, snapDistanceBox, ux->bvhQuery);
+
+  for (size_t i = 0; i < arrlen(ux->bvhQuery); i++) {
+    ID id = ux->bvhQuery[i].item;
+
+    Box box = ux->bvhQuery[i].box;
+    if (id == selected) {
       continue;
     }
 
-    if (
-      HMM_LenV2(HMM_SubV2(oldCenter, component->box.center)) >
-      snapDistanceThreshold) {
-      continue;
+    float itemTop = box.center.Y - box.halfSize.Y;
+    float itemLeft = box.center.X - box.halfSize.X;
+    float itemBottom = box.center.Y + box.halfSize.Y;
+    float itemRight = box.center.X + box.halfSize.X;
+
+    if (HMM_ABS(top - itemTop) < SNAP_DISTANCE) {
+      newCenter.Y = itemTop + halfSize.Y;
+    }
+    if (HMM_ABS(left - itemLeft) < SNAP_DISTANCE) {
+      newCenter.X = itemLeft + halfSize.X;
+    }
+    if (HMM_ABS(bottom - itemBottom) < SNAP_DISTANCE) {
+      newCenter.Y = itemBottom - halfSize.Y;
+    }
+    if (HMM_ABS(right - itemRight) < SNAP_DISTANCE) {
+      newCenter.X = itemRight - halfSize.X;
     }
 
-    float componentTop = component->box.center.Y - component->box.halfSize.Y;
-    float componentLeft = component->box.center.X - component->box.halfSize.X;
-    float componentBottom = component->box.center.Y + component->box.halfSize.Y;
-    float componentRight = component->box.center.X + component->box.halfSize.X;
-
-    if (HMM_ABS(top - componentTop) < SNAP_DISTANCE) {
-      newCenter.Y = componentTop + halfSize.Y;
-    }
-    if (HMM_ABS(left - componentLeft) < SNAP_DISTANCE) {
-      newCenter.X = componentLeft + halfSize.X;
-    }
-    if (HMM_ABS(bottom - componentBottom) < SNAP_DISTANCE) {
-      newCenter.Y = componentBottom - halfSize.Y;
-    }
-    if (HMM_ABS(right - componentRight) < SNAP_DISTANCE) {
-      newCenter.X = componentRight - halfSize.X;
+    if (HMM_ABS(movedCenter.Y - box.center.Y) < snapDistance) {
+      newCenter.Y = box.center.Y;
     }
 
-    if (HMM_ABS(movedCenter.Y - component->box.center.Y) < snapDistance) {
-      newCenter.Y = component->box.center.Y;
-    }
-
-    if (HMM_ABS(movedCenter.X - component->box.center.X) < snapDistance) {
-      newCenter.X = component->box.center.X;
+    if (HMM_ABS(movedCenter.X - box.center.X) < snapDistance) {
+      newCenter.X = box.center.X;
     }
   }
 

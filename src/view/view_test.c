@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "render/draw.h"
 #include "render/draw_test.h"
@@ -25,44 +26,49 @@
 #include "view.h"
 #include <stdbool.h>
 
-UTEST(View, view_add_component) {
+UTEST(View, view_add_symbols) {
   CircuitView view = {0};
 
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
 
-  circuit_add_component(&view.circuit, COMP_AND, HMM_V2(100, 100));
-  circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
+  SymbolKindID andKindID = circ_get_symbol_kind_by_name(&view.circuit2, "AND");
+  SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
 
-  ASSERT_EQ(circuit_component_len(&view.circuit), 2);
-  ASSERT_EQ(view.circuit.components[0].box.center.X, 100);
-  ASSERT_EQ(view.circuit.components[0].box.center.Y, 100);
-  ASSERT_NE(view.circuit.components[0].box.halfSize.X, 0);
-  ASSERT_NE(view.circuit.components[0].box.halfSize.Y, 0);
+  ID andID = circ_add_symbol(&view.circuit2, view.circuit2.top, andKindID);
+  circ_set_symbol_position(&view.circuit2, andID, HMM_V2(100, 150));
+  ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
+  circ_set_symbol_position(&view.circuit2, orID, HMM_V2(200, 250));
 
-  ASSERT_EQ(view.circuit.components[1].box.center.X, 200);
-  ASSERT_EQ(view.circuit.components[1].box.center.Y, 200);
-  ASSERT_NE(view.circuit.components[1].box.halfSize.X, 0);
-  ASSERT_NE(view.circuit.components[1].box.halfSize.Y, 0);
+  ASSERT_EQ(circ_len(&view.circuit2, Symbol), 2);
+
+  Position pos = circ_get(&view.circuit2, andID, Position);
+  ASSERT_EQ(pos.X, 100);
+  ASSERT_EQ(pos.Y, 150);
+
+  pos = circ_get(&view.circuit2, orID, Position);
+  ASSERT_EQ(pos.X, 200);
+  ASSERT_EQ(pos.Y, 250);
 
   view_free(&view);
   draw_free(draw);
 }
 
-UTEST(View, view_draw_components) {
+UTEST(View, view_draw_symbols) {
   CircuitView view = {0};
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
 
-  circuit_add_component(&view.circuit, COMP_OR, HMM_V2(100, 100));
-
+  SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
+  ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
+  circ_set_symbol_position(&view.circuit2, orID, HMM_V2(100, 100));
   view_draw(&view);
 
   ASSERT_STREQ(
     "component(OR, v0, -)\n"
-    "label(component_name, v1, 'X1', -)\n"
+    "label(component_name, v1, 'X0', -)\n"
     "port(v2, -)\n"
     "port(v3, -)\n"
     "port(v4, -)\n",
@@ -77,41 +83,51 @@ UTEST(View, view_draw_component_with_wires) {
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
-  ComponentID and =
-    circuit_add_component(&view.circuit, COMP_XOR, HMM_V2(100, 100));
-  ComponentID or
-    = circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
+  AutoRoute *router = autoroute_create(&view.circuit2);
 
-  Component *andComp = circuit_component_ptr(&view.circuit, and);
-  PortID from =
-    circuit_port_ptr(
-      &view.circuit, circuit_port_ptr(&view.circuit, andComp->portFirst)->next)
-      ->next;
+  SymbolKindID xorKindID = circ_get_symbol_kind_by_name(&view.circuit2, "XOR");
+  SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
 
-  Component *orComp = circuit_component_ptr(&view.circuit, or);
-  PortID to = orComp->portFirst;
+  ID xorID = circ_add_symbol(&view.circuit2, view.circuit2.top, xorKindID);
+  circ_set_symbol_position(&view.circuit2, xorID, HMM_V2(100, 100));
 
-  NetID net = circuit_add_net(&view.circuit);
-  circuit_add_endpoint(&view.circuit, net, from, HMM_V2(0, 0));
-  circuit_add_endpoint(&view.circuit, net, to, HMM_V2(0, 0));
-  view_direct_wire_nets(&view);
+  ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
+  circ_set_symbol_position(&view.circuit2, orID, HMM_V2(200, 200));
+
+  // Get the output port of XOR (assuming it's the last port)
+  ID xorPortID = circ_get(&view.circuit2, xorKindID, LinkedList).tail;
+
+  // Get the first input port of OR
+  ID orPortID = circ_get(&view.circuit2, orKindID, LinkedList).head;
+
+  // Create a net and add endpoints
+  ID netID = circ_add_net(&view.circuit2, view.circuit2.top);
+  ID subnetID = circ_add_subnet(&view.circuit2, netID);
+  ID xorEndpointID = circ_add_endpoint(&view.circuit2, subnetID);
+  circ_connect_endpoint_to_port(
+    &view.circuit2, xorEndpointID, xorID, xorPortID);
+  ID orEndpointID = circ_add_endpoint(&view.circuit2, subnetID);
+  circ_connect_endpoint_to_port(&view.circuit2, orEndpointID, orID, orPortID);
+
+  autoroute_route(router, (RoutingConfig){0});
 
   view_draw(&view);
 
   ASSERT_STREQ(
     "component(XOR, v0, -)\n"
-    "label(component_name, v1, 'X1', -)\n"
+    "label(component_name, v1, 'X0', -)\n"
     "port(v2, -)\n"
     "port(v3, -)\n"
     "port(v4, -)\n"
     "component(OR, v5, -)\n"
-    "label(component_name, v6, 'X2', -)\n"
+    "label(component_name, v6, 'X0', -)\n"
     "port(v7, -)\n"
     "port(v8, -)\n"
     "port(v9, -)\n"
-    "wire(v4, v7, -)\n",
+    "wire(v4, v10, v11, v7, -)\n",
     draw_get_build_string(draw));
 
+  autoroute_free(router);
   view_free(&view);
   draw_free(draw);
 }

@@ -26,7 +26,7 @@
 #define arr(type) type *
 typedef HMM_Vec2 Position;
 typedef HMM_Vec2 Size;
-typedef struct Subcircuit Subcircuit;
+typedef struct Module Module;
 
 // Ports can be input, output or bidirectional.
 typedef enum Direction {
@@ -44,9 +44,9 @@ typedef struct Port {
 } Port;
 
 // A SymbolKind is a "class" or "prototype" for a Symbol. A SymbolKind
-// can be implemented with a Subcircuit, allowing hierarchical design.
+// can be implemented with a Module, allowing hierarchical design.
 typedef struct SymbolKind {
-  Subcircuit *subcircuit;
+  Module *module;
   arr(Port) ports;
   Size size;
   const char *name;
@@ -102,20 +102,20 @@ typedef struct Net {
   HMM_Vec2 *vertices;
 } Net;
 
-// A NetList is a collection of nets in a Subcircuit.
+// A NetList is a collection of nets in a Module.
 typedef struct NetList {
   arr(Net) nets;
 } NetList;
 
-// A Subcircuit is a collection of components and nets. Think if this like
+// A Module is a collection of components and nets. Think if this like
 // the circuit's "class" or "prototype". Through Symbol it can be
 // instantiated.
-typedef struct Subcircuit {
+typedef struct Module {
   arr(Symbol) components;
   NetList *netlist;
-} Subcircuit;
+} Module;
 
 // A Circuit is the top level circuit that represents the entire workspace.
 typedef struct Circuit {
-  Subcircuit *top;
+  Module *top;
 } Circuit;

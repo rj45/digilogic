@@ -21,11 +21,12 @@
 #include "render/draw.h"
 
 typedef struct CircuitView {
-  Circuit circuit;
+  Circuit circuit2;
+
   Theme theme;
   DrawContext *drawCtx;
 
-  arr(ID) hovered;
+  arr(BVHLeaf) hovered;
   arr(ID) selected;
 
   PortID selectedPort;

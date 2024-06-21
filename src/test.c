@@ -27,6 +27,9 @@
 #include "stacktrace.h"
 #endif
 
+#define STRPOOL_IMPLEMENTATION
+#include "strpool.h"
+
 UTEST_STATE();
 int main(int argc, const char *const argv[]) {
 
@@ -34,5 +37,6 @@ int main(int argc, const char *const argv[]) {
   init_exceptions((char *)argv[0]);
 #endif
   ux_global_init();
+  stm_setup();
   return utest_main(argc, argv);
 }

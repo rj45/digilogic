@@ -17,8 +17,8 @@
 #ifndef IMPORT_H
 #define IMPORT_H
 
-#include "ux/ux.h"
+#include "core/core.h"
 
-void import_digital(CircuitUX *ux, char *buffer);
+void import_digital(Circuit *circ, char *buffer);
 
 #endif // IMPORT_H

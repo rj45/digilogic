@@ -67,8 +67,8 @@ HMM_Vec2 draw_scale_screen_to_world(DrawContext *draw, HMM_Vec2 dirvec);
 HMM_Vec2 draw_world_to_screen(DrawContext *draw, HMM_Vec2 worldPos);
 HMM_Vec2 draw_scale_world_to_screen(DrawContext *draw, HMM_Vec2 dirvec);
 
-void draw_component_shape(
-  DrawContext *draw, Theme *theme, Box box, ShapeType shape, DrawFlags flags);
+void draw_symbol_shape(
+  DrawContext *draw, Theme *theme, Box box, SymbolShape shape, DrawFlags flags);
 void draw_port(
   DrawContext *draw, Theme *theme, HMM_Vec2 center, DrawFlags flags);
 void draw_selection_box(

@@ -69,7 +69,7 @@
 #endif
 
 typedef struct my_app_t {
-  CircuitUI circuit;
+  CircuitUI ui;
 
   const char *filename;
 
@@ -216,7 +216,7 @@ static void init(void *user_data) {
   draw_init(&app->draw, app->fsctx);
 
   ui_init(
-    &app->circuit, circuit_component_descs(), &app->draw,
+    &app->ui, circuit_component_descs(), &app->draw,
     (FontHandle)&app->fonsFont);
 
   app->pzoom = draw_get_zoom(&app->draw);
@@ -229,7 +229,7 @@ void cleanup(void *user_data) {
 
   draw_free(&app->draw);
 
-  ui_free(&app->circuit);
+  ui_free(&app->ui);
 
   nuklear_fontstash_free(&app->nkFont);
 
@@ -253,11 +253,11 @@ void load_file(my_app_t *app, const char *filename) {
 
   log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  import_digital(&app->circuit.ux, buffer);
-  free(buffer);
+  import_digital(&app->ui.ux.view.circuit2, buffer);
 
-  ux_route(&app->circuit.ux);
-  ux_build_bvh(&app->circuit.ux);
+  free(buffer);
+  ux_route(&app->ui.ux);
+  ux_build_bvh(&app->ui.ux);
 
   // autoroute_dump_anchor_boxes(app->circuit.ux.router);
 
@@ -282,7 +282,7 @@ void frame(void *user_data) {
   sgp_begin(width, height);
   sgp_set_blend_mode(SGP_BLENDMODE_BLEND);
 
-  ui_update(&app->circuit, ctx, width, height);
+  ui_update(&app->ui, ctx, width, height);
 
   if (!app->loaded) {
     bool hasAutoSave = false;
@@ -309,10 +309,9 @@ void frame(void *user_data) {
 
       if (hasAutoSave) {
         if (nk_button_label(ctx, "Load auto-save")) {
-          circuit_load_file(
-            &app->circuit.ux.view.circuit, platform_autosave_path());
-          ux_route(&app->circuit.ux);
-          ux_build_bvh(&app->circuit.ux);
+          circ_load_file(&app->ui.ux.view.circuit2, platform_autosave_path());
+          ux_route(&app->ui.ux);
+          ux_build_bvh(&app->ui.ux);
           app->loaded = true;
         }
       }
@@ -333,10 +332,10 @@ void frame(void *user_data) {
   }
 
   draw_begin_frame(&app->draw);
-  app->circuit.ux.input.frameDuration = sapp_frame_duration();
-  ui_draw(&app->circuit);
-  app->circuit.ux.input.scroll = HMM_V2(0, 0);
-  app->circuit.ux.input.mouseDelta = HMM_V2(0, 0);
+  app->ui.ux.input.frameDuration = sapp_frame_duration();
+  ui_draw(&app->ui);
+  app->ui.ux.input.scroll = HMM_V2(0, 0);
+  app->ui.ux.input.mouseDelta = HMM_V2(0, 0);
   draw_end_frame(&app->draw);
 
   // sg_frame_stats stats = sg_query_frame_stats();
@@ -348,8 +347,8 @@ void frame(void *user_data) {
   avgFrameInterval /= 60;
 
   char buff[256];
-  if (app->circuit.ux.showFPS) {
-    RouteTimeStats rtStats = autoroute_stats(app->circuit.ux.router);
+  if (app->ui.ux.showFPS) {
+    RouteTimeStats rtStats = autoroute_stats(app->ui.ux.router);
 
     snprintf(
       buff, sizeof(buff), "Draw time: %1.2f Frame interval: %.2f FPS: %.2f",
@@ -401,7 +400,7 @@ void frame(void *user_data) {
   sg_end_pass();
   sg_commit();
 
-  bv_clear_all(app->circuit.ux.input.keysPressed);
+  bv_clear_all(app->ui.ux.input.keysPressed);
 
   uint64_t frameInterval = stm_laptime(&app->frameIntervalTime);
 
@@ -421,35 +420,35 @@ void event(const sapp_event *event, void *user_data) {
 
   switch (event->type) {
   case SAPP_EVENTTYPE_KEY_DOWN:
-    bv_set(app->circuit.ux.input.keysDown, event->key_code);
-    bv_set(app->circuit.ux.input.keysPressed, event->key_code);
-    app->circuit.ux.input.modifiers = event->modifiers;
+    bv_set(app->ui.ux.input.keysDown, event->key_code);
+    bv_set(app->ui.ux.input.keysPressed, event->key_code);
+    app->ui.ux.input.modifiers = event->modifiers;
     // if (event->key_code == SAPP_KEYCODE_ESCAPE) {
     //   sapp_request_quit();
     // }
     break;
 
   case SAPP_EVENTTYPE_KEY_UP:
-    bv_clear(app->circuit.ux.input.keysDown, event->key_code);
-    app->circuit.ux.input.modifiers = event->modifiers;
+    bv_clear(app->ui.ux.input.keysDown, event->key_code);
+    app->ui.ux.input.modifiers = event->modifiers;
     break;
 
   case SAPP_EVENTTYPE_MOUSE_DOWN:
   case SAPP_EVENTTYPE_MOUSE_UP:
-    app->circuit.ux.input.modifiers = event->modifiers;
+    app->ui.ux.input.modifiers = event->modifiers;
     break;
 
   case SAPP_EVENTTYPE_MOUSE_MOVE: {
     HMM_Vec2 mousePos = HMM_V2(event->mouse_x, event->mouse_y);
-    app->circuit.ux.input.mouseDelta = HMM_AddV2(
-      app->circuit.ux.input.mouseDelta,
-      HMM_SubV2(app->circuit.ux.input.mousePos, mousePos));
-    app->circuit.ux.input.mousePos = mousePos;
+    app->ui.ux.input.mouseDelta = HMM_AddV2(
+      app->ui.ux.input.mouseDelta,
+      HMM_SubV2(app->ui.ux.input.mousePos, mousePos));
+    app->ui.ux.input.mousePos = mousePos;
     break;
   }
   case SAPP_EVENTTYPE_MOUSE_SCROLL: {
-    app->circuit.ux.input.scroll = HMM_AddV2(
-      app->circuit.ux.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
+    app->ui.ux.input.scroll = HMM_AddV2(
+      app->ui.ux.input.scroll, HMM_V2(event->scroll_x, event->scroll_y));
     break;
   }
   default:

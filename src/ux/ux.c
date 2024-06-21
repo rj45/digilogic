@@ -17,6 +17,7 @@
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "handmade_math.h"
+#include "routing/routing.h"
 #include "stb_ds.h"
 #include "view/view.h"
 #include <float.h>
@@ -43,7 +44,7 @@ void ux_init(
   view_init(&ux->view, componentDescs, drawCtx, font);
   bvh_init(&ux->bvh);
 
-  ux->router = autoroute_create(&ux->view.circuit);
+  ux->router = autoroute_create(&ux->view.circuit2);
 }
 
 void ux_free(CircuitUX *ux) {
@@ -52,6 +53,7 @@ void ux_free(CircuitUX *ux) {
   bv_free(ux->input.keysPressed);
   arrfree(ux->undoStack);
   arrfree(ux->redoStack);
+  arrfree(ux->bvhQuery);
   autoroute_free(ux->router);
 }
 
@@ -60,12 +62,9 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
   assert(arrlen(ux->view.selected) > 0);
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
-    if (id_type(id) == ID_COMPONENT) {
-      Component *component = circuit_component_ptr(&ux->view.circuit, id);
-      center = HMM_AddV2(center, component->box.center);
-    } else if (id_type(id) == ID_WAYPOINT) {
-      Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
-      center = HMM_AddV2(center, waypoint->position);
+    if (circ_has_component(&ux->view.circuit2, id, Position)) {
+      Position position = circ_get(&ux->view.circuit2, id, Position);
+      center = HMM_AddV2(center, position);
     }
   }
   center = HMM_DivV2F(center, (float)arrlen(ux->view.selected));
@@ -89,37 +88,48 @@ void ux_select_none(CircuitUX *ux) {
 void ux_select_all(CircuitUX *ux) {
   HMM_Vec2 min = HMM_V2(FLT_MAX, FLT_MAX);
   HMM_Vec2 max = HMM_V2(-FLT_MAX, -FLT_MAX);
-  for (size_t i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-    Component *component = &ux->view.circuit.components[i];
-    HMM_Vec2 cmin = box_top_left(component->box);
-    HMM_Vec2 cmax = box_bottom_right(component->box);
-    min.X = HMM_MIN(min.X, cmin.X);
-    min.Y = HMM_MIN(min.Y, cmin.Y);
-    max.X = HMM_MAX(max.X, cmax.X);
-    max.Y = HMM_MAX(max.Y, cmax.Y);
+  CircuitIter it = circ_iter(&ux->view.circuit2, Symbol);
+  while (circ_iter_next(&it)) {
+    Symbol *table = circ_iter_table(&it, Symbol);
+    for (size_t i = 0; i < table->length; i++) {
+      Box box = circ_get_symbol_box(&ux->view.circuit2, table->id[i]);
+      HMM_Vec2 cmin = HMM_SubV2(box.center, box.halfSize);
+      HMM_Vec2 cmax = HMM_AddV2(box.center, box.halfSize);
+      min.X = HMM_MIN(min.X, cmin.X);
+      min.Y = HMM_MIN(min.Y, cmin.Y);
+      max.X = HMM_MAX(max.X, cmax.X);
+      max.Y = HMM_MAX(max.Y, cmax.Y);
+    }
   }
-  for (size_t i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
-    Waypoint *waypoint = &ux->view.circuit.waypoints[i];
-    HMM_Vec2 cmin = waypoint->position;
-    HMM_Vec2 cmax = waypoint->position;
-    min.X = HMM_MIN(min.X, cmin.X);
-    min.Y = HMM_MIN(min.Y, cmin.Y);
-    max.X = HMM_MAX(max.X, cmax.X);
-    max.Y = HMM_MAX(max.Y, cmax.Y);
+
+  it = circ_iter(&ux->view.circuit2, Waypoint);
+  while (circ_iter_next(&it)) {
+    Waypoint *table = circ_iter_table(&it, Waypoint);
+    for (size_t i = 0; i < table->length; i++) {
+      HMM_Vec2 cmin = table->position[i];
+      HMM_Vec2 cmax = table->position[i];
+      min.X = HMM_MIN(min.X, cmin.X);
+      min.Y = HMM_MIN(min.Y, cmin.Y);
+      max.X = HMM_MAX(max.X, cmax.X);
+      max.Y = HMM_MAX(max.Y, cmax.Y);
+    }
   }
+
   ux_do(ux, undo_cmd_select_area(box_from_tlbr(min, max)));
 }
 
 void ux_delete_selected(CircuitUX *ux) {
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
-    if (id_type(id) == ID_COMPONENT) {
-      Component *component = circuit_component_ptr(&ux->view.circuit, id);
-      ux_do(
-        ux, undo_cmd_del_component(component->box.center, id, component->desc));
-    } else if (id_type(id) == ID_WAYPOINT) {
-      // Waypoint *waypoint = circuit_waypoint_ptr(&ux->view.circuit, id);
-      // ux_do(ux, undo_cmd_del_waypoint(waypoint->position, id));
+    if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_SYMBOL) {
+      SymbolKindID kind = circ_get(&ux->view.circuit2, id, SymbolKindID);
+      Position position = circ_get(&ux->view.circuit2, id, Position);
+      ux_do(ux, undo_cmd_del_symbol(position, id, kind));
+    } else if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_WAYPOINT) {
+      Parent endpoint = circ_get(&ux->view.circuit2, id, Parent);
+      Position position = circ_get(&ux->view.circuit2, id, Position);
+      ux_do(ux, undo_cmd_del_waypoint(position, id, endpoint));
+      ux_route(ux);
     }
   }
 }
@@ -140,51 +150,68 @@ void ux_draw(CircuitUX *ux) {
 
 void ux_build_bvh(CircuitUX *ux) {
   bvh_clear(&ux->bvh);
-  for (int i = 0; i < circuit_component_len(&ux->view.circuit); i++) {
-    Component *component = &ux->view.circuit.components[i];
-    bvh_add(
-      &ux->bvh, circuit_component_id(&ux->view.circuit, i), component->box);
-  }
+
   HMM_Vec2 portHalfSize =
     HMM_V2(ux->view.theme.portWidth / 2, ux->view.theme.portWidth / 2);
-  for (int i = 0; i < circuit_port_len(&ux->view.circuit); i++) {
-    Port *port = &ux->view.circuit.ports[i];
-    Component *component =
-      circuit_component_ptr(&ux->view.circuit, port->component);
-    bvh_add(
-      &ux->bvh, circuit_port_id(&ux->view.circuit, i),
-      (Box){HMM_AddV2(component->box.center, port->position), portHalfSize});
+
+  ID top = ux->view.circuit2.top;
+  LinkedListIter topit = circ_lliter(&ux->view.circuit2, top);
+  while (circ_lliter_next(&topit)) {
+    ID symbolID = topit.current;
+    SymbolKindID kindID = circ_get(&ux->view.circuit2, symbolID, SymbolKindID);
+    Position symbolPos = circ_get(&ux->view.circuit2, symbolID, Position);
+    Size size = circ_get(&ux->view.circuit2, kindID, Size);
+    Box box = (Box){.center = symbolPos, .halfSize = HMM_MulV2F(size, 0.5f)};
+    bvh_add(&ux->bvh, symbolID, NO_ID, box);
+
+    LinkedListIter portit = circ_lliter(&ux->view.circuit2, kindID);
+    while (circ_lliter_next(&portit)) {
+      ID portID = portit.current;
+      Position portPos = circ_get(&ux->view.circuit2, portID, Position);
+      portPos = HMM_AddV2(symbolPos, portPos);
+      Box portBox = (Box){.center = portPos, .halfSize = portHalfSize};
+      bvh_add(&ux->bvh, symbolID, portID, portBox);
+    }
   }
 
-  for (int i = 0; i < circuit_endpoint_len(&ux->view.circuit); i++) {
-    Endpoint *endpoint = &ux->view.circuit.endpoints[i];
-    bvh_add(
-      &ux->bvh, circuit_endpoint_id(&ux->view.circuit, i),
-      (Box){endpoint->position, portHalfSize});
-  }
+  NetlistID netlistID = circ_get(&ux->view.circuit2, top, NetlistID);
+  LinkedListIter netit = circ_lliter(&ux->view.circuit2, netlistID);
+  while (circ_lliter_next(&netit)) {
+    ID netID = netit.current;
+    LinkedListIter subnetit = circ_lliter(&ux->view.circuit2, netID);
+    while (circ_lliter_next(&subnetit)) {
+      ID subnetID = subnetit.current;
 
-  for (int i = 0; i < circuit_waypoint_len(&ux->view.circuit); i++) {
-    Waypoint *waypoint = &ux->view.circuit.waypoints[i];
-    bvh_add(
-      &ux->bvh, circuit_waypoint_id(&ux->view.circuit, i),
-      (Box){waypoint->position, portHalfSize});
-  }
+      LinkedListIter endpointit = circ_lliter(&ux->view.circuit2, subnetID);
+      while (circ_lliter_next(&endpointit)) {
+        ID endpointID = endpointit.current;
+        Position endpointPos =
+          circ_get(&ux->view.circuit2, endpointID, Position);
+        Box endpointBox =
+          (Box){.center = endpointPos, .halfSize = portHalfSize};
+        bvh_add(&ux->bvh, endpointID, NO_ID, endpointBox);
 
-  for (int netIdx = 0; netIdx < circuit_net_len(&ux->view.circuit); netIdx++) {
-    Net *net = &ux->view.circuit.nets[netIdx];
+        LinkedListIter waypointit = circ_lliter(&ux->view.circuit2, endpointID);
+        while (circ_lliter_next(&waypointit)) {
+          ID waypointID = waypointit.current;
+          Position waypointPos =
+            circ_get(&ux->view.circuit2, waypointID, Position);
+          Box waypointBox =
+            (Box){.center = waypointPos, .halfSize = portHalfSize};
+          bvh_add(&ux->bvh, waypointID, NO_ID, waypointBox);
+        }
+      }
+    }
 
-    VertexIndex vertexOffset = net->vertexOffset;
-    assert(vertexOffset < arrlen(ux->view.circuit.vertices));
-
-    for (int wireIdx = net->wireOffset;
-         wireIdx < net->wireOffset + net->wireCount; wireIdx++) {
-      assert(wireIdx < arrlen(ux->view.circuit.wires));
-      Wire *wire = &ux->view.circuit.wires[wireIdx];
-
-      for (int vertIdx = 1;
-           vertIdx < circuit_wire_vertex_count(wire->vertexCount); vertIdx++) {
-        HMM_Vec2 p1 = ux->view.circuit.vertices[vertexOffset + vertIdx - 1];
-        HMM_Vec2 p2 = ux->view.circuit.vertices[vertexOffset + vertIdx];
+    WireVertices wireVertices =
+      circ_get(&ux->view.circuit2, netID, WireVertices);
+    size_t vertexOffset = 0;
+    for (size_t wireIdx = 0; wireIdx < wireVertices.wireCount; wireIdx++) {
+      uint16_t vertCount =
+        RT_WireView_vertex_count(wireVertices.wireVertexCounts[wireIdx]);
+      for (size_t vertIdx = 1; vertIdx < vertCount; vertIdx++) {
+        HMM_Vec2 p1 = wireVertices.vertices[vertexOffset + vertIdx - 1];
+        HMM_Vec2 p2 = wireVertices.vertices[vertexOffset + vertIdx];
         Box box;
         if (p1.X == p2.X) {
           box = (Box){
@@ -195,10 +222,9 @@ void ux_build_bvh(CircuitUX *ux) {
             HMM_V2((p1.X + p2.X) / 2, p1.Y),
             HMM_V2(HMM_ABS(p1.X - p2.X) / 2, ux->view.theme.wireThickness / 2)};
         }
-        bvh_add(&ux->bvh, circuit_net_id(&ux->view.circuit, netIdx), box);
+        bvh_add(&ux->bvh, netID, id_make(0, 0, wireIdx), box);
       }
-
-      vertexOffset += circuit_wire_vertex_count(wire->vertexCount);
+      vertexOffset += vertCount;
     }
   }
 

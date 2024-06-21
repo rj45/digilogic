@@ -188,26 +188,6 @@ typedef struct Input {
   HMM_Vec2 scroll;
 } Input;
 
-typedef struct UndoMoveSelection {
-  HMM_Vec2 oldCenter;
-  HMM_Vec2 newCenter;
-  bool snap;
-} UndoMoveSelection;
-
-typedef struct UndoSelectDeselectItem {
-  ID itemID;
-} UndoSelectDeselectItem;
-
-typedef struct UndoSelectDeselectArea {
-  Box area;
-} UndoSelectDeselectArea;
-
-typedef struct UndoAddDelComponent {
-  HMM_Vec2 center;
-  ID itemID;
-  ComponentDescID descID;
-} UndoAddDelComponent;
-
 typedef struct UndoCommand {
   enum {
     UNDO_NONE,
@@ -216,8 +196,10 @@ typedef struct UndoCommand {
     UNDO_SELECT_AREA,
     UNDO_DESELECT_ITEM,
     UNDO_DESELECT_AREA,
-    UNDO_ADD_COMPONENT,
-    UNDO_DEL_COMPONENT,
+    UNDO_ADD_SYMBOL,
+    UNDO_DEL_SYMBOL,
+    UNDO_ADD_WAYPOINT,
+    UNDO_DEL_WAYPOINT,
   } verb;
 
   union {
@@ -232,10 +214,11 @@ typedef struct UndoCommand {
     struct { // for UNDO_SELECT_AREA, UNDO_DESELECT_AREA
       Box area;
     };
-    struct { // for UNDO_ADD_COMPONENT, UNDO_DEL_COMPONENT
+    struct { // for UNDO_ADD_SYMBOL, UNDO_DEL_SYMBOL, UNDO_ADD_WAYPONT,
+             // UNDO_DEL_WAYPOINT
       HMM_Vec2 center;
-      ComponentID componentID;
-      ComponentDescID descID;
+      ID parentID;
+      ID childID;
     };
   };
 } UndoCommand;
@@ -277,23 +260,43 @@ static inline UndoCommand undo_cmd_deselect_area(Box area) {
   };
 }
 
-static inline UndoCommand undo_cmd_add_component(
-  HMM_Vec2 center, ID componentID, ComponentDescID descID) {
+static inline UndoCommand
+undo_cmd_add_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
   return (UndoCommand){
-    .verb = UNDO_ADD_COMPONENT,
+    .verb = UNDO_ADD_SYMBOL,
     .center = center,
-    .componentID = componentID,
-    .descID = descID,
+    .childID = symbolID,
+    .parentID = symbolKindID,
   };
 }
 
-static inline UndoCommand undo_cmd_del_component(
-  HMM_Vec2 center, ID componentID, ComponentDescID descID) {
+static inline UndoCommand
+undo_cmd_del_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
   return (UndoCommand){
-    .verb = UNDO_DEL_COMPONENT,
+    .verb = UNDO_DEL_SYMBOL,
     .center = center,
-    .componentID = componentID,
-    .descID = descID,
+    .childID = symbolID,
+    .parentID = symbolKindID,
+  };
+}
+
+static inline UndoCommand
+undo_cmd_add_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
+  return (UndoCommand){
+    .verb = UNDO_ADD_WAYPOINT,
+    .center = center,
+    .childID = waypointID,
+    .parentID = endpointID,
+  };
+}
+
+static inline UndoCommand
+undo_cmd_del_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
+  return (UndoCommand){
+    .verb = UNDO_DEL_WAYPOINT,
+    .center = center,
+    .childID = waypointID,
+    .parentID = endpointID,
   };
 }
 
@@ -311,16 +314,18 @@ typedef struct CircuitUX {
 
   MouseDownState mouseDownState;
 
-  PortID clickedPort;
+  PortRef clickedPort;
 
   HMM_Vec2 downStart;
   HMM_Vec2 selectionCenter;
 
-  ComponentID addingComponent;
+  ID addingSymbol;
 
   bool newNet;
-  EndpointID endpointStart;
-  EndpointID endpointEnd;
+  ID endpointStart;
+  ID endpointEnd;
+
+  arr(BVHLeaf) bvhQuery;
 
   float zoomExp;
 
@@ -352,14 +357,14 @@ void ux_select_none(CircuitUX *ux);
 void ux_select_all(CircuitUX *ux);
 void ux_delete_selected(CircuitUX *ux);
 
-void ux_start_adding_component(CircuitUX *ux, ComponentDescID descID);
-void ux_stop_adding_component(CircuitUX *ux);
-void ux_change_adding_component(CircuitUX *ux, ComponentDescID descID);
+void ux_start_adding_symbol(CircuitUX *ux, ID symbolKindID);
+void ux_stop_adding_symbol(CircuitUX *ux);
+void ux_change_adding_symbol(CircuitUX *ux, ID symbolKindID);
 
-void ux_start_wire(CircuitUX *ux, PortID portID);
-void ux_continue_wire(CircuitUX *ux, EndpointID endpointID);
+void ux_start_wire(CircuitUX *ux, PortRef portRef);
+void ux_continue_wire(CircuitUX *ux, ID endpointID);
 void ux_cancel_wire(CircuitUX *ux);
-void ux_connect_wire(CircuitUX *ux, PortID portID);
+void ux_connect_wire(CircuitUX *ux, PortRef portRef);
 
 void ux_route(CircuitUX *ux);
 void ux_build_bvh(CircuitUX *ux);

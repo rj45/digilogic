@@ -17,8 +17,6 @@
 #include "core/core.h"
 #include "handmade_math.h"
 #include "import.h"
-#include "ux/ux.h"
-#include "view/view.h"
 
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
@@ -40,11 +38,11 @@ static LXMLNode *find_node(LXMLNode *node, const char *tag) {
 }
 
 struct {
-  const char *name;
-  ComponentDescID desc;
+  const char *digName;
+  const char *ourName;
 } componentTypes[] = {
-  {"In", COMP_INPUT}, {"Out", COMP_OUTPUT}, {"And", COMP_AND},
-  {"Or", COMP_OR},    {"XOr", COMP_XOR},    {"Not", COMP_NOT},
+  {"In", "IN"}, {"Out", "OUT"}, {"And", "AND"},
+  {"Or", "OR"}, {"XOr", "XOR"}, {"Not", "NOT"},
 };
 
 typedef struct IVec2 {
@@ -56,7 +54,7 @@ typedef struct WireEnd {
   bool visited;
   enum { IN_PORT, OUT_PORT, WIRE, WAYPOINT } type;
   union {
-    PortID port;
+    PortRef portRef;
     IVec2 farSide;
   };
 } WireEnd;
@@ -73,7 +71,7 @@ typedef struct {
 } DigWireHash;
 
 void replace_wire_end_with_port(
-  arr(DigWire) digWires, DigWireHash *digWireEnds, PortID port, IVec2 pos,
+  arr(DigWire) digWires, DigWireHash *digWireEnds, PortRef portRef, IVec2 pos,
   bool in) {
   arr(uint32_t) ends = hmget(digWireEnds, pos);
   assert(arrlen(ends) == 1); // waypoint on pin not supported yet
@@ -83,7 +81,7 @@ void replace_wire_end_with_port(
       if (digWire->ends[j].pos.x == pos.x && digWire->ends[j].pos.y == pos.y) {
         assert(digWire->ends[j].type == WIRE);
         digWire->ends[j].type = in ? IN_PORT : OUT_PORT;
-        digWire->ends[j].port = port;
+        digWire->ends[j].portRef = portRef;
       }
     }
   }
@@ -141,7 +139,7 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
               otherEnd->pos.x == end->pos.x && otherEnd->pos.y == end->pos.y) {
               // merge the two wires keeping the far ends of each
               log_debug(
-                "  Merged %d and %d at %d, %d\n", i, otherIndex, end->pos.x,
+                "  Merged %d and %d at %d, %d", i, otherIndex, end->pos.x,
                 end->pos.y);
 
               // remove both ends of other from the hash
@@ -169,11 +167,28 @@ static void simplify_wires(arr(DigWire) digWires, DigWireHash *digWireEnds) {
   }
 }
 
-void import_digital(CircuitUX *ux, char *buffer) {
+ID find_symbol_kind(Circuit *circ, const char *name) {
+  CircuitIter it = circ_iter(circ, SymbolKind);
+  while (circ_iter_next(&it)) {
+    SymbolKind *table = circ_iter_table(&it, SymbolKind);
+    for (int i = 0; i < table->length; i++) {
+      if (table->name[i] == 0) {
+        continue;
+      }
+      const char *name2 = circ_str_get(circ, table->name[i]);
+      if (strcmp(name, name2) == 0) {
+        return table->id[i];
+      }
+    }
+  }
+  return NO_ID;
+}
+
+void import_digital(Circuit *circ, char *buffer) {
   arr(uint32_t) stack = 0;
-  arr(PortID) inPorts = 0;
-  arr(PortID) outPorts = 0;
-  arr(HMM_Vec2) waypoints = 0;
+  arr(WireEnd) inPorts = 0;
+  arr(WireEnd) outPorts = 0;
+  arr(WireEnd) waypoints = 0;
   arr(uint32_t) netWires = 0;
 
   arr(DigWire) digWires = 0;
@@ -194,13 +209,13 @@ void import_digital(CircuitUX *ux, char *buffer) {
     goto fail;
   }
 
-  LXMLNode *circuit = find_node(root, "circuit");
-  if (!circuit) {
+  LXMLNode *circuitNode = find_node(root, "circuit");
+  if (!circuitNode) {
     log_debug("No circuit node");
     goto fail;
   }
 
-  LXMLNode *wires = find_node(circuit, "wires");
+  LXMLNode *wires = find_node(circuitNode, "wires");
   if (!wires) {
     log_debug("No wires node");
     goto fail;
@@ -236,7 +251,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
           } else if (strcmp(attr->key, "y") == 0) {
             positions[j].y = atoi(attr->value);
           } else {
-            log_debug("Unknown attribute %s\n", attr->key);
+            log_debug("Unknown attribute %s", attr->key);
             goto fail;
           }
         }
@@ -271,7 +286,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
 
   log_debug("Loading components");
 
-  LXMLNode *visualElements = find_node(circuit, "visualElements");
+  LXMLNode *visualElements = find_node(circuitNode, "visualElements");
   if (!visualElements) {
     log_debug("No visualElements node");
     goto fail;
@@ -287,15 +302,15 @@ void import_digital(CircuitUX *ux, char *buffer) {
       }
 
       char *typeName = typeNameNode->inner_text;
-      ComponentDescID descID = (ComponentDescID)-1;
+      ID symbolKindID = NO_ID;
       for (int j = 0; j < sizeof(componentTypes) / sizeof(componentTypes[0]);
            j++) {
-        if (strcmp(typeName, componentTypes[j].name) == 0) {
-          descID = componentTypes[j].desc;
+        if (strcmp(typeName, componentTypes[j].digName) == 0) {
+          symbolKindID = find_symbol_kind(circ, componentTypes[j].ourName);
         }
       }
-      if (descID == (ComponentDescID)-1) {
-        log_debug("Unknown component type %s\n", typeName);
+      if (symbolKindID == NO_ID) {
+        log_debug("Unknown symbol kind %s", typeName);
         goto fail;
       }
 
@@ -317,67 +332,51 @@ void import_digital(CircuitUX *ux, char *buffer) {
         }
       }
 
-      log_debug("Adding component %s at %d, %d\n", typeName, x, y);
-      ComponentID componentID =
-        circuit_add_component(&ux->view.circuit, descID, HMM_V2(x, y));
-
       // digital's components are placed relative to the first port
-      Component *component =
-        circuit_component_ptr(&ux->view.circuit, componentID);
+      // find the first port and move the component to the correct position
+      ID firstPort = circ_get(circ, symbolKindID, LinkedList).head;
+      Position portPos = circ_get(circ, firstPort, Position);
+      HMM_Vec2 symPos = HMM_SubV2(HMM_V2(x, y), portPos);
 
-      PortID firstPort = component->portFirst;
-      Port *port = circuit_port_ptr(&ux->view.circuit, firstPort);
-      circuit_move_component(
-        &ux->view.circuit, componentID,
-        HMM_SubV2(HMM_V2(0, 0), port->position));
+      assert((int)(symPos.X + portPos.X) == x);
+      assert((int)(symPos.Y + portPos.Y) == y);
 
-      HMM_Vec2 portPos = HMM_AddV2(component->box.center, port->position);
-      log_debug("Moved: %f == %d, %f == %d\n", portPos.X, x, portPos.Y, y);
+      log_debug("Adding symbol %s at %f, %f", typeName, symPos.X, symPos.Y);
+      ID symbolID = circ_add_symbol(circ, circ->top, symbolKindID);
+      circ_set_symbol_position(circ, symbolID, symPos);
 
-      const ComponentDesc *desc = &ux->view.circuit.componentDescs[descID];
-      switch (descID) {
-      case COMP_INPUT:
-      case COMP_OUTPUT: {
-        PortID portID = firstPort;
-        log_debug("Adding port %s at %d, %d\n", desc->ports[0].name, x, y);
+      bool isInput = strcmp(typeName, "In") == 0;
+      bool isOutput = strcmp(typeName, "Out") == 0;
+
+      if (isInput || isOutput) {
+        log_debug("  Adding port at %d, %d", x, y);
         replace_wire_end_with_port(
-          digWires, digWireEnds, portID, (IVec2){x, y}, descID == COMP_OUTPUT);
-        break;
-      }
-      case COMP_AND:
-      case COMP_OR:
-      case COMP_XOR:
-      case COMP_NOT: {
+          digWires, digWireEnds, (PortRef){symbolID, firstPort}, (IVec2){x, y},
+          isOutput);
+      } else {
         IVec2 nextInput = {x, y};
         IVec2 nextOutput = {x + 4 * 20, y + 20};
-        if (descID == COMP_NOT) {
+        if (strcmp(typeName, "Not") == 0) {
           nextOutput = (IVec2){x + 2 * 20, y};
         }
-        PortID portID = component->portFirst;
-        int j = 0;
-        while (circuit_has(&ux->view.circuit, portID)) {
+        PortID portID = firstPort;
+        while (circ_has(circ, portID)) {
           IVec2 pos = nextInput;
-          if (desc->ports[j].direction == PORT_OUT) {
+          if (circ_has_tags(circ, portID, TAG_OUT)) {
             pos = nextOutput;
             nextOutput.y += 20;
           } else {
-            nextInput.y += 40;
+            nextInput.y += 40; // todo: why is this 40?
           }
-          log_debug(
-            "Adding port %s at %d, %d\n", desc->ports[j].name, pos.x, pos.y);
+          const char *portName =
+            circ_str_get(circ, circ_get(circ, portID, Name));
+          log_debug("Adding port %s at %d, %d", portName, pos.x, pos.y);
           replace_wire_end_with_port(
-            digWires, digWireEnds, portID, pos,
-            desc->ports[j].direction == PORT_IN);
+            digWires, digWireEnds, (PortRef){symbolID, portID}, pos,
+            circ_has_tags(circ, portID, TAG_IN));
 
-          portID = circuit_port_ptr(&ux->view.circuit, portID)->next;
-          j++;
+          portID = circ_get(circ, portID, ListNode).next;
         }
-        break;
-      }
-      default:
-        log_debug("Unknown component type %d\n", descID);
-        assert(0);
-        break;
       }
     }
   }
@@ -389,8 +388,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
       DigWire *digWire = &digWires[digWireEnds[i].value[j]];
       if (!digWire->valid) {
         log_debug(
-          "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
-          digWireEnds[i].key.y);
+          "Invalid wire at %d, %d", digWireEnds[i].key.x, digWireEnds[i].key.y);
         allValid = false;
       }
     }
@@ -414,7 +412,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
         }
       }
       if (!found) {
-        log_debug("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        log_debug("Wire end %d, %d not in hash", end->pos.x, end->pos.y);
         allValid = false;
       }
     }
@@ -430,8 +428,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
       DigWire *digWire = &digWires[digWireEnds[i].value[j]];
       if (!digWire->valid) {
         log_debug(
-          "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
-          digWireEnds[i].key.y);
+          "Invalid wire at %d, %d", digWireEnds[i].key.x, digWireEnds[i].key.y);
         allValid = false;
       }
     }
@@ -455,7 +452,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
         }
       }
       if (!found) {
-        log_debug("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        log_debug("Wire end %d, %d not in hash", end->pos.x, end->pos.y);
         allValid = false;
       }
     }
@@ -475,7 +472,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
           digWire->ends[j].pos.y == digWireEnds[i].key.y &&
           digWire->ends[j].type == WIRE) {
           log_debug(
-            "Trimming free floating wire at %d, %d\n", digWire->ends[j].pos.x,
+            "Trimming free floating wire at %d, %d", digWire->ends[j].pos.x,
             digWire->ends[j].pos.y);
           digWire->valid = false;
           remove_from_hash(
@@ -498,8 +495,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
       DigWire *digWire = &digWires[digWireEnds[i].value[j]];
       if (!digWire->valid) {
         log_debug(
-          "Invalid wire at %d, %d\n", digWireEnds[i].key.x,
-          digWireEnds[i].key.y);
+          "Invalid wire at %d, %d", digWireEnds[i].key.x, digWireEnds[i].key.y);
         allValid = false;
       }
     }
@@ -523,7 +519,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
         }
       }
       if (!found) {
-        log_debug("Wire end %d, %d not in hash\n", end->pos.x, end->pos.y);
+        log_debug("Wire end %d, %d not in hash", end->pos.x, end->pos.y);
         allValid = false;
       }
     }
@@ -534,7 +530,7 @@ void import_digital(CircuitUX *ux, char *buffer) {
   for (int i = 0; i < hmlen(digWireEnds); i++) {
     if (arrlen(digWireEnds[i].value) > 2) {
       log_debug(
-        "Waypoint at %d, %d\n", digWireEnds[i].key.x, digWireEnds[i].key.y);
+        "Junction at %d, %d", digWireEnds[i].key.x, digWireEnds[i].key.y);
 
       // WaypointID waypointID =
       //   ux_add_waypoint(ux, HMM_V2(digWireEnds[i].key.x,
@@ -593,23 +589,39 @@ void import_digital(CircuitUX *ux, char *buffer) {
 
         switch (end->type) {
         case IN_PORT:
-          arrput(inPorts, end->port);
+          arrput(inPorts, *end);
           break;
         case OUT_PORT:
-          arrput(outPorts, end->port);
+          arrput(outPorts, *end);
           break;
         case WIRE:
           break;
         case WAYPOINT: {
           bool found = false;
           for (int l = 0; l < arrlen(waypoints); l++) {
-            if (waypoints[l].X == end->pos.x && waypoints[l].Y == end->pos.y) {
+            if (
+              waypoints[l].pos.x == end->pos.x &&
+              waypoints[l].pos.y == end->pos.y) {
               found = true;
               break;
             }
           }
           if (!found) {
-            arrput(waypoints, HMM_V2(end->pos.x, end->pos.y));
+            WireEnd *otherEnd = &digWire->ends[k == 0 ? 1 : 0];
+            PortRef ref = {0};
+            if (otherEnd->type == IN_PORT || otherEnd->type == OUT_PORT) {
+              ref = otherEnd->portRef;
+              log_debug(
+                "Waypoint at %d, %d belongs to {%x %x}", end->pos.x, end->pos.y,
+                ref.symbol, ref.port);
+            } else {
+              log_debug(
+                "Waypoint at %d, %d has no port", end->pos.x, end->pos.y);
+              // todo: pick the closest endpoint and attach the waypoint to it.
+              // Ideally we would put these waypoints on the root wire, but we
+              // don't know which wire that will be yet.
+            }
+            arrput(waypoints, ((WireEnd){.pos = end->pos, .portRef = ref}));
           }
           break;
         }
@@ -617,20 +629,82 @@ void import_digital(CircuitUX *ux, char *buffer) {
       }
     }
 
-    NetID netID = circuit_add_net(&ux->view.circuit);
-    log_debug("Net %d", netID);
+    // determine the two furthest endpoints on the net, those will be the root
+    // wire
+    float dist = 0;
+    WireEnd *rootEnd[2] = {0};
+    for (int j = 0; j < arrlen(netWires); j++) {
+      DigWire *digWire1 = &digWires[netWires[j]];
+      for (int k = 0; k < 2; k++) {
+        WireEnd *end1 = &digWire1->ends[k];
+        if (end1->type == IN_PORT || end1->type == OUT_PORT) {
+          for (int l = 0; l < arrlen(netWires); l++) {
+            DigWire *digWire2 = &digWires[netWires[l]];
+            for (int m = 0; m < 2; m++) {
+              WireEnd *end2 = &digWire2->ends[m];
+              if (end2->type == IN_PORT || end2->type == OUT_PORT) {
+                float d = HMM_LenV2(
+                  HMM_V2(end1->pos.x - end2->pos.x, end1->pos.y - end2->pos.y));
+                if (d > dist) {
+                  dist = d;
+                  rootEnd[0] = end1;
+                  rootEnd[1] = end2;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
 
-    for (int j = 0; j < arrlen(inPorts); j++) {
-      log_debug("  * In port %d", inPorts[j]);
-      circuit_add_endpoint(&ux->view.circuit, netID, inPorts[j], HMM_V2(0, 0));
-    }
+    // find all waypoints without ports attached and attach them to the closest
+    // rootEnd
     for (int j = 0; j < arrlen(waypoints); j++) {
-      log_debug("  * Waypoint %f %f", waypoints[j].X, waypoints[j].Y);
-      circuit_add_waypoint(&ux->view.circuit, netID, waypoints[j]);
+      WireEnd *waypoint = &waypoints[j];
+      if (waypoint->portRef.symbol == 0) {
+        float dist1 = HMM_LenV2(HMM_V2(
+          rootEnd[0]->pos.x - waypoint->pos.x,
+          rootEnd[0]->pos.y - waypoint->pos.y));
+        float dist2 = HMM_LenV2(HMM_V2(
+          rootEnd[1]->pos.x - waypoint->pos.x,
+          rootEnd[1]->pos.y - waypoint->pos.y));
+        if (dist1 < dist2) {
+          waypoint->portRef = rootEnd[0]->portRef;
+        } else {
+          waypoint->portRef = rootEnd[1]->portRef;
+        }
+        log_debug(
+          "Waypoint at %d, %d attached to root {%x %x}", waypoint->pos.x,
+          waypoint->pos.y, waypoint->portRef.symbol, waypoint->portRef.port);
+      }
     }
-    for (int j = 0; j < arrlen(outPorts); j++) {
-      log_debug("  * Out port %d", outPorts[j]);
-      circuit_add_endpoint(&ux->view.circuit, netID, outPorts[j], HMM_V2(0, 0));
+
+    ID netID = circ_add_net(circ, circ->top);
+    ID subnetID = circ_add_subnet(circ, netID);
+    log_debug("Net %x, Subnet %x", netID, subnetID);
+
+    WireEnd *ports[2] = {inPorts, outPorts};
+    for (int k = 0; k < 2; k++) {
+      for (int j = 0; j < arrlen(ports[k]); j++) {
+        WireEnd end = ports[k][j];
+        log_debug(
+          "  * %s port {%x, %x}", k == 0 ? "In" : "Out", end.portRef.symbol,
+          end.portRef.port);
+        ID endpointID = circ_add_endpoint(circ, subnetID);
+        circ_connect_endpoint_to_port(
+          circ, endpointID, end.portRef.symbol, end.portRef.port);
+        for (int j = 0; j < arrlen(waypoints); j++) {
+          if (
+            waypoints[j].portRef.symbol == end.portRef.symbol &&
+            waypoints[j].portRef.port == end.portRef.port) {
+            log_debug(
+              "    * Waypoint %d %d", waypoints[j].pos.x, waypoints[j].pos.y);
+            ID waypointID = circ_add_waypoint(circ, endpointID);
+            circ_set_waypoint_position(
+              circ, waypointID, HMM_V2(waypoints[j].pos.x, waypoints[j].pos.y));
+          }
+        }
+      }
     }
 
     arrsetlen(inPorts, 0);

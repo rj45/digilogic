@@ -3,12 +3,11 @@ project(digilogic LANGUAGES C)
 
 set(DIGILOGIC_SRCS
     src/main.c
-    src/core/circuit.c
-    src/core/smap.c
     src/core/save.c
     src/core/load.c
     src/core/bvh.c
-    src/core/structdescs.c
+    src/core/newcircuit.c
+    src/core/changelog.c
     src/ux/ux.c
     src/ux/input.c
     src/ux/snap.c
