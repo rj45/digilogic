@@ -17,6 +17,7 @@
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "handmade_math.h"
+#include "routing/routing.h"
 #include "stb_ds.h"
 #include "view/view.h"
 #include <float.h>
@@ -207,7 +208,7 @@ void ux_build_bvh(CircuitUX *ux) {
     size_t vertexOffset = 0;
     for (size_t wireIdx = 0; wireIdx < wireVertices.wireCount; wireIdx++) {
       uint16_t vertCount =
-        circuit_wire_vertex_count(wireVertices.wireVertexCounts[wireIdx]);
+        RT_WireView_vertex_count(wireVertices.wireVertexCounts[wireIdx]);
       for (size_t vertIdx = 1; vertIdx < vertCount; vertIdx++) {
         HMM_Vec2 p1 = wireVertices.vertices[vertexOffset + vertIdx - 1];
         HMM_Vec2 p2 = wireVertices.vertices[vertexOffset + vertIdx];

@@ -15,7 +15,6 @@
 */
 
 #include "core/core.h"
-#include "core/structs.h"
 #include "handmade_math.h"
 #include "render/draw.h"
 #include "stb_ds.h"
@@ -671,6 +670,6 @@ void ux_connect_wire(CircuitUX *ux, PortRef portRef) {
     &ux->view.circuit2, ux->endpointEnd, portRef.symbol, portRef.port);
 
   ux->newNet = false;
-  ux->endpointStart = NO_ENDPOINT;
-  ux->endpointEnd = NO_ENDPOINT;
+  ux->endpointStart = NO_ID;
+  ux->endpointEnd = NO_ID;
 }

@@ -23,7 +23,7 @@ static void
 save_id(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, ID id) {
   char idStr[128];
   int len = snprintf(
-    idStr, sizeof(idStr), "%x:%x:%x", id_type(id), id_gen(id), id_index(id));
+    idStr, sizeof(idStr), "%x:%x:%x", id_flags(id), id_gen(id), id_index(id));
 
   yyjson_mut_obj_add_strncpy(doc, obj, key, idStr, len);
 }
@@ -31,7 +31,7 @@ save_id(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, ID id) {
 static void save_id_arr(yyjson_mut_doc *doc, yyjson_mut_val *arr, ID id) {
   char idStr[128];
   int len = snprintf(
-    idStr, sizeof(idStr), "%x:%x:%x", id_type(id), id_gen(id), id_index(id));
+    idStr, sizeof(idStr), "%x:%x:%x", id_flags(id), id_gen(id), id_index(id));
 
   yyjson_mut_arr_add_strncpy(doc, arr, idStr, len);
 }

@@ -25,39 +25,44 @@
 #include "view.h"
 #include <stdbool.h>
 
-UTEST(View, view_add_component) {
+UTEST(View, view_add_symbols) {
   CircuitView view = {0};
 
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
 
-  circuit_add_component(&view.circuit, COMP_AND, HMM_V2(100, 100));
-  circuit_add_component(&view.circuit, COMP_OR, HMM_V2(200, 200));
+  SymbolKindID andKindID = circ_get_symbol_kind_by_name(&view.circuit2, "AND");
+  SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
 
-  ASSERT_EQ(circuit_component_len(&view.circuit), 2);
-  ASSERT_EQ(view.circuit.components[0].box.center.X, 100);
-  ASSERT_EQ(view.circuit.components[0].box.center.Y, 100);
-  ASSERT_NE(view.circuit.components[0].box.halfSize.X, 0);
-  ASSERT_NE(view.circuit.components[0].box.halfSize.Y, 0);
+  ID andID = circ_add_symbol(&view.circuit2, view.circuit2.top, andKindID);
+  circ_set_symbol_position(&view.circuit2, andID, HMM_V2(100, 150));
+  ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
+  circ_set_symbol_position(&view.circuit2, orID, HMM_V2(200, 250));
 
-  ASSERT_EQ(view.circuit.components[1].box.center.X, 200);
-  ASSERT_EQ(view.circuit.components[1].box.center.Y, 200);
-  ASSERT_NE(view.circuit.components[1].box.halfSize.X, 0);
-  ASSERT_NE(view.circuit.components[1].box.halfSize.Y, 0);
+  ASSERT_EQ(circ_len(&view.circuit2, Symbol2), 2);
+
+  Position pos = circ_get(&view.circuit2, andID, Position);
+  ASSERT_EQ(pos.X, 100);
+  ASSERT_EQ(pos.Y, 150);
+
+  pos = circ_get(&view.circuit2, orID, Position);
+  ASSERT_EQ(pos.X, 200);
+  ASSERT_EQ(pos.Y, 250);
 
   view_free(&view);
   draw_free(draw);
 }
 
-UTEST(View, view_draw_components) {
+UTEST(View, view_draw_symbols) {
   CircuitView view = {0};
   DrawContext *draw = draw_create();
 
   view_init(&view, circuit_component_descs(), draw, NULL);
 
-  circuit_add_component(&view.circuit, COMP_OR, HMM_V2(100, 100));
-
+  SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit2, "OR");
+  ID orID = circ_add_symbol(&view.circuit2, view.circuit2.top, orKindID);
+  circ_set_symbol_position(&view.circuit2, orID, HMM_V2(100, 100));
   view_draw(&view);
 
   ASSERT_STREQ(

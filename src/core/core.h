@@ -22,7 +22,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "core/structs.h"
 #include "handmade_math.h"
 #include "stb_ds.h"
 
@@ -58,20 +57,7 @@
 // Generational Handle IDs
 ////////////////////////////////////////////////////////////////////////////////
 
-PACK(typedef enum IDType{
-  ID_NONE,
-  ID_COMPONENT,
-  ID_PORT,
-  ID_NET,
-  ID_ENDPOINT,
-  ID_WAYPOINT,
-  ID_LABEL,
-})
-IDType;
-
-#define ID_TYPE_COUNT 7
-
-// ID is defined in structs.h
+typedef uint32_t ID;
 
 #define NO_ID 0
 
@@ -79,32 +65,35 @@ typedef uint32_t Gen;
 
 #define smap(type) type *
 
-#define ID_TYPE_BITS 3
-#define ID_GEN_BITS 7
-#define ID_INDEX_BITS (32 - ID_TYPE_BITS - ID_GEN_BITS)
+#define ID_FLAG_BITS 2
+#define ID_GEN_BITS 6
+#define ID_INDEX_BITS (32 - ID_FLAG_BITS - ID_GEN_BITS)
 
-#define ID_TYPE_MASK ((1 << ID_TYPE_BITS) - 1)
+#define ID_FLAG_MASK ((1 << ID_FLAG_BITS) - 1)
 #define ID_GEN_MASK ((1 << ID_GEN_BITS) - 1)
 #define ID_INDEX_MASK ((1 << ID_INDEX_BITS) - 1)
 
-#define ID_TYPE_SHIFT (ID_GEN_BITS + ID_INDEX_BITS)
+#define ID_FLAG_SHIFT (ID_GEN_BITS + ID_INDEX_BITS)
 #define ID_GEN_SHIFT (ID_INDEX_BITS)
 
 #define id_make(type, gen, index)                                              \
-  ((((ID)(type) & ID_TYPE_MASK) << ID_TYPE_SHIFT) |                            \
+  ((((ID)(type) & ID_FLAG_MASK) << ID_FLAG_SHIFT) |                            \
    (((ID)(gen) & ID_GEN_MASK) << ID_GEN_SHIFT) |                               \
    ((ID)(index) & ID_INDEX_MASK))
-#define id_type(id) ((IDType)(((id) >> ID_TYPE_SHIFT) & ID_TYPE_MASK))
+#define id_flags(id) ((uint32_t)(((id) >> ID_FLAG_SHIFT) & ID_FLAG_MASK))
 #define id_gen(id) ((Gen)(((id) >> ID_GEN_SHIFT) & ID_GEN_MASK))
-#define id_typegen(id) ((ID)(id) >> ID_GEN_SHIFT)
+#define id_flagsgen(id) ((ID)(id) >> ID_GEN_SHIFT)
 #define id_index(id) ((ID)(id) & ID_INDEX_MASK)
-#define id_valid(id) (id_gen(id) != 0 && id_type(id) != ID_NONE)
+#define id_valid(id) (id_gen(id) != 0)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bounding Boxes
 ////////////////////////////////////////////////////////////////////////////////
 
-// Box is defined in structs.h
+typedef struct Box {
+  HMM_Vec2 center;
+  HMM_Vec2 halfSize;
+} Box;
 
 static inline HMM_Vec2 box_top_left(Box box) {
   return HMM_SubV2(box.center, box.halfSize);
@@ -208,78 +197,6 @@ void bvh_rebuild(BVH *bvh);
 arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result);
 
 ////////////////////////////////////////////////////////////////////////////////
-// SparseMap
-////////////////////////////////////////////////////////////////////////////////
-
-struct SparseMap;
-
-typedef struct SmapCallback {
-  void *user;
-  void (*fn)(void *user, ID id, void *ptr);
-} SmapCallback;
-
-typedef struct SyncedArray {
-  void **ptr;
-  uint32_t elemSize;
-  arr(SmapCallback) create;
-  arr(SmapCallback) update;
-  arr(SmapCallback) delete;
-} SyncedArray;
-
-typedef struct SparseMap {
-  // has the full id of each element
-  ID *ids;
-
-  // length and capacity of all synced arrays
-  uint32_t length;
-  uint32_t capacity;
-
-  // type of IDs generated
-  IDType type;
-
-  // internal - has the type, generation and index of each element
-  arr(ID) sparse;
-
-  // internal - to keep the index small, keep track of free handle indices and
-  // their old generation
-  arr(ID) freeList;
-
-  // internal - list of synced arrays
-  arr(SyncedArray) syncedArrays;
-} SparseMap;
-
-void smap_init(SparseMap *smap, IDType type);
-void smap_free(SparseMap *smap);
-void smap_clone_from(SparseMap *dst, SparseMap *src);
-
-void smap_add_synced_array(SparseMap *smap, void **ptr, uint32_t elemSize);
-void smap_on_create(SparseMap *smap, void *array, SmapCallback callback);
-void smap_on_update(SparseMap *smap, void *array, SmapCallback callback);
-void smap_on_delete(SparseMap *smap, void *array, SmapCallback callback);
-
-void smap_clear(SparseMap *smap);
-ID smap_add(SparseMap *smap, void *value);
-void smap_del(SparseMap *smap, ID id);
-void smap_update_id(SparseMap *smap, ID id);
-void smap_update_index(SparseMap *smap, uint32_t index);
-
-static inline int smap_len(SparseMap *smap) { return smap->length; }
-
-static inline bool smap_has(SparseMap *smap, ID id) {
-  return id_valid(id) &&
-         id_typegen(smap->sparse[id_index(id)]) == id_typegen(id);
-}
-
-static inline int smap_index(SparseMap *smap, ID id) {
-  assert(smap_has(smap, id));
-  return id_index(smap->sparse[id_index(id)]);
-}
-
-static inline ID smap_id(SparseMap *smap, int index) {
-  return smap->ids[index];
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // ChangeLog
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -348,15 +265,6 @@ enum {
   COMP_COUNT,
 };
 
-#define NO_COMPONENT NO_ID
-#define NO_NET NO_ID
-#define NO_PORT NO_ID
-#define NO_ENDPOINT NO_ID
-#define NO_WAYPOINT NO_ID
-#define NO_LABEL NO_ID
-#define NO_VERTEX UINT32_MAX
-#define NO_VERTEX UINT32_MAX
-
 typedef enum PortDirection {
   PORT_IN,
   PORT_OUT,
@@ -385,215 +293,14 @@ typedef struct ComponentDesc {
   PortDesc *ports;
 } ComponentDesc;
 
-typedef struct Circuit {
-  // important: keep in sync with IDType
-  union {
-    struct {
-      SparseMap none;
-      SparseMap components;
-      SparseMap ports;
-      SparseMap nets;
-      SparseMap endpoints;
-      SparseMap waypoints;
-      SparseMap labels;
-    } sm;
-    SparseMap sparsemaps[ID_TYPE_COUNT];
-  };
-
-  // important: keep in sync with IDType
-  union {
-    struct {
-      uint32_t *none;
-      Component *components;
-      Port *ports;
-      Net *nets;
-      Endpoint *endpoints;
-      Waypoint *waypoints;
-      Label *labels;
-    };
-    void *ptrs[ID_TYPE_COUNT];
-  };
-
-  const ComponentDesc *componentDescs;
-
-  arr(char) text;
-
-  struct {
-    char key;
-    uint32_t value;
-  } *nextName;
-
-  arr(Wire) wires;
-  arr(HMM_Vec2) vertices;
-} Circuit;
-
-#define circuit_has(circuit, id)                                               \
-  (smap_has(&(circuit)->sparsemaps[id_type(id)], (id)))
-#define circuit_index(circuit, id)                                             \
-  (smap_index(&(circuit)->sparsemaps[id_type(id)], (id)))
-#define circuit_update_id(circuit, id)                                         \
-  (smap_update_id(&(circuit)->sparsemaps[id_type(id)], (id)))
-#define circuit_del(circuit, id)                                               \
-  (smap_del(&(circuit)->sparsemaps[id_type(id)], (id)))
-
-#define circuit_len(circuit, type) (smap_len(&(circuit)->sparsemaps[type]))
-#define circuit_id(circuit, type, index)                                       \
-  (smap_id(&(circuit)->sparsemaps[type], (index)))
-#define circuit_update_index(circuit, type, index)                             \
-  (smap_update_index(&(circuit)->sparsemaps[type], (index)))
-#define circuit_on_create(circuit, type, user, callback)                       \
-  (smap_on_create(                                                             \
-    &(circuit)->sparsemaps[type], (circuit)->ptrs[type],                       \
-    (SmapCallback){user, callback}))
-#define circuit_on_update(circuit, type, user, callback)                       \
-  (smap_on_update(                                                             \
-    &(circuit)->sparsemaps[type], (circuit)->ptrs[type],                       \
-    (SmapCallback){user, callback}))
-#define circuit_on_delete(circuit, type, user, callback)                       \
-  (smap_on_delete(                                                             \
-    &(circuit)->sparsemaps[type], (circuit)->ptrs[type],                       \
-    (SmapCallback){user, callback}))
-
-#define circuit_component_ptr(circuit, id)                                     \
-  (&(circuit)->components[circuit_index(circuit, id)])
-#define circuit_component_len(circuit) (smap_len(&(circuit)->sm.components))
-#define circuit_component_id(circuit, index)                                   \
-  (smap_id(&(circuit)->sm.components, (index)))
-#define circuit_component_update_index(circuit, index)                         \
-  smap_update_index(&(circuit)->sm.components, (index))
-#define circuit_on_component_create(circuit, user, callback)                   \
-  smap_on_create(                                                              \
-    &(circuit)->sm.components, (circuit)->components,                          \
-    (SmapCallback){user, callback})
-#define circuit_on_component_update(circuit, user, callback)                   \
-  smap_on_update(                                                              \
-    &(circuit)->sm.components, (circuit)->components,                          \
-    (SmapCallback){user, callback})
-#define circuit_on_component_delete(circuit, user, callback)                   \
-  smap_on_delete(                                                              \
-    &(circuit)->sm.components, (circuit)->components,                          \
-    (SmapCallback){user, callback})
-
-#define circuit_port_ptr(circuit, id)                                          \
-  (&(circuit)->ports[circuit_index(circuit, id)])
-#define circuit_port_len(circuit) (smap_len(&(circuit)->sm.ports))
-#define circuit_port_id(circuit, index) (smap_id(&(circuit)->sm.ports, (index)))
-#define circuit_port_update_index(circuit, index)                              \
-  smap_update_index(&(circuit)->sm.ports, (index))
-#define circuit_on_port_create(circuit, user, callback)                        \
-  smap_on_create(                                                              \
-    &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
-#define circuit_on_port_update(circuit, user, callback)                        \
-  smap_on_update(                                                              \
-    &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
-#define circuit_on_port_delete(circuit, user, callback)                        \
-  smap_on_delete(                                                              \
-    &(circuit)->sm.ports, (circuit)->ports, (SmapCallback){user, callback})
-
-#define circuit_net_ptr(circuit, id)                                           \
-  (&(circuit)->nets[circuit_index(circuit, id)])
-#define circuit_net_len(circuit) (smap_len(&(circuit)->sm.nets))
-#define circuit_net_id(circuit, index) (smap_id(&(circuit)->sm.nets, (index)))
-#define circuit_net_update_index(circuit, index)                               \
-  smap_update_index(&(circuit)->sm.nets, (index))
-#define circuit_on_net_create(circuit, user, callback)                         \
-  smap_on_create(                                                              \
-    &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
-#define circuit_on_net_update(circuit, user, callback)                         \
-  smap_on_update(                                                              \
-    &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
-#define circuit_on_net_delete(circuit, user, callback)                         \
-  smap_on_delete(                                                              \
-    &(circuit)->sm.nets, (circuit)->nets, (SmapCallback){user, callback})
-
-#define circuit_endpoint_ptr(circuit, id)                                      \
-  (&(circuit)->endpoints[circuit_index(circuit, id)])
-#define circuit_endpoint_len(circuit) (smap_len(&(circuit)->sm.endpoints))
-#define circuit_endpoint_id(circuit, index)                                    \
-  (smap_id(&(circuit)->sm.endpoints, (index)))
-#define circuit_endpoint_update_index(circuit, index)                          \
-  smap_update_index(&(circuit)->sm.endpoints, (index))
-#define circuit_on_endpoint_create(circuit, user, callback)                    \
-  smap_on_create(                                                              \
-    &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
-    (SmapCallback){user, callback})
-#define circuit_on_endpoint_update(circuit, user, callback)                    \
-  smap_on_update(                                                              \
-    &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
-    (SmapCallback){user, callback})
-#define circuit_on_endpoint_delete(circuit, user, callback)                    \
-  smap_on_delete(                                                              \
-    &(circuit)->sm.endpoints, (circuit)->endpoints,                            \
-    (SmapCallback){user, callback})
-
-#define circuit_waypoint_ptr(circuit, id)                                      \
-  (&(circuit)->waypoints[circuit_index(circuit, id)])
-#define circuit_waypoint_len(circuit) (smap_len(&(circuit)->sm.waypoints))
-#define circuit_waypoint_id(circuit, index)                                    \
-  (smap_id(&(circuit)->sm.waypoints, (index)))
-#define circuit_waypoint_update_index(circuit, index)                          \
-  smap_update_index(&(circuit)->sm.waypoints, (index))
-#define circuit_on_waypoint_create(circuit, user, callback)                    \
-  smap_on_create(                                                              \
-    &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
-    (SmapCallback){user, callback})
-#define circuit_on_waypoint_update(circuit, user, callback)                    \
-  smap_on_update(                                                              \
-    &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
-    (SmapCallback){user, callback})
-#define circuit_on_waypoint_delete(circuit, user, callback)                    \
-  smap_on_delete(                                                              \
-    &(circuit)->sm.waypoints, (circuit)->waypoints,                            \
-    (SmapCallback){user, callback})
-
-#define circuit_label_ptr(circuit, id)                                         \
-  (&(circuit)->labels[circuit_index(circuit, id)])
-#define circuit_label_len(circuit) (smap_len(&(circuit)->sm.labels))
-#define circuit_label_id(circuit, index)                                       \
-  (smap_id(&(circuit)->sm.labels, (index)))
-#define circuit_label_update_index(circuit, index)                             \
-  smap_update_index(&(circuit)->sm.labels, (index))
-#define circuit_on_label_create(circuit, user, callback)                       \
-  smap_on_create(                                                              \
-    &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
-#define circuit_on_label_update(circuit, user, callback)                       \
-  smap_on_update(                                                              \
-    &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
-#define circuit_on_label_delete(circuit, user, callback)                       \
-  smap_on_delete(                                                              \
-    &(circuit)->sm.labels, (circuit)->labels, (SmapCallback){user, callback})
-
-#define circuit_wire_vertex_count(wire_view) ((wire_view) & 0x3FFF)
-#define circuit_wire_ends_in_junction(wire_view)                               \
-  ((bool)(((wire_view) >> 15) & 0x1))
-#define circuit_wire_is_root(wire_view) ((bool)(((wire_view) >> 14) & 0x1))
-
 const ComponentDesc *circuit_component_descs();
-void circuit_init(Circuit *circuit, const ComponentDesc *componentDescs);
-void circuit_free(Circuit *circuit);
-void circuit_clear(Circuit *circuit);
-void circuit_clone_from(Circuit *dst, Circuit *src);
-ComponentID circuit_add_component(
-  Circuit *circuit, ComponentDescID desc, HMM_Vec2 position);
-void circuit_move_component(Circuit *circuit, ComponentID id, HMM_Vec2 delta);
-void circuit_move_component_to(Circuit *circuit, ComponentID id, HMM_Vec2 pos);
-NetID circuit_add_net(Circuit *circuit);
-EndpointID circuit_add_endpoint(
-  Circuit *circuit, NetID net, PortID port, HMM_Vec2 position);
-void circuit_move_endpoint_to(
-  Circuit *circuit, EndpointID id, HMM_Vec2 position);
-void circuit_endpoint_connect(Circuit *circuit, EndpointID id, PortID port);
-WaypointID
-circuit_add_waypoint(Circuit *circuit, NetID netID, HMM_Vec2 position);
-void circuit_move_waypoint(Circuit *circuit, WaypointID id, HMM_Vec2 delta);
 
-LabelID circuit_add_label(Circuit *circuit, const char *text, Box bounds);
-const char *circuit_label_text(Circuit *circuit, LabelID id);
-
-void circuit_write_dot(Circuit *circuit, FILE *file);
+typedef struct Wire {
+  uint16_t vertexCount;
+} Wire;
 
 ////////////////////////////////////////////////////////////////////////////////
-// New circuit ECS
+// Circuit ECS
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef ID SymbolID;
@@ -956,14 +663,10 @@ typedef struct Circuit2 {
   // It would also be nice to use entity IDs for strings, so the string pool
   // could be a table like any other.
   strpool_t strpool;
+  bool foreignStrpool; // is strpool owned by another Circuit2?
 
   // changelog & events
   ChangeLog log;
-
-  // temporary crossover code
-  Circuit *oldCircuit;
-  hashmap(ID, ID) oldToNew;
-  hashmap(ID, ID) newToOld;
 } Circuit2;
 
 static inline bool circ_has(Circuit2 *circuit, ID id) {

@@ -7,8 +7,6 @@ UTEST(CircuitUX, init) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ASSERT_EQ(circuit_component_len(&ux.view.circuit), 0);
-
   ux_free(&ux);
 }
 

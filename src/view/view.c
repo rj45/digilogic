@@ -19,6 +19,7 @@
 #include "stb_ds.h"
 
 #include "core/core.h"
+#include "routing/routing.h"
 #include "view.h"
 
 #include <assert.h>
@@ -54,137 +55,6 @@ void theme_init(Theme *theme, FontHandle font) {
   };
 }
 
-void view_augment_label(CircuitView *view, LabelID id, Box bounds) {
-  Label *label = circuit_label_ptr(&view->circuit, id);
-  label->box = bounds;
-  circuit_update_id(&view->circuit, id);
-}
-
-static void view_augment_component(void *user, ComponentID id, void *ptr) {
-  CircuitView *view = user;
-  Component *component = ptr;
-  const ComponentDesc *desc = &view->circuit.componentDescs[component->desc];
-
-  float labelPadding = view->theme.labelPadding;
-  float width = view->theme.componentWidth;
-
-  // figure out the size of the component
-  int numInputPorts = 0;
-  int numOutputPorts = 0;
-  PortID portID = component->portFirst;
-  for (int j = 0; j < desc->numPorts; j++) {
-    if (desc->ports[j].direction == PORT_IN) {
-      numInputPorts++;
-    } else if (desc->ports[j].direction != PORT_IN) {
-      numOutputPorts++;
-    }
-
-    // figure out the width needed for the label of the port and adjust width if
-    // it's too small
-    Port *port = circuit_port_ptr(&view->circuit, portID);
-    LabelID labelID = port->label;
-    const char *labelText = circuit_label_text(&view->circuit, labelID);
-    Box labelBounds = draw_text_bounds(
-      view->drawCtx, HMM_V2(0, 0), labelText, strlen(labelText), ALIGN_CENTER,
-      ALIGN_MIDDLE, view->theme.labelFontSize, view->theme.font);
-    float desiredHalfWidth =
-      labelBounds.halfSize.X * 2 + labelPadding * 3 + view->theme.portWidth / 2;
-    if (desiredHalfWidth > width / 2) {
-      width = desiredHalfWidth * 2;
-    }
-
-    portID = port->next;
-  }
-  float height =
-    fmaxf(numInputPorts, numOutputPorts) * view->theme.portSpacing +
-    view->theme.portSpacing;
-
-  LabelID typeLabelID = component->typeLabel;
-  const char *typeLabelText = circuit_label_text(&view->circuit, typeLabelID);
-  Box typeLabelBounds = draw_text_bounds(
-    view->drawCtx, HMM_V2(0, -(height / 2) + labelPadding), typeLabelText,
-    strlen(typeLabelText), ALIGN_CENTER, ALIGN_TOP, view->theme.labelFontSize,
-    view->theme.font);
-  if ((typeLabelBounds.halfSize.X + labelPadding) > width / 2) {
-    width = typeLabelBounds.halfSize.X * 2 + labelPadding * 2;
-  }
-  view_augment_label(view, typeLabelID, typeLabelBounds);
-
-  // kludge to make the name label appear at the right place on gate shapes
-  float nameY = -(height / 2) + labelPadding;
-  if (desc->shape != SYMSHAPE_DEFAULT) {
-    nameY += height / 5;
-  }
-
-  LabelID nameLabelID = component->nameLabel;
-  const char *nameLabelText = circuit_label_text(&view->circuit, nameLabelID);
-  Box nameLabelBounds = draw_text_bounds(
-    view->drawCtx, HMM_V2(0, nameY), nameLabelText, strlen(nameLabelText),
-    ALIGN_CENTER, ALIGN_BOTTOM, view->theme.labelFontSize, view->theme.font);
-  view_augment_label(view, nameLabelID, nameLabelBounds);
-
-  component->box.halfSize = HMM_V2(width / 2, height / 2);
-
-  // figure out the position of each port
-  float leftInc = (height) / (numInputPorts + 1);
-  float rightInc = (height) / (numOutputPorts + 1);
-  float leftY = leftInc - height / 2;
-  float rightY = rightInc - height / 2;
-  float borderWidth = view->theme.borderWidth;
-
-  portID = component->portFirst;
-  for (int j = 0; j < desc->numPorts; j++) {
-    Port *port = circuit_port_ptr(&view->circuit, portID);
-
-    HMM_Vec2 labelPos = HMM_V2(0, 0);
-    HorizAlign horz = ALIGN_CENTER;
-
-    if (desc->ports[j].direction == PORT_IN) {
-      port->position = HMM_V2(-width / 2 + borderWidth / 2, leftY);
-      leftY += leftInc;
-
-      labelPos = HMM_V2(labelPadding + view->theme.portWidth / 2, 0);
-      horz = ALIGN_LEFT;
-    } else if (desc->ports[j].direction != PORT_IN) {
-      port->position = HMM_V2(width / 2 - borderWidth / 2, rightY);
-      rightY += rightInc;
-
-      labelPos = HMM_V2(-labelPadding - view->theme.portWidth / 2, 0);
-      horz = ALIGN_RIGHT;
-    }
-
-    LabelID labelID = port->label;
-    const char *labelText = circuit_label_text(&view->circuit, labelID);
-    Box labelBounds = draw_text_bounds(
-      view->drawCtx, HMM_V2(labelPos.X, labelPos.Y), labelText,
-      strlen(labelText), horz, ALIGN_MIDDLE, view->theme.labelFontSize,
-      view->theme.font);
-    view_augment_label(view, labelID, labelBounds);
-
-    portID = port->next;
-  }
-}
-
-static void view_component_deleted(void *user, ComponentID id, void *ptr) {
-  CircuitView *view = user;
-  for (int i = 0; i < arrlen(view->selected); i++) {
-    if (view->selected[i] == id) {
-      arrdel(view->selected, i);
-      break;
-    }
-  }
-}
-
-static void view_waypoint_deleted(void *user, WaypointID id, void *ptr) {
-  CircuitView *view = user;
-  for (int i = 0; i < arrlen(view->selected); i++) {
-    if (view->selected[i] == id) {
-      arrdel(view->selected, i);
-      break;
-    }
-  }
-}
-
 static HMM_Vec2 calcTextSize(void *user, const char *text) {
   CircuitView *view = (CircuitView *)user;
   Theme *theme = &view->theme;
@@ -199,15 +69,9 @@ void view_init(
   FontHandle font) {
   *view = (CircuitView){
     .drawCtx = drawCtx,
-    .selectedPort = NO_PORT,
+    .selectedPort = NO_ID,
   };
-  circuit_init(&view->circuit, componentDescs);
   circ_init(&view->circuit2);
-  view->circuit2.oldCircuit = &view->circuit;
-
-  circuit_on_component_create(&view->circuit, view, view_augment_component);
-  circuit_on_component_delete(&view->circuit, view, view_component_deleted);
-  circuit_on_waypoint_delete(&view->circuit, view, view_waypoint_deleted);
 
   theme_init(&view->theme, font);
 
@@ -227,7 +91,7 @@ void view_init(
 void view_free(CircuitView *view) {
   arrfree(view->selected);
   arrfree(view->hovered);
-  circuit_free(&view->circuit);
+  circ_free(&view->circuit2);
 }
 
 Box view_label_size(
@@ -241,6 +105,8 @@ Box view_label_size(
 
 // mainly for tests
 void view_direct_wire_nets(CircuitView *view) {
+// todo: implement, preferably with the auto-router
+#if 0
   arrsetlen(view->circuit.wires, 0);
   arrsetlen(view->circuit.vertices, 0);
   int wireOffset = 0;
@@ -342,6 +208,7 @@ void view_direct_wire_nets(CircuitView *view) {
       endpointID = endpoint->next;
     }
   }
+#endif
 }
 
 static bool view_is_hovered(CircuitView *view, ID id) {
@@ -478,12 +345,11 @@ void view_draw(CircuitView *view) {
     HMM_Vec2 *vertices = wireVerts.vertices;
     for (size_t j = 0; j < wireVerts.wireCount; j++) {
       uint16_t wireVertCount =
-        circuit_wire_vertex_count(wireVerts.wireVertexCounts[j]);
+        RT_WireView_vertex_count(wireVerts.wireVertexCounts[j]);
 
       DrawFlags flags = 0;
       if (
-        view->debugMode &&
-        circuit_wire_is_root(wireVerts.wireVertexCounts[j])) {
+        view->debugMode && RT_WireView_is_root(wireVerts.wireVertexCounts[j])) {
         flags |= DRAW_DEBUG;
       }
       if (netIsHovered) {
@@ -492,7 +358,7 @@ void view_draw(CircuitView *view) {
 
       draw_wire(view->drawCtx, &view->theme, vertices, wireVertCount, flags);
 
-      if (circuit_wire_ends_in_junction(wireVerts.wireVertexCounts[j])) {
+      if (RT_WireView_ends_in_junction(wireVerts.wireVertexCounts[j])) {
         draw_junction(
           view->drawCtx, &view->theme, vertices[wireVertCount - 1], flags);
       }
@@ -515,36 +381,17 @@ void view_draw(CircuitView *view) {
             flags |= DRAW_HOVERED;
           }
 
-          draw_waypoint(view->drawCtx, &view->theme, waypointPos, flags);
+          for (int j = 0; j < arrlen(view->selected); j++) {
+            if (view->selected[j] == waypointID) {
+              flags |= DRAW_SELECTED;
+              break;
+            }
+          }
+
+          if (netIsHovered || flags & DRAW_SELECTED) {
+            draw_waypoint(view->drawCtx, &view->theme, waypointPos, flags);
+          }
         }
-      }
-    }
-
-    for (int i = 0; i < circuit_waypoint_len(&view->circuit); i++) {
-      Waypoint *waypoint = &view->circuit.waypoints[i];
-      WaypointID id = circuit_waypoint_id(&view->circuit, i);
-      DrawFlags flags = 0;
-
-      for (int j = 0; j < arrlen(view->selected); j++) {
-        if (view->selected[j] == id) {
-          flags |= DRAW_SELECTED;
-          break;
-        }
-      }
-
-      if (view_is_hovered(view, id)) {
-        flags |= DRAW_HOVERED;
-      }
-
-      for (int j = 0; j < arrlen(view->selected); j++) {
-        if (view->selected[j] == id) {
-          flags |= DRAW_SELECTED;
-          break;
-        }
-      }
-
-      if (netIsHovered || flags & DRAW_SELECTED) {
-        draw_waypoint(view->drawCtx, &view->theme, waypoint->position, flags);
       }
     }
   }

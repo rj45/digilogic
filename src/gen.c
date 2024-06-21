@@ -25,7 +25,7 @@
 #include "strpool.h"
 
 #include "assetsys.h"
-#include "core/structdescs.h"
+// #include "core/structdescs.h"
 
 const char *copyright =
   "/*\n"
@@ -98,6 +98,8 @@ int main(int argc, char **argv) {
 
   fclose(fp);
   mz_zip_writer_end(&zip);
+
+#if 0
 
   fp = fopen("src/core/structs.h", "wt");
   if (!fp) {
@@ -285,6 +287,7 @@ int main(int argc, char **argv) {
   }
 
   fclose(fp);
+#endif
 
   return 0;
 }

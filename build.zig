@@ -127,12 +127,9 @@ pub fn build(b: *std.Build) void {
         exe.addCSourceFiles(.{
             .root = b.path("src"),
             .files = &.{
-                "core/circuit.c",
-                "core/smap.c",
                 "core/save.c",
                 "core/load.c",
                 "core/bvh.c",
-                "core/structdescs.c",
                 "core/newcircuit.c",
                 "core/changelog.c",
                 "ux/ux.c",
