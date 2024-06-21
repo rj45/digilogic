@@ -272,13 +272,13 @@ void draw_chip(DrawContext *draw, Theme *theme, Box box, DrawFlags flags) {
     theme->color.componentBorder);
 }
 
-typedef struct Symbol {
+typedef struct SymbolInfo {
   const char *text;
   HMM_Vec2 offset;
   float scale;
-} Symbol;
+} SymbolInfo;
 
-const Symbol symbolSolid[] = {
+const SymbolInfo symbolSolid[] = {
   [SYMSHAPE_DEFAULT] = {.text = "", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
   [SYMSHAPE_AND] = {.text = "\x01", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
   [SYMSHAPE_OR] = {.text = "\x03", .offset = {.X = 0, .Y = 26}, .scale = 1.1},
@@ -287,7 +287,7 @@ const Symbol symbolSolid[] = {
     {.text = "\x07", .offset = {.X = 0, .Y = 25.5}, .scale = 1.5},
 };
 
-const Symbol symbolOutline[] = {
+const SymbolInfo symbolOutline[] = {
   [SYMSHAPE_DEFAULT] = {.text = "", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
   [SYMSHAPE_AND] = {.text = "\x02", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
   [SYMSHAPE_OR] = {.text = "\x04", .offset = {.X = -2, .Y = 26}, .scale = 1.1},
@@ -300,7 +300,7 @@ static void draw_symbol(
   DrawContext *draw, Theme *theme, Box box, HMM_Vec4 color, SymbolShape shape,
   bool outline) {
 
-  const Symbol symbol = outline ? symbolOutline[shape] : symbolSolid[shape];
+  const SymbolInfo symbol = outline ? symbolOutline[shape] : symbolSolid[shape];
 
   HMM_Vec2 center = HMM_AddV2(box.center, symbol.offset);
   HMM_Vec2 hs = HMM_MulV2F(box.halfSize, symbol.scale);

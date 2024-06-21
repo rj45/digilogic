@@ -427,7 +427,7 @@ typedef struct WireVertices {
   HMM_Vec2 *vertices;
 } WireVertices;
 
-typedef enum ComponentID2 {
+PACK(typedef enum ComponentID{
   COMPONENT_PARENT,
   COMPONENT_SYMBOL_KIND_ID,
   COMPONENT_MODULE_ID,
@@ -444,7 +444,8 @@ typedef enum ComponentID2 {
   COMPONENT_PORT_REF,
   COMPONENT_WIRE_VERTICES,
   COMPONENT_COUNT,
-} ComponentID2;
+})
+ComponentID;
 
 #define COMPONENT_ID_Parent COMPONENT_PARENT
 #define COMPONENT_ID_SymbolKindID COMPONENT_SYMBOL_KIND_ID
@@ -809,7 +810,7 @@ static inline Table *circ_iter_table_(CircuitIter *iter, EntityType type) {
 }
 
 static inline void circ_iter_set_(
-  CircuitIter *it, int index, ComponentID2 componentID, void *value) {
+  CircuitIter *it, int index, ComponentID componentID, void *value) {
   int column = it->circuit->tableMeta[it->type].componentIndices[componentID];
   circ_set_(it->circuit, it->type, index, column, value);
 }
