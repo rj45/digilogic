@@ -352,21 +352,19 @@ typedef enum EntityType {
   TYPE_COUNT,
 } EntityType;
 
-#define circ_entity_type(type)                                                 \
-  _Generic(                                                                    \
-    type,                                                                      \
-    Port: TYPE_PORT,                                                           \
-    SymbolKind: TYPE_SYMBOL_KIND,                                              \
-    Symbol: TYPE_SYMBOL,                                                       \
-    Waypoint: TYPE_WAYPOINT,                                                   \
-    Endpoint: TYPE_ENDPOINT,                                                   \
-    SubnetBit: TYPE_SUBNET_BIT,                                                \
-    SubnetBits: TYPE_SUBNET_BITS,                                              \
-    Subnet: TYPE_SUBNET,                                                       \
-    Net: TYPE_NET,                                                             \
-    Netlist: TYPE_NETLIST,                                                     \
-    Module: TYPE_MODULE,                                                       \
-    default: "type not found")
+#define ENTITY_TYPE_Port TYPE_PORT
+#define ENTITY_TYPE_SymbolKind TYPE_SYMBOL_KIND
+#define ENTITY_TYPE_Symbol TYPE_SYMBOL
+#define ENTITY_TYPE_Waypoint TYPE_WAYPOINT
+#define ENTITY_TYPE_Endpoint TYPE_ENDPOINT
+#define ENTITY_TYPE_SubnetBit TYPE_SUBNET_BIT
+#define ENTITY_TYPE_SubnetBits TYPE_SUBNET_BITS
+#define ENTITY_TYPE_Subnet TYPE_SUBNET
+#define ENTITY_TYPE_Net TYPE_NET
+#define ENTITY_TYPE_Netlist TYPE_NETLIST
+#define ENTITY_TYPE_Module TYPE_MODULE
+
+#define circ_entity_type(type) ENTITY_TYPE_##type
 
 typedef enum Tag {
   // first few bits reserved for EntityType

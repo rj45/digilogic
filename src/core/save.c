@@ -189,6 +189,8 @@ yyjson_mut_val *circ_serialize(yyjson_mut_doc *doc, Circuit *circ) {
   yyjson_mut_obj_add_int(doc, root, "version", SAVE_VERSION);
   yyjson_mut_val *modules = yyjson_mut_obj_add_arr(doc, root, "modules");
 
+  assert(circ_entity_type(Module) == TYPE_MODULE);
+
   CircuitIter it = circ_iter(circ, Module);
   while (circ_iter_next(&it)) {
     Module *module = circ_iter_table(&it, Module);

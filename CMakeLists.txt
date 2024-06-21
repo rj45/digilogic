@@ -239,7 +239,7 @@ corrosion_import_crate(
 # C
 #####################################
 
-set_property(TARGET digilogic PROPERTY C_STANDARD 11)
+set_property(TARGET digilogic PROPERTY C_STANDARD 11gnu)
 
 find_package(Freetype REQUIRED)
 target_link_libraries(digilogic PRIVATE Freetype::Freetype)
