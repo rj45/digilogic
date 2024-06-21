@@ -283,7 +283,7 @@ undo_cmd_del_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
 static inline UndoCommand
 undo_cmd_add_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
   return (UndoCommand){
-    .verb = UNDO_ADD_SYMBOL,
+    .verb = UNDO_ADD_WAYPOINT,
     .center = center,
     .childID = waypointID,
     .parentID = endpointID,
@@ -293,7 +293,7 @@ undo_cmd_add_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
 static inline UndoCommand
 undo_cmd_del_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
   return (UndoCommand){
-    .verb = UNDO_DEL_SYMBOL,
+    .verb = UNDO_DEL_WAYPOINT,
     .center = center,
     .childID = waypointID,
     .parentID = endpointID,

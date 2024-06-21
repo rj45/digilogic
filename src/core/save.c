@@ -83,7 +83,7 @@ static void save_endpoint(
     moduleID = circ_get(circ, symbolKindID, ModuleID);
   }
 
-  if (circ_has(circ, moduleID)) {
+  if (circ_has(circ, moduleID) || !circ_has(circ, portref.port)) {
     save_id(doc, portrefNode, "port", portref.port);
   } else {
     const char *portName =
@@ -120,15 +120,17 @@ static void save_subnet(
   yyjson_mut_val *bitsNode =
     yyjson_mut_obj_add_arr(doc, subnetBitsNode, "bits");
 
-  LinkedListIter it = circ_lliter(circ, subnetBitsID);
-  while (circ_lliter_next(&it)) {
-    yyjson_mut_arr_add_int(doc, bitsNode, circ_get(circ, it.current, Number));
+  if (circ_has(circ, subnetBitsID)) {
+    LinkedListIter it = circ_lliter(circ, subnetBitsID);
+    while (circ_lliter_next(&it)) {
+      yyjson_mut_arr_add_int(doc, bitsNode, circ_get(circ, it.current, Number));
+    }
   }
 
   yyjson_mut_val *endpoints =
     yyjson_mut_obj_add_arr(doc, subnetNode, "endpoints");
 
-  it = circ_lliter(circ, subnetID);
+  LinkedListIter it = circ_lliter(circ, subnetID);
   while (circ_lliter_next(&it)) {
     save_endpoint(doc, endpoints, circ, it.current);
   }
