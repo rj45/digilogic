@@ -48,6 +48,7 @@ void ux_init(
 }
 
 void ux_free(CircuitUX *ux) {
+  bvh_free(&ux->bvh);
   view_free(&ux->view);
   bv_free(ux->input.keysDown);
   bv_free(ux->input.keysPressed);

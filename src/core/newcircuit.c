@@ -347,6 +347,11 @@ void circ_clone(Circuit *dst, Circuit *src) {
     dstTable->length = srcTable->length;
   }
 
+  if (!dst->foreignStrpool) {
+    // free the old strpool before we overwrite it
+    strpool_term(&dst->strpool);
+  }
+
   // todo: must be something better than this.... probably will be solved by
   // log playback
   memcpy(&dst->strpool, &src->strpool, sizeof(strpool_t));

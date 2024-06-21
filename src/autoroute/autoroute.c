@@ -88,6 +88,7 @@ void autoroute_free(AutoRoute *ar) {
   arrfree(ar->waypoints);
   arrfree(ar->boxes);
 
+  arrfree(ar->netIDs);
   arrfree(ar->boxIndices);
 
   arrfree(ar->wires);
