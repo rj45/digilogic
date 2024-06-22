@@ -37,7 +37,7 @@ struct AutoRoute {
   arr(RT_NetView) netViews;
   arr(ID) netIDs;
   arr(RT_Endpoint) endpoints;
-  arr(RT_Waypoint) waypoints;
+  arr(RT_Point) waypoints;
   arr(RT_BoundingBox) boxes;
 
   arr(RT_Anchor) anchors;
@@ -289,7 +289,7 @@ void autoroute_route(AutoRoute *ar, RoutingConfig config) {
     res = RT_graph_connect_nets(
       ar->graph, (RT_Slice_Net){ar->nets, arrlen(ar->nets)},
       (RT_Slice_Endpoint){ar->endpoints, arrlen(ar->endpoints)},
-      (RT_Slice_Waypoint){ar->waypoints, arrlen(ar->waypoints)},
+      (RT_Slice_Point){ar->waypoints, arrlen(ar->waypoints)},
       (RT_MutSlice_Vertex){
         (RT_Vertex *)ar->vertices,
         arrlen(ar->vertices),
