@@ -20,6 +20,7 @@
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "routing/routing.h"
+#include "routing/constants.h"
 #include "view/view.h"
 #include <stdint.h>
 
@@ -134,7 +135,7 @@ static void autoroute_update(AutoRoute *ar) {
   while (circ_lliter_next(&netit)) {
     ID netID = netit.current;
     size_t netIndex = arrlen(ar->nets);
-    arrput(ar->nets, (RT_Net){.first_endpoint = RT_INVALID_ENDPOINT_INDEX});
+    arrput(ar->nets, (RT_Net){0});
     arrput(ar->netIDs, netID);
 
     LinkedListIter subnetit = circ_lliter(ar->circ, netID);
@@ -148,20 +149,14 @@ static void autoroute_update(AutoRoute *ar) {
         ID endpointID = endpointit.current;
         Position endpointPos = circ_get(ar->circ, endpointID, Position);
 
-        RT_Endpoint endpoint = (RT_Endpoint){
-          .position = (RT_Point){.x = endpointPos.X, .y = endpointPos.Y},
-          .first_waypoint = RT_INVALID_WAYPOINT_INDEX,
-          .next = RT_INVALID_ENDPOINT_INDEX,
+        RT_Endpoint endpoint = {
+          .position = {.x = endpointPos.X, .y = endpointPos.Y},
         };
         log_debug(
           "Endpoint %x: %d %d", endpointID, endpoint.position.x,
           endpoint.position.y);
 
-        if (endpointIndex >= 0) {
-          ar->endpoints[endpointIndex].next = arrlen(ar->endpoints);
-        } else {
-          ar->nets[netIndex].first_endpoint = arrlen(ar->endpoints);
-        }
+        // Endpoint linking is now handled by the routing library
         endpointIndex = arrlen(ar->endpoints);
         arrput(ar->endpoints, endpoint);
 
@@ -193,17 +188,7 @@ static void autoroute_update(AutoRoute *ar) {
           ID waypointID = waypointit.current;
           Position waypointPos = circ_get(ar->circ, waypointID, Position);
 
-          RT_Waypoint waypoint = (RT_Waypoint){
-            .position = (RT_Point){.x = waypointPos.X, .y = waypointPos.Y},
-            .next = RT_INVALID_WAYPOINT_INDEX,
-          };
-
-          if (waypointIndex >= 0) {
-            ar->waypoints[waypointIndex].next = arrlen(ar->waypoints);
-          } else {
-            ar->endpoints[endpointIndex].first_waypoint = arrlen(ar->waypoints);
-          }
-          waypointIndex = arrlen(ar->waypoints);
+          RT_Point waypoint = {.x = waypointPos.X, .y = waypointPos.Y};
           arrput(ar->waypoints, waypoint);
 
           RT_Anchor anchor = (RT_Anchor){
@@ -253,7 +238,7 @@ bool autoroute_dump_routing_data(
   RT_Result res = RT_graph_serialize_connect_nets_query(
     ar->graph, (RT_Slice_Net){ar->nets, arrlen(ar->nets)},
     (RT_Slice_Endpoint){ar->endpoints, arrlen(ar->endpoints)},
-    (RT_Slice_Waypoint){ar->waypoints, arrlen(ar->waypoints)},
+    (RT_Slice_Point){ar->waypoints, arrlen(ar->waypoints)},
     config.performCentering, filename);
   if (res != RT_RESULT_SUCCESS) {
     log_error("Error serializing graph: %d", res);
@@ -521,22 +506,12 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
     fprintf(fp, "    },\n");
   }
   fprintf(fp, "];\n");
-  fprintf(fp, "const WAYPOINTS: &[Waypoint] = &[\n");
+  fprintf(fp, "const WAYPOINTS: &[Point] = &[\n");
   for (size_t i = 0; i < arrlen(ar->waypoints); i++) {
-    RT_Waypoint *waypoint = &ar->waypoints[i];
-    fprintf(fp, "    Waypoint {\n");
-    // todo: fixme
-    // if (!circuit_has(ar->circ, waypoint->net)) {
-    //   fprintf(fp, "        NetIndex: NetIndex::INVALID,\n");
-    // } else {
-    //   fprintf(
-    //     fp, "        NetIndex: ni!(%d),\n",
-    //     circuit_index(ar->circ, waypoint->net));
-    // }
+    RT_Point *waypoint = &ar->waypoints[i];
     fprintf(
-      fp, "        position: Point { x: %d, y: %d },\n",
-      (int)(waypoint->position.x), (int)(waypoint->position.y));
-    fprintf(fp, "    },\n");
+      fp, "    Point { x: %d, y: %d },\n",
+      (int)(waypoint->x), (int)(waypoint->y));
   }
   fprintf(fp, "];\n");
   fclose(fp);
