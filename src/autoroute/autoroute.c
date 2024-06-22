@@ -20,12 +20,43 @@
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "routing/routing.h"
-#include "routing/constants.h"
 #include "view/view.h"
 #include <stdint.h>
 
 #define LOG_LEVEL LL_INFO
 #include "log.h"
+
+// temporarily inlined from routing/routing.h so the AI editing this code can
+// see it only the important structs are inlined
+
+typedef struct RT_Net {
+  /**
+   * The offset into the endpoint list at which the endpoints of this net start.
+   */
+  uint32_t endpoint_offset;
+  /**
+   * The number of endpoints in the net.
+   */
+  uint32_t endpoint_count;
+} RT_Net;
+
+typedef struct RT_Endpoint {
+  /**
+   * The position of the endpoint.
+   */
+  struct RT_Point position;
+  /**
+   * The offset into the waypoint list at which the waypoints of this endpoint
+   * start.
+   */
+  uint32_t waypoint_offset;
+  /**
+   * The number of waypoints associated with the endpoint.
+   */
+  uint32_t waypoint_count;
+} RT_Endpoint;
+
+// end inlining
 
 #define RT_PADDING 10.0f
 
@@ -134,15 +165,12 @@ static void autoroute_update(AutoRoute *ar) {
   LinkedListIter netit = circ_lliter(ar->circ, netlistID);
   while (circ_lliter_next(&netit)) {
     ID netID = netit.current;
-    size_t netIndex = arrlen(ar->nets);
     arrput(ar->nets, (RT_Net){0});
     arrput(ar->netIDs, netID);
 
     LinkedListIter subnetit = circ_lliter(ar->circ, netID);
     while (circ_lliter_next(&subnetit)) {
       ID subnetID = subnetit.current;
-
-      ptrdiff_t endpointIndex = -1;
 
       LinkedListIter endpointit = circ_lliter(ar->circ, subnetID);
       while (circ_lliter_next(&endpointit)) {
@@ -156,9 +184,10 @@ static void autoroute_update(AutoRoute *ar) {
           "Endpoint %x: %d %d", endpointID, endpoint.position.x,
           endpoint.position.y);
 
-        // Endpoint linking is now handled by the routing library
-        endpointIndex = arrlen(ar->endpoints);
         arrput(ar->endpoints, endpoint);
+
+        // todo: ensure that the endpoint_offset and endpoint_count are set
+        // properly in the RT_Net struct
 
         PortRef portRef = circ_get(ar->circ, endpointID, PortRef);
         RT_BoundingBoxIndex bbi = RT_INVALID_BOUNDING_BOX_INDEX;
@@ -181,8 +210,6 @@ static void autoroute_update(AutoRoute *ar) {
         log_debug(
           "Anchor %x: %d %d", endpointID, anchor.position.x, anchor.position.y);
 
-        ptrdiff_t waypointIndex = -1;
-
         LinkedListIter waypointit = circ_lliter(ar->circ, endpointID);
         while (circ_lliter_next(&waypointit)) {
           ID waypointID = waypointit.current;
@@ -190,6 +217,9 @@ static void autoroute_update(AutoRoute *ar) {
 
           RT_Point waypoint = {.x = waypointPos.X, .y = waypointPos.Y};
           arrput(ar->waypoints, waypoint);
+
+          // todo: ensure that the waypoint_offset and waypoint_count are set
+          // properly in the RT_Endpoint struct
 
           RT_Anchor anchor = (RT_Anchor){
             .position = (RT_Point){.x = waypointPos.X, .y = waypointPos.Y},
@@ -510,8 +540,8 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
   for (size_t i = 0; i < arrlen(ar->waypoints); i++) {
     RT_Point *waypoint = &ar->waypoints[i];
     fprintf(
-      fp, "    Point { x: %d, y: %d },\n",
-      (int)(waypoint->x), (int)(waypoint->y));
+      fp, "    Point { x: %d, y: %d },\n", (int)(waypoint->x),
+      (int)(waypoint->y));
   }
   fprintf(fp, "];\n");
   fclose(fp);
