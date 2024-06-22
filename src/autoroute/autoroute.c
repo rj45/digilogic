@@ -186,8 +186,12 @@ static void autoroute_update(AutoRoute *ar) {
 
         arrput(ar->endpoints, endpoint);
 
-        // todo: ensure that the endpoint_offset and endpoint_count are set
-        // properly in the RT_Net struct
+        // Ensure that the endpoint_offset and endpoint_count are set properly in the RT_Net struct
+        RT_Net *currentNet = &ar->nets[arrlen(ar->nets) - 1];
+        if (currentNet->endpoint_count == 0) {
+            currentNet->endpoint_offset = arrlen(ar->endpoints) - 1;
+        }
+        currentNet->endpoint_count++;
 
         PortRef portRef = circ_get(ar->circ, endpointID, PortRef);
         RT_BoundingBoxIndex bbi = RT_INVALID_BOUNDING_BOX_INDEX;
@@ -218,8 +222,12 @@ static void autoroute_update(AutoRoute *ar) {
           RT_Point waypoint = {.x = waypointPos.X, .y = waypointPos.Y};
           arrput(ar->waypoints, waypoint);
 
-          // todo: ensure that the waypoint_offset and waypoint_count are set
-          // properly in the RT_Endpoint struct
+          // Ensure that the waypoint_offset and waypoint_count are set properly in the RT_Endpoint struct
+          RT_Endpoint *currentEndpoint = &ar->endpoints[arrlen(ar->endpoints) - 1];
+          if (currentEndpoint->waypoint_count == 0) {
+              currentEndpoint->waypoint_offset = arrlen(ar->waypoints) - 1;
+          }
+          currentEndpoint->waypoint_count++;
 
           RT_Anchor anchor = (RT_Anchor){
             .position = (RT_Point){.x = waypointPos.X, .y = waypointPos.Y},
