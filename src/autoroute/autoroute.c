@@ -26,38 +26,6 @@
 #define LOG_LEVEL LL_INFO
 #include "log.h"
 
-// temporarily inlined from routing/routing.h so the AI editing this code can
-// see it only the important structs are inlined
-
-typedef struct RT_Net {
-  /**
-   * The offset into the endpoint list at which the endpoints of this net start.
-   */
-  uint32_t endpoint_offset;
-  /**
-   * The number of endpoints in the net.
-   */
-  uint32_t endpoint_count;
-} RT_Net;
-
-typedef struct RT_Endpoint {
-  /**
-   * The position of the endpoint.
-   */
-  struct RT_Point position;
-  /**
-   * The offset into the waypoint list at which the waypoints of this endpoint
-   * start.
-   */
-  uint32_t waypoint_offset;
-  /**
-   * The number of waypoints associated with the endpoint.
-   */
-  uint32_t waypoint_count;
-} RT_Endpoint;
-
-// end inlining
-
 #define RT_PADDING 10.0f
 
 #define TIME_SAMPLES 120
@@ -186,10 +154,9 @@ static void autoroute_update(AutoRoute *ar) {
 
         arrput(ar->endpoints, endpoint);
 
-        // Ensure that the endpoint_offset and endpoint_count are set properly in the RT_Net struct
         RT_Net *currentNet = &ar->nets[arrlen(ar->nets) - 1];
         if (currentNet->endpoint_count == 0) {
-            currentNet->endpoint_offset = arrlen(ar->endpoints) - 1;
+          currentNet->endpoint_offset = arrlen(ar->endpoints) - 1;
         }
         currentNet->endpoint_count++;
 
@@ -222,10 +189,12 @@ static void autoroute_update(AutoRoute *ar) {
           RT_Point waypoint = {.x = waypointPos.X, .y = waypointPos.Y};
           arrput(ar->waypoints, waypoint);
 
-          // Ensure that the waypoint_offset and waypoint_count are set properly in the RT_Endpoint struct
-          RT_Endpoint *currentEndpoint = &ar->endpoints[arrlen(ar->endpoints) - 1];
+          // Ensure that the waypoint_offset and waypoint_count are set properly
+          // in the RT_Endpoint struct
+          RT_Endpoint *currentEndpoint =
+            &ar->endpoints[arrlen(ar->endpoints) - 1];
           if (currentEndpoint->waypoint_count == 0) {
-              currentEndpoint->waypoint_offset = arrlen(ar->waypoints) - 1;
+            currentEndpoint->waypoint_offset = arrlen(ar->waypoints) - 1;
           }
           currentEndpoint->waypoint_count++;
 
