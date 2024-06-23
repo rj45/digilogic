@@ -6,7 +6,7 @@ set(DIGILOGIC_SRCS
     src/core/save.c
     src/core/load.c
     src/core/bvh.c
-    src/core/newcircuit.c
+    src/core/circuit.c
     src/core/changelog.c
     src/ux/ux.c
     src/ux/input.c
