@@ -21,15 +21,13 @@
 #include "render/draw.h"
 
 typedef struct CircuitView {
-  Circuit circuit2;
+  Circuit circuit;
 
   Theme theme;
   DrawContext *drawCtx;
 
   arr(BVHLeaf) hovered;
   arr(ID) selected;
-
-  PortID selectedPort;
 
   Box selectionBox;
 
@@ -41,6 +39,7 @@ typedef void *Context;
 void view_init(
   CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font);
+void view_reset(CircuitView *view);
 void view_free(CircuitView *view);
 
 // wires all endpoints in the net together in a star pattern,

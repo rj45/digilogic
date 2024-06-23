@@ -55,5 +55,6 @@ void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height);
 void ui_draw(CircuitUI *ui);
 bool ui_background_save(CircuitUI *ui, const char *filename, bool skipWhenBusy);
+void ui_reset(CircuitUI *ui);
 
 #endif // UI_H

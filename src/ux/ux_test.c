@@ -14,30 +14,29 @@ UTEST(CircuitUX, adding_components) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit2, "AND");
-  ID orSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit2, "OR");
+  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
+  ID orSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "OR");
 
   ux_start_adding_symbol(&ux, andSymbolKindID);
 
-  ASSERT_TRUE(circ_has(&ux.view.circuit2, ux.addingSymbol));
+  ASSERT_TRUE(circ_has(&ux.view.circuit, ux.addingSymbol));
   ASSERT_EQ(
-    circ_get(&ux.view.circuit2, ux.addingSymbol, SymbolKindID),
-    andSymbolKindID);
+    circ_get(&ux.view.circuit, ux.addingSymbol, SymbolKindID), andSymbolKindID);
 
   ID oldID = ux.addingSymbol;
 
   ux_change_adding_symbol(&ux, orSymbolKindID);
 
-  ASSERT_FALSE(circ_has(&ux.view.circuit2, oldID));
-  ASSERT_TRUE(circ_has(&ux.view.circuit2, ux.addingSymbol));
+  ASSERT_FALSE(circ_has(&ux.view.circuit, oldID));
+  ASSERT_TRUE(circ_has(&ux.view.circuit, ux.addingSymbol));
   ASSERT_EQ(
-    circ_get(&ux.view.circuit2, ux.addingSymbol, SymbolKindID), orSymbolKindID);
+    circ_get(&ux.view.circuit, ux.addingSymbol, SymbolKindID), orSymbolKindID);
 
   oldID = ux.addingSymbol;
 
   ux_stop_adding_symbol(&ux);
 
-  ASSERT_FALSE(circ_has(&ux.view.circuit2, oldID));
+  ASSERT_FALSE(circ_has(&ux.view.circuit, oldID));
   ASSERT_EQ(ux.addingSymbol, NO_ID);
 
   ux_free(&ux);
@@ -47,12 +46,12 @@ UTEST(CircuitUX, selection_and_deselection) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit2, "AND");
+  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
   ID symbolID =
-    circ_add_symbol(&ux.view.circuit2, ux.view.circuit2.top, andSymbolKindID);
+    circ_add_symbol(&ux.view.circuit, ux.view.circuit.top, andSymbolKindID);
   HMM_Vec2 position = HMM_V2(100, 100);
-  circ_set_symbol_position(&ux.view.circuit2, symbolID, position);
+  circ_set_symbol_position(&ux.view.circuit, symbolID, position);
 
   // Test selection
   UndoCommand selectCmd = undo_cmd_select_item(symbolID);
@@ -72,12 +71,12 @@ UTEST(CircuitUX, move_component) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit2, "AND");
+  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
   ID symbolID =
-    circ_add_symbol(&ux.view.circuit2, ux.view.circuit2.top, andSymbolKindID);
+    circ_add_symbol(&ux.view.circuit, ux.view.circuit.top, andSymbolKindID);
   HMM_Vec2 initialPosition = HMM_V2(100, 100);
-  circ_set_symbol_position(&ux.view.circuit2, symbolID, initialPosition);
+  circ_set_symbol_position(&ux.view.circuit, symbolID, initialPosition);
 
   // Select the symbol
   UndoCommand selectCmd = undo_cmd_select_item(symbolID);
@@ -89,7 +88,7 @@ UTEST(CircuitUX, move_component) {
     undo_cmd_move_selection(initialPosition, newPosition, false);
   ux_do(&ux, moveCmd);
 
-  Position finalPosition = circ_get(&ux.view.circuit2, symbolID, Position);
+  Position finalPosition = circ_get(&ux.view.circuit, symbolID, Position);
   ASSERT_EQ(finalPosition.X, newPosition.X);
   ASSERT_EQ(finalPosition.Y, newPosition.Y);
 
@@ -100,12 +99,12 @@ UTEST(CircuitUX, delete_component) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit2, "AND");
+  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
   ID symbolID =
-    circ_add_symbol(&ux.view.circuit2, ux.view.circuit2.top, andSymbolKindID);
+    circ_add_symbol(&ux.view.circuit, ux.view.circuit.top, andSymbolKindID);
   HMM_Vec2 position = HMM_V2(100, 100);
-  circ_set_symbol_position(&ux.view.circuit2, symbolID, position);
+  circ_set_symbol_position(&ux.view.circuit, symbolID, position);
 
   // Select the symbol
   UndoCommand selectCmd = undo_cmd_select_item(symbolID);
@@ -116,7 +115,7 @@ UTEST(CircuitUX, delete_component) {
     undo_cmd_del_symbol(position, symbolID, andSymbolKindID);
   ux_do(&ux, deleteCmd);
 
-  ASSERT_FALSE(circ_has(&ux.view.circuit2, symbolID));
+  ASSERT_FALSE(circ_has(&ux.view.circuit, symbolID));
 
   ux_free(&ux);
 }
@@ -125,12 +124,12 @@ UTEST(CircuitUX, undo_redo) {
   CircuitUX ux;
   ux_init(&ux, circuit_component_descs(), NULL, NULL);
 
-  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit2, "AND");
+  ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
   ID symbolID =
-    circ_add_symbol(&ux.view.circuit2, ux.view.circuit2.top, andSymbolKindID);
+    circ_add_symbol(&ux.view.circuit, ux.view.circuit.top, andSymbolKindID);
   HMM_Vec2 position = HMM_V2(100, 100);
-  circ_set_symbol_position(&ux.view.circuit2, symbolID, position);
+  circ_set_symbol_position(&ux.view.circuit, symbolID, position);
 
   // Select the symbol
   UndoCommand selectCmd = undo_cmd_select_item(symbolID);
@@ -143,13 +142,13 @@ UTEST(CircuitUX, undo_redo) {
 
   // Undo the move
   ux_undo(&ux);
-  Position undoPosition = circ_get(&ux.view.circuit2, symbolID, Position);
+  Position undoPosition = circ_get(&ux.view.circuit, symbolID, Position);
   ASSERT_EQ(undoPosition.X, position.X);
   ASSERT_EQ(undoPosition.Y, position.Y);
 
   // Redo the move
   ux_redo(&ux);
-  Position redoPosition = circ_get(&ux.view.circuit2, symbolID, Position);
+  Position redoPosition = circ_get(&ux.view.circuit, symbolID, Position);
   ASSERT_EQ(redoPosition.X, newPosition.X);
   ASSERT_EQ(redoPosition.Y, newPosition.Y);
 

@@ -28,12 +28,12 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
 
   float snapDistance = SNAP_DISTANCE / draw_get_zoom(ux->view.drawCtx);
 
-  if (circ_type_for_id(&ux->view.circuit2, selected) == TYPE_SYMBOL) {
-    oldCenter = circ_get(&ux->view.circuit2, selected, Position);
-    SymbolKindID kind = circ_get(&ux->view.circuit2, selected, SymbolKindID);
-    halfSize = HMM_MulV2F(circ_get(&ux->view.circuit2, kind, Size), 0.5f);
-  } else if (circ_type_for_id(&ux->view.circuit2, selected) == TYPE_WAYPOINT) {
-    oldCenter = circ_get(&ux->view.circuit2, selected, Position);
+  if (circ_type_for_id(&ux->view.circuit, selected) == TYPE_SYMBOL) {
+    oldCenter = circ_get(&ux->view.circuit, selected, Position);
+    SymbolKindID kind = circ_get(&ux->view.circuit, selected, SymbolKindID);
+    halfSize = HMM_MulV2F(circ_get(&ux->view.circuit, kind, Size), 0.5f);
+  } else if (circ_type_for_id(&ux->view.circuit, selected) == TYPE_WAYPOINT) {
+    oldCenter = circ_get(&ux->view.circuit, selected, Position);
     halfSize = HMM_V2(0, 0);
   } else {
     return newCenter;

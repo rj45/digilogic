@@ -69,9 +69,8 @@ void view_init(
   FontHandle font) {
   *view = (CircuitView){
     .drawCtx = drawCtx,
-    .selectedPort = NO_ID,
   };
-  circ_init(&view->circuit2);
+  circ_init(&view->circuit);
 
   theme_init(&view->theme, font);
 
@@ -83,15 +82,22 @@ void view_init(
     .user = view,
     .textSize = calcTextSize,
   };
-  circ_load_symbol_descs(&view->circuit2, &layout, componentDescs, COMP_COUNT);
+  circ_load_symbol_descs(&view->circuit, &layout, componentDescs, COMP_COUNT);
 
-  view->circuit2.top = circ_add_module(&view->circuit2);
+  view->circuit.top = circ_add_module(&view->circuit);
+}
+
+void view_reset(CircuitView *view) {
+  arrsetlen(view->selected, 0);
+  arrsetlen(view->hovered, 0);
+  view->selectionBox = (Box){0};
+  circ_clear(&view->circuit);
 }
 
 void view_free(CircuitView *view) {
   arrfree(view->selected);
   arrfree(view->hovered);
-  circ_free(&view->circuit2);
+  circ_free(&view->circuit);
 }
 
 Box view_label_size(
@@ -121,14 +127,14 @@ void view_draw(CircuitView *view) {
 
   float labelPadding = view->theme.labelPadding;
 
-  ID moduleID = view->circuit2.top;
-  LinkedListIter moduleit = circ_lliter(&view->circuit2, moduleID);
+  ID moduleID = view->circuit.top;
+  LinkedListIter moduleit = circ_lliter(&view->circuit, moduleID);
   while (circ_lliter_next(&moduleit)) {
     ID symbolID = moduleit.current;
-    Position symbolPos = circ_get(&view->circuit2, symbolID, Position);
-    SymbolKindID kindID = circ_get(&view->circuit2, symbolID, SymbolKindID);
-    Size size = circ_get(&view->circuit2, kindID, Size);
-    SymbolShape shape = circ_get(&view->circuit2, kindID, SymbolShape);
+    Position symbolPos = circ_get(&view->circuit, symbolID, Position);
+    SymbolKindID kindID = circ_get(&view->circuit, symbolID, SymbolKindID);
+    Size size = circ_get(&view->circuit, kindID, Size);
+    SymbolShape shape = circ_get(&view->circuit, kindID, SymbolShape);
 
     DrawFlags flags = 0;
 
@@ -159,8 +165,8 @@ void view_draw(CircuitView *view) {
     draw_symbol_shape(view->drawCtx, &view->theme, box, shape, flags);
 
     if (shape == SYMSHAPE_DEFAULT) {
-      Name typeLabel = circ_get(&view->circuit2, kindID, Name);
-      const char *typeLabelText = circ_str_get(&view->circuit2, typeLabel);
+      Name typeLabel = circ_get(&view->circuit, kindID, Name);
+      const char *typeLabelText = circ_str_get(&view->circuit, typeLabel);
       Box typeLabelBounds = draw_text_bounds(
         view->drawCtx, HMM_V2(0, -(size.Height / 2) + labelPadding),
         typeLabelText, strlen(typeLabelText), ALIGN_CENTER, ALIGN_TOP,
@@ -170,11 +176,11 @@ void view_draw(CircuitView *view) {
         typeLabelText, LABEL_COMPONENT_TYPE, 0);
     }
 
-    Prefix namePrefix = circ_get(&view->circuit2, kindID, Prefix);
-    Number nameNumber = circ_get(&view->circuit2, symbolID, Number);
+    Prefix namePrefix = circ_get(&view->circuit, kindID, Prefix);
+    Number nameNumber = circ_get(&view->circuit, symbolID, Number);
     char nameLabelText[256];
     snprintf(
-      nameLabelText, 256, "%s%d", circ_str_get(&view->circuit2, namePrefix),
+      nameLabelText, 256, "%s%d", circ_str_get(&view->circuit, namePrefix),
       nameNumber);
 
     Box nameLabelBounds = draw_text_bounds(
@@ -186,10 +192,10 @@ void view_draw(CircuitView *view) {
       view->drawCtx, &view->theme, box_translate(nameLabelBounds, symbolPos),
       nameLabelText, LABEL_COMPONENT_NAME, 0);
 
-    LinkedListIter portit = circ_lliter(&view->circuit2, kindID);
+    LinkedListIter portit = circ_lliter(&view->circuit, kindID);
     while (circ_lliter_next(&portit)) {
       ID portID = portit.current;
-      Position portPos = circ_get(&view->circuit2, portID, Position);
+      Position portPos = circ_get(&view->circuit, portID, Position);
       portPos = HMM_AddV2(symbolPos, portPos);
 
       DrawFlags portFlags = 0;
@@ -200,17 +206,17 @@ void view_draw(CircuitView *view) {
       draw_port(view->drawCtx, &view->theme, portPos, portFlags);
 
       if (shape == SYMSHAPE_DEFAULT) {
-        Name portLabel = circ_get(&view->circuit2, portID, Name);
-        const char *portLabelText = circ_str_get(&view->circuit2, portLabel);
+        Name portLabel = circ_get(&view->circuit, portID, Name);
+        const char *portLabelText = circ_str_get(&view->circuit, portLabel);
 
         HMM_Vec2 labelPos = HMM_V2(0, 0);
         HorizAlign horz = ALIGN_CENTER;
 
-        if (circ_has_tags(&view->circuit2, portID, TAG_IN)) {
+        if (circ_has_tags(&view->circuit, portID, TAG_IN)) {
           labelPos =
             HMM_V2((labelPadding * 2.0f) + view->theme.portWidth / 2, 0);
           horz = ALIGN_LEFT;
-        } else if (!circ_has_tags(&view->circuit2, portID, TAG_IN)) {
+        } else if (!circ_has_tags(&view->circuit, portID, TAG_IN)) {
           labelPos = HMM_V2(-labelPadding - view->theme.portWidth / 2, 0);
           horz = ALIGN_RIGHT;
         }
@@ -226,14 +232,13 @@ void view_draw(CircuitView *view) {
     }
   }
 
-  NetlistID netlistID =
-    circ_get(&view->circuit2, view->circuit2.top, NetlistID);
-  LinkedListIter it = circ_lliter(&view->circuit2, netlistID);
+  NetlistID netlistID = circ_get(&view->circuit, view->circuit.top, NetlistID);
+  LinkedListIter it = circ_lliter(&view->circuit, netlistID);
   while (circ_lliter_next(&it)) {
     ID netID = it.current;
     bool netIsHovered = view_is_hovered(view, netID);
 
-    WireVertices wireVerts = circ_get(&view->circuit2, netID, WireVertices);
+    WireVertices wireVerts = circ_get(&view->circuit, netID, WireVertices);
     HMM_Vec2 *vertices = wireVerts.vertices;
     for (size_t j = 0; j < wireVerts.wireCount; j++) {
       uint16_t wireVertCount =
@@ -257,18 +262,16 @@ void view_draw(CircuitView *view) {
       vertices += wireVertCount;
     }
 
-    LinkedListIter subnetit = circ_lliter(&view->circuit2, netID);
+    LinkedListIter subnetit = circ_lliter(&view->circuit, netID);
     while (circ_lliter_next(&subnetit)) {
-      LinkedListIter endpointit =
-        circ_lliter(&view->circuit2, subnetit.current);
+      LinkedListIter endpointit = circ_lliter(&view->circuit, subnetit.current);
       while (circ_lliter_next(&endpointit)) {
         LinkedListIter waypointit =
-          circ_lliter(&view->circuit2, endpointit.current);
+          circ_lliter(&view->circuit, endpointit.current);
         while (circ_lliter_next(&waypointit)) {
           ID waypointID = waypointit.current;
           DrawFlags flags = 0;
-          Position waypointPos =
-            circ_get(&view->circuit2, waypointID, Position);
+          Position waypointPos = circ_get(&view->circuit, waypointID, Position);
           if (view_is_hovered(view, waypointID)) {
             flags |= DRAW_HOVERED;
           }

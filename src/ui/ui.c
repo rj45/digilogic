@@ -36,6 +36,13 @@ void ui_init(
   thread_mutex_init(&ui->saveMutex);
 }
 
+void ui_reset(CircuitUI *ui) {
+  ui->showAbout = false;
+  ui->addingSymbolKind = NO_ID;
+
+  ux_reset(&ui->ux);
+}
+
 void ui_free(CircuitUI *ui) {
   ux_free(&ui->ux);
   circ_free(&ui->saveCopy);
@@ -88,9 +95,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
     if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
-        circ_clear(&ui->ux.view.circuit2);
-        ux_route(&ui->ux);
-        ux_build_bvh(&ui->ux);
+        ui_reset(ui);
         log_info("New");
       }
       if (nk_menu_item_label(ctx, "Load", NK_TEXT_LEFT)) {
@@ -104,8 +109,8 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           if (strncmp(loadfile + strlen(loadfile) - 4, ".dlc", 4) != 0) {
             strncat(loadfile, ".dlc", 1024);
           }
-          circ_clear(&ui->ux.view.circuit2);
-          circ_load_file(&ui->ux.view.circuit2, loadfile);
+          circ_clear(&ui->ux.view.circuit);
+          circ_load_file(&ui->ux.view.circuit, loadfile);
           ux_route(&ui->ux);
           ux_build_bvh(&ui->ux);
         }
@@ -223,16 +228,16 @@ void ui_update(
       ui->addingSymbolKind = NO_ID;
     }
 
-    CircuitIter iter = circ_iter(&ui->ux.view.circuit2, SymbolKind);
+    CircuitIter iter = circ_iter(&ui->ux.view.circuit, SymbolKind);
     while (circ_iter_next(&iter)) {
       SymbolKind *table = circ_iter_table(&iter, SymbolKind);
       for (ptrdiff_t i = 0; i < table->length; i++) {
         SymbolKindID symbolKindID = table->id[i];
-        Name nameID = circ_get(&ui->ux.view.circuit2, symbolKindID, Name);
+        Name nameID = circ_get(&ui->ux.view.circuit, symbolKindID, Name);
         if (nameID == 0) {
           continue;
         }
-        const char *name = circ_str_get(&ui->ux.view.circuit2, nameID);
+        const char *name = circ_str_get(&ui->ux.view.circuit, nameID);
 
         if (nk_option_label(ctx, name, ui->addingSymbolKind == symbolKindID)) {
           if (ui->addingSymbolKind == NO_ID) {
@@ -282,7 +287,7 @@ bool ui_background_save(
     return false;
   }
   thread_mutex_lock(&ui->saveMutex);
-  circ_clone(&ui->saveCopy, &ui->ux.view.circuit2);
+  circ_clone(&ui->saveCopy, &ui->ux.view.circuit);
   strncpy(ui->saveFilename, filename, 1024);
   thread_atomic_int_store(&ui->saveThreadBusy, 1);
   thread_mutex_unlock(&ui->saveMutex);

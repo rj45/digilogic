@@ -52,10 +52,10 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
 
     for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
       ID id = ux->view.selected[i];
-      if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_SYMBOL) {
-        circ_set_symbol_position(&ux->view.circuit2, id, newCenter);
-      } else if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_WAYPOINT) {
-        circ_set_waypoint_position(&ux->view.circuit2, id, newCenter);
+      if (circ_type_for_id(&ux->view.circuit, id) == TYPE_SYMBOL) {
+        circ_set_symbol_position(&ux->view.circuit, id, newCenter);
+      } else if (circ_type_for_id(&ux->view.circuit, id) == TYPE_WAYPOINT) {
+        circ_set_waypoint_position(&ux->view.circuit, id, newCenter);
       }
     }
     ux_route(ux);
@@ -79,7 +79,7 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     ux->bvhQuery = bvh_query(&ux->bvh, command.area, ux->bvhQuery);
     for (size_t i = 0; i < arrlen(ux->bvhQuery); i++) {
       ID id = ux->bvhQuery[i].item;
-      EntityType type = circ_type_for_id(&ux->view.circuit2, id);
+      EntityType type = circ_type_for_id(&ux->view.circuit, id);
       if (type == TYPE_SYMBOL || type == TYPE_WAYPOINT) {
         arrput(ux->view.selected, id);
       }
@@ -106,10 +106,10 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
     log_debug(
       "Performing add component: %x %d %f %f", command.childID,
       command.parentID, command.center.X, command.center.Y);
-    if (!circ_has(&ux->view.circuit2, command.childID)) {
+    if (!circ_has(&ux->view.circuit, command.childID)) {
       ID id = circ_add_symbol(
-        &ux->view.circuit2, ux->view.circuit2.top, command.parentID);
-      circ_set_symbol_position(&ux->view.circuit2, id, command.center);
+        &ux->view.circuit, ux->view.circuit.top, command.parentID);
+      circ_set_symbol_position(&ux->view.circuit, id, command.center);
       UndoCommand *top = ux_undo_stack_top(ux);
       top->childID = id;
 
@@ -139,27 +139,27 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
 
   case UNDO_DEL_SYMBOL:
     log_debug("Performing del component: %x", command.childID);
-    if (circ_has(&ux->view.circuit2, command.childID)) {
+    if (circ_has(&ux->view.circuit, command.childID)) {
       // todo: if adding component, replace it with the component removed
       // and delete the adding component instead
-      circ_remove_symbol(&ux->view.circuit2, command.childID);
+      circ_remove_symbol(&ux->view.circuit, command.childID);
     }
     break;
   case UNDO_ADD_WAYPOINT:
     log_debug(
       "Performing add waypoint: %x %x %f %f", command.childID, command.parentID,
       command.center.X, command.center.Y);
-    if (!circ_has(&ux->view.circuit2, command.childID)) {
-      ID id = circ_add_waypoint(&ux->view.circuit2, command.parentID);
-      circ_set_waypoint_position(&ux->view.circuit2, id, command.center);
+    if (!circ_has(&ux->view.circuit, command.childID)) {
+      ID id = circ_add_waypoint(&ux->view.circuit, command.parentID);
+      circ_set_waypoint_position(&ux->view.circuit, id, command.center);
       UndoCommand *top = ux_undo_stack_top(ux);
       top->childID = id;
     }
     break;
   case UNDO_DEL_WAYPOINT:
     log_debug("Performing del waypoint: %x", command.childID);
-    if (circ_has(&ux->view.circuit2, command.childID)) {
-      circ_remove_waypoint(&ux->view.circuit2, command.childID);
+    if (circ_has(&ux->view.circuit, command.childID)) {
+      circ_remove_waypoint(&ux->view.circuit, command.childID);
     }
     break;
   }

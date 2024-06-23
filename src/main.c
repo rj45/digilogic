@@ -253,7 +253,7 @@ void load_file(my_app_t *app, const char *filename) {
 
   log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  import_digital(&app->ui.ux.view.circuit2, buffer);
+  import_digital(&app->ui.ux.view.circuit, buffer);
 
   free(buffer);
   ux_route(&app->ui.ux);
@@ -309,7 +309,7 @@ void frame(void *user_data) {
 
       if (hasAutoSave) {
         if (nk_button_label(ctx, "Load auto-save")) {
-          circ_load_file(&app->ui.ux.view.circuit2, platform_autosave_path());
+          circ_load_file(&app->ui.ux.view.circuit, platform_autosave_path());
           ux_route(&app->ui.ux);
           ux_build_bvh(&app->ui.ux);
           app->loaded = true;

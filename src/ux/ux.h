@@ -343,6 +343,7 @@ void ux_global_init();
 void ux_init(
   CircuitUX *ux, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font);
+void ux_reset(CircuitUX *ux);
 void ux_free(CircuitUX *ux);
 
 HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter);

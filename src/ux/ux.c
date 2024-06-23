@@ -24,7 +24,7 @@
 
 #include "ux.h"
 
-#define LOG_LEVEL LL_DEBUG
+#define LOG_LEVEL LL_INFO
 #include "log.h"
 
 void ux_global_init() { autoroute_global_init(); }
@@ -44,7 +44,24 @@ void ux_init(
   view_init(&ux->view, componentDescs, drawCtx, font);
   bvh_init(&ux->bvh);
 
-  ux->router = autoroute_create(&ux->view.circuit2);
+  ux->router = autoroute_create(&ux->view.circuit);
+}
+
+void ux_reset(CircuitUX *ux) {
+  view_reset(&ux->view);
+  bvh_clear(&ux->bvh);
+
+  ux->undoStack = NULL;
+  ux->redoStack = NULL;
+  ux->mouseDownState = STATE_UP;
+  ux->clickedPort = (PortRef){0};
+  ux->addingSymbol = NO_ID;
+  ux->endpointStart = NO_ID;
+  ux->endpointEnd = NO_ID;
+  ux->zoomExp = 1.0f;
+
+  ux_route(ux);
+  ux_build_bvh(ux);
 }
 
 void ux_free(CircuitUX *ux) {
@@ -63,8 +80,8 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux) {
   assert(arrlen(ux->view.selected) > 0);
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
-    if (circ_has_component(&ux->view.circuit2, id, Position)) {
-      Position position = circ_get(&ux->view.circuit2, id, Position);
+    if (circ_has_component(&ux->view.circuit, id, Position)) {
+      Position position = circ_get(&ux->view.circuit, id, Position);
       center = HMM_AddV2(center, position);
     }
   }
@@ -89,11 +106,11 @@ void ux_select_none(CircuitUX *ux) {
 void ux_select_all(CircuitUX *ux) {
   HMM_Vec2 min = HMM_V2(FLT_MAX, FLT_MAX);
   HMM_Vec2 max = HMM_V2(-FLT_MAX, -FLT_MAX);
-  CircuitIter it = circ_iter(&ux->view.circuit2, Symbol);
+  CircuitIter it = circ_iter(&ux->view.circuit, Symbol);
   while (circ_iter_next(&it)) {
     Symbol *table = circ_iter_table(&it, Symbol);
     for (size_t i = 0; i < table->length; i++) {
-      Box box = circ_get_symbol_box(&ux->view.circuit2, table->id[i]);
+      Box box = circ_get_symbol_box(&ux->view.circuit, table->id[i]);
       HMM_Vec2 cmin = HMM_SubV2(box.center, box.halfSize);
       HMM_Vec2 cmax = HMM_AddV2(box.center, box.halfSize);
       min.X = HMM_MIN(min.X, cmin.X);
@@ -103,7 +120,7 @@ void ux_select_all(CircuitUX *ux) {
     }
   }
 
-  it = circ_iter(&ux->view.circuit2, Waypoint);
+  it = circ_iter(&ux->view.circuit, Waypoint);
   while (circ_iter_next(&it)) {
     Waypoint *table = circ_iter_table(&it, Waypoint);
     for (size_t i = 0; i < table->length; i++) {
@@ -122,13 +139,13 @@ void ux_select_all(CircuitUX *ux) {
 void ux_delete_selected(CircuitUX *ux) {
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
-    if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_SYMBOL) {
-      SymbolKindID kind = circ_get(&ux->view.circuit2, id, SymbolKindID);
-      Position position = circ_get(&ux->view.circuit2, id, Position);
+    if (circ_type_for_id(&ux->view.circuit, id) == TYPE_SYMBOL) {
+      SymbolKindID kind = circ_get(&ux->view.circuit, id, SymbolKindID);
+      Position position = circ_get(&ux->view.circuit, id, Position);
       ux_do(ux, undo_cmd_del_symbol(position, id, kind));
-    } else if (circ_type_for_id(&ux->view.circuit2, id) == TYPE_WAYPOINT) {
-      Parent endpoint = circ_get(&ux->view.circuit2, id, Parent);
-      Position position = circ_get(&ux->view.circuit2, id, Position);
+    } else if (circ_type_for_id(&ux->view.circuit, id) == TYPE_WAYPOINT) {
+      Parent endpoint = circ_get(&ux->view.circuit, id, Parent);
+      Position position = circ_get(&ux->view.circuit, id, Position);
       ux_do(ux, undo_cmd_del_waypoint(position, id, endpoint));
       ux_route(ux);
     }
@@ -155,48 +172,48 @@ void ux_build_bvh(CircuitUX *ux) {
   HMM_Vec2 portHalfSize =
     HMM_V2(ux->view.theme.portWidth / 2, ux->view.theme.portWidth / 2);
 
-  ID top = ux->view.circuit2.top;
-  LinkedListIter topit = circ_lliter(&ux->view.circuit2, top);
+  ID top = ux->view.circuit.top;
+  LinkedListIter topit = circ_lliter(&ux->view.circuit, top);
   while (circ_lliter_next(&topit)) {
     ID symbolID = topit.current;
-    SymbolKindID kindID = circ_get(&ux->view.circuit2, symbolID, SymbolKindID);
-    Position symbolPos = circ_get(&ux->view.circuit2, symbolID, Position);
-    Size size = circ_get(&ux->view.circuit2, kindID, Size);
+    SymbolKindID kindID = circ_get(&ux->view.circuit, symbolID, SymbolKindID);
+    Position symbolPos = circ_get(&ux->view.circuit, symbolID, Position);
+    Size size = circ_get(&ux->view.circuit, kindID, Size);
     Box box = (Box){.center = symbolPos, .halfSize = HMM_MulV2F(size, 0.5f)};
     bvh_add(&ux->bvh, symbolID, NO_ID, box);
 
-    LinkedListIter portit = circ_lliter(&ux->view.circuit2, kindID);
+    LinkedListIter portit = circ_lliter(&ux->view.circuit, kindID);
     while (circ_lliter_next(&portit)) {
       ID portID = portit.current;
-      Position portPos = circ_get(&ux->view.circuit2, portID, Position);
+      Position portPos = circ_get(&ux->view.circuit, portID, Position);
       portPos = HMM_AddV2(symbolPos, portPos);
       Box portBox = (Box){.center = portPos, .halfSize = portHalfSize};
       bvh_add(&ux->bvh, symbolID, portID, portBox);
     }
   }
 
-  NetlistID netlistID = circ_get(&ux->view.circuit2, top, NetlistID);
-  LinkedListIter netit = circ_lliter(&ux->view.circuit2, netlistID);
+  NetlistID netlistID = circ_get(&ux->view.circuit, top, NetlistID);
+  LinkedListIter netit = circ_lliter(&ux->view.circuit, netlistID);
   while (circ_lliter_next(&netit)) {
     ID netID = netit.current;
-    LinkedListIter subnetit = circ_lliter(&ux->view.circuit2, netID);
+    LinkedListIter subnetit = circ_lliter(&ux->view.circuit, netID);
     while (circ_lliter_next(&subnetit)) {
       ID subnetID = subnetit.current;
 
-      LinkedListIter endpointit = circ_lliter(&ux->view.circuit2, subnetID);
+      LinkedListIter endpointit = circ_lliter(&ux->view.circuit, subnetID);
       while (circ_lliter_next(&endpointit)) {
         ID endpointID = endpointit.current;
         Position endpointPos =
-          circ_get(&ux->view.circuit2, endpointID, Position);
+          circ_get(&ux->view.circuit, endpointID, Position);
         Box endpointBox =
           (Box){.center = endpointPos, .halfSize = portHalfSize};
         bvh_add(&ux->bvh, endpointID, NO_ID, endpointBox);
 
-        LinkedListIter waypointit = circ_lliter(&ux->view.circuit2, endpointID);
+        LinkedListIter waypointit = circ_lliter(&ux->view.circuit, endpointID);
         while (circ_lliter_next(&waypointit)) {
           ID waypointID = waypointit.current;
           Position waypointPos =
-            circ_get(&ux->view.circuit2, waypointID, Position);
+            circ_get(&ux->view.circuit, waypointID, Position);
           Box waypointBox =
             (Box){.center = waypointPos, .halfSize = portHalfSize};
           bvh_add(&ux->bvh, waypointID, NO_ID, waypointBox);
@@ -205,7 +222,7 @@ void ux_build_bvh(CircuitUX *ux) {
     }
 
     WireVertices wireVertices =
-      circ_get(&ux->view.circuit2, netID, WireVertices);
+      circ_get(&ux->view.circuit, netID, WireVertices);
     size_t vertexOffset = 0;
     for (size_t wireIdx = 0; wireIdx < wireVertices.wireCount; wireIdx++) {
       uint16_t vertCount =
