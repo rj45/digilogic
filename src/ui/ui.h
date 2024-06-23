@@ -32,9 +32,14 @@
 // Circuit UI
 ////////////////////////////////////////
 
+#define UI_FONT_SIZE 20
+
 typedef struct CircuitUI {
   CircuitUX ux;
   struct nk_context *nk;
+
+  int uiScale;
+  float scale;
 
   ID addingSymbolKind;
 
@@ -61,5 +66,6 @@ void ui_update(
 void ui_draw(CircuitUI *ui);
 bool ui_background_save(CircuitUI *ui, const char *filename, bool skipWhenBusy);
 void ui_reset(CircuitUI *ui);
+void ui_set_scale(CircuitUI *ui, int scale);
 
 #endif // UI_H

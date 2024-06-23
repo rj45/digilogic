@@ -31,7 +31,7 @@
 void ui_init(
   CircuitUI *ui, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
-  *ui = (CircuitUI){.showIntro = true};
+  *ui = (CircuitUI){.showIntro = true, .scale = 1.0f};
   ux_init(&ui->ux, componentDescs, drawCtx, font);
   circ_init(&ui->saveCopy);
   thread_mutex_init(&ui->saveMutex);
@@ -48,6 +48,11 @@ void ui_free(CircuitUI *ui) {
   ux_free(&ui->ux);
   circ_free(&ui->saveCopy);
   thread_mutex_term(&ui->saveMutex);
+}
+
+static inline int sv(CircuitUI *ui, int value) {
+  float newValue = (float)value * ui->scale;
+  return (int)(newValue + 0.5);
 }
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
@@ -92,9 +97,10 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
             ctx->style.window.menu_padding.y),
         0)) {
     nk_menubar_begin(ctx);
-    nk_layout_row_static(ctx, barHeight, 45, 4);
-    if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200))) {
-      nk_layout_row_dynamic(ctx, 25, 1);
+    nk_layout_row_static(ctx, barHeight, sv(ui, 45), 5);
+    if (nk_menu_begin_label(
+          ctx, "File", NK_TEXT_LEFT, nk_vec2(sv(ui, 120), sv(ui, 200)))) {
+      nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
         ui_reset(ui);
         ui->showIntro = false;
@@ -138,8 +144,9 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
       }
       nk_menu_end(ctx);
     }
-    if (nk_menu_begin_label(ctx, "Edit", NK_TEXT_LEFT, nk_vec2(120, 200))) {
-      nk_layout_row_dynamic(ctx, 25, 1);
+    if (nk_menu_begin_label(
+          ctx, "Edit", NK_TEXT_LEFT, nk_vec2(sv(ui, 120), sv(ui, 200)))) {
+      nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
       if (nk_menu_item_label(ctx, "Undo", NK_TEXT_LEFT)) {
         ux_undo(&ui->ux);
       }
@@ -155,8 +162,39 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
       nk_menu_end(ctx);
     }
 
-    if (nk_menu_begin_label(ctx, "Help", NK_TEXT_LEFT, nk_vec2(120, 200))) {
-      nk_layout_row_dynamic(ctx, 25, 1);
+    if (nk_menu_begin_label(
+          ctx, "View", NK_TEXT_LEFT, nk_vec2(sv(ui, 200), sv(ui, 240)))) {
+      nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
+
+      if (nk_check_label(ctx, "Show FPS", ui->ux.showFPS)) {
+        ui->ux.showFPS = !ui->ux.showFPS;
+      }
+      if (nk_check_label(ctx, "Show Routing Debug", ui->ux.rtDebugLines)) {
+        ui->ux.rtDebugLines = !ui->ux.rtDebugLines;
+      }
+      if (nk_check_label(ctx, "Show BVH Debug", ui->ux.bvhDebugLines)) {
+        ui->ux.bvhDebugLines = !ui->ux.bvhDebugLines;
+      }
+
+      if (nk_option_label(ctx, "Normal Text", ui->uiScale == 0)) {
+        ui_set_scale(ui, 0);
+      }
+      if (nk_option_label(ctx, "Larger Text", ui->uiScale == 1)) {
+        ui_set_scale(ui, 1);
+      }
+      if (nk_option_label(ctx, "Large Text", ui->uiScale == 2)) {
+        ui_set_scale(ui, 2);
+      }
+      if (nk_option_label(ctx, "Huge Text", ui->uiScale == 3)) {
+        ui_set_scale(ui, 3);
+      }
+
+      nk_menu_end(ctx);
+    }
+
+    if (nk_menu_begin_label(
+          ctx, "Help", NK_TEXT_LEFT, nk_vec2(sv(ui, 120), sv(ui, 200)))) {
+      nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
       if (nk_menu_item_label(ctx, "Intro Dialog", NK_TEXT_LEFT)) {
         ui->showIntro = true;
       }
@@ -292,47 +330,52 @@ static void ui_intro_dialog(
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height) {
 
+  ((struct nk_user_font *)ctx->style.font)->height = sv(ui, UI_FONT_SIZE);
+
   ui_menu_bar(ui, ctx, width);
   ui_about(ui, ctx, width, height);
   ui_intro_dialog(ui, ctx, width, height);
 
-  if (nk_begin(
-        ctx, "Toolbar", nk_rect(0, 40, 180, 480),
-        NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
-          NK_WINDOW_TITLE)) {
+  if (!ui->showIntro) {
+    if (nk_begin(
+          ctx, "Toolbar", nk_rect(0, 40, 180, 480),
+          NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
+            NK_WINDOW_TITLE)) {
 
-    nk_layout_row_dynamic(ctx, 30, 1);
+      nk_layout_row_dynamic(ctx, 30, 1);
 
-    if (nk_option_label(ctx, "NONE", ui->addingSymbolKind == NO_ID)) {
-      if (ui->addingSymbolKind != NO_ID) {
-        ux_stop_adding_symbol(&ui->ux);
-      }
-      ui->addingSymbolKind = NO_ID;
-    }
-
-    CircuitIter iter = circ_iter(&ui->ux.view.circuit, SymbolKind);
-    while (circ_iter_next(&iter)) {
-      SymbolKind *table = circ_iter_table(&iter, SymbolKind);
-      for (ptrdiff_t i = 0; i < table->length; i++) {
-        SymbolKindID symbolKindID = table->id[i];
-        Name nameID = circ_get(&ui->ux.view.circuit, symbolKindID, Name);
-        if (nameID == 0) {
-          continue;
+      if (nk_option_label(ctx, "NONE", ui->addingSymbolKind == NO_ID)) {
+        if (ui->addingSymbolKind != NO_ID) {
+          ux_stop_adding_symbol(&ui->ux);
         }
-        const char *name = circ_str_get(&ui->ux.view.circuit, nameID);
+        ui->addingSymbolKind = NO_ID;
+      }
 
-        if (nk_option_label(ctx, name, ui->addingSymbolKind == symbolKindID)) {
-          if (ui->addingSymbolKind == NO_ID) {
-            ux_start_adding_symbol(&ui->ux, symbolKindID);
-          } else if (ui->addingSymbolKind != symbolKindID) {
-            ux_change_adding_symbol(&ui->ux, symbolKindID);
+      CircuitIter iter = circ_iter(&ui->ux.view.circuit, SymbolKind);
+      while (circ_iter_next(&iter)) {
+        SymbolKind *table = circ_iter_table(&iter, SymbolKind);
+        for (ptrdiff_t i = 0; i < table->length; i++) {
+          SymbolKindID symbolKindID = table->id[i];
+          Name nameID = circ_get(&ui->ux.view.circuit, symbolKindID, Name);
+          if (nameID == 0) {
+            continue;
           }
-          ui->addingSymbolKind = symbolKindID;
+          const char *name = circ_str_get(&ui->ux.view.circuit, nameID);
+
+          if (nk_option_label(
+                ctx, name, ui->addingSymbolKind == symbolKindID)) {
+            if (ui->addingSymbolKind == NO_ID) {
+              ux_start_adding_symbol(&ui->ux, symbolKindID);
+            } else if (ui->addingSymbolKind != symbolKindID) {
+              ux_change_adding_symbol(&ui->ux, symbolKindID);
+            }
+            ui->addingSymbolKind = symbolKindID;
+          }
         }
       }
     }
+    nk_end(ctx);
   }
-  nk_end(ctx);
 
   ux_update(&ui->ux);
 
@@ -383,4 +426,11 @@ bool ui_background_save(
   thread_detach(thread);
 
   return true;
+}
+
+float scaleFactors[] = {1.0f, 1.2f, 1.5f, 2.0f};
+
+void ui_set_scale(CircuitUI *ui, int scale) {
+  ui->uiScale = scale;
+  ui->scale = scaleFactors[scale];
 }

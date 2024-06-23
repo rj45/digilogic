@@ -62,8 +62,6 @@
 #define FONT_ATLAS_WIDTH 2048
 #define FONT_ATLAS_HEIGHT 2048
 
-#define UI_FONT_SIZE 20
-
 #ifndef MSAA_SAMPLE_COUNT
 #define MSAA_SAMPLE_COUNT 4
 #endif
