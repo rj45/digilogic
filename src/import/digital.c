@@ -18,7 +18,7 @@
 #include "handmade_math.h"
 #include "import.h"
 
-#define LOG_LEVEL LL_DEBUG
+#define LOG_LEVEL LL_INFO
 #include "log.h"
 
 #define DEBUG_PRINT(...)

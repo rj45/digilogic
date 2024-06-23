@@ -312,15 +312,6 @@ typedef uint32_t StringHandle;
   size_t capacity;                                                             \
   ID *id;
 
-typedef struct Table {
-  TABLE_HEADER
-  void *component[];
-} Table;
-
-// #define id_index(id) ((ID)(id)&0x00FFFFFF)
-// #define id_gen(id) (((ID)(id) >> 24) & 0xFF)
-// #define id_make(index, gen) (((ID)(gen) << 24) | (ID)(index)&0x00FFFFFF)
-
 #define tagtype_tag(tag) ((tag) & 0xFF00)
 #define tagtype_type(tag) ((tag) & 0x00FF)
 
@@ -621,11 +612,48 @@ typedef struct Module {
   [TYPE_NETLIST] = {.components = NETLIST_COMPONENTS},                         \
   [TYPE_MODULE] = {.components = MODULE_COMPONENTS},
 
+#define MAX_INVERTED_INDEX_COUNT 2
+
+// where in the rows list to find the "children" of the current row
+typedef struct InvertedIndexEntry {
+  uint32_t firstRow;
+  uint32_t count;
+} InvertedIndexEntry;
+
+// InvertedIndex is a list of all entities that reference a specific entity via
+// a specific component on that entity. For example, this can be used to quickly
+// enumerate all Endpoints that a Subnet has via the Endpoint's Parent
+// component.
+typedef struct InvertedIndex {
+  InvertedIndexEntry *entries;
+  arr(uint32_t) rows;
+  EntityType foreignTable;
+  ComponentID foreignKey;
+} InvertedIndex;
+
+typedef struct Table {
+  TABLE_HEADER
+  void *component[];
+} Table;
+
+// TableMeta is the metadata for a table for quick access to components.
 typedef struct TableMeta {
-  uint32_t components;
+
+  // number of components in the table
   size_t componentCount;
-  size_t componentSizes[MAX_COMPONENT_COUNT];
-  int32_t componentIndices[COMPONENT_COUNT];
+
+  // size of each component in the table
+  size_t componentSize[MAX_COMPONENT_COUNT];
+
+  // flags for each component, so 1 << COMPONENT_ID for each component
+  uint32_t components;
+
+  // ComponentID to column index mapping
+  int32_t componentColumn[COMPONENT_COUNT];
+
+  // InvertedIndices for this table
+  int32_t invertedIndexCount;
+  InvertedIndex invertedIndex[MAX_INVERTED_INDEX_COUNT];
 } TableMeta;
 
 typedef struct Circuit {
@@ -653,9 +681,8 @@ typedef struct Circuit {
   Module module;
 
   // indices
-  Table **table;
-  TableMeta *tableMeta;
-  int numTables;
+  Table *table[TYPE_COUNT];
+  TableMeta tableMeta[TYPE_COUNT];
 
   // todo: strpool is not a good fit because it can't be easily cloned, which
   // is important for snapshots. Need to probably make a custom string pool.
@@ -700,7 +727,7 @@ static inline size_t circ_table_len(Circuit *circuit, EntityType type) {
 // Get a pointer to a specific component within a table.
 #define circ_table_component_ptr(circuit, type, componentIndex, row)           \
   (void *)((char *)circ_table_components_ptr(circuit, type, componentIndex) +  \
-           (circuit)->tableMeta[type].componentSizes[componentIndex] * (row))
+           (circuit)->tableMeta[type].componentSize[componentIndex] * (row))
 
 #define circ_type_for_id(circuit, id)                                          \
   ((EntityType)tagtype_type((circuit)->typeTags[id_index(id)]))
@@ -718,7 +745,7 @@ static inline size_t circ_table_len(Circuit *circuit, EntityType type) {
     (circuit), circ_type_for_id((circuit), (id)),                              \
     circ_row_for_id((circuit), (id)),                                          \
     circ_table_meta_for_id(circuit, id)                                        \
-      .componentIndices[circ_component_id(componentType)],                     \
+      .componentColumn[circ_component_id(componentType)],                      \
     ptr)
 
 #define circ_set(circuit, id, componentType, ...)                              \
@@ -729,7 +756,7 @@ static inline size_t circ_table_len(Circuit *circuit, EntityType type) {
    (const componentType *)((componentType *)circ_table_component_ptr(          \
      circuit, circ_type_for_id(circuit, id),                                   \
      circ_table_meta_for_id(circuit, id)                                       \
-       .componentIndices[circ_component_id(componentType)],                    \
+       .componentColumn[circ_component_id(componentType)],                     \
      circ_row_for_id(circuit, id))))
 
 #define circ_get(circuit, id, componentType)                                   \
@@ -772,7 +799,7 @@ static inline void
 circ_set_(Circuit *circuit, int table, int row, int column, void *value) {
   memcpy(
     circ_table_component_ptr(circuit, table, column, row), value,
-    circuit->tableMeta[table].componentSizes[column]);
+    circuit->tableMeta[table].componentSize[column]);
 }
 
 //////////////////////////////////////////
@@ -809,7 +836,7 @@ static inline Table *circ_iter_table_(CircuitIter *iter, EntityType type) {
 
 static inline void circ_iter_set_(
   CircuitIter *it, int index, ComponentID componentID, void *value) {
-  int column = it->circuit->tableMeta[it->type].componentIndices[componentID];
+  int column = it->circuit->tableMeta[it->type].componentColumn[componentID];
   circ_set_(it->circuit, it->type, index, column, value);
 }
 

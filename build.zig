@@ -40,6 +40,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const digilogic_bench = b.addExecutable(.{
+        .name = "bench",
+        .target = target,
+        .optimize = optimize,
+    });
+
     const Sanitizer = enum {
         none,
         address,
@@ -93,7 +99,7 @@ pub fn build(b: *std.Build) void {
                         cflags.append("-fsanitize-memory-track-origins=2") catch @panic("OOM");
                     }
 
-                    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test }) |exe| {
+                    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test, digilogic_bench }) |exe| {
                         exe.addLibraryPath(.{ .cwd_relative = llvm_lib_path });
 
                         if (target.result.os.tag.isDarwin()) {
@@ -123,7 +129,7 @@ pub fn build(b: *std.Build) void {
     }
 
     // add files common to both the main and test executables
-    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test }) |exe| {
+    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test, digilogic_bench }) |exe| {
         exe.addCSourceFiles(.{
             .root = b.path("src"),
             .files = &.{
@@ -371,10 +377,10 @@ pub fn build(b: *std.Build) void {
         .cargo_args = &.{},
     });
 
-    digilogic.addLibraryPath(rust_lib_path.dirname());
-    digilogic.linkSystemLibrary("digilogic_routing");
-    digilogic_test.addLibraryPath(rust_lib_path.dirname());
-    digilogic_test.linkSystemLibrary("digilogic_routing");
+    inline for ([_]*std.Build.Step.Compile{ digilogic, digilogic_test, digilogic_bench }) |exe| {
+        exe.addLibraryPath(rust_lib_path.dirname());
+        exe.linkSystemLibrary("digilogic_routing");
+    }
 
     if (target.result.os.tag.isDarwin()) {
         // apple has their own way of doing things
@@ -390,7 +396,6 @@ pub fn build(b: *std.Build) void {
     }
 
     digilogic_test.linkLibC();
-
     digilogic_test.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
@@ -402,7 +407,6 @@ pub fn build(b: *std.Build) void {
         },
         .flags = cflags.items,
     });
-
     digilogic_test.addIncludePath(b.path("src"));
     digilogic_test.addIncludePath(b.path("thirdparty"));
 
@@ -410,6 +414,23 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Build and run tests");
     test_step.dependOn(&test_run.step);
+
+    digilogic_bench.linkLibC();
+    digilogic_bench.addCSourceFiles(.{
+        .root = b.path("src"),
+        .files = &.{
+            "bench.c",
+            "render/draw_test.c",
+        },
+        .flags = cflags.items,
+    });
+    digilogic_bench.addIncludePath(b.path("src"));
+    digilogic_bench.addIncludePath(b.path("thirdparty"));
+
+    const bench_run = b.addRunArtifact(digilogic_bench);
+
+    const bench_step = b.step("bench", "Build and run benchmarks");
+    bench_step.dependOn(&bench_run.step);
 
     zcc.createStep(b, "cdb", .{ .targets = &.{ digilogic, digilogic_test, asset_gen } });
 }

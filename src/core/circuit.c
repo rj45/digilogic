@@ -133,10 +133,6 @@ void circ_init(Circuit *circ) {
                       .min_length = 8,
                     });
 
-  circ->numTables = TYPE_COUNT;
-  circ->table = malloc(TYPE_COUNT * sizeof(Table *));
-  circ->tableMeta = malloc(TYPE_COUNT * sizeof(TableMeta));
-
   // get pointers to each table
   circ->table[TYPE_PORT] = (Table *)&circ->port;
   circ->table[TYPE_SYMBOL_KIND] = (Table *)&circ->symbolKind;
@@ -157,9 +153,9 @@ void circ_init(Circuit *circ) {
     for (size_t componentID = 0; componentID < COMPONENT_COUNT; componentID++) {
       if (circ->tableMeta[type].components & (1 << componentID)) {
         int count = circ->tableMeta[type].componentCount;
-        circ->tableMeta[type].componentSizes[count] =
+        circ->tableMeta[type].componentSize[count] =
           componentSizes[componentID];
-        circ->tableMeta[type].componentIndices[componentID] = count;
+        circ->tableMeta[type].componentColumn[componentID] = count;
         circ->tableMeta[type].componentCount++;
       }
     }
@@ -167,7 +163,7 @@ void circ_init(Circuit *circ) {
 }
 
 void circ_free(Circuit *circ) {
-  for (size_t i = 0; i < circ->numTables; i++) {
+  for (size_t i = 0; i < TYPE_COUNT; i++) {
     if (circ->table[i]->capacity > 0) {
       free(circ->table[i]->id);
       TableMeta *meta = &circ->tableMeta[i];
@@ -176,8 +172,6 @@ void circ_free(Circuit *circ) {
       }
     }
   }
-  free(circ->table);
-  free(circ->tableMeta);
   if (circ->capacity > 0) {
     free(circ->generations);
     free(circ->typeTags);
@@ -314,7 +308,7 @@ static void circ_grow_table(Circuit *circ, EntityType type, size_t newLength) {
   TableMeta *meta = &circ->tableMeta[type];
   for (size_t i = 0; i < meta->componentCount; i++) {
     void **ptr = circ_table_components_ptr_ptr(circ, type, i);
-    *ptr = realloc(*(void **)ptr, newCapacity * meta->componentSizes[i]);
+    *ptr = realloc(*(void **)ptr, newCapacity * meta->componentSize[i]);
   }
 
   header->capacity = newCapacity;
@@ -331,7 +325,7 @@ void circ_clone(Circuit *dst, Circuit *src) {
   arrsetlen(dst->freelist, arrlen(src->freelist));
   memcpy(dst->freelist, src->freelist, arrlen(src->freelist) * sizeof(ID));
 
-  for (size_t i = 0; i < src->numTables; i++) {
+  for (size_t i = 0; i < TYPE_COUNT; i++) {
     Table *srcTable = src->table[i];
     Table *dstTable = dst->table[i];
     circ_grow_table(dst, i, srcTable->length);
@@ -341,7 +335,7 @@ void circ_clone(Circuit *dst, Circuit *src) {
         memcpy(
           circ_table_components_ptr(dst, i, j),
           circ_table_components_ptr(src, i, j),
-          srcTable->length * dst->tableMeta[i].componentSizes[j]);
+          srcTable->length * dst->tableMeta[i].componentSize[j]);
       }
     }
     dstTable->length = srcTable->length;
@@ -375,7 +369,7 @@ static void circ_add_impl(Circuit *circ, EntityType type, ID id) {
   TableMeta *meta = &circ->tableMeta[type];
   for (size_t i = 1; i < meta->componentCount; i++) {
     memset(
-      circ_table_component_ptr(circ, type, i, row), 0, meta->componentSizes[i]);
+      circ_table_component_ptr(circ, type, i, row), 0, meta->componentSize[i]);
   }
 
   header->id[row] = id;
@@ -416,7 +410,7 @@ void circ_remove(Circuit *circ, ID id) {
     for (size_t i = 0; i < circ->tableMeta[type].componentCount; i++) {
       void *src = circ_table_component_ptr(circ, type, i, lastRow);
       void *dst = circ_table_component_ptr(circ, type, i, row);
-      memcpy(dst, src, circ->tableMeta[type].componentSizes[i]);
+      memcpy(dst, src, circ->tableMeta[type].componentSize[i]);
     }
     table->id[row] = lastID;
     circ->rows[id_index(lastID)] = row;

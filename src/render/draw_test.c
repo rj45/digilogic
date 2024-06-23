@@ -17,23 +17,23 @@
 // test implementations of draw api
 
 #include "core/core.h"
+#include "handmade_math.h"
 #include "render/draw.h"
 
 typedef struct Vert {
-  int x, y;
+  uint32_t x, y;
 } Vert;
-
-typedef struct Color {
-  uint8_t r, g, b, a;
-} Color;
 
 typedef struct DrawContext {
   arr(char) buildString;
 
   arr(Vert) verts;
+  hashmap(Vert, uint32_t) vertMap;
 
   HMM_Vec2 pan;
   float zoom;
+
+  bool doNothing;
 } DrawContext;
 
 DrawContext *draw_create() {
@@ -49,13 +49,19 @@ DrawContext *draw_create() {
 void draw_reset(DrawContext *draw) {
   arrsetlen(draw->buildString, 0);
   arrsetlen(draw->verts, 0);
+  while (hmlen(draw->vertMap) > 0) {
+    hmdel(draw->vertMap, draw->vertMap[hmlen(draw->vertMap) - 1].key);
+  }
 }
 
 void draw_free(DrawContext *draw) {
   arrfree(draw->buildString);
   arrfree(draw->verts);
+  hmfree(draw->vertMap);
   free(draw);
 }
+
+void draw_do_nothing(DrawContext *draw) { draw->doNothing = true; }
 
 char *draw_get_build_string(DrawContext *draw) {
   arrput(draw->buildString, '\0');
@@ -69,19 +75,20 @@ void draw_add_pan(DrawContext *draw, HMM_Vec2 pan) {
 HMM_Vec2 draw_get_pan(DrawContext *draw) { return draw->pan; }
 float draw_get_zoom(DrawContext *draw) { return draw->zoom; }
 
-static int find_vert(DrawContext *draw, HMM_Vec2 pos) {
+static uint32_t find_vert(DrawContext *draw, HMM_Vec2 pos) {
   Vert vert = {
     .x = (int)(pos.X),
     .y = (int)(pos.Y),
   };
-  for (int i = 0; i < arrlen(draw->verts); i++) {
-    if (draw->verts[i].x == vert.x && draw->verts[i].y == vert.y) {
-      return i;
-    }
+  hmdefault(draw->vertMap, -1);
+  uint32_t index = hmget(draw->vertMap, vert);
+  if (index != -1) {
+    return index;
   }
 
-  int idx = arrlen(draw->verts);
+  uint32_t idx = arrlen(draw->verts);
   arrput(draw->verts, vert);
+  hmput(draw->vertMap, vert, idx);
   return idx;
 }
 
@@ -106,6 +113,8 @@ const char *draw_flags(DrawFlags flags) {
 void draw_symbol_shape(
   DrawContext *draw, Theme *theme, Box box, SymbolShape shape,
   DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(
     buff, 256, "component(%s, v%d, %s)\n", shapeStrings[shape],
@@ -118,6 +127,8 @@ void draw_symbol_shape(
 }
 void draw_port(
   DrawContext *draw, Theme *theme, HMM_Vec2 center, DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(
     buff, 256, "port(v%d, %s)\n", find_vert(draw, center), draw_flags(flags));
@@ -130,6 +141,8 @@ void draw_port(
 
 void draw_selection_box(
   DrawContext *draw, Theme *theme, Box box, DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(
     buff, 256, "selection_box(v%d, v%d, %s)\n",
@@ -145,6 +158,8 @@ void draw_selection_box(
 void draw_wire(
   DrawContext *draw, Theme *theme, HMM_Vec2 *verts, int numVerts,
   DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(buff, 256, "wire(");
 
@@ -171,6 +186,8 @@ void draw_wire(
 
 void draw_waypoint(
   DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(
     buff, 256, "waypoint(v%d, %s)\n", find_vert(draw, pos), draw_flags(flags));
@@ -183,6 +200,8 @@ void draw_waypoint(
 
 void draw_junction(
   DrawContext *draw, Theme *theme, HMM_Vec2 pos, DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(
     buff, 256, "junction(v%d, %s)\n", find_vert(draw, pos), draw_flags(flags));
@@ -203,6 +222,8 @@ const char *labelStrings[] = {
 void draw_label(
   DrawContext *draw, Theme *theme, Box box, const char *text,
   DrawLabelType type, DrawFlags flags) {
+  if (draw->doNothing)
+    return;
   char buff[256];
   snprintf(
     buff, 256, "label(%s, v%d, '%s', %s)\n", labelStrings[type],

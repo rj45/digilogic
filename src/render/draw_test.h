@@ -20,7 +20,9 @@
 #include "draw.h"
 
 DrawContext *draw_create();
+void draw_reset(DrawContext *draw);
 void draw_free(DrawContext *draw);
 char *draw_get_build_string(DrawContext *draw);
+void draw_do_nothing(DrawContext *draw);
 
 #endif // DRAW_TEST_H
