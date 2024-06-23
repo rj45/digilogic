@@ -212,12 +212,21 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
 static void
 ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
   // todo: display the entire NOTICE file here
+  float posFactor = 1.0f / 5.0f;
+  float sizeFactor = 3.0f / 5.0f;
+  if (ui->uiScale > 1) {
+    posFactor = 1.0f / 10.0f;
+    sizeFactor = 8.0f / 10.0f;
+  }
   if (ui->showAbout) {
     if (nk_begin(
           ctx, "About",
-          nk_rect(width / 5, height / 5, width * 3 / 5, height * 3 / 5),
+          nk_rect(
+            width * posFactor, height * posFactor, width * sizeFactor,
+            height * sizeFactor),
           NK_WINDOW_CLOSABLE | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE)) {
-      nk_layout_row_dynamic(ctx, 25, 1);
+      nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
+
       nk_label(ctx, "digilogic", NK_TEXT_CENTERED);
       nk_label(ctx, "", NK_TEXT_CENTERED);
       nk_label(
@@ -338,11 +347,11 @@ void ui_update(
 
   if (!ui->showIntro) {
     if (nk_begin(
-          ctx, "Toolbar", nk_rect(0, 40, 180, 480),
+          ctx, "Toolbar", nk_rect(0, sv(ui, 40), 180, 480),
           NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
             NK_WINDOW_TITLE)) {
 
-      nk_layout_row_dynamic(ctx, 30, 1);
+      nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
 
       if (nk_option_label(ctx, "NONE", ui->addingSymbolKind == NO_ID)) {
         if (ui->addingSymbolKind != NO_ID) {

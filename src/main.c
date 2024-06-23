@@ -420,8 +420,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
   log_info("Starting sokol_app");
 
   return (sapp_desc){
-    .width = 1280,
-    .height = 720,
+    .width = 1850,
+    .height = 1040,
     .user_data = app,
     .init_userdata_cb = init,
     .frame_userdata_cb = frame,
