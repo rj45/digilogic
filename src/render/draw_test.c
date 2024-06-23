@@ -45,6 +45,12 @@ DrawContext *draw_create() {
 
   return draw;
 }
+
+void draw_reset(DrawContext *draw) {
+  arrsetlen(draw->buildString, 0);
+  arrsetlen(draw->verts, 0);
+}
+
 void draw_free(DrawContext *draw) {
   arrfree(draw->buildString);
   arrfree(draw->verts);

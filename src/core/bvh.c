@@ -222,7 +222,9 @@ void bvh_rebuild(BVH *bvh) {
   bvh->nodeHeap[0].firstLeaf = 0;
   bvh->nodeHeap[0].numLeaves = arrlen(bvh->leaves);
 
-  bvh_recursive_subdivide(bvh, 0, 0);
+  if (arrlen(bvh->leaves) > 0) {
+    bvh_recursive_subdivide(bvh, 0, 0);
+  }
   uint64_t elapsed = stm_since(now);
   log_debug("BVH rebuild took %f ms", stm_ms(elapsed));
 

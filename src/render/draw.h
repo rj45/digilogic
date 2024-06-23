@@ -58,6 +58,7 @@ typedef struct Theme {
 
 void theme_init(Theme *theme, FontHandle font);
 
+void draw_reset(DrawContext *draw);
 void draw_set_zoom(DrawContext *draw, float zoom);
 void draw_add_pan(DrawContext *draw, HMM_Vec2 pan);
 HMM_Vec2 draw_get_pan(DrawContext *draw);

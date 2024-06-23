@@ -91,6 +91,7 @@ void view_reset(CircuitView *view) {
   arrsetlen(view->selected, 0);
   arrsetlen(view->hovered, 0);
   view->selectionBox = (Box){0};
+  draw_reset(view->drawCtx);
   circ_clear(&view->circuit);
 }
 

@@ -62,25 +62,6 @@ static inline sgp_mat2x3 mat2x3_invert(const sgp_mat2x3 *m) {
   return inv;
 }
 
-void draw_init(DrawContext *draw, FONScontext *fontstash) {
-  *draw = (DrawContext){
-    .pan = HMM_V2(0.0f, 0.0f),
-    .zoom = 1.0f,
-    .fontstash = fontstash,
-    .polyliner = pl_create(),
-    .transform =
-      (sgp_mat2x3){
-        .v =
-          {
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
-          },
-      },
-  };
-}
-
-void draw_free(DrawContext *draw) { pl_free(draw->polyliner); }
-
 HMM_Vec2 draw_screen_to_world(DrawContext *draw, HMM_Vec2 screenPos) {
   sgp_mat2x3 xform = draw->transform;
   sgp_mat2x3 inv = mat2x3_invert(&xform);
@@ -111,6 +92,34 @@ void draw_push_transform(DrawContext *draw) {
 }
 
 void draw_pop_transform(DrawContext *draw) { sgp_pop_transform(); }
+
+void draw_init(DrawContext *draw, FONScontext *fontstash) {
+  *draw = (DrawContext){
+    .pan = HMM_V2(0.0f, 0.0f),
+    .zoom = 1.0f,
+    .fontstash = fontstash,
+    .polyliner = pl_create(),
+    .transform =
+      (sgp_mat2x3){
+        .v =
+          {
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+          },
+      },
+  };
+}
+
+void draw_reset(DrawContext *draw) {
+  draw->pan = HMM_V2(0.0f, 0.0f);
+  draw->zoom = 1.0f;
+
+  draw_push_transform(draw);
+  draw->transform = sgp_query_state()->transform;
+  draw_pop_transform(draw);
+}
+
+void draw_free(DrawContext *draw) { pl_free(draw->polyliner); }
 
 void draw_set_zoom(DrawContext *draw, float zoom) {
   draw->zoom = zoom;

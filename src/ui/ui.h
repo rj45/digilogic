@@ -23,6 +23,7 @@
 #define NK_INCLUDE_STANDARD_VARARGS
 #define NK_INCLUDE_SOFTWARE_FONT
 
+#include "assetsys.h"
 #include "nuklear.h"
 #include "thread.h"
 #include "ux/ux.h"
@@ -39,12 +40,16 @@ typedef struct CircuitUI {
 
   bool saving;
   bool showAbout;
+  bool showIntro;
 
   Circuit saveCopy;
   thread_atomic_int_t saveThreadBusy;
   char saveFilename[1024];
   thread_mutex_t saveMutex;
   uint64_t saveAt;
+
+  // for loading assets, not owned by UI
+  assetsys_t *assetsys;
 } CircuitUI;
 
 void ui_init(

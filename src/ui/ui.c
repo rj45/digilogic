@@ -16,6 +16,7 @@
 
 #include "ui/ui.h"
 #include "core/core.h"
+#include "import/import.h"
 #include "nvdialog.h"
 #include "sokol_app.h"
 #include "thread.h"
@@ -30,7 +31,7 @@
 void ui_init(
   CircuitUI *ui, const ComponentDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
-  *ui = (CircuitUI){0};
+  *ui = (CircuitUI){.showIntro = true};
   ux_init(&ui->ux, componentDescs, drawCtx, font);
   circ_init(&ui->saveCopy);
   thread_mutex_init(&ui->saveMutex);
@@ -96,6 +97,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
       nk_layout_row_dynamic(ctx, 25, 1);
       if (nk_menu_item_label(ctx, "New", NK_TEXT_LEFT)) {
         ui_reset(ui);
+        ui->showIntro = false;
         log_info("New");
       }
       if (nk_menu_item_label(ctx, "Load", NK_TEXT_LEFT)) {
@@ -113,6 +115,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           circ_load_file(&ui->ux.view.circuit, loadfile);
           ux_route(&ui->ux);
           ux_build_bvh(&ui->ux);
+          ui->showIntro = false;
         }
       }
       if (nk_menu_item_label(ctx, "Save", NK_TEXT_LEFT)) {
@@ -154,6 +157,9 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
 
     if (nk_menu_begin_label(ctx, "Help", NK_TEXT_LEFT, nk_vec2(120, 200))) {
       nk_layout_row_dynamic(ctx, 25, 1);
+      if (nk_menu_item_label(ctx, "Intro Dialog", NK_TEXT_LEFT)) {
+        ui->showIntro = true;
+      }
       if (nk_menu_item_label(ctx, "About", NK_TEXT_LEFT)) {
         ui->showAbout = true;
       }
@@ -208,11 +214,87 @@ ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
   }
 }
 
+static void ui_load_example(CircuitUI *ui, const char *filename) {
+  assetsys_file_t file;
+  assetsys_file(ui->assetsys, filename, &file);
+  int fileSize = assetsys_file_size(ui->assetsys, file);
+  char *buffer = malloc(fileSize + 1);
+  assetsys_file_load(ui->assetsys, file, &fileSize, buffer, fileSize);
+  buffer[fileSize] = 0;
+
+  log_info("Loading file %s, %d bytes\n", filename, fileSize);
+
+  ui_reset(ui);
+
+  import_digital(&ui->ux.view.circuit, buffer);
+
+  free(buffer);
+
+  ux_route(&ui->ux);
+  ux_build_bvh(&ui->ux);
+
+  // autoroute_dump_anchor_boxes(ui->circuit.ux.router);
+
+  ui->showIntro = false;
+}
+
+static void ui_intro_dialog(
+  CircuitUI *ui, struct nk_context *ctx, float width, float height) {
+  if (ui->showIntro) {
+    bool hasAutoSave = false;
+    FILE *fp = fopen(platform_autosave_path(), "r");
+    if (fp) {
+      hasAutoSave = true;
+      fclose(fp);
+    }
+
+    if (nk_begin(
+          ctx, "Load example file",
+          nk_rect(
+            (float)width / 3, (float)height / 3, (float)width / 3,
+            (float)height / 3),
+          NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
+      struct nk_vec2 min = nk_window_get_content_region_min(ctx);
+      struct nk_vec2 max = nk_window_get_content_region_max(ctx);
+      float height = ((max.y - min.y) / (hasAutoSave ? 5 : 4)) - 6;
+      nk_layout_row_dynamic(ctx, height, 1);
+
+      if (nk_button_label(ctx, "New empty circuit")) {
+        ui_reset(ui);
+        ui->showIntro = false;
+      }
+
+      if (hasAutoSave) {
+        if (nk_button_label(ctx, "Load auto-save")) {
+          circ_load_file(&ui->ux.view.circuit, platform_autosave_path());
+          ux_route(&ui->ux);
+          ux_build_bvh(&ui->ux);
+          ui->showIntro = false;
+        }
+      }
+
+      if (nk_button_label(ctx, "Load small sized test circuit")) {
+        ui_load_example(ui, "/assets/testdata/simple_test.dig");
+      }
+
+      if (nk_button_label(ctx, "Load medium sized test circuit")) {
+        ui_load_example(ui, "/assets/testdata/alu_1bit_2gatemux.dig");
+      }
+
+      if (nk_button_label(ctx, "Load large sized test circuit")) {
+        ui_load_example(ui, "/assets/testdata/alu_1bit_2inpgate.dig");
+      }
+    }
+    nk_end(ctx);
+  }
+}
+
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height) {
 
   ui_menu_bar(ui, ctx, width);
   ui_about(ui, ctx, width, height);
+  ui_intro_dialog(ui, ctx, width, height);
 
   if (nk_begin(
         ctx, "Toolbar", nk_rect(0, 40, 180, 480),

@@ -219,6 +219,8 @@ static void init(void *user_data) {
     &app->ui, circuit_component_descs(), &app->draw,
     (FontHandle)&app->fonsFont);
 
+  app->ui.assetsys = app->assetsys;
+
   app->pzoom = draw_get_zoom(&app->draw);
 
   log_info("initialization complete, entering main loop");
@@ -243,27 +245,6 @@ void cleanup(void *user_data) {
   free(app);
 }
 
-void load_file(my_app_t *app, const char *filename) {
-  assetsys_file_t file;
-  assetsys_file(app->assetsys, filename, &file);
-  int fileSize = assetsys_file_size(app->assetsys, file);
-  char *buffer = malloc(fileSize + 1);
-  assetsys_file_load(app->assetsys, file, &fileSize, buffer, fileSize);
-  buffer[fileSize] = 0;
-
-  log_info("Loading file %s, %d bytes\n", filename, fileSize);
-
-  import_digital(&app->ui.ux.view.circuit, buffer);
-
-  free(buffer);
-  ux_route(&app->ui.ux);
-  ux_build_bvh(&app->ui.ux);
-
-  // autoroute_dump_anchor_boxes(app->circuit.ux.router);
-
-  app->loaded = true;
-}
-
 void frame(void *user_data) {
   uint64_t frameStart = stm_now();
 
@@ -283,53 +264,6 @@ void frame(void *user_data) {
   sgp_set_blend_mode(SGP_BLENDMODE_BLEND);
 
   ui_update(&app->ui, ctx, width, height);
-
-  if (!app->loaded) {
-    bool hasAutoSave = false;
-    FILE *fp = fopen(platform_autosave_path(), "r");
-    if (fp) {
-      hasAutoSave = true;
-      fclose(fp);
-    }
-
-    if (nk_begin(
-          ctx, "Load example file",
-          nk_rect(
-            (float)width / 3, (float)height / 3, (float)width / 3,
-            (float)height / 3),
-          NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
-      struct nk_vec2 min = nk_window_get_content_region_min(ctx);
-      struct nk_vec2 max = nk_window_get_content_region_max(ctx);
-      float height = ((max.y - min.y) / (hasAutoSave ? 5 : 4)) - 6;
-      nk_layout_row_dynamic(ctx, height, 1);
-
-      if (nk_button_label(ctx, "New empty circuit")) {
-        app->loaded = true;
-      }
-
-      if (hasAutoSave) {
-        if (nk_button_label(ctx, "Load auto-save")) {
-          circ_load_file(&app->ui.ux.view.circuit, platform_autosave_path());
-          ux_route(&app->ui.ux);
-          ux_build_bvh(&app->ui.ux);
-          app->loaded = true;
-        }
-      }
-
-      if (nk_button_label(ctx, "Load small sized test circuit")) {
-        load_file(app, "/assets/testdata/simple_test.dig");
-      }
-
-      if (nk_button_label(ctx, "Load medium sized test circuit")) {
-        load_file(app, "/assets/testdata/alu_1bit_2gatemux.dig");
-      }
-
-      if (nk_button_label(ctx, "Load large sized test circuit")) {
-        load_file(app, "/assets/testdata/alu_1bit_2inpgate.dig");
-      }
-    }
-    nk_end(ctx);
-  }
 
   draw_begin_frame(&app->draw);
   app->ui.ux.input.frameDuration = sapp_frame_duration();
