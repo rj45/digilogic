@@ -131,7 +131,7 @@ static void init(void *user_data) {
 #elif defined(_WIN32)
   nvd_set_parent((NvdParentWindow *)sapp_win32_get_hwnd());
 #else // Linux
-  // todo: not sure how to get the parent window on Linux
+  // TODO: not sure how to get the parent window on Linux
   // nvd_set_parent((NvdParentWindow *)sapp_linux_get_window());
 #endif
   log_info("nvdialog initialized");

@@ -83,7 +83,10 @@ UBENCH_F_SETUP(Benchy) {
   free(buffer);
 }
 
-UBENCH_F_TEARDOWN(Benchy) { ux_free(&ubench_fixture->ux); }
+UBENCH_F_TEARDOWN(Benchy) {
+  ux_free(&ubench_fixture->ux);
+  draw_free(ubench_fixture->draw);
+}
 
 UBENCH_F(Benchy, draw_code) { view_draw(&ubench_fixture->ux.view); }
 

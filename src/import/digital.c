@@ -366,7 +366,7 @@ void import_digital(Circuit *circ, char *buffer) {
             pos = nextOutput;
             nextOutput.y += 20;
           } else {
-            nextInput.y += 40; // todo: why is this 40?
+            nextInput.y += 40; // TODO: why is this 40?
           }
           const char *portName =
             circ_str_get(circ, circ_get(circ, portID, Name));
@@ -617,7 +617,7 @@ void import_digital(Circuit *circ, char *buffer) {
             } else {
               log_debug(
                 "Waypoint at %d, %d has no port", end->pos.x, end->pos.y);
-              // todo: pick the closest endpoint and attach the waypoint to it.
+              // TODO: pick the closest endpoint and attach the waypoint to it.
               // Ideally we would put these waypoints on the root wire, but we
               // don't know which wire that will be yet.
             }

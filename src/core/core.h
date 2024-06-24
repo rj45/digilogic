@@ -639,6 +639,8 @@ typedef struct Table {
 // TableMeta is the metadata for a table for quick access to components.
 typedef struct TableMeta {
 
+  // TODO: convert to SoA
+
   // number of components in the table
   size_t componentCount;
 
@@ -684,7 +686,7 @@ typedef struct Circuit {
   Table *table[TYPE_COUNT];
   TableMeta tableMeta[TYPE_COUNT];
 
-  // todo: strpool is not a good fit because it can't be easily cloned, which
+  // TODO: strpool is not a good fit because it can't be easily cloned, which
   // is important for snapshots. Need to probably make a custom string pool.
   // It would also be nice to use entity IDs for strings, so the string pool
   // could be a table like any other.

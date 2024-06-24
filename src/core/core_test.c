@@ -284,7 +284,7 @@ UTEST(Circuit, circ_load_symbol_descs) {
   circ_load_symbol_descs(
     &circuit, &layout, circuit_component_descs(), COMP_COUNT);
 
-  // todo: make more thorough
+  // TODO: make more thorough
 
   ASSERT_EQ(circuit.symbolKind.length, COMP_COUNT - 1);
   ASSERT_STREQ(

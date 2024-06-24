@@ -47,7 +47,7 @@ struct AutoRoute {
   arr(Wire) wires;
   arr(HMM_Vec2) vertices;
 
-  // todo: this is for nudging, so that we can diff the new state from the
+  // TODO: this is for nudging, so that we can diff the new state from the
   // previous state and know what wires to update in the BVH
   arr(Wire) prevWires;
   arr(HMM_Vec2) prevVertices;
@@ -499,7 +499,7 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
   for (size_t i = 0; i < arrlen(ar->endpoints); i++) {
     RT_Endpoint *endpoint = &ar->endpoints[i];
     fprintf(fp, "    Endpoint {\n");
-    // todo: fixme
+    // TODO: fixme
     // if (!circuit_has(ar->circ, endpoint->net)) {
     //   fprintf(fp, "        NetIndex: NetIndex::INVALID,\n");
     // } else {

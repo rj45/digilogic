@@ -25,7 +25,7 @@
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
-// todo:
+// TODO:
 // - component destructors
 // - finish integrating componentIDs to allow dynamic tables
 // - add inverted indices and remove linked lists
@@ -183,7 +183,7 @@ void circ_free(Circuit *circ) {
   }
 }
 
-// todo: split symbol layout from loading symbol descs
+// TODO: split symbol layout from loading symbol descs
 void circ_load_symbol_descs(
   Circuit *circ, SymbolLayout *layout, const ComponentDesc *descs,
   size_t count) {
@@ -315,7 +315,7 @@ static void circ_grow_table(Circuit *circ, EntityType type, size_t newLength) {
 }
 
 void circ_clone(Circuit *dst, Circuit *src) {
-  // todo: this should look at the logs and play back new log entries in dst
+  // TODO: this should look at the logs and play back new log entries in dst
 
   circ_grow_entities(dst, src->capacity);
   memcpy(dst->generations, src->generations, src->capacity * sizeof(uint8_t));
@@ -346,7 +346,7 @@ void circ_clone(Circuit *dst, Circuit *src) {
     strpool_term(&dst->strpool);
   }
 
-  // todo: must be something better than this.... probably will be solved by
+  // TODO: must be something better than this.... probably will be solved by
   // log playback
   memcpy(&dst->strpool, &src->strpool, sizeof(strpool_t));
   dst->foreignStrpool = true;
@@ -570,7 +570,7 @@ void circ_remove_symbol_kind(Circuit *circ, ID id) {
     circ_remove_port(circ, ll->head);
   }
 
-  // todo: make this faster?
+  // TODO: make this faster?
   CircuitIter it = circ_iter(circ, Symbol);
   while (circ_iter_next(&it)) {
     Symbol *symbols = circ_iter_table(&it, Symbol);
@@ -623,7 +623,7 @@ void circ_remove_symbol(Circuit *circ, ID id) {
   Parent module = circ_get(circ, id, Parent);
   circ_linked_list_remove(circ, module, id);
 
-  // todo: when inverted indices are implemented, this can be done much faster
+  // TODO: when inverted indices are implemented, this can be done much faster
   CircuitIter it = circ_iter(circ, Endpoint);
   while (circ_iter_next(&it)) {
     Endpoint *table = circ_iter_table(&it, Endpoint);
@@ -642,7 +642,7 @@ void circ_remove_symbol(Circuit *circ, ID id) {
 void circ_set_symbol_position(Circuit *circ, ID id, HMM_Vec2 position) {
   circ_set_ptr(circ, id, Position, &position);
 
-  // todo: when inverted indices are implemented, this can be done much faster
+  // TODO: when inverted indices are implemented, this can be done much faster
   CircuitIter it = circ_iter(circ, Endpoint);
   while (circ_iter_next(&it)) {
     Endpoint *table = circ_iter_table(&it, Endpoint);

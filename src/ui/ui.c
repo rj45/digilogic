@@ -88,7 +88,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
   struct nk_vec2 padding = ctx->style.window.padding;
   float barHeight = ctx->style.font->height + padding.y * 2;
   nk_style_push_vec2(ctx, &ctx->style.window.padding, nk_vec2(padding.x, 0));
-  // todo: figure out how to remove the bottom padding from the menubar
+  // TODO: figure out how to remove the bottom padding from the menubar
   if (nk_begin(
         ctx, "Menubar",
         nk_rect(
@@ -211,7 +211,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
 
 static void
 ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
-  // todo: display the entire NOTICE file here
+  // TODO: display the entire NOTICE file here
   float posFactor = 1.0f / 5.0f;
   float sizeFactor = 3.0f / 5.0f;
   if (ui->uiScale > 1) {

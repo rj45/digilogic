@@ -152,7 +152,7 @@ void bvh_remove(BVH *bvh, ID item, ID subitem, Box box) {
 }
 
 void bvh_update(BVH *bvh, ID item, ID subitem, Box oldBox, Box newBox) {
-  // todo: a more efficient algorithm
+  // TODO: a more efficient algorithm
   bvh_remove(bvh, item, subitem, oldBox);
   bvh_add(bvh, item, subitem, newBox);
 }

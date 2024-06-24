@@ -264,7 +264,7 @@ void fsgp_flush(FONScontext *ctx) {
   fons__flush(ctx);
   if (fsgp->img_dirty) {
     fsgp->img_dirty = false;
-    // todo: this is slow, but doesn't require
+    // TODO: this is slow, but doesn't require
     // any modifications to fontstash.h
     if (
       !fsgp->img_buffer ||

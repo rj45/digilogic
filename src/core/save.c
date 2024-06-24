@@ -171,9 +171,9 @@ static void save_module(
     save_symbol(doc, symbols, circ, it.current);
   }
 
-  // todo: save the shape once it matters
+  // TODO: save the shape once it matters
 
-  // todo: save the ports once they matter
+  // TODO: save the ports once they matter
 
   yyjson_mut_val *nets = yyjson_mut_obj_add_arr(doc, module, "nets");
   NetlistID netlist = circ_get(circ, moduleID, NetlistID);

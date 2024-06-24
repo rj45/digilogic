@@ -115,7 +115,7 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
 
       // check ports to see if there are endpoints there and reconnect those
       // endpoints to the ports
-      // todo: convert this to new ECS
+      // TODO: convert this to new ECS
       // Component *component = circuit_component_ptr(&ux->view.circuit, id);
       // PortID portID = component->portFirst;
       // while (circuit_has(&ux->view.circuit, portID)) {
@@ -140,7 +140,7 @@ static void ux_perform_command(CircuitUX *ux, UndoCommand command) {
   case UNDO_DEL_SYMBOL:
     log_debug("Performing del component: %x", command.childID);
     if (circ_has(&ux->view.circuit, command.childID)) {
-      // todo: if adding component, replace it with the component removed
+      // TODO: if adding component, replace it with the component removed
       // and delete the adding component instead
       circ_remove_symbol(&ux->view.circuit, command.childID);
     }

@@ -48,7 +48,7 @@ static void nuklear_fontstash_query_glyph(
   fonsSetFont(fsctx, nufons->font);
   fonsSetAlign(fsctx, FONS_ALIGN_LEFT | FONS_ALIGN_TOP);
 
-  // todo: convert codepoints to utf-8
+  // TODO: convert codepoints to utf-8
   char text[3] = {codepoint, next_codepoint, 0};
 
   fonsTextIterInit(fsctx, &iter, 0, 0, text, text + (next_codepoint ? 2 : 1));

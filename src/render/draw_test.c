@@ -260,7 +260,7 @@ HMM_Vec2 draw_scale_world_to_screen(DrawContext *draw, HMM_Vec2 dirvec) {
   return dirvec;
 }
 
-// todo: remove this when autoroute doesn't need it anymore
+// TODO: remove this when autoroute doesn't need it anymore
 void draw_stroked_line(
   DrawContext *draw, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color) {}

@@ -92,9 +92,9 @@ load_module_symbol_kind(LoadContext *ctc, yyjson_val *moduleVal, ID moduleID) {
   StringHandle prefixHndl = circ_str_c(circ, prefix);
   circ_set(circ, symbolKindID, Prefix, {prefixHndl});
 
-  // todo: load shape
+  // TODO: load shape
 
-  // todo: load ports
+  // TODO: load ports
 
   return true;
 }
@@ -298,7 +298,7 @@ static bool load_subnet(LoadContext *ctx, yyjson_val *subnetVal, ID netID) {
     return false;
   }
 
-  // todo: load subnet bits
+  // TODO: load subnet bits
 
   const char *name = load_string(yyjson_obj_get(subnetVal, "name"));
   if (name == NULL) {

@@ -153,7 +153,7 @@ void view_draw(CircuitView *view) {
     Box box = (Box){.center = symbolPos, .halfSize = HMM_MulV2F(size, 0.5f)};
 
     if (shape != SYMSHAPE_DEFAULT) {
-      // todo: move this hack elsewhere
+      // TODO: move this hack elsewhere
 
       // newHeight = height - (height * 2.0f / 5.0f);
       // newHeight = (5/5)height - (2/5)height
