@@ -96,6 +96,12 @@ typedef struct RecEvent {
   };
 } RecEvent;
 
+typedef struct RoutePath {
+  bool root;
+  size_t start;
+  size_t end;
+} RoutePath;
+
 typedef struct RouteRecording {
   arr(RecEvent) events;
 
@@ -123,6 +129,8 @@ typedef struct RouteRecording {
   RT_Point branchWireStart;
   RT_Point branchWireEnd;
 
+  arr(RoutePath) routePaths;
+  arr(RT_Vertex) routeVertices;
 } RouteRecording;
 
 struct AutoRoute {
@@ -658,6 +666,8 @@ static void autoroute_replay_clear_all_state(AutoRoute *ar) {
 void autoroute_replay_rewind(AutoRoute *ar) {
   RouteRecording *rec = &ar->recording;
   rec->currentEvent = 0;
+  arrsetlen(rec->routeVertices, 0);
+  arrsetlen(rec->routePaths, 0);
   autoroute_replay_clear_all_state(ar);
   rec->rootWireValid = false;
   rec->branchWireValid = false;
@@ -774,22 +784,40 @@ static bool autoroute_replay_play(AutoRoute *ar) {
     autoroute_replay_clear_all_state(ar);
     break;
 
-  case REC_EVENT_ROUTING_BEGIN_ROOT_WIRE:
+  case REC_EVENT_ROUTING_BEGIN_ROOT_WIRE: {
     rec->rootWireValid = true;
     rec->branchWireValid = false;
     rec->rootWireStart = event->routing_begin_root_wire.start;
     rec->rootWireEnd = event->routing_begin_root_wire.end;
+    RoutePath path = {
+      .root = true,
+      .start = arrlen(rec->routeVertices),
+      .end = arrlen(rec->routeVertices),
+    };
+    arrput(rec->routePaths, path);
     break;
+  }
 
-  case REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE:
+  case REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE: {
     rec->branchWireValid = true;
     rec->branchWireStart = event->routing_begin_branch_wire.start;
     rec->branchWireEnd = autoroute_replay_closest_point_on_line(
       rec->rootWireStart, rec->rootWireEnd, rec->branchWireStart);
+    RoutePath path = {
+      .root = false,
+      .start = arrlen(rec->routeVertices),
+      .end = arrlen(rec->routeVertices),
+    };
+    arrput(rec->routePaths, path);
+    break;
+  }
+
+  case REC_EVENT_ROUTING_PUSH_VERTEX:
+    arrput(rec->routeVertices, event->routing_push_vertex.vertex);
+    rec->routePaths[arrlen(rec->routePaths) - 1].end++;
     break;
 
   // TODO: implement these
-  case REC_EVENT_ROUTING_PUSH_VERTEX:
   case REC_EVENT_ROUTING_END_WIRE_SEGMENT:
   case REC_EVENT_ROUTING_END_WIRE:
     break;
@@ -929,6 +957,18 @@ void autoroute_replay_draw(AutoRoute *ar, DrawContext *ctx, FontHandle font) {
       HMM_V4(0.5f, 1.0f, 0.0f, 0.5f));
   }
 
+  for (size_t i = 0; i < arrlen(rec->routePaths); i++) {
+    RoutePath *path = &rec->routePaths[i];
+    for (size_t j = path->start + 1; j < path->end; j++) {
+      RT_Vertex v1 = rec->routeVertices[j - 1];
+      RT_Vertex v2 = rec->routeVertices[j];
+      draw_stroked_line(
+        ctx, HMM_V2(v1.x, v1.y), HMM_V2(v2.x, v2.y), 1.5,
+        path->root ? HMM_V4(0.7f, 1.0f, 0.0f, 0.6f)
+                   : HMM_V4(0.0f, 1.0f, 0.0f, 0.6f));
+    }
+  }
+
   if (rec->inPathFinding) {
     for (size_t i = 0; i < hmlen(rec->predecessors); i++) {
       RT_NodeIndex node = rec->predecessors[i].key;
@@ -936,7 +976,14 @@ void autoroute_replay_draw(AutoRoute *ar, DrawContext *ctx, FontHandle font) {
       RT_Point p1 = rec->graph.ptr[node].position;
       RT_Point p2 = rec->graph.ptr[pred].position;
       draw_stroked_line(
-        ctx, pt2vec2(p1), pt2vec2(p2), 1.0, HMM_V4(0.5f, 0.5f, 0.5f, 0.5f));
+        ctx, pt2vec2(p1), pt2vec2(p2), 0.5, HMM_V4(0.5f, 0.5f, 0.5f, 0.5f));
+    }
+
+    for (size_t i = 1; i < arrlen(rec->path); i++) {
+      RT_Point p1 = rec->graph.ptr[rec->path[i - 1]].position;
+      RT_Point p2 = rec->graph.ptr[rec->path[i]].position;
+      draw_stroked_line(
+        ctx, pt2vec2(p1), pt2vec2(p2), 0.8, HMM_V4(0.2f, 1.0f, 0.2f, 0.5f));
     }
 
     RT_Point start = rec->graph.ptr[rec->startNode].position;
