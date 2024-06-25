@@ -32,6 +32,7 @@ typedef struct CircuitView {
   Box selectionBox;
 
   bool debugMode;
+  bool hideNets;
 } CircuitView;
 
 typedef void *Context;

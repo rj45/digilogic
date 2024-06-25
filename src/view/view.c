@@ -233,6 +233,10 @@ void view_draw(CircuitView *view) {
     }
   }
 
+  if (view->hideNets) {
+    return;
+  }
+
   NetlistID netlistID = circ_get(&view->circuit, view->circuit.top, NetlistID);
   LinkedListIter it = circ_lliter(&view->circuit, netlistID);
   while (circ_lliter_next(&it)) {

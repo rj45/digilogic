@@ -15,6 +15,7 @@
 */
 
 #include "handmade_math.h"
+#include "render/draw.h"
 #include "sokol_time.h"
 
 #include "autoroute/autoroute.h"
@@ -29,6 +30,100 @@
 #define RT_PADDING 10.0f
 
 #define TIME_SAMPLES 120
+
+typedef struct RecEvent {
+  enum {
+    REC_EVENT_BEGIN_PATH_FINDING,
+    REC_EVENT_PATH_FINDING_SET_G_SCORE,
+    REC_EVENT_PATH_FINDING_PUSH_OPEN_QUEUE,
+    REC_EVENT_PATH_FINDING_SET_PREDECESSOR,
+    REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE,
+    REC_EVENT_PATH_FINDING_CLEAR_STATE,
+    REC_EVENT_PATH_FINDING_INSERT_PATH_NODE,
+    REC_EVENT_PATH_FINDING_REMOVE_PATH_NODE,
+    REC_EVENT_END_PATH_FINDING,
+    REC_EVENT_ROUTING_BEGIN_ROOT_WIRE,
+    REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE,
+    REC_EVENT_ROUTING_PUSH_VERTEX,
+    REC_EVENT_ROUTING_END_WIRE_SEGMENT,
+    REC_EVENT_ROUTING_END_WIRE,
+  } type;
+  union {
+    struct {
+      RT_NodeIndex start_index;
+      arr(RT_NodeIndex) end_indices;
+      bool visit_all;
+    } begin_path_finding;
+    struct {
+      RT_NodeIndex node;
+      uint32_t g_score;
+    } path_finding_set_g_score;
+    struct {
+      RT_NodeIndex node;
+      uint32_t f_score;
+    } path_finding_pop_open_queue;
+    struct {
+      RT_NodeIndex node;
+      uint32_t f_score;
+    } path_finding_push_open_queue;
+    struct {
+      RT_NodeIndex node;
+      RT_NodeIndex predecessor;
+    } path_finding_set_predecessor;
+    struct {
+      size_t index;
+      RT_NodeIndex node;
+    } path_finding_insert_path_node;
+    struct {
+      size_t index;
+    } path_finding_remove_path_node;
+    struct {
+      bool found;
+    } end_path_finding;
+    struct {
+      RT_Point start;
+      RT_Point end;
+    } routing_begin_root_wire;
+    struct {
+      RT_Point start;
+    } routing_begin_branch_wire;
+    struct {
+      RT_Vertex vertex;
+    } routing_push_vertex;
+    struct {
+      bool ends_in_junction;
+    } routing_end_wire_segment;
+  };
+} RecEvent;
+
+typedef struct RouteRecording {
+  arr(RecEvent) events;
+
+  // playback
+  RT_Slice_Node graph;
+
+  bool inPathFinding;
+  int currentEvent;
+  hashmap(RT_NodeIndex, uint32_t) gScores;
+  hashmap(RT_NodeIndex, uint32_t) fScores;
+  hashmap(RT_NodeIndex, RT_NodeIndex) predecessors;
+  arr(RT_NodeIndex) path;
+  RT_NodeIndex startNode;
+  arr(RT_NodeIndex) endNodes;
+  bool visitAll;
+  RT_NodeIndex poppedNode;
+  RT_NodeIndex pathInsertedNode;
+  RT_NodeIndex pathRemovedNode;
+
+  bool rootWireValid;
+  RT_Point rootWireStart;
+  RT_Point rootWireEnd;
+
+  bool branchWireValid;
+  RT_Point branchWireStart;
+  RT_Point branchWireEnd;
+
+} RouteRecording;
 
 struct AutoRoute {
   Circuit *circ;
@@ -56,11 +151,17 @@ struct AutoRoute {
 
   bool needsRefresh;
 
+  RouteRecording recording;
+
   int timeIndex;
   int timeLength;
   uint64_t buildTimes[TIME_SAMPLES];
   uint64_t routeTimes[TIME_SAMPLES];
 };
+
+static void autoroute_replay_free(RouteRecording *rec);
+static bool autoroute_replay_play(AutoRoute *ar);
+static void rec_callbacks(RT_ReplayCallbacks *callbacks, RouteRecording *rec);
 
 void autoroute_global_init() {
   RT_Result res = RT_init_thread_pool();
@@ -95,6 +196,15 @@ void autoroute_free(AutoRoute *ar) {
   arrfree(ar->vertices);
   arrfree(ar->prevWires);
   arrfree(ar->prevVertices);
+
+  autoroute_replay_free(&ar->recording);
+  arrfree(ar->recording.events);
+
+  hmfree(ar->recording.gScores);
+  hmfree(ar->recording.fScores);
+  hmfree(ar->recording.predecessors);
+  arrfree(ar->recording.path);
+  arrfree(ar->recording.endNodes);
 
   RT_Result res = RT_graph_free(ar->graph);
   assert(res == RT_RESULT_SUCCESS);
@@ -278,23 +388,54 @@ void autoroute_route(AutoRoute *ar, RoutingConfig config) {
 
   RT_Result res;
   for (;;) {
-    res = RT_graph_connect_nets(
-      ar->graph, (RT_Slice_Net){ar->nets, arrlen(ar->nets)},
-      (RT_Slice_Endpoint){ar->endpoints, arrlen(ar->endpoints)},
-      (RT_Slice_Point){ar->waypoints, arrlen(ar->waypoints)},
-      (RT_MutSlice_Vertex){
-        (RT_Vertex *)ar->vertices,
-        arrlen(ar->vertices),
-      },
-      (RT_MutSlice_WireView){
-        (RT_WireView *)ar->wires,
-        arrlen(ar->wires),
-      },
-      (RT_MutSlice_NetView){
-        ar->netViews,
-        arrlen(ar->netViews),
-      },
-      config.performCentering);
+    if (config.recordReplay) {
+      RT_ReplayCallbacks callbacks;
+      rec_callbacks(&callbacks, &ar->recording);
+
+      res = RT_graph_get_nodes(ar->graph, &ar->recording.graph);
+      assert(res == RT_RESULT_SUCCESS);
+
+      autoroute_replay_free(&ar->recording);
+
+      res = RT_graph_connect_nets_replay(
+        ar->graph, (RT_Slice_Net){ar->nets, arrlen(ar->nets)},
+        (RT_Slice_Endpoint){ar->endpoints, arrlen(ar->endpoints)},
+        (RT_Slice_Point){ar->waypoints, arrlen(ar->waypoints)},
+        (RT_MutSlice_Vertex){
+          (RT_Vertex *)ar->vertices,
+          arrlen(ar->vertices),
+        },
+        (RT_MutSlice_WireView){
+          (RT_WireView *)ar->wires,
+          arrlen(ar->wires),
+        },
+        (RT_MutSlice_NetView){
+          ar->netViews,
+          arrlen(ar->netViews),
+        },
+        config.performCentering, callbacks);
+
+      autoroute_replay_rewind(ar);
+    } else {
+      res = RT_graph_connect_nets(
+        ar->graph, (RT_Slice_Net){ar->nets, arrlen(ar->nets)},
+        (RT_Slice_Endpoint){ar->endpoints, arrlen(ar->endpoints)},
+        (RT_Slice_Point){ar->waypoints, arrlen(ar->waypoints)},
+        (RT_MutSlice_Vertex){
+          (RT_Vertex *)ar->vertices,
+          arrlen(ar->vertices),
+        },
+        (RT_MutSlice_WireView){
+          (RT_WireView *)ar->wires,
+          arrlen(ar->wires),
+        },
+        (RT_MutSlice_NetView){
+          ar->netViews,
+          arrlen(ar->netViews),
+        },
+        config.performCentering);
+    }
+
     switch (res) {
     case RT_RESULT_SUCCESS:
       break;
@@ -368,15 +509,6 @@ void autoroute_route(AutoRoute *ar, RoutingConfig config) {
   if (ar->timeLength < TIME_SAMPLES) {
     ar->timeLength++;
   }
-
-  // RouteTimeStats stats = autoroute_stats(ar);
-
-  // log_info(
-  //   "Build: %.3fms min, %.3fms avg, %.3fms max; Pathing: %.3fms min, %.3fms "
-  //   "avg, %.3fms max; %d samples",
-  //   stm_ms(stats.build.min), stm_ms(stats.build.avg),
-  //   stm_ms(stats.build.max), stm_ms(stats.route.min),
-  //   stm_ms(stats.route.avg), stm_ms(stats.route.max), ar->timeLength);
 }
 
 RouteTimeStats autoroute_stats(AutoRoute *ar) {
@@ -404,17 +536,25 @@ RouteTimeStats autoroute_stats(AutoRoute *ar) {
   return stats;
 }
 
-typedef void *Context;
 void draw_stroked_line(
-  Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
+  DrawContext *draw, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color);
 void draw_stroked_line(
-  Context ctx, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
+  DrawContext *draw, HMM_Vec2 start, HMM_Vec2 end, float line_thickness,
   HMM_Vec4 color);
 void draw_filled_circle(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, HMM_Vec4 color);
+void draw_text(
+  DrawContext *draw, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor);
+Box draw_text_bounds(
+  DrawContext *ctx, HMM_Vec2 pos, const char *text, int len, HorizAlign horz,
+  VertAlign vert, float fontSize, FontHandle font);
+void draw_stroked_circle(
+  DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float line_thickness,
+  HMM_Vec4 color);
 
-void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx) {
+void autoroute_draw_debug_lines(AutoRoute *ar, DrawContext *ctx) {
   RT_Slice_Node nodes;
 
   RT_Result res = RT_graph_get_nodes(ar->graph, &nodes);
@@ -456,6 +596,493 @@ void autoroute_draw_debug_lines(AutoRoute *ar, void *ctx) {
       ctx, br, HMM_V2(tl.X, br.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
     draw_stroked_line(
       ctx, HMM_V2(tl.X, br.Y), tl, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+  }
+}
+
+static void autoroute_replay_free(RouteRecording *rec) {
+  for (size_t i = 0; i < arrlen(rec->events); i++) {
+    switch (rec->events[i].type) {
+    case REC_EVENT_BEGIN_PATH_FINDING:
+      arrfree(rec->events[i].begin_path_finding.end_indices);
+      break;
+
+    case REC_EVENT_PATH_FINDING_SET_G_SCORE:
+    case REC_EVENT_PATH_FINDING_PUSH_OPEN_QUEUE:
+    case REC_EVENT_PATH_FINDING_SET_PREDECESSOR:
+    case REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE:
+    case REC_EVENT_PATH_FINDING_CLEAR_STATE:
+    case REC_EVENT_PATH_FINDING_INSERT_PATH_NODE:
+    case REC_EVENT_PATH_FINDING_REMOVE_PATH_NODE:
+    case REC_EVENT_END_PATH_FINDING:
+    case REC_EVENT_ROUTING_BEGIN_ROOT_WIRE:
+    case REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE:
+    case REC_EVENT_ROUTING_PUSH_VERTEX:
+    case REC_EVENT_ROUTING_END_WIRE_SEGMENT:
+    case REC_EVENT_ROUTING_END_WIRE:
+      break;
+    }
+  }
+  arrsetlen(rec->events, 0);
+}
+
+static void autoroute_replay_clear_state(AutoRoute *ar) {
+  RouteRecording *rec = &ar->recording;
+
+  while (hmlen(rec->gScores) > 0) {
+    hmdel(rec->gScores, rec->gScores[hmlen(rec->gScores) - 1].key);
+  }
+  while (hmlen(rec->fScores) > 0) {
+    hmdel(rec->fScores, rec->fScores[hmlen(rec->fScores) - 1].key);
+  }
+  while (hmlen(rec->predecessors) > 0) {
+    hmdel(
+      rec->predecessors, rec->predecessors[hmlen(rec->predecessors) - 1].key);
+  }
+}
+
+static void autoroute_replay_clear_all_state(AutoRoute *ar) {
+  RouteRecording *rec = &ar->recording;
+
+  autoroute_replay_clear_state(ar);
+
+  arrsetlen(rec->path, 0);
+  rec->visitAll = false;
+  rec->inPathFinding = false;
+  rec->startNode = RT_INVALID_NODE_INDEX;
+  rec->poppedNode = RT_INVALID_NODE_INDEX;
+  rec->pathInsertedNode = RT_INVALID_NODE_INDEX;
+  rec->pathRemovedNode = RT_INVALID_NODE_INDEX;
+  arrsetlen(rec->endNodes, 0);
+}
+
+void autoroute_replay_rewind(AutoRoute *ar) {
+  RouteRecording *rec = &ar->recording;
+  rec->currentEvent = 0;
+  autoroute_replay_clear_all_state(ar);
+  rec->rootWireValid = false;
+  rec->branchWireValid = false;
+  autoroute_replay_play(ar);
+}
+
+static RT_Point
+autoroute_replay_closest_point_on_line(RT_Point A, RT_Point B, RT_Point P) {
+  RT_Point closest;
+  float ABx = (float)B.x - (float)A.x;
+  float ABy = (float)B.y - (float)A.y;
+  float APx = (float)P.x - (float)A.x;
+  float APy = (float)P.y - (float)A.y;
+  float AB_AB = ABx * ABx + ABy * ABy;
+  float AP_AB = APx * ABx + APy * ABy;
+  float t = AP_AB / AB_AB;
+
+  // Clamp t to the range [0, 1] to ensure the closest point is on the segment
+  if (t < 0.0)
+    t = 0.0;
+  if (t > 1.0)
+    t = 1.0;
+
+  closest.x = A.x + t * ABx;
+  closest.y = A.y + t * ABy;
+
+  return closest;
+}
+
+static bool autoroute_replay_play(AutoRoute *ar) {
+  if (ar->recording.currentEvent >= arrlen(ar->recording.events)) {
+    return false;
+  }
+
+  RouteRecording *rec = &ar->recording;
+
+  rec->poppedNode = RT_INVALID_NODE_INDEX;
+  rec->pathInsertedNode = RT_INVALID_NODE_INDEX;
+  rec->pathRemovedNode = RT_INVALID_NODE_INDEX;
+
+  RecEvent *event = &rec->events[rec->currentEvent];
+  switch (event->type) {
+  case REC_EVENT_BEGIN_PATH_FINDING:
+    rec->inPathFinding = true;
+    rec->startNode = event->begin_path_finding.start_index;
+    rec->visitAll = event->begin_path_finding.visit_all;
+    arrsetlen(rec->endNodes, 0);
+    for (size_t i = 0; i < arrlen(event->begin_path_finding.end_indices); i++) {
+      arrput(rec->endNodes, event->begin_path_finding.end_indices[i]);
+    }
+
+    break;
+
+  case REC_EVENT_PATH_FINDING_SET_G_SCORE:
+    hmput(
+      rec->gScores, event->path_finding_set_g_score.node,
+      event->path_finding_set_g_score.g_score);
+    break;
+
+  case REC_EVENT_PATH_FINDING_PUSH_OPEN_QUEUE:
+    hmput(
+      rec->fScores, event->path_finding_push_open_queue.node,
+      event->path_finding_push_open_queue.f_score);
+    break;
+
+  case REC_EVENT_PATH_FINDING_SET_PREDECESSOR:
+    hmput(
+      rec->predecessors, event->path_finding_set_predecessor.node,
+      event->path_finding_set_predecessor.predecessor);
+    break;
+
+  case REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE:
+    hmdel(rec->fScores, event->path_finding_pop_open_queue.node);
+    rec->poppedNode = event->path_finding_pop_open_queue.node;
+    break;
+
+  case REC_EVENT_PATH_FINDING_CLEAR_STATE:
+    autoroute_replay_clear_state(ar);
+    break;
+
+  case REC_EVENT_PATH_FINDING_INSERT_PATH_NODE:
+    if (
+      event->path_finding_insert_path_node.index >= 0 &&
+      event->path_finding_insert_path_node.index < arrlen(rec->path)) {
+      arrins(
+        rec->path, event->path_finding_insert_path_node.index,
+        event->path_finding_insert_path_node.node);
+    } else if (
+      event->path_finding_insert_path_node.index == arrlen(rec->path)) {
+      arrput(rec->path, event->path_finding_insert_path_node.node);
+    } else {
+      log_error(
+        "Insert: Invalid path node index %zu / %zu",
+        event->path_finding_insert_path_node.index, arrlen(rec->path));
+    }
+
+    rec->pathInsertedNode = event->path_finding_insert_path_node.node;
+    break;
+
+  case REC_EVENT_PATH_FINDING_REMOVE_PATH_NODE:
+    if (
+      event->path_finding_remove_path_node.index >= 0 &&
+      event->path_finding_remove_path_node.index < arrlen(rec->path)) {
+      arrdel(rec->path, event->path_finding_remove_path_node.index);
+    } else {
+      log_error(
+        "Remove: Invalid path node index %zu / %zu",
+        event->path_finding_remove_path_node.index, arrlen(rec->path));
+    }
+    rec->pathRemovedNode = event->path_finding_remove_path_node.index;
+    break;
+
+  case REC_EVENT_END_PATH_FINDING:
+    autoroute_replay_clear_all_state(ar);
+    break;
+
+  case REC_EVENT_ROUTING_BEGIN_ROOT_WIRE:
+    rec->rootWireValid = true;
+    rec->branchWireValid = false;
+    rec->rootWireStart = event->routing_begin_root_wire.start;
+    rec->rootWireEnd = event->routing_begin_root_wire.end;
+    break;
+
+  case REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE:
+    rec->branchWireValid = true;
+    rec->branchWireStart = event->routing_begin_branch_wire.start;
+    rec->branchWireEnd = autoroute_replay_closest_point_on_line(
+      rec->rootWireStart, rec->rootWireEnd, rec->branchWireStart);
+    break;
+
+  // TODO: implement these
+  case REC_EVENT_ROUTING_PUSH_VERTEX:
+  case REC_EVENT_ROUTING_END_WIRE_SEGMENT:
+  case REC_EVENT_ROUTING_END_WIRE:
+    break;
+  }
+  return true;
+}
+
+bool autoroute_replay_forward(AutoRoute *ar) {
+  if ((ar->recording.currentEvent + 1) >= arrlen(ar->recording.events)) {
+    return false;
+  }
+
+  ar->recording.currentEvent++;
+
+  autoroute_replay_play(ar);
+
+  return true;
+}
+
+bool autoroute_replay_forward_to(AutoRoute *ar, int event) {
+  if (event < 0 || event >= arrlen(ar->recording.events)) {
+    return false;
+  }
+
+  autoroute_replay_rewind(ar);
+  while (ar->recording.currentEvent < event) {
+    autoroute_replay_forward(ar);
+  }
+
+  return true;
+}
+
+bool autoroute_replay_forward_skip_path(AutoRoute *ar) {
+  if (ar->recording.currentEvent >= arrlen(ar->recording.events)) {
+    return false;
+  }
+
+  for (;;) {
+    if (!autoroute_replay_forward(ar)) {
+      return false;
+    }
+
+    if (
+      ar->recording.events[ar->recording.currentEvent - 1].type ==
+      REC_EVENT_BEGIN_PATH_FINDING) {
+      return true;
+    }
+  }
+}
+
+bool autoroute_replay_forward_skip_root(AutoRoute *ar) {
+  if (ar->recording.currentEvent >= arrlen(ar->recording.events)) {
+    return false;
+  }
+
+  for (;;) {
+    if (!autoroute_replay_forward(ar)) {
+      return false;
+    }
+
+    if (
+      ar->recording.events[ar->recording.currentEvent].type ==
+      REC_EVENT_ROUTING_BEGIN_ROOT_WIRE) {
+      return true;
+    }
+  }
+}
+
+bool autoroute_replay_backward(AutoRoute *ar) {
+  if (ar->recording.currentEvent == 0) {
+    return false;
+  }
+
+  int currentEvent = ar->recording.currentEvent - 1;
+  autoroute_replay_forward_to(ar, currentEvent);
+
+  return true;
+}
+
+bool autoroute_replay_backward_skip_path(AutoRoute *ar) {
+  int currentEvent = ar->recording.currentEvent - 1;
+  while (currentEvent >= 0) {
+    currentEvent--;
+    if (
+      ar->recording.events[currentEvent].type == REC_EVENT_BEGIN_PATH_FINDING) {
+      break;
+    }
+  }
+  if (currentEvent < 0) {
+    currentEvent = 0;
+  }
+  autoroute_replay_forward_to(ar, currentEvent);
+
+  return true;
+}
+
+bool autoroute_replay_backward_skip_root(AutoRoute *ar) {
+  int currentEvent = ar->recording.currentEvent - 1;
+  while (currentEvent >= 0) {
+    currentEvent--;
+    if (
+      ar->recording.events[currentEvent].type ==
+      REC_EVENT_ROUTING_BEGIN_ROOT_WIRE) {
+      break;
+    }
+  }
+  if (currentEvent < 0) {
+    currentEvent = 0;
+  }
+  autoroute_replay_forward_to(ar, currentEvent);
+
+  return true;
+}
+
+int autoroute_replay_current_event(AutoRoute *ar) {
+  return ar->recording.currentEvent;
+}
+
+int autoroute_replay_event_count(AutoRoute *ar) {
+  return arrlen(ar->recording.events);
+}
+
+static HMM_Vec2 pt2vec2(RT_Point p) { return HMM_V2(p.x, p.y); }
+
+void autoroute_replay_draw(AutoRoute *ar, DrawContext *ctx, FontHandle font) {
+  RouteRecording *rec = &ar->recording;
+
+  if (rec->rootWireValid) {
+    draw_stroked_line(
+      ctx, pt2vec2(rec->rootWireStart), pt2vec2(rec->rootWireEnd), 1.0,
+      HMM_V4(0.5f, 0.0f, 1.0f, 0.5f));
+  }
+
+  if (rec->branchWireValid) {
+    draw_stroked_line(
+      ctx, pt2vec2(rec->branchWireStart), pt2vec2(rec->branchWireEnd), 1.0,
+      HMM_V4(0.5f, 1.0f, 0.0f, 0.5f));
+  }
+
+  if (rec->inPathFinding) {
+    for (size_t i = 0; i < hmlen(rec->predecessors); i++) {
+      RT_NodeIndex node = rec->predecessors[i].key;
+      RT_NodeIndex pred = rec->predecessors[i].value;
+      RT_Point p1 = rec->graph.ptr[node].position;
+      RT_Point p2 = rec->graph.ptr[pred].position;
+      draw_stroked_line(
+        ctx, pt2vec2(p1), pt2vec2(p2), 1.0, HMM_V4(0.5f, 0.5f, 0.5f, 0.5f));
+    }
+
+    RT_Point start = rec->graph.ptr[rec->startNode].position;
+    draw_stroked_circle(
+      ctx, HMM_V2(start.x - 3.5, start.y - 3.5), HMM_V2(7, 7), 2.0f,
+      HMM_V4(1.0f, 0.2f, 0.2f, 0.5f));
+
+    for (size_t i = 0; i < arrlen(rec->endNodes); i++) {
+      RT_Point end = rec->graph.ptr[rec->endNodes[i]].position;
+      draw_stroked_circle(
+        ctx, HMM_V2(end.x - 3.5, end.y - 3.5), HMM_V2(7, 7), 2.0f,
+        HMM_V4(0.2f, 0.2f, 1.0f, 0.5f));
+    }
+
+    for (ptrdiff_t i = 0; i < hmlen(rec->gScores); i++) {
+      RT_NodeIndex node = rec->gScores[i].key;
+      uint32_t gScore = rec->gScores[i].value;
+      RT_Point p = rec->graph.ptr[node].position;
+      draw_filled_circle(
+        ctx, HMM_V2((float)p.x - 2.5, (float)p.y - 2.5), HMM_V2(5, 5),
+        HMM_V4(0.5f, 1.0f, 1.0f, 0.5f));
+      char buf[32];
+      snprintf(buf, sizeof(buf), "%d", gScore);
+
+      Box bounds = draw_text_bounds(
+        ctx, HMM_V2(p.x + 3, p.y - 3), buf, strlen(buf), ALIGN_LEFT,
+        ALIGN_BOTTOM, 4.0f, font);
+
+      draw_text(
+        ctx, bounds, buf, strlen(buf), 4.0f, font,
+        HMM_V4(0.7f, 0.7f, 0.7f, 1.0f), HMM_V4(0.0f, 0.0f, 0.0f, 0.0f));
+    }
+
+    for (ptrdiff_t i = 0; i < hmlen(rec->fScores); i++) {
+      RT_NodeIndex node = rec->fScores[i].key;
+      uint32_t fScore = rec->fScores[i].value;
+      RT_Point p = rec->graph.ptr[node].position;
+      draw_filled_circle(
+        ctx, HMM_V2((float)p.x - 2.5, (float)p.y - 2.5), HMM_V2(5, 5),
+        HMM_V4(1.0f, 0.5f, 1.0f, 0.5f));
+      char buf[32];
+      snprintf(buf, sizeof(buf), "%d", fScore);
+
+      Box bounds = draw_text_bounds(
+        ctx, HMM_V2(p.x + 3, p.y + 3), buf, strlen(buf), ALIGN_LEFT, ALIGN_TOP,
+        4.0f, font);
+
+      draw_text(
+        ctx, bounds, buf, strlen(buf), 4.0f, font,
+        HMM_V4(0.7f, 0.7f, 0.7f, 1.0f), HMM_V4(0.0f, 0.0f, 0.0f, 0.0f));
+    }
+  }
+}
+
+void autoroute_replay_event_text(AutoRoute *ar, char *buf, size_t maxlen) {
+  RouteRecording *rec = &ar->recording;
+  if (rec->currentEvent >= arrlen(rec->events)) {
+    snprintf(buf, maxlen, "End of recording");
+    return;
+  }
+
+  RecEvent *event = &rec->events[rec->currentEvent];
+  switch (event->type) {
+  case REC_EVENT_BEGIN_PATH_FINDING:
+    snprintf(
+      buf, maxlen, "Begin path finding from %d",
+      event->begin_path_finding.start_index);
+    break;
+
+  case REC_EVENT_PATH_FINDING_SET_G_SCORE:
+    snprintf(
+      buf, maxlen, "Set G score for %d to %d",
+      event->path_finding_set_g_score.node,
+      event->path_finding_set_g_score.g_score);
+    break;
+
+  case REC_EVENT_PATH_FINDING_PUSH_OPEN_QUEUE:
+    snprintf(
+      buf, maxlen, "Push %d to open queue with F score %d",
+      event->path_finding_push_open_queue.node,
+      event->path_finding_push_open_queue.f_score);
+    break;
+
+  case REC_EVENT_PATH_FINDING_SET_PREDECESSOR:
+    snprintf(
+      buf, maxlen, "Set predecessor of %d to %d",
+      event->path_finding_set_predecessor.node,
+      event->path_finding_set_predecessor.predecessor);
+    break;
+
+  case REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE:
+    snprintf(
+      buf, maxlen, "Pop %d from open queue",
+      event->path_finding_pop_open_queue.node);
+    break;
+
+  case REC_EVENT_PATH_FINDING_CLEAR_STATE:
+    snprintf(buf, maxlen, "Clear path finding state");
+    break;
+
+  case REC_EVENT_PATH_FINDING_INSERT_PATH_NODE:
+    snprintf(
+      buf, maxlen, "Insert %d into path at index %zu",
+      event->path_finding_insert_path_node.node,
+      event->path_finding_insert_path_node.index);
+    break;
+
+  case REC_EVENT_PATH_FINDING_REMOVE_PATH_NODE:
+    snprintf(
+      buf, maxlen, "Remove node at index %zu from path",
+      event->path_finding_remove_path_node.index);
+    break;
+
+  case REC_EVENT_END_PATH_FINDING:
+    snprintf(buf, maxlen, "End path finding");
+    break;
+
+  case REC_EVENT_ROUTING_BEGIN_ROOT_WIRE:
+    snprintf(
+      buf, maxlen, "Begin root wire from (%d, %d) to (%d, %d)",
+      event->routing_begin_root_wire.start.x,
+      event->routing_begin_root_wire.start.y,
+      event->routing_begin_root_wire.end.x,
+      event->routing_begin_root_wire.end.y);
+    break;
+
+  case REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE:
+    snprintf(
+      buf, maxlen, "Begin branch wire from %d, %d",
+      event->routing_begin_branch_wire.start.x,
+      event->routing_begin_branch_wire.start.y);
+    break;
+
+  case REC_EVENT_ROUTING_PUSH_VERTEX:
+    snprintf(
+      buf, maxlen, "Push vertex %.1f, %.1f to wire",
+      event->routing_push_vertex.vertex.x, event->routing_push_vertex.vertex.y);
+    break;
+
+  case REC_EVENT_ROUTING_END_WIRE_SEGMENT:
+    snprintf(buf, maxlen, "End wire segment");
+    break;
+
+  case REC_EVENT_ROUTING_END_WIRE:
+    snprintf(buf, maxlen, "End wire");
+    break;
   }
 }
 
@@ -522,4 +1149,166 @@ void autoroute_dump_anchor_boxes(AutoRoute *ar) {
   }
   fprintf(fp, "];\n");
   fclose(fp);
+}
+
+static void rec_begin_path_finding(
+  void *user, RT_NodeIndex start_index, struct RT_Slice_NodeIndex end_indices,
+  bool visit_all) {
+  RouteRecording *rec = user;
+  arr(RT_NodeIndex) endIndices = NULL;
+  arrsetlen(endIndices, end_indices.len);
+  for (size_t i = 0; i < end_indices.len; i++) {
+    endIndices[i] = end_indices.ptr[i];
+  }
+  RecEvent event = {
+    .type = REC_EVENT_BEGIN_PATH_FINDING,
+    .begin_path_finding =
+      {
+        .start_index = start_index,
+        .end_indices = endIndices,
+        .visit_all = visit_all,
+      },
+  };
+  arrput(rec->events, event);
+}
+
+static void
+rec_path_finding_set_g_score(void *user, RT_NodeIndex index, uint32_t g_score) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_SET_G_SCORE,
+    .path_finding_set_g_score = {.node = index, .g_score = g_score},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_path_finding_push_open_queue(
+  void *user, RT_NodeIndex node, uint32_t f_score) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_PUSH_OPEN_QUEUE,
+    .path_finding_push_open_queue = {.node = node, .f_score = f_score},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_path_finding_set_predecessor(
+  void *user, RT_NodeIndex node, RT_NodeIndex predecessor) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_SET_PREDECESSOR,
+    .path_finding_set_predecessor = {.node = node, .predecessor = predecessor},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_path_finding_pop_open_queue(void *user, RT_NodeIndex node) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE,
+    .path_finding_pop_open_queue = {.node = node},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_path_finding_clear_state(void *user) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_CLEAR_STATE,
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_path_finding_insert_path_node(
+  void *user, size_t insert_index, RT_NodeIndex node) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_INSERT_PATH_NODE,
+    .path_finding_insert_path_node = {.index = insert_index, .node = node},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_path_finding_remove_path_node(void *user, size_t index) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_PATH_FINDING_REMOVE_PATH_NODE,
+    .path_finding_remove_path_node = {.index = index},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_end_path_finding(void *user, bool found) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_END_PATH_FINDING,
+    .end_path_finding = {.found = found},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_routing_begin_root_wire(
+  void *user, struct RT_Point start, struct RT_Point end) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_ROUTING_BEGIN_ROOT_WIRE,
+    .routing_begin_root_wire = {.start = start, .end = end},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_routing_begin_branch_wire(void *user, struct RT_Point start) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_ROUTING_BEGIN_BRANCH_WIRE,
+    .routing_begin_branch_wire = {.start = start},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_routing_push_vertex(void *user, struct RT_Vertex vertex) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_ROUTING_PUSH_VERTEX,
+    .routing_push_vertex = {.vertex = vertex},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_routing_end_wire_segment(void *user, bool ends_in_junction) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_ROUTING_END_WIRE_SEGMENT,
+    .routing_end_wire_segment = {.ends_in_junction = ends_in_junction},
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_routing_end_wire(void *user) {
+  RouteRecording *rec = user;
+  RecEvent event = {
+    .type = REC_EVENT_ROUTING_END_WIRE,
+  };
+  arrput(rec->events, event);
+}
+
+static void rec_callbacks(RT_ReplayCallbacks *callbacks, RouteRecording *rec) {
+  arrsetlen(rec->events, 0);
+  *callbacks = (RT_ReplayCallbacks){
+    .context = rec,
+    .begin_path_finding = rec_begin_path_finding,
+    .path_finding_set_g_score = rec_path_finding_set_g_score,
+    .path_finding_push_open_queue = rec_path_finding_push_open_queue,
+    .path_finding_set_predecessor = rec_path_finding_set_predecessor,
+    .path_finding_pop_open_queue = rec_path_finding_pop_open_queue,
+    .path_finding_clear_state = rec_path_finding_clear_state,
+    .path_finding_insert_path_node = rec_path_finding_insert_path_node,
+    .path_finding_remove_path_node = rec_path_finding_remove_path_node,
+    .end_path_finding = rec_end_path_finding,
+    .routing_begin_root_wire = rec_routing_begin_root_wire,
+    .routing_begin_branch_wire = rec_routing_begin_branch_wire,
+    .routing_push_vertex = rec_routing_push_vertex,
+    .routing_end_wire_segment = rec_routing_end_wire_segment,
+    .routing_end_wire = rec_routing_end_wire,
+  };
 }

@@ -46,6 +46,7 @@ typedef struct CircuitUI {
   bool saving;
   bool showAbout;
   bool showIntro;
+  bool showReplay;
 
   Circuit saveCopy;
   thread_atomic_int_t saveThreadBusy;

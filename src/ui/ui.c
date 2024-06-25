@@ -15,6 +15,7 @@
 */
 
 #include "ui/ui.h"
+#include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "import/import.h"
 #include "nvdialog.h"
@@ -336,6 +337,66 @@ static void ui_intro_dialog(
   }
 }
 
+static void ui_replay_controls(
+  CircuitUI *ui, struct nk_context *ctx, float width, float height) {
+  if (ui->showReplay) {
+    float ww = sv(ui, 700);
+    if (nk_begin(
+          ctx, "Replay",
+          nk_rect((width - ww) / 2, height - sv(ui, 120), ww, sv(ui, 110)),
+          NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_MOVABLE)) {
+      struct nk_vec2 min = nk_window_get_content_region_min(ctx);
+      struct nk_vec2 max = nk_window_get_content_region_max(ctx);
+
+      nk_layout_row_dynamic(ctx, (max.y - min.y - 12) / 2, 8);
+
+      if (nk_button_label(ctx, "|<")) {
+        autoroute_replay_rewind(ui->ux.router);
+      }
+
+      if (nk_button_label(ctx, "<<<")) {
+        autoroute_replay_backward_skip_root(ui->ux.router);
+      }
+
+      if (nk_button_label(ctx, "<<")) {
+        autoroute_replay_backward_skip_path(ui->ux.router);
+      }
+
+      if (
+        nk_button_label(ctx, "<") ||
+        bv_is_set(ui->ux.input.keysPressed, KEYCODE_LEFT)) {
+        autoroute_replay_backward(ui->ux.router);
+      }
+      char buf[256];
+      snprintf(
+        buf, 64, "%d / %d", autoroute_replay_current_event(ui->ux.router),
+        autoroute_replay_event_count(ui->ux.router));
+
+      nk_label(ctx, buf, NK_TEXT_CENTERED);
+
+      if (
+        nk_button_label(ctx, ">") ||
+        bv_is_set(ui->ux.input.keysPressed, KEYCODE_RIGHT)) {
+        autoroute_replay_forward(ui->ux.router);
+      }
+
+      if (nk_button_label(ctx, ">>")) {
+        autoroute_replay_forward_skip_path(ui->ux.router);
+      }
+
+      if (nk_button_label(ctx, ">>>")) {
+        autoroute_replay_forward_skip_root(ui->ux.router);
+      }
+
+      nk_layout_row_dynamic(ctx, (max.y - min.y - 12) / 2, 1);
+
+      autoroute_replay_event_text(ui->ux.router, buf, sizeof(buf));
+      nk_label(ctx, buf, NK_TEXT_CENTERED);
+    }
+    nk_end(ctx);
+  }
+}
+
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height) {
 
@@ -344,6 +405,7 @@ void ui_update(
   ui_menu_bar(ui, ctx, width);
   ui_about(ui, ctx, width, height);
   ui_intro_dialog(ui, ctx, width, height);
+  ui_replay_controls(ui, ctx, width, height);
 
   if (!ui->showIntro) {
     if (nk_begin(
@@ -388,6 +450,15 @@ void ui_update(
 
   ux_update(&ui->ux);
 
+  if (bv_is_set(ui->ux.input.keysPressed, KEYCODE_R)) {
+    ui->showReplay = !ui->showReplay;
+    ui->ux.view.hideNets = ui->showReplay;
+    if (ui->showReplay && !ui->ux.routingConfig.recordReplay) {
+      ui->ux.routingConfig.recordReplay = true;
+      ux_route(&ui->ux);
+    }
+  }
+
   if (ui->ux.changed) {
     ui->ux.changed = false;
 
@@ -404,7 +475,13 @@ void ui_update(
   }
 }
 
-void ui_draw(CircuitUI *ui) { ux_draw(&ui->ux); }
+void ui_draw(CircuitUI *ui) {
+  ux_draw(&ui->ux);
+  if (ui->showReplay) {
+    autoroute_replay_draw(
+      ui->ux.router, ui->ux.view.drawCtx, ui->ux.view.theme.font);
+  }
+}
 
 static int ui_do_save(void *data) {
   CircuitUI *ui = (CircuitUI *)data;
