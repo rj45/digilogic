@@ -112,6 +112,7 @@ typedef struct RouteRecording {
   int currentEvent;
   hashmap(RT_NodeIndex, uint32_t) gScores;
   hashmap(RT_NodeIndex, uint32_t) fScores;
+  hashmap(RT_NodeIndex, uint32_t) poppedScores;
   hashmap(RT_NodeIndex, RT_NodeIndex) predecessors;
   arr(RT_NodeIndex) path;
   RT_NodeIndex startNode;
@@ -210,6 +211,7 @@ void autoroute_free(AutoRoute *ar) {
 
   hmfree(ar->recording.gScores);
   hmfree(ar->recording.fScores);
+  hmfree(ar->recording.poppedScores);
   hmfree(ar->recording.predecessors);
   arrfree(ar->recording.path);
   arrfree(ar->recording.endNodes);
@@ -642,6 +644,10 @@ static void autoroute_replay_clear_state(AutoRoute *ar) {
   while (hmlen(rec->fScores) > 0) {
     hmdel(rec->fScores, rec->fScores[hmlen(rec->fScores) - 1].key);
   }
+  while (hmlen(rec->poppedScores) > 0) {
+    hmdel(
+      rec->poppedScores, rec->poppedScores[hmlen(rec->poppedScores) - 1].key);
+  }
   while (hmlen(rec->predecessors) > 0) {
     hmdel(
       rec->predecessors, rec->predecessors[hmlen(rec->predecessors) - 1].key);
@@ -739,10 +745,14 @@ static bool autoroute_replay_play(AutoRoute *ar) {
       event->path_finding_set_predecessor.predecessor);
     break;
 
-  case REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE:
+  case REC_EVENT_PATH_FINDING_POP_OPEN_QUEUE: {
+    uint32_t fScore =
+      hmget(rec->fScores, event->path_finding_pop_open_queue.node);
     hmdel(rec->fScores, event->path_finding_pop_open_queue.node);
+    hmput(rec->poppedScores, event->path_finding_pop_open_queue.node, fScore);
     rec->poppedNode = event->path_finding_pop_open_queue.node;
     break;
+  }
 
   case REC_EVENT_PATH_FINDING_CLEAR_STATE:
     autoroute_replay_clear_state(ar);
@@ -1034,6 +1044,25 @@ void autoroute_replay_draw(AutoRoute *ar, DrawContext *ctx, FontHandle font) {
       draw_text(
         ctx, bounds, buf, strlen(buf), 4.0f, font,
         HMM_V4(0.7f, 0.7f, 0.7f, 1.0f), HMM_V4(0.0f, 0.0f, 0.0f, 0.0f));
+    }
+
+    for (ptrdiff_t i = 0; i < hmlen(rec->poppedScores); i++) {
+      RT_NodeIndex node = rec->poppedScores[i].key;
+      uint32_t fScore = rec->poppedScores[i].value;
+      RT_Point p = rec->graph.ptr[node].position;
+      draw_filled_circle(
+        ctx, HMM_V2((float)p.x - 2.5, (float)p.y - 2.5), HMM_V2(5, 5),
+        HMM_V4(0.5f, 1.0f, 0.5f, 0.5f));
+      char buf[32];
+      snprintf(buf, sizeof(buf), "%d", fScore);
+
+      Box bounds = draw_text_bounds(
+        ctx, HMM_V2(p.x + 3, p.y + 3), buf, strlen(buf), ALIGN_LEFT, ALIGN_TOP,
+        4.0f, font);
+
+      draw_text(
+        ctx, bounds, buf, strlen(buf), 4.0f, font,
+        HMM_V4(0.7f, 1.0f, 0.7f, 1.0f), HMM_V4(0.0f, 0.0f, 0.0f, 0.0f));
     }
   }
 }
