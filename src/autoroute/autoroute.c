@@ -815,25 +815,6 @@ static bool autoroute_replay_play(AutoRoute *ar) {
     };
     arrput(rec->routePaths, path);
 
-    if (
-      ar->netViews[rec->currentNetPlusOne].vertex_offset !=
-      rec->currentVertIndex) {
-      log_error(
-        "Vertex offset mismatch on net %d: %d != %d", rec->currentNetPlusOne,
-        ar->netViews[rec->currentNetPlusOne].vertex_offset,
-        rec->currentVertIndex);
-    }
-
-    if (
-      rec->currentNetPlusOne > 0 &&
-      ar->netViews[rec->currentNetPlusOne - 1].wire_count !=
-        rec->currentWireIndex) {
-      log_error(
-        "Wire count mismatch on net %d: %d != %d", rec->currentNetPlusOne - 1,
-        ar->netViews[rec->currentNetPlusOne - 1].wire_count,
-        rec->currentWireIndex);
-    }
-
     rec->currentWireIndex = 0;
 
     rec->currentNetPlusOne++;
@@ -858,35 +839,13 @@ static bool autoroute_replay_play(AutoRoute *ar) {
     arrput(rec->routeVertices, event->routing_push_vertex.vertex);
     rec->routePaths[arrlen(rec->routePaths) - 1].end++;
 
-    RT_Vertex newVert = event->routing_push_vertex.vertex;
-    HMM_Vec2 oldVert = ar->vertices[rec->currentVertIndex];
     rec->currentVertIndex++;
     rec->currentWireVertCount++;
-
-    if (newVert.x != oldVert.X || newVert.y != oldVert.Y) {
-      log_error(
-        "Vertex mismatch on vertex %d: %f %f != %f %f", rec->currentVertIndex,
-        newVert.x, newVert.y, oldVert.X, oldVert.Y);
-    }
 
     break;
 
   // TODO: implement these
   case REC_EVENT_ROUTING_END_WIRE_SEGMENT: {
-    uint32_t wireOffset = ar->netViews[rec->currentNetPlusOne - 1].wire_offset;
-    int32_t count = RT_WireView_vertex_count(
-      ar->wires[rec->currentWireIndex + wireOffset].vertexCount);
-    if (count != rec->currentWireVertCount) {
-      log_error(
-        "Vertex count mismatch on net %d wire %d: %d != %d",
-        rec->currentNetPlusOne - 1, rec->currentWireIndex, count,
-        rec->currentWireVertCount);
-    } else {
-      log_info(
-        "Vertex count correct on net %d wire %d: %d == %d",
-        rec->currentNetPlusOne - 1, rec->currentWireIndex, count,
-        rec->currentWireVertCount);
-    }
     rec->currentWireIndex++;
     rec->currentWireVertCount = 0;
     break;
