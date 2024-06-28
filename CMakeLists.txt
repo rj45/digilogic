@@ -109,14 +109,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         "thirdparty/nfd/nfd_gtk.c"
     )
 
-    find_package(PkgConfig)
-    if (PKG_CONFIG_FOUND)
-        pkg_check_modules(GTK "gtk+-3.0")
-        if (GTK_FOUND)
-            target_link_libraries(digilogic ${GTK_LIBRARIES})
-            add_definitions(${GTK_CFLAGS} ${GTK_CFLAGS_OTHER})
-        endif()
-    endif()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK REQUIRED IMPORTED_TARGET "gtk+-3.0")
+    target_link_libraries(digilogic PRIVATE PkgConfig::GTK)
 
     if (USE_GLES)
         target_compile_definitions(digilogic PUBLIC "SOKOL_GLES3")
