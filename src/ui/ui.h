@@ -48,6 +48,10 @@ typedef struct CircuitUI {
   bool showIntro;
   bool showReplay;
 
+  nk_bool showFPS;
+  nk_bool showRoutingDebug;
+  nk_bool showBVHDebug;
+
   Circuit saveCopy;
   thread_atomic_int_t saveThreadBusy;
   char saveFilename[1024];

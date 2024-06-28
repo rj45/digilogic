@@ -167,15 +167,18 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           ctx, "View", NK_TEXT_LEFT, nk_vec2(sv(ui, 200), sv(ui, 240)))) {
       nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
 
-      if (nk_check_label(ctx, "Show FPS", ui->ux.showFPS)) {
-        ui->ux.showFPS = !ui->ux.showFPS;
-      }
-      if (nk_check_label(ctx, "Show Routing Debug", ui->ux.rtDebugLines)) {
-        ui->ux.rtDebugLines = !ui->ux.rtDebugLines;
-      }
-      if (nk_check_label(ctx, "Show BVH Debug", ui->ux.bvhDebugLines)) {
-        ui->ux.bvhDebugLines = !ui->ux.bvhDebugLines;
-      }
+      ui->showFPS = ui->ux.showFPS;
+      ui->showRoutingDebug = ui->ux.rtDebugLines;
+      ui->showBVHDebug = ui->ux.bvhDebugLines;
+
+      nk_checkbox_label(ctx, "Show FPS", &ui->showFPS);
+      nk_checkbox_label(ctx, "Show Routing Debug", &ui->showRoutingDebug);
+      nk_checkbox_label(ctx, "Show BVH Debug", &ui->showBVHDebug);
+
+      ui->ux.showFPS = ui->showFPS;
+      ui->ux.rtDebugLines = ui->showRoutingDebug;
+      ui->ux.view.debugMode = ui->showRoutingDebug;
+      ui->ux.bvhDebugLines = ui->showBVHDebug;
 
       if (nk_option_label(ctx, "Normal Text", ui->uiScale == 0)) {
         ui_set_scale(ui, 0);
