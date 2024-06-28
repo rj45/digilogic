@@ -174,6 +174,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
       nk_checkbox_label(ctx, "Show FPS", &ui->showFPS);
       nk_checkbox_label(ctx, "Show Routing Debug", &ui->showRoutingDebug);
       nk_checkbox_label(ctx, "Show BVH Debug", &ui->showBVHDebug);
+      nk_checkbox_label(ctx, "Show Routing Replay", &ui->showReplay);
 
       ui->ux.showFPS = ui->showFPS;
       ui->ux.rtDebugLines = ui->showRoutingDebug;
@@ -455,11 +456,12 @@ void ui_update(
 
   if (bv_is_set(ui->ux.input.keysPressed, KEYCODE_R)) {
     ui->showReplay = !ui->showReplay;
-    ui->ux.view.hideNets = ui->showReplay;
-    if (ui->showReplay && !ui->ux.routingConfig.recordReplay) {
-      ui->ux.routingConfig.recordReplay = true;
-      ux_route(&ui->ux);
-    }
+  }
+
+  ui->ux.view.hideNets = ui->showReplay;
+  if (ui->showReplay && !ui->ux.routingConfig.recordReplay) {
+    ui->ux.routingConfig.recordReplay = true;
+    ux_route(&ui->ux);
   }
 
   if (ui->ux.changed) {
