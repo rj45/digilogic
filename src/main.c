@@ -32,7 +32,6 @@
 
 #include "assets.h"
 #include "core/core.h"
-#include "import/import.h"
 
 #include "assetsys.h"
 #include "nuklear.h"
@@ -50,8 +49,6 @@
 #include "render/fons_nuklear.h"
 
 #include "render/render.h"
-
-#include "nvdialog.h"
 
 #define THREAD_IMPLEMENTATION
 #include "thread.h"
@@ -119,22 +116,6 @@ static void fons_error(void *user_ptr, int error, int val) {
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
   log_info("Initialized sokol_app");
-
-  int result = nvd_init();
-  if (result != 0) {
-    fprintf(stderr, "Failed to initialize native file dialog support\n");
-    exit(1);
-  }
-
-#if defined(__APPLE__)
-  nvd_set_parent((NvdParentWindow *)sapp_macos_get_window());
-#elif defined(_WIN32)
-  nvd_set_parent((NvdParentWindow *)sapp_win32_get_hwnd());
-#else // Linux
-  // TODO: not sure how to get the parent window on Linux
-  // nvd_set_parent((NvdParentWindow *)sapp_linux_get_window());
-#endif
-  log_info("nvdialog initialized");
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),

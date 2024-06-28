@@ -207,7 +207,7 @@ pub fn build(b: *std.Build) void {
     digilogic.linkLibrary(freetype);
 
     digilogic.root_module.addCMacro("NVD_STATIC_LINKAGE", "");
-    digilogic.linkLibrary(build_nvdialog(b, target, optimize));
+    digilogic.linkLibrary(build_nfd(b, target, optimize));
 
     const Renderer = enum {
         metal,
@@ -435,102 +435,62 @@ pub fn build(b: *std.Build) void {
     zcc.createStep(b, "cdb", .{ .targets = &.{ digilogic, digilogic_test, asset_gen } });
 }
 
-fn build_nvdialog(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
-    const nvdialog = b.addStaticLibrary(.{
-        .name = "nvdialog",
+fn build_nfd(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+    const nfd = b.addStaticLibrary(.{
+        .name = "nfd",
         .target = target,
         .optimize = optimize,
     });
 
     const cflags = &.{
-        "-std=gnu11",
-        "-Wno-unused-parameter",
-        "-Wconversion",
-        "-Werror=format",
-        "-Werror=format-security",
-        "-Winline",
         "-Wall",
         "-Wextra",
-        "-fstack-protector-all",
-        "--param",
-        "ssp-buffer-size=4",
+        "-fno-exceptions",
     };
 
-    nvdialog.addIncludePath(b.path("thirdparty/nvdialog/include"));
-    nvdialog.addIncludePath(b.path("thirdparty/nvdialog/src"));
-    nvdialog.addIncludePath(b.path("thirdparty/nvdialog/src/impl"));
+    nfd.addIncludePath(b.path("thirdparty/nfd/include"));
+    nfd.addIncludePath(b.path("thirdparty/nfd"));
 
-    nvdialog.linkLibC();
-
-    nvdialog.root_module.addCMacro("NVDIALOG_MAXBUF", "4096");
-    nvdialog.root_module.addCMacro("NVD_EXPORT_SYMBOLS", "");
-    nvdialog.root_module.addCMacro("NVD_STATIC_LINKAGE", "");
-
-    const platform_ext = if (target.result.os.tag.isDarwin()) ".m" else ".c";
-
-    const platform_files = &.{
-        "nvdialog_dialog_box" ++ platform_ext,
-        "nvdialog_file_dialog" ++ platform_ext,
-        "nvdialog_question_dialog" ++ platform_ext,
-        "nvdialog_notification" ++ platform_ext,
-        "nvdialog_about_dialog" ++ platform_ext,
-    };
+    nfd.linkLibC();
 
     if (target.result.os.tag.isDarwin()) {
-        nvdialog.root_module.addCMacro("NVD_USE_COCOA", "1");
+        nfd.root_module.addCMacro("NVD_USE_COCOA", "1");
 
-        nvdialog.addCSourceFiles(.{
-            .root = b.path("thirdparty/nvdialog/src/backend/cocoa"),
-            .files = platform_files,
+        nfd.addCSourceFile(.{
+            .file = b.path("thirdparty/nfd/nfd_cocoa.m"),
             .flags = cflags,
         });
 
-        nvdialog.linkFramework("AppKit");
-        nvdialog.linkFramework("Cocoa");
-        nvdialog.linkFramework("Foundation");
-        nvdialog.linkFramework("UserNotifications");
+        nfd.linkFramework("AppKit");
+        nfd.linkFramework("Cocoa");
+        nfd.linkFramework("Foundation");
+        nfd.linkFramework("UserNotifications");
     } else if (target.result.os.tag == .windows) {
-        nvdialog.addCSourceFiles(.{
-            .root = b.path("thirdparty/nvdialog/src/backend/win32"),
-            .files = platform_files,
+        nfd.addCSourceFile(.{
+            .file = b.path("thirdparty/nfd/nfd_win.cpp"),
             .flags = cflags,
         });
 
-        nvdialog.linkSystemLibrary("comdlg32");
-        nvdialog.linkSystemLibrary("shell32");
-        nvdialog.linkSystemLibrary("user32");
+        nfd.linkSystemLibrary("comdlg32");
+        // nfd.linkSystemLibrary("shell32");
+        // nfd.linkSystemLibrary("user32");
     } else {
-        nvdialog.root_module.addCMacro("NVD_SANDBOX_SUPPORT", "0");
-        nvdialog.addCSourceFiles(.{
-            .root = b.path("thirdparty/nvdialog/src/backend/gtk"),
-            .files = platform_files,
+        nfd.addCSourceFile(.{
+            .file = b.path("thirdparty/nfd/nfd_gtk.c"),
             .flags = cflags,
         });
 
-        nvdialog.addCSourceFiles(.{
-            .root = b.path("thirdparty/nvdialog/src/backend/sandbox"),
-            .files = platform_files,
-            .flags = cflags,
-        });
-
-        nvdialog.linkSystemLibrary("gtk+-3.0");
+        nfd.linkSystemLibrary("gtk+-3.0");
     }
 
-    nvdialog.addCSourceFiles(.{
-        .root = b.path("thirdparty/nvdialog/src"),
-        .files = &.{
-            "nvdialog_error.c",
-            "nvdialog_capab.c",
-            "nvdialog_version.c",
-            "nvdialog_main.c",
-            "nvdialog_util.c",
-        },
+    nfd.addCSourceFile(.{
+        .file = b.path("thirdparty/nfd/nfd_common.c"),
         .flags = cflags,
     });
 
-    nvdialog.installHeadersDirectory(b.path("thirdparty/nvdialog/include"), "", .{});
+    nfd.installHeadersDirectory(b.path("thirdparty/nfd/include"), "", .{});
 
-    return nvdialog;
+    return nfd;
 }
 
 fn find_llvm_lib_path(b: *std.Build) ?[]const u8 {

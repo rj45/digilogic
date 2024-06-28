@@ -34,6 +34,12 @@
 
 #define UI_FONT_SIZE 20
 
+typedef enum UITool {
+  TOOL_NONE,
+  TOOL_WAYPOINT,
+  TOOL_COMPONENT,
+} UITool;
+
 typedef struct CircuitUI {
   CircuitUX ux;
   struct nk_context *nk;
@@ -41,6 +47,7 @@ typedef struct CircuitUI {
   int uiScale;
   float scale;
 
+  UITool tool;
   ID addingSymbolKind;
 
   bool saving;

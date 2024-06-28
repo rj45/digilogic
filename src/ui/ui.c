@@ -18,7 +18,8 @@
 #include "autoroute/autoroute.h"
 #include "core/core.h"
 #include "import/import.h"
-#include "nvdialog.h"
+#include "nfd.h"
+#include "nfd/include/nfd.h"
 #include "sokol_app.h"
 #include "thread.h"
 #include "ux/ux.h"
@@ -59,28 +60,24 @@ static inline int sv(CircuitUI *ui, int value) {
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
   const char *filters = NULL; // "dlc";
 
-  NvdFileDialog *dialog;
+  char *outfile = NULL;
+  nfdresult_t result;
+
   if (saving) {
-    dialog = nvd_save_file_dialog_new("Save File", "untitled.dlc");
+    result = NFD_SaveDialog(filters, "untitled.dlc", &outfile);
   } else {
-    dialog = nvd_open_file_dialog_new("Open File", filters);
+    result = NFD_OpenDialog(filters, "untitled.dlc", &outfile);
   }
 
-  if (!dialog) {
+  if (result != NFD_OKAY) {
     return false;
   }
-
-  const char *outfile = NULL;
-
-  nvd_get_file_location(dialog, &outfile);
 
   if (outfile != NULL) {
     printf("Chosen file: %s\n", outfile);
     strncpy(filename, outfile, 1024);
     free((void *)outfile);
   }
-
-  nvd_free_object(dialog);
 
   return outfile != NULL;
 }
@@ -401,6 +398,70 @@ static void ui_replay_controls(
   }
 }
 
+static void
+ui_toolbox(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
+  if (!ui->showIntro) {
+    if (nk_begin(
+          ctx, "Toolbar", nk_rect(0, sv(ui, 40), 180, 480),
+          NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
+            NK_WINDOW_TITLE)) {
+
+      nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
+      if (nk_option_label(ctx, "NONE", ui->tool == TOOL_NONE)) {
+        ui->tool = TOOL_NONE;
+        if (ui->addingSymbolKind != NO_ID) {
+          ux_stop_adding_symbol(&ui->ux);
+        }
+        ui->addingSymbolKind = NO_ID;
+      }
+
+      // if (nk_tree_push(ctx, NK_TREE_TAB, "Routing", NK_MAXIMIZED)) {
+      //   nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
+      //   if (nk_option_label(ctx, "Waypoint", ui->tool == TOOL_WAYPOINT)) {
+      //     ui->tool = TOOL_WAYPOINT;
+      //     if (ui->addingSymbolKind != NO_ID) {
+      //       ux_stop_adding_symbol(&ui->ux);
+      //     }
+      //     ui->addingSymbolKind = NO_ID;
+      //   }
+      //   nk_tree_pop(ctx);
+      // }
+
+      if (nk_tree_push(ctx, NK_TREE_TAB, "Components", NK_MAXIMIZED)) {
+        nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
+
+        CircuitIter iter = circ_iter(&ui->ux.view.circuit, SymbolKind);
+        while (circ_iter_next(&iter)) {
+          SymbolKind *table = circ_iter_table(&iter, SymbolKind);
+          for (ptrdiff_t i = 0; i < table->length; i++) {
+            SymbolKindID symbolKindID = table->id[i];
+            Name nameID = circ_get(&ui->ux.view.circuit, symbolKindID, Name);
+            if (nameID == 0) {
+              continue;
+            }
+            const char *name = circ_str_get(&ui->ux.view.circuit, nameID);
+
+            if (nk_option_label(
+                  ctx, name,
+                  ui->tool == TOOL_COMPONENT &&
+                    ui->addingSymbolKind == symbolKindID)) {
+              ui->tool = TOOL_COMPONENT;
+              if (ui->addingSymbolKind == NO_ID) {
+                ux_start_adding_symbol(&ui->ux, symbolKindID);
+              } else if (ui->addingSymbolKind != symbolKindID) {
+                ux_change_adding_symbol(&ui->ux, symbolKindID);
+              }
+              ui->addingSymbolKind = symbolKindID;
+            }
+          }
+        }
+        nk_tree_pop(ctx);
+      }
+    }
+    nk_end(ctx);
+  }
+}
+
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height) {
 
@@ -410,47 +471,7 @@ void ui_update(
   ui_about(ui, ctx, width, height);
   ui_intro_dialog(ui, ctx, width, height);
   ui_replay_controls(ui, ctx, width, height);
-
-  if (!ui->showIntro) {
-    if (nk_begin(
-          ctx, "Toolbar", nk_rect(0, sv(ui, 40), 180, 480),
-          NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE |
-            NK_WINDOW_TITLE)) {
-
-      nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
-
-      if (nk_option_label(ctx, "NONE", ui->addingSymbolKind == NO_ID)) {
-        if (ui->addingSymbolKind != NO_ID) {
-          ux_stop_adding_symbol(&ui->ux);
-        }
-        ui->addingSymbolKind = NO_ID;
-      }
-
-      CircuitIter iter = circ_iter(&ui->ux.view.circuit, SymbolKind);
-      while (circ_iter_next(&iter)) {
-        SymbolKind *table = circ_iter_table(&iter, SymbolKind);
-        for (ptrdiff_t i = 0; i < table->length; i++) {
-          SymbolKindID symbolKindID = table->id[i];
-          Name nameID = circ_get(&ui->ux.view.circuit, symbolKindID, Name);
-          if (nameID == 0) {
-            continue;
-          }
-          const char *name = circ_str_get(&ui->ux.view.circuit, nameID);
-
-          if (nk_option_label(
-                ctx, name, ui->addingSymbolKind == symbolKindID)) {
-            if (ui->addingSymbolKind == NO_ID) {
-              ux_start_adding_symbol(&ui->ux, symbolKindID);
-            } else if (ui->addingSymbolKind != symbolKindID) {
-              ux_change_adding_symbol(&ui->ux, symbolKindID);
-            }
-            ui->addingSymbolKind = symbolKindID;
-          }
-        }
-      }
-    }
-    nk_end(ctx);
-  }
+  ui_toolbox(ui, ctx, width, height);
 
   ux_update(&ui->ux);
 
