@@ -24,6 +24,7 @@ set(DIGILOGIC_SRCS
     src/main.c
     src/assets.c
     thirdparty/yyjson.c
+    thirdparty/nfd/nfd_common.c
 )
 
 
@@ -44,6 +45,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         ${DIGILOGIC_SRCS}
         "res/logo.icns"
         "src/apple.m"
+        "thirdparty/nfd/nfd_cocoa.m"
     )
 
     target_compile_definitions(digilogic PUBLIC "SOKOL_METAL")
@@ -69,6 +71,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_executable(digilogic ${DIGILOGIC_SRCS}
         "res/app.o"
         "src/nonapple.c"
+        "thirdparty/nfd/nfd_win.cpp"
     )
 
     if(USE_GL)
@@ -101,7 +104,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(digilogic
         ${DIGILOGIC_SRCS}
         "src/nonapple.c"
+        "thirdparty/nfd/nfd_gtk.c"
     )
+
+    find_package(PkgConfig)
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(GTK "gtk+-3.0")
+        if (GTK_FOUND)
+            target_link_libraries(digilogic ${GTK_LIBRARIES})
+            add_definitions(${GTK_CFLAGS} ${GTK_CFLAGS_OTHER})
+        endif()
+    endif()
 
     if (USE_GLES)
         target_compile_definitions(digilogic PUBLIC "SOKOL_GLES3")
@@ -251,10 +264,8 @@ if (MSAA_SAMPLE_COUNT)
     target_compile_definitions(digilogic PRIVATE "MSAA_SAMPLE_COUNT=${MSAA_SAMPLE_COUNT}")
 endif()
 
-add_subdirectory("thirdparty/nvdialog")
-target_link_libraries(digilogic PRIVATE nvdialog)
 
-target_include_directories(digilogic PRIVATE "thirdparty/nvdialog/include")
+target_include_directories(digilogic PRIVATE "thirdparty/nfd/include")
 target_include_directories(digilogic PRIVATE "thirdparty")
 target_include_directories(digilogic PRIVATE "src")
 
