@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(digilogic LANGUAGES C)
+project(digilogic LANGUAGES C CXX)
 
 set(DIGILOGIC_SRCS
     src/main.c
@@ -73,6 +73,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         "src/nonapple.c"
         "thirdparty/nfd/nfd_win.cpp"
     )
+
+    target_compile_definitions(digilogic PUBLIC "UNICODE" "_UNICODE")
 
     if(USE_GL)
         target_compile_definitions(digilogic PUBLIC "SOKOL_GLCORE33")
@@ -257,13 +259,10 @@ set_property(TARGET digilogic PROPERTY C_STANDARD 11gnu)
 find_package(Freetype REQUIRED)
 target_link_libraries(digilogic PRIVATE Freetype::Freetype)
 
-target_compile_definitions(digilogic PRIVATE "NVD_STATIC_LINKAGE")
-
 # some virtual machines and old hardware don't support MSAA
 if (MSAA_SAMPLE_COUNT)
     target_compile_definitions(digilogic PRIVATE "MSAA_SAMPLE_COUNT=${MSAA_SAMPLE_COUNT}")
 endif()
-
 
 target_include_directories(digilogic PRIVATE "thirdparty/nfd/include")
 target_include_directories(digilogic PRIVATE "thirdparty")
