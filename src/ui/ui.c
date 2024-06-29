@@ -493,12 +493,14 @@ void ui_update(
     }
   }
 
-  if (ui->saveAt != 0 && stm_sec(stm_since(ui->saveAt)) > 1) {
-    log_info("Autosaving to %s", platform_autosave_path());
-    if (ui_background_save(ui, platform_autosave_path(), true)) {
-      ui->saveAt = 0;
-    }
-  }
+  // FIXME: this somehow causes millions of saves per second, which is really
+  // bad
+  // if (ui->saveAt != 0 && stm_sec(stm_since(ui->saveAt)) > 1) {
+  //   log_info("Autosaving to %s", platform_autosave_path());
+  //   if (ui_background_save(ui, platform_autosave_path(), true)) {
+  //     ui->saveAt = 0;
+  //   }
+  // }
 }
 
 void ui_draw(CircuitUI *ui) {
