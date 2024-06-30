@@ -22,7 +22,7 @@
 
 #include "ux.h"
 
-#define LOG_LEVEL LL_INFO
+#define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
 #define MAX_ZOOM 20.0f
@@ -49,6 +49,8 @@ static const char *stateNames[] = {
   [STATE_CANCEL_WIRE] = "CancelWire",
   [STATE_ADDING_COMPONENT] = "AddingComponent",
   [STATE_ADD_COMPONENT] = "AddComponent",
+  [STATE_ADDING_WAYPOINT] = "AddingWaypoint",
+  [STATE_ADD_WAYPOINT] = "AddWaypoint",
 };
 
 static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
@@ -62,6 +64,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   bool overPort = false;
   bool overItem = false;
   bool overEndpoint = false;
+  bool overNet = false;
 
   for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
     ID id = ux->view.hovered[i].subitem;
@@ -76,6 +79,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       overItem = true;
     } else if (type == TYPE_ENDPOINT) {
       overEndpoint = true;
+    } else if (type == TYPE_NET) {
+      overNet = true;
     }
   }
 
@@ -220,6 +225,15 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         state = STATE_ADDING_COMPONENT;
       }
       break;
+    case STATE_ADDING_WAYPOINT:
+      if (leftDown && overNet && !overEndpoint && !overItem) {
+        state = STATE_ADD_WAYPOINT;
+      }
+    case STATE_ADD_WAYPOINT:
+      if (!leftDown) {
+        state = STATE_ADDING_WAYPOINT;
+      }
+      break;
     }
 
     if (state != oldState) {
@@ -344,10 +358,17 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       case STATE_CANCEL_WIRE:
         ux_cancel_wire(ux);
 
+        ux_route(ux);
+
         // rebuild the BVH after removing things
         ux_build_bvh(ux);
+        break;
 
+      case STATE_ADD_WAYPOINT:
+        log_debug("add waypoint");
+        ux_add_waypoint(ux, worldMousePos);
         ux_route(ux);
+        ux_build_bvh(ux);
         break;
 
       default:
@@ -562,6 +583,18 @@ void ux_update(CircuitUX *ux) {
   }
 
   ux_handle_mouse(ux);
+}
+
+void ux_start_adding_waypoint(CircuitUX *ux) {
+  ux->mouseDownState = STATE_ADDING_WAYPOINT;
+}
+
+void ux_stop_adding_waypoint(CircuitUX *ux) {
+  if (
+    ux->mouseDownState == STATE_ADDING_WAYPOINT ||
+    ux->mouseDownState == STATE_ADD_WAYPOINT) {
+    ux->mouseDownState = STATE_UP;
+  }
 }
 
 void ux_start_adding_symbol(CircuitUX *ux, ID symbolKindID) {

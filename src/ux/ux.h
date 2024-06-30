@@ -176,7 +176,16 @@ typedef enum MouseDownState {
   STATE_FLOATING_WIRE,
   STATE_ADDING_COMPONENT,
   STATE_ADD_COMPONENT,
+  STATE_ADDING_WAYPOINT,
+  STATE_ADD_WAYPOINT,
 } MouseDownState;
+
+typedef enum ToolState {
+  TOOL_NONE,
+  TOOL_WAYPOINT,
+  TOOL_SYMBOL,
+  TOOL_WIRE,
+} ToolState;
 
 typedef struct Input {
   bv(uint64_t) keysDown;
@@ -312,6 +321,8 @@ typedef struct CircuitUX {
   arr(UndoCommand) undoStack;
   arr(UndoCommand) redoStack;
 
+  ToolState tool;
+
   MouseDownState mouseDownState;
 
   PortRef clickedPort;
@@ -366,6 +377,11 @@ void ux_start_wire(CircuitUX *ux, PortRef portRef);
 void ux_continue_wire(CircuitUX *ux, ID endpointID);
 void ux_cancel_wire(CircuitUX *ux);
 void ux_connect_wire(CircuitUX *ux, PortRef portRef);
+
+void ux_start_adding_waypoint(CircuitUX *ux);
+void ux_stop_adding_waypoint(CircuitUX *ux);
+
+void ux_add_waypoint(CircuitUX *ux, HMM_Vec2 worldMousePos);
 
 void ux_route(CircuitUX *ux);
 void ux_build_bvh(CircuitUX *ux);

@@ -152,6 +152,66 @@ void ux_delete_selected(CircuitUX *ux) {
   }
 }
 
+void ux_add_waypoint(CircuitUX *ux, HMM_Vec2 worldMousePos) {
+  // determine the closest endpoint to the mouse position
+  ID closestEndpoint = NO_ID;
+  for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
+    ID id = ux->view.hovered[i].item;
+    if (circ_type_for_id(&ux->view.circuit, id) == TYPE_NET) {
+      ID netID = id;
+
+      int hoveredWire = id_index(ux->view.hovered[i].subitem);
+
+      // calculate the vertex offset of the wire
+      WireVertices wireVertices =
+        circ_get(&ux->view.circuit, netID, WireVertices);
+      size_t vertexOffset = 0;
+      for (size_t wireIdx = 0; wireIdx < hoveredWire; wireIdx++) {
+        uint16_t vertCount =
+          RT_WireView_vertex_count(wireVertices.wireVertexCounts[wireIdx]);
+        vertexOffset += vertCount;
+      }
+
+      // generally the first vertex will be the endpoint if the wire
+      // is connected to an endpoint
+      HMM_Vec2 *vertices = wireVertices.vertices + vertexOffset;
+      HMM_Vec2 possibleEndpointPos = vertices[0];
+
+      // search through the net's endpoints to find the one with the wire vertex
+      LinkedListIter subnetit = circ_lliter(&ux->view.circuit, netID);
+      while (circ_lliter_next(&subnetit)) {
+        ID subnetID = subnetit.current;
+
+        LinkedListIter endpointit = circ_lliter(&ux->view.circuit, subnetID);
+        while (circ_lliter_next(&endpointit)) {
+          ID endpointID = endpointit.current;
+          Position endpointPos =
+            circ_get(&ux->view.circuit, endpointID, Position);
+
+          if (
+            HMM_LenSqrV2(HMM_SubV2(endpointPos, possibleEndpointPos)) < 0.1f) {
+            // found it
+            closestEndpoint = endpointID;
+            break;
+          }
+        }
+        if (closestEndpoint != NO_ID) {
+          break;
+        }
+      }
+    }
+  }
+  if (closestEndpoint == NO_ID) {
+    return;
+  }
+
+  // add a waypoint at the mouse position
+  ID waypointID = circ_add_waypoint(&ux->view.circuit, closestEndpoint);
+  circ_set_ptr(&ux->view.circuit, waypointID, Position, &worldMousePos);
+  log_info(
+    "Added waypoint %d at %f %f", waypointID, worldMousePos.X, worldMousePos.Y);
+}
+
 static void ux_bvh_draw(BVH *bvh, DrawContext *drawCtx, int drawLevel);
 
 void ux_draw(CircuitUX *ux) {

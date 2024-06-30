@@ -407,25 +407,27 @@ ui_toolbox(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
             NK_WINDOW_TITLE)) {
 
       nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
-      if (nk_option_label(ctx, "NONE", ui->tool == TOOL_NONE)) {
-        ui->tool = TOOL_NONE;
+      if (nk_option_label(ctx, "NONE", ui->ux.tool == TOOL_NONE)) {
+        ui->ux.tool = TOOL_NONE;
         if (ui->addingSymbolKind != NO_ID) {
           ux_stop_adding_symbol(&ui->ux);
         }
         ui->addingSymbolKind = NO_ID;
+        ux_stop_adding_waypoint(&ui->ux);
       }
 
-      // if (nk_tree_push(ctx, NK_TREE_TAB, "Routing", NK_MAXIMIZED)) {
-      //   nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
-      //   if (nk_option_label(ctx, "Waypoint", ui->tool == TOOL_WAYPOINT)) {
-      //     ui->tool = TOOL_WAYPOINT;
-      //     if (ui->addingSymbolKind != NO_ID) {
-      //       ux_stop_adding_symbol(&ui->ux);
-      //     }
-      //     ui->addingSymbolKind = NO_ID;
-      //   }
-      //   nk_tree_pop(ctx);
-      // }
+      if (nk_tree_push(ctx, NK_TREE_TAB, "Routing", NK_MAXIMIZED)) {
+        nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
+        if (nk_option_label(ctx, "Waypoint", ui->ux.tool == TOOL_WAYPOINT)) {
+          ui->ux.tool = TOOL_WAYPOINT;
+          ux_start_adding_waypoint(&ui->ux);
+          if (ui->addingSymbolKind != NO_ID) {
+            ux_stop_adding_symbol(&ui->ux);
+          }
+          ui->addingSymbolKind = NO_ID;
+        }
+        nk_tree_pop(ctx);
+      }
 
       if (nk_tree_push(ctx, NK_TREE_TAB, "Components", NK_MAXIMIZED)) {
         nk_layout_row_dynamic(ctx, sv(ui, 30), 1);
@@ -443,9 +445,10 @@ ui_toolbox(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
 
             if (nk_option_label(
                   ctx, name,
-                  ui->tool == TOOL_COMPONENT &&
+                  ui->ux.tool == TOOL_SYMBOL &&
                     ui->addingSymbolKind == symbolKindID)) {
-              ui->tool = TOOL_COMPONENT;
+              ui->ux.tool = TOOL_SYMBOL;
+              ux_stop_adding_waypoint(&ui->ux);
               if (ui->addingSymbolKind == NO_ID) {
                 ux_start_adding_symbol(&ui->ux, symbolKindID);
               } else if (ui->addingSymbolKind != symbolKindID) {
