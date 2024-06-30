@@ -58,7 +58,7 @@ static inline int sv(CircuitUI *ui, int value) {
 }
 
 bool ui_open_file_browser(CircuitUI *ui, bool saving, char *filename) {
-  const char *filters = NULL; // "dlc";
+  const char *filters = "dlc";
 
   char *outfile = NULL;
   nfdresult_t result;

@@ -13,12 +13,6 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-/////////////////////////////////////////////////////////////////////////
-// NOTE: This zib build script is experimental! If you want to use it,
-// please contribute any fixes it needs! It's very appreciated!
-// - rj45
-/////////////////////////////////////////////////////////////////////////
-
 const std = @import("std");
 const zcc = @import("compile_commands");
 const globlin = @import("globlin");
@@ -273,9 +267,9 @@ pub fn build(b: *std.Build) void {
         digilogic.linkSystemLibrary("user32");
         digilogic.linkSystemLibrary("gdi32");
         digilogic.linkSystemLibrary("ole32");
+        digilogic.linkSystemLibrary("userenv");
         digilogic.linkSystemLibrary("bcrypt"); // required by rust
         digilogic.linkSystemLibrary("ws2_32"); // required by rust
-        digilogic.linkSystemLibrary("userenv"); // required by rust
         digilogic.linkSystemLibrary("advapi32"); // required by rust
 
         switch (target.result.abi) {
