@@ -281,8 +281,7 @@ UTEST(Circuit, circ_load_symbol_descs) {
     .user = NULL,
     .textSize = testTextSize,
   };
-  circ_load_symbol_descs(
-    &circuit, &layout, circuit_component_descs(), COMP_COUNT);
+  circ_load_symbol_descs(&circuit, &layout, circuit_symbol_descs(), COMP_COUNT);
 
   // TODO: make more thorough
 

@@ -64,7 +64,7 @@ typedef struct CircuitUI {
 } CircuitUI;
 
 void ui_init(
-  CircuitUI *ui, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  CircuitUI *ui, const SymbolDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font);
 void ui_free(CircuitUI *ui);
 void ui_update(

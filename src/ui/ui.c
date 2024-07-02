@@ -31,7 +31,7 @@
 #include "log.h"
 
 void ui_init(
-  CircuitUI *ui, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  CircuitUI *ui, const SymbolDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
   *ui = (CircuitUI){.showIntro = true, .scale = 1.0f};
   ux_init(&ui->ux, componentDescs, drawCtx, font);

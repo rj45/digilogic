@@ -38,7 +38,7 @@ typedef struct CircuitView {
 typedef void *Context;
 
 void view_init(
-  CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  CircuitView *view, const SymbolDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font);
 void view_reset(CircuitView *view);
 void view_free(CircuitView *view);

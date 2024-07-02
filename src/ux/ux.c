@@ -30,7 +30,7 @@
 void ux_global_init() { autoroute_global_init(); }
 
 void ux_init(
-  CircuitUX *ux, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  CircuitUX *ux, const SymbolDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
   *ux = (CircuitUX){
     .routingConfig.minimizeGraph = true,

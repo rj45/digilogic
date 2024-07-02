@@ -5,14 +5,14 @@
 
 UTEST(CircuitUX, init) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+  ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
 
   ux_free(&ux);
 }
 
 UTEST(CircuitUX, adding_components) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+  ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
 
   ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
   ID orSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "OR");
@@ -44,7 +44,7 @@ UTEST(CircuitUX, adding_components) {
 
 UTEST(CircuitUX, selection_and_deselection) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+  ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
 
   ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
@@ -69,7 +69,7 @@ UTEST(CircuitUX, selection_and_deselection) {
 
 UTEST(CircuitUX, move_component) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+  ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
 
   ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
@@ -97,7 +97,7 @@ UTEST(CircuitUX, move_component) {
 
 UTEST(CircuitUX, delete_component) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+  ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
 
   ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 
@@ -122,7 +122,7 @@ UTEST(CircuitUX, delete_component) {
 
 UTEST(CircuitUX, undo_redo) {
   CircuitUX ux;
-  ux_init(&ux, circuit_component_descs(), NULL, NULL);
+  ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
 
   ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
 

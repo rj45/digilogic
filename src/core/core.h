@@ -253,7 +253,7 @@ void cl_redo(ChangeLog *log);
 // Circuit
 ////////////////////////////////////////////////////////////////////////////////
 
-// default ComponentDescIDs for the built-in components
+// default SymbolDescIDs for the built-in components
 enum {
   COMP_NONE,
   COMP_AND,
@@ -285,15 +285,15 @@ typedef enum ShapeType {
   SHAPE_NOT,
 } ShapeType;
 
-typedef struct ComponentDesc {
+typedef struct SymbolDesc {
   const char *typeName;
   int numPorts;
   char namePrefix;
   ShapeType shape;
   PortDesc *ports;
-} ComponentDesc;
+} SymbolDesc;
 
-const ComponentDesc *circuit_component_descs();
+const SymbolDesc *circuit_symbol_descs();
 
 typedef struct Wire {
   uint16_t vertexCount;
@@ -779,8 +779,7 @@ void circ_init(Circuit *circ);
 void circ_free(Circuit *circ);
 void circ_clone(Circuit *dst, Circuit *src);
 void circ_load_symbol_descs(
-  Circuit *circ, SymbolLayout *layout, const ComponentDesc *descs,
-  size_t count);
+  Circuit *circ, SymbolLayout *layout, const SymbolDesc *descs, size_t count);
 void circ_add_type_id(Circuit *circ, EntityType type, ID id);
 ID circ_add_type(Circuit *circ, EntityType type);
 void circ_remove(Circuit *circ, ID id);

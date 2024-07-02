@@ -32,7 +32,7 @@
 // - simplify the iterator API
 // - replace circuit_component_descs with a prefab system
 
-const ComponentDesc *circuit_component_descs() {
+const SymbolDesc *circuit_symbol_descs() {
   static PortDesc andPorts[] = {
     {.direction = PORT_IN, .name = "A"},
     {.direction = PORT_IN, .name = "B"},
@@ -64,7 +64,7 @@ const ComponentDesc *circuit_component_descs() {
     {.direction = PORT_IN, .name = "A"},
   };
 
-  static const ComponentDesc descs[] = {
+  static const SymbolDesc descs[] = {
     [COMP_NONE] =
       {
         .typeName = "NONE",
@@ -185,12 +185,11 @@ void circ_free(Circuit *circ) {
 
 // TODO: split symbol layout from loading symbol descs
 void circ_load_symbol_descs(
-  Circuit *circ, SymbolLayout *layout, const ComponentDesc *descs,
-  size_t count) {
+  Circuit *circ, SymbolLayout *layout, const SymbolDesc *descs, size_t count) {
   float labelPadding = layout->labelPadding;
   // start at 1 to skip the NONE component
   for (size_t i = 1; i < count; i++) {
-    const ComponentDesc *symDesc = &descs[i];
+    const SymbolDesc *symDesc = &descs[i];
     ID symID = circ_add(circ, SymbolKind);
     circ_set(circ, symID, Name, {circ_str_c(circ, symDesc->typeName)});
     circ_set(

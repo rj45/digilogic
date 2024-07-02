@@ -65,7 +65,7 @@ static HMM_Vec2 calcTextSize(void *user, const char *text) {
 }
 
 void view_init(
-  CircuitView *view, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  CircuitView *view, const SymbolDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font) {
   *view = (CircuitView){
     .drawCtx = drawCtx,

@@ -269,3 +269,9 @@ void draw_filled_circle(
 void draw_stroked_rect(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
   float line_thickness, HMM_Vec4 color) {}
+void draw_stroked_circle(
+  DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float line_thickness,
+  HMM_Vec4 color) {}
+void draw_text(
+  DrawContext *draw, Box rect, const char *text, int len, float fontSize,
+  FontHandle font, HMM_Vec4 fgColor, HMM_Vec4 bgColor) {}

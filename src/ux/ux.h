@@ -352,7 +352,7 @@ typedef struct CircuitUX {
 void ux_global_init();
 
 void ux_init(
-  CircuitUX *ux, const ComponentDesc *componentDescs, DrawContext *drawCtx,
+  CircuitUX *ux, const SymbolDesc *componentDescs, DrawContext *drawCtx,
   FontHandle font);
 void ux_reset(CircuitUX *ux);
 void ux_free(CircuitUX *ux);

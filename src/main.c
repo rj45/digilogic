@@ -195,8 +195,7 @@ static void init(void *user_data) {
   draw_init(&app->draw, app->fsctx);
 
   ui_init(
-    &app->ui, circuit_component_descs(), &app->draw,
-    (FontHandle)&app->fonsFont);
+    &app->ui, circuit_symbol_descs(), &app->draw, (FontHandle)&app->fonsFont);
 
   app->ui.assetsys = app->assetsys;
 
