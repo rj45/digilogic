@@ -19,6 +19,6 @@
 
 #include "core/core.h"
 
-void import_digital(Circuit *circ, char *buffer);
+bool import_digital(Circuit *circ, char *buffer);
 
 #endif // IMPORT_H

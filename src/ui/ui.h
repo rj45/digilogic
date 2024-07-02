@@ -73,5 +73,6 @@ void ui_draw(CircuitUI *ui);
 bool ui_background_save(CircuitUI *ui, const char *filename, bool skipWhenBusy);
 void ui_reset(CircuitUI *ui);
 void ui_set_scale(CircuitUI *ui, int scale);
+bool ui_import(CircuitUI *ui, const char *filename);
 
 #endif // UI_H

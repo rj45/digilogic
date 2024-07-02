@@ -202,6 +202,10 @@ static void init(void *user_data) {
 
   app->pzoom = draw_get_zoom(&app->draw);
 
+  if (app->filename) {
+    ui_import(&app->ui, app->filename);
+  }
+
   log_info("initialization complete, entering main loop");
 }
 
@@ -390,9 +394,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 #endif
 
   my_app_t *app = malloc(sizeof(my_app_t));
-  *app = (my_app_t){
-    .filename = "testdata/alu_1bit_2gatemux.dig",
-  };
+  *app = (my_app_t){0};
 
   if (argc > 1) {
     app->filename = argv[1];

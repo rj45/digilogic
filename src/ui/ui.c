@@ -263,7 +263,24 @@ ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
   }
 }
 
-static void ui_load_example(CircuitUI *ui, const char *filename) {
+static bool ui_import_data(CircuitUI *ui, char *data) {
+  ui_reset(ui);
+
+  if (!import_digital(&ui->ux.view.circuit, data)) {
+    return false;
+  }
+
+  ux_route(&ui->ux);
+  ux_build_bvh(&ui->ux);
+
+  // autoroute_dump_anchor_boxes(ui->circuit.ux.router);
+
+  ui->showIntro = false;
+
+  return true;
+}
+
+static bool ui_load_example(CircuitUI *ui, const char *filename) {
   assetsys_file_t file;
   assetsys_file(ui->assetsys, filename, &file);
   int fileSize = assetsys_file_size(ui->assetsys, file);
@@ -273,18 +290,26 @@ static void ui_load_example(CircuitUI *ui, const char *filename) {
 
   log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  ui_reset(ui);
+  return ui_import_data(ui, buffer);
+}
 
-  import_digital(&ui->ux.view.circuit, buffer);
+bool ui_import(CircuitUI *ui, const char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    return false;
+  }
 
-  free(buffer);
+  fseek(fp, 0, SEEK_END);
+  int fileSize = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  char *buffer = malloc(fileSize + 1);
+  fread(buffer, 1, fileSize, fp);
+  buffer[fileSize] = 0;
+  fclose(fp);
 
-  ux_route(&ui->ux);
-  ux_build_bvh(&ui->ux);
+  log_info("Loading file %s, %d bytes\n", filename, fileSize);
 
-  // autoroute_dump_anchor_boxes(ui->circuit.ux.router);
-
-  ui->showIntro = false;
+  return ui_import_data(ui, buffer);
 }
 
 static void ui_intro_dialog(

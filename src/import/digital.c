@@ -52,11 +52,12 @@ typedef struct IVec2 {
 typedef struct WireEnd {
   IVec2 pos;
   bool visited;
-  enum { IN_PORT, OUT_PORT, WIRE, WAYPOINT } type;
+  enum { IN_PORT, OUT_PORT, WIRE, JUNCTION } type;
   union {
     PortRef portRef;
     IVec2 farSide;
   };
+  IVec2 midpoint;
 } WireEnd;
 
 typedef struct DigWire {
@@ -184,7 +185,7 @@ ID find_symbol_kind(Circuit *circ, const char *name) {
   return NO_ID;
 }
 
-void import_digital(Circuit *circ, char *buffer) {
+bool import_digital(Circuit *circ, char *buffer) {
   arr(uint32_t) stack = 0;
   arr(WireEnd) inPorts = 0;
   arr(WireEnd) outPorts = 0;
@@ -200,7 +201,7 @@ void import_digital(Circuit *circ, char *buffer) {
   LXMLDocument doc;
   if (!LXMLDocument_load_memory(&doc, buffer)) {
     log_error("Failed to load XML");
-    return;
+    return false;
   }
 
   LXMLNode *root = doc.root;
@@ -257,6 +258,11 @@ void import_digital(Circuit *circ, char *buffer) {
         }
       }
 
+      IVec2 midpoint = {
+        .x = (positions[0].x + positions[1].x) / 2,
+        .y = (positions[0].y + positions[1].y) / 2,
+      };
+
       DigWire digWire = {
         .valid = true,
         .ends =
@@ -264,10 +270,12 @@ void import_digital(Circuit *circ, char *buffer) {
             {
               .pos = positions[0],
               .type = WIRE,
+              .midpoint = midpoint,
             },
             {
               .pos = positions[1],
               .type = WIRE,
+              .midpoint = midpoint,
             },
           },
       };
@@ -553,7 +561,7 @@ void import_digital(Circuit *circ, char *buffer) {
           if (
             digWire->ends[k].pos.x == digWireEnds[i].key.x &&
             digWire->ends[k].pos.y == digWireEnds[i].key.y) {
-            digWire->ends[k].type = WAYPOINT;
+            digWire->ends[k].type = JUNCTION;
           }
         }
       }
@@ -596,12 +604,12 @@ void import_digital(Circuit *circ, char *buffer) {
           break;
         case WIRE:
           break;
-        case WAYPOINT: {
+        case JUNCTION: {
           bool found = false;
           for (int l = 0; l < arrlen(waypoints); l++) {
             if (
-              waypoints[l].pos.x == end->pos.x &&
-              waypoints[l].pos.y == end->pos.y) {
+              waypoints[l].pos.x == end->midpoint.x &&
+              waypoints[l].pos.y == end->midpoint.y) {
               found = true;
               break;
             }
@@ -612,16 +620,15 @@ void import_digital(Circuit *circ, char *buffer) {
             if (otherEnd->type == IN_PORT || otherEnd->type == OUT_PORT) {
               ref = otherEnd->portRef;
               log_debug(
-                "Waypoint at %d, %d belongs to {%x %x}", end->pos.x, end->pos.y,
-                ref.symbol, ref.port);
+                "Waypoint at %d, %d belongs to {%x %x}", end->midpoint.x,
+                end->midpoint.y, ref.symbol, ref.port);
             } else {
               log_debug(
-                "Waypoint at %d, %d has no port", end->pos.x, end->pos.y);
-              // TODO: pick the closest endpoint and attach the waypoint to it.
-              // Ideally we would put these waypoints on the root wire, but we
-              // don't know which wire that will be yet.
+                "Waypoint at %d, %d has no port", end->midpoint.x,
+                end->midpoint.y);
             }
-            arrput(waypoints, ((WireEnd){.pos = end->pos, .portRef = ref}));
+            arrput(
+              waypoints, ((WireEnd){.pos = end->midpoint, .portRef = ref}));
           }
           break;
         }
@@ -713,7 +720,12 @@ void import_digital(Circuit *circ, char *buffer) {
     arrsetlen(netWires, 0);
   }
 
+  bool ret = true;
+
+  goto pass;
 fail:
+  ret = false;
+pass:
   arrfree(stack);
   arrfree(inPorts);
   arrfree(outPorts);
@@ -725,4 +737,5 @@ fail:
   }
   hmfree(digWireEnds);
   LXMLDocument_free(&doc);
+  return ret;
 }
