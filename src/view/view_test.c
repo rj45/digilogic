@@ -68,7 +68,7 @@ UTEST(View, view_draw_symbols) {
 
   ASSERT_STREQ(
     "component(OR, v0, -)\n"
-    "label(component_name, v1, 'X0', -)\n"
+    "label(component_name, v1, 'X1', -)\n"
     "port(v2, -)\n"
     "port(v3, -)\n"
     "port(v4, -)\n",
@@ -114,12 +114,12 @@ UTEST(View, view_draw_component_with_wires) {
 
   ASSERT_STREQ(
     "component(XOR, v0, -)\n"
-    "label(component_name, v1, 'X0', -)\n"
+    "label(component_name, v1, 'X1', -)\n"
     "port(v2, -)\n"
     "port(v3, -)\n"
     "port(v4, -)\n"
     "component(OR, v5, -)\n"
-    "label(component_name, v6, 'X0', -)\n"
+    "label(component_name, v6, 'X2', -)\n"
     "port(v7, -)\n"
     "port(v8, -)\n"
     "port(v9, -)\n"

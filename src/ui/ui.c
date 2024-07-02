@@ -157,6 +157,10 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
       if (nk_menu_item_label(ctx, "Select None", NK_TEXT_LEFT)) {
         ux_select_none(&ui->ux);
       }
+      nk_spacer(ctx);
+      if (nk_menu_item_label(ctx, "Renumber", NK_TEXT_LEFT)) {
+        circ_renumber_symbols(&ui->ux.view.circuit, ui->ux.view.circuit.top);
+      }
       nk_menu_end(ctx);
     }
 

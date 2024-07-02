@@ -179,10 +179,73 @@ void circ_free(Circuit *circ) {
   }
 }
 
-// TODO: split symbol layout from loading symbol descs
+void circ_layout_symbol_kind(
+  Circuit *circ, SymbolLayout *layout, ID symbolKindID) {
+  float labelPadding = layout->labelPadding;
+
+  float width = layout->symbolWidth;
+
+  const char *name = circ_str_get(circ, circ_get(circ, symbolKindID, Name));
+
+  HMM_Vec2 labelSize = layout->textSize(layout->user, name);
+  if (labelSize.X + labelPadding * 2 > width) {
+    width = labelSize.X + labelPadding * 2;
+  }
+
+  int numInputPorts = 0;
+  int numOutputPorts = 0;
+  LinkedListIter it = circ_lliter(circ, symbolKindID);
+  while (circ_lliter_next(&it)) {
+    ID portID = it.current;
+
+    if (circ_has_tags(circ, portID, TAG_IN)) {
+      numInputPorts++;
+    } else {
+      numOutputPorts++;
+    }
+    const char *portName = circ_str_get(circ, circ_get(circ, portID, Name));
+    labelSize = layout->textSize(layout->user, portName);
+    float desiredHalfWidth = labelSize.X * 0.5f + labelPadding * 3;
+    if (desiredHalfWidth > width / 2) {
+      width = desiredHalfWidth * 2;
+    }
+  }
+
+  float height = fmaxf(numInputPorts, numOutputPorts) * layout->portSpacing +
+                 layout->portSpacing;
+
+  float leftInc = (height) / (numInputPorts + 1);
+  float rightInc = (height) / (numOutputPorts + 1);
+  float leftY = leftInc - height / 2;
+  float rightY = rightInc - height / 2;
+  float borderWidth = layout->borderWidth;
+
+  it = circ_lliter(circ, symbolKindID);
+  while (circ_lliter_next(&it)) {
+    ID portID = it.current;
+    if (circ_has_tags(circ, portID, TAG_IN)) {
+      Position position = HMM_V2(-width / 2 + borderWidth / 2, leftY);
+      circ_set_ptr(circ, portID, Position, &position);
+      leftY += leftInc;
+    } else {
+      Position position = HMM_V2(width / 2 - borderWidth / 2, rightY);
+      circ_set_ptr(circ, portID, Position, &position);
+      rightY += rightInc;
+    }
+  }
+
+  SymbolShape shape = circ_get(circ, symbolKindID, SymbolShape);
+  if (shape != SYMSHAPE_DEFAULT) {
+    // compensate for font based shapes being smaller
+    height -= height * 2.0f / 5.0f;
+  }
+
+  Size size = (Size){.Width = width, .Height = height};
+  circ_set_ptr(circ, symbolKindID, Size, &size);
+}
+
 void circ_load_symbol_descs(
   Circuit *circ, SymbolLayout *layout, const SymbolDesc *descs, size_t count) {
-  float labelPadding = layout->labelPadding;
   for (size_t i = 0; i < count; i++) {
     const SymbolDesc *symDesc = &descs[i];
     ID symID = circ_add(circ, SymbolKind);
@@ -190,37 +253,6 @@ void circ_load_symbol_descs(
     circ_set(
       circ, symID, Prefix, {circ_str(circ, (char[]){symDesc->namePrefix}, 1)});
     circ_set(circ, symID, SymbolShape, {symDesc->shape});
-
-    float width = layout->symbolWidth;
-
-    HMM_Vec2 labelSize = layout->textSize(layout->user, symDesc->typeName);
-    if (labelSize.X + labelPadding * 2 > width) {
-      width = labelSize.X + labelPadding * 2;
-    }
-
-    int numInputPorts = 0;
-    int numOutputPorts = 0;
-    for (int j = 0; j < symDesc->numPorts; j++) {
-      if (symDesc->ports[j].direction == PORT_IN) {
-        numInputPorts++;
-      } else if (symDesc->ports[j].direction != PORT_IN) {
-        numOutputPorts++;
-      }
-      labelSize = layout->textSize(layout->user, symDesc->ports[j].name);
-      float desiredHalfWidth = labelSize.X * 0.5f + labelPadding * 3;
-      if (desiredHalfWidth > width / 2) {
-        width = desiredHalfWidth * 2;
-      }
-    }
-
-    float height = fmaxf(numInputPorts, numOutputPorts) * layout->portSpacing +
-                   layout->portSpacing;
-
-    float leftInc = (height) / (numInputPorts + 1);
-    float rightInc = (height) / (numOutputPorts + 1);
-    float leftY = leftInc - height / 2;
-    float rightY = rightInc - height / 2;
-    float borderWidth = layout->borderWidth;
 
     for (size_t j = 0; j < symDesc->numPorts; j++) {
       PortDesc portDesc = symDesc->ports[j];
@@ -230,28 +262,15 @@ void circ_load_symbol_descs(
       circ_set(circ, portID, Number, {portDesc.number});
       if (portDesc.direction == PORT_IN || portDesc.direction == PORT_INOUT) {
         circ_add_tags(circ, portID, TAG_IN);
-        Position position = HMM_V2(-width / 2 + borderWidth / 2, leftY);
-        circ_set_ptr(circ, portID, Position, &position);
-        leftY += leftInc;
       }
       if (portDesc.direction == PORT_OUT || portDesc.direction == PORT_INOUT) {
         circ_add_tags(circ, portID, TAG_OUT);
-
-        Position position = HMM_V2(width / 2 - borderWidth / 2, rightY);
-        circ_set_ptr(circ, portID, Position, &position);
-        rightY += rightInc;
       }
 
       circ_linked_list_append(circ, symID, portID);
     }
 
-    if (symDesc->shape != SHAPE_DEFAULT) {
-      // compensate for font based shapes being smaller
-      height -= height * 2.0f / 5.0f;
-    }
-
-    Size size = (Size){.Width = width, .Height = height};
-    circ_set_ptr(circ, symID, Size, &size);
+    circ_layout_symbol_kind(circ, layout, symID);
   }
 }
 
@@ -607,6 +626,23 @@ ID circ_add_symbol(Circuit *circ, ID module, ID symbolKind) {
   circ_set(circ, symbolID, Parent, {module});
   circ_set(circ, symbolID, SymbolKindID, {symbolKind});
   circ_linked_list_append(circ, module, symbolID);
+
+  Prefix prefix = circ_get(circ, symbolKind, Prefix);
+  Number maxNumber = {0};
+  LinkedListIter it = circ_lliter(circ, module);
+  while (circ_lliter_next(&it)) {
+    ID otherSymbolID = it.current;
+    ID otherKindID = circ_get(circ, otherSymbolID, SymbolKindID);
+    Prefix otherPrefix = circ_get(circ, otherKindID, Prefix);
+    if (otherPrefix == prefix) {
+      Number number = circ_get(circ, otherSymbolID, Number);
+      if (number > maxNumber) {
+        maxNumber = number;
+      }
+    }
+  }
+  circ_set(circ, symbolID, Number, {maxNumber + 1});
+
   return symbolID;
 }
 
@@ -660,6 +696,77 @@ Box circ_get_symbol_box(Circuit *circ, ID id) {
     .center = position,
     .halfSize = HMM_MulV2F(size, 0.5f),
   };
+}
+
+typedef struct SymPos {
+  ID symbolID;
+  HMM_Vec2 position;
+} SymPos;
+
+static int compareSymPos(const void *a, const void *b) {
+  SymPos *symPosA = (SymPos *)a;
+  SymPos *symPosB = (SymPos *)b;
+
+  if ((int)(symPosA->position.X / 20.0f) < (int)(symPosB->position.X / 20.0f)) {
+    return -1;
+  }
+  if ((int)(symPosA->position.X / 20.0f) > (int)(symPosB->position.X / 20.0f)) {
+    return 1;
+  }
+
+  if (symPosA->position.Y < symPosB->position.Y) {
+    return -1;
+  }
+  if (symPosA->position.Y > symPosB->position.Y) {
+    return 1;
+  }
+
+  return 0;
+}
+
+void circ_renumber_symbols(Circuit *circ, ID moduleID) {
+  arr(Prefix) renumberedPrefixes = NULL;
+  arr(SymPos) order = NULL;
+
+  LinkedListIter it = circ_lliter(circ, moduleID);
+  while (circ_lliter_next(&it)) {
+    ID symbolID = it.current;
+    ID symbolKindID = circ_get(circ, symbolID, SymbolKindID);
+    Prefix prefix = circ_get(circ, symbolKindID, Prefix);
+    bool renumbered = false;
+    for (size_t i = 0; i < arrlen(renumberedPrefixes); i++) {
+      if (renumberedPrefixes[i] == prefix) {
+        renumbered = true;
+        break;
+      }
+    }
+    if (renumbered) {
+      continue;
+    }
+    arrput(renumberedPrefixes, prefix);
+
+    LinkedListIter it2 = circ_lliter(circ, moduleID);
+    while (circ_lliter_next(&it2)) {
+      ID symbolID2 = it2.current;
+      ID symbolKindID2 = circ_get(circ, symbolID2, SymbolKindID);
+      Prefix prefix2 = circ_get(circ, symbolKindID2, Prefix);
+      if (prefix2 == prefix) {
+        SymPos sympos = {symbolID2, circ_get(circ, symbolID2, Position)};
+        arrput(order, sympos);
+      }
+    }
+
+    qsort(order, arrlen(order), sizeof(SymPos), compareSymPos);
+
+    Number number = 1;
+    for (size_t i = 0; i < arrlen(order); i++) {
+      ID symbolID = order[i].symbolID;
+      circ_set(circ, symbolID, Number, {number});
+      number++;
+    }
+
+    arrsetlen(order, 0);
+  }
 }
 
 // ---

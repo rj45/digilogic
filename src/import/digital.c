@@ -720,6 +720,8 @@ bool import_digital(Circuit *circ, char *buffer) {
     arrsetlen(netWires, 0);
   }
 
+  circ_renumber_symbols(circ, circ->top);
+
   bool ret = true;
 
   goto pass;
