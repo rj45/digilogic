@@ -255,7 +255,6 @@ void cl_redo(ChangeLog *log);
 
 // default SymbolDescIDs for the built-in components
 enum {
-  COMP_NONE,
   COMP_AND,
   COMP_OR,
   COMP_XOR,

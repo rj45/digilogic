@@ -65,10 +65,6 @@ const SymbolDesc *circuit_symbol_descs() {
   };
 
   static const SymbolDesc descs[] = {
-    [COMP_NONE] =
-      {
-        .typeName = "NONE",
-      },
     [COMP_AND] =
       {
         .typeName = "AND",
@@ -187,8 +183,7 @@ void circ_free(Circuit *circ) {
 void circ_load_symbol_descs(
   Circuit *circ, SymbolLayout *layout, const SymbolDesc *descs, size_t count) {
   float labelPadding = layout->labelPadding;
-  // start at 1 to skip the NONE component
-  for (size_t i = 1; i < count; i++) {
+  for (size_t i = 0; i < count; i++) {
     const SymbolDesc *symDesc = &descs[i];
     ID symID = circ_add(circ, SymbolKind);
     circ_set(circ, symID, Name, {circ_str_c(circ, symDesc->typeName)});

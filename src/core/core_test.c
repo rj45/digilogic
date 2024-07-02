@@ -285,15 +285,15 @@ UTEST(Circuit, circ_load_symbol_descs) {
 
   // TODO: make more thorough
 
-  ASSERT_EQ(circuit.symbolKind.length, COMP_COUNT - 1);
+  ASSERT_EQ(circuit.symbolKind.length, COMP_COUNT);
   ASSERT_STREQ(
-    circ_str_get(&circuit, circuit.symbolKind.name[COMP_AND - 1]), "AND");
+    circ_str_get(&circuit, circuit.symbolKind.name[COMP_AND]), "AND");
   ASSERT_STREQ(
-    circ_str_get(&circuit, circuit.symbolKind.prefix[COMP_AND - 1]), "X");
-  ASSERT_EQ(circuit.symbolKind.shape[COMP_AND - 1], SYMSHAPE_AND);
+    circ_str_get(&circuit, circuit.symbolKind.prefix[COMP_AND]), "X");
+  ASSERT_EQ(circuit.symbolKind.shape[COMP_AND], SYMSHAPE_AND);
 
   int count = 0;
-  PortID portID = circuit.symbolKind.ports[COMP_AND - 1].head;
+  PortID portID = circuit.symbolKind.ports[COMP_AND].head;
   while (circ_has(&circuit, portID)) {
     count++;
     portID = circuit.port.list[circ_row_for_id(&circuit, portID)].next;
