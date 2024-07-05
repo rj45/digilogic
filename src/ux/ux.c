@@ -61,6 +61,7 @@ void ux_reset(CircuitUX *ux) {
   ux->zoomExp = 1.0f;
 
   ux_route(ux);
+  circ_commit(&ux->view.circuit);
   ux_build_bvh(ux);
 }
 

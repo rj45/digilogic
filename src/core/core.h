@@ -202,49 +202,59 @@ arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result);
 
 #define MAX_COMPONENT_SIZE 10
 
-typedef struct LogUpdate {
-  uint32_t row;
-  uint8_t column;
-  uint8_t size;
-  uint8_t newValue[MAX_COMPONENT_SIZE];
-} LogUpdate;
-
 typedef struct LogEntry {
   PACK(enum {
     LOG_CREATE,
     LOG_DELETE,
     LOG_UPDATE,
+    LOG_MASK = 0x3,
+    LOG_COMMIT = 1 << 7,
   })
   verb;
-  uint16_t table;
+  uint8_t psize;
+  uint8_t size;
+  uint8_t table;
   ID id;
-  uint32_t dataIndex;
 } LogEntry;
 
+typedef struct LogUpdate {
+  LogEntry header;
+  uint8_t column;
+  uint8_t valueSize;
+  uint8_t newValue[];
+} LogUpdate;
+
 typedef struct ChangeLog {
-  arr(LogEntry) log;
-  arr(LogUpdate) updates;
-  arr(size_t) commitPoints;
-  size_t redoIndex;
+  // buffer of variable sized log entries
+  uint8_t *log;
+  size_t capacity;
+
+  LogEntry *lastCommitStart;
+  LogEntry *lastEntry;
+  LogEntry *nextEntry;
+
+  LogEntry *redoEnd;
 
   void *user;
   void (*cl_revert_snapshot)(void *user);
-  void (*cl_replay_create)(void *user, ID id);
-  void (*cl_replay_delete)(void *user, ID id);
+  void (*cl_replay_create)(void *user, ID id, uint8_t table);
+  void (*cl_replay_delete)(void *user, ID id, uint8_t table);
   void (*cl_replay_update)(
-    void *user, ID id, uint16_t table, uint16_t column, uint32_t row,
-    void *data, size_t size);
+    void *user, ID id, uint8_t table, uint8_t column, void *data, size_t size);
 } ChangeLog;
 
 void cl_init(ChangeLog *log);
 void cl_free(ChangeLog *log);
 
+void cl_clear(ChangeLog *log);
 void cl_commit(ChangeLog *log);
-void cl_create(ChangeLog *log, ID id, uint16_t table);
-void cl_delete(ChangeLog *log, ID id);
+void cl_create(ChangeLog *log, ID id, uint8_t table);
+void cl_delete(ChangeLog *log, ID id, uint8_t table);
 void cl_update(
-  ChangeLog *log, ID id, uint16_t table, uint16_t column, uint32_t row,
-  void *newValue, size_t size);
+  ChangeLog *log, ID id, uint8_t table, uint8_t column, void *newValue,
+  size_t size);
+void cl_tag(ChangeLog *log, ID id, uint8_t table, uint16_t tag);
+void cl_untag(ChangeLog *log, ID id, uint8_t table, uint16_t tag);
 
 void cl_undo(ChangeLog *log);
 void cl_redo(ChangeLog *log);
@@ -694,6 +704,7 @@ typedef struct Circuit {
 
   // changelog & events
   ChangeLog log;
+  struct Circuit *snapshot;
 } Circuit;
 
 static inline bool circ_has(Circuit *circuit, ID id) {
@@ -797,10 +808,13 @@ void circ_linked_list_remove(Circuit *circ, ID parent, ID child);
 
 static inline void
 circ_set_(Circuit *circuit, int table, int row, int column, void *value) {
-  memcpy(
-    circ_table_component_ptr(circuit, table, column, row), value,
-    circuit->tableMeta[table].componentSize[column]);
+  size_t size = circuit->tableMeta[table].componentSize[column];
+  memcpy(circ_table_component_ptr(circuit, table, column, row), value, size);
+  cl_update(
+    &circuit->log, circuit->table[table]->id[row], table, column, value, size);
 }
+
+static inline void circ_commit(Circuit *circuit) { cl_commit(&circuit->log); }
 
 //////////////////////////////////////////
 // Iterator
@@ -870,6 +884,10 @@ static inline bool circ_lliter_next(LinkedListIter *iter) {
 }
 
 static inline ID circ_lliter_get(LinkedListIter *iter) { return iter->current; }
+
+void circ_snapshot(Circuit *circ);
+void circ_undo(Circuit *circ);
+void circ_redo(Circuit *circ);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Higher level functions

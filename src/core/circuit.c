@@ -117,6 +117,12 @@ const SymbolDesc *circuit_symbol_descs() {
 
 const size_t componentSizes[COMPONENT_COUNT] = {COMPONENT_SIZES_LIST};
 
+static void circ_cl_revert_snapshot(void *user);
+static void circ_cl_replay_create(void *user, ID id, uint8_t table);
+static void circ_cl_replay_delete(void *user, ID id, uint8_t table);
+static void circ_cl_replay_update(
+  void *user, ID id, uint8_t table, uint8_t column, void *data, size_t size);
+
 void circ_init(Circuit *circ) {
   *circ = (Circuit){0};
 
@@ -128,6 +134,13 @@ void circ_init(Circuit *circ) {
                       .block_size = 4096,
                       .min_length = 8,
                     });
+
+  cl_init(&circ->log);
+  circ->log.user = circ;
+  circ->log.cl_revert_snapshot = circ_cl_revert_snapshot;
+  circ->log.cl_replay_create = circ_cl_replay_create;
+  circ->log.cl_replay_delete = circ_cl_replay_delete;
+  circ->log.cl_replay_update = circ_cl_replay_update;
 
   // get pointers to each table
   circ->table[TYPE_PORT] = (Table *)&circ->port;
@@ -176,6 +189,11 @@ void circ_free(Circuit *circ) {
   arrfree(circ->freelist);
   if (!circ->foreignStrpool) {
     strpool_term(&circ->strpool);
+  }
+  cl_free(&circ->log);
+  if (circ->snapshot) {
+    circ_free(circ->snapshot);
+    free(circ->snapshot);
   }
 }
 
@@ -328,12 +346,23 @@ static void circ_grow_table(Circuit *circ, EntityType type, size_t newLength) {
 }
 
 void circ_clone(Circuit *dst, Circuit *src) {
-  // TODO: this should look at the logs and play back new log entries in dst
-
   circ_grow_entities(dst, src->capacity);
   memcpy(dst->generations, src->generations, src->capacity * sizeof(uint8_t));
   memcpy(dst->typeTags, src->typeTags, src->capacity * sizeof(uint16_t));
   memcpy(dst->rows, src->rows, src->capacity * sizeof(uint32_t));
+
+  if (dst->capacity > src->capacity) {
+    memset(
+      &dst->generations[src->capacity], 0,
+      (dst->capacity - src->capacity) * sizeof(uint8_t));
+    memset(
+      &dst->typeTags[src->capacity], 0,
+      (dst->capacity - src->capacity) * sizeof(uint16_t));
+    memset(
+      &dst->rows[src->capacity], 0,
+      (dst->capacity - src->capacity) * sizeof(uint32_t));
+  }
+
   dst->numEntities = src->numEntities;
   arrsetlen(dst->freelist, arrlen(src->freelist));
   memcpy(dst->freelist, src->freelist, arrlen(src->freelist) * sizeof(ID));
@@ -354,16 +383,25 @@ void circ_clone(Circuit *dst, Circuit *src) {
     dstTable->length = srcTable->length;
   }
 
-  if (!dst->foreignStrpool) {
-    // free the old strpool before we overwrite it
-    strpool_term(&dst->strpool);
-  }
+  // if (!dst->foreignStrpool) {
+  //   // free the old strpool before we overwrite it
+  //   strpool_term(&dst->strpool);
+  // }
 
-  // TODO: must be something better than this.... probably will be solved by
-  // log playback
-  memcpy(&dst->strpool, &src->strpool, sizeof(strpool_t));
-  dst->foreignStrpool = true;
+  // TODO: must be something better than this.... need my own strpool impl
+  // memcpy(&dst->strpool, &src->strpool, sizeof(strpool_t));
+  // dst->foreignStrpool = true;
 }
+
+void circ_snapshot(Circuit *circ) {
+  circ->snapshot = malloc(sizeof(Circuit));
+  circ_init(circ->snapshot);
+  circ_clone(circ->snapshot, circ);
+  cl_clear(&circ->log);
+}
+
+void circ_undo(Circuit *circ) { cl_undo(&circ->log); }
+void circ_redo(Circuit *circ) { cl_redo(&circ->log); }
 
 static void circ_add_impl(Circuit *circ, EntityType type, ID id) {
   Table *header = circ->table[type];
@@ -388,7 +426,7 @@ static void circ_add_impl(Circuit *circ, EntityType type, ID id) {
   header->id[row] = id;
 }
 
-void circ_add_type_id(Circuit *circ, EntityType type, ID id) {
+static void circ_add_type_id_wo_log(Circuit *circ, EntityType type, ID id) {
   assert(id_gen(id) > 0);
   circ_grow_entities(circ, id_index(id) + 1);
   assert(circ->generations[id_index(id)] == 0); // id must be unique
@@ -403,18 +441,23 @@ void circ_add_type_id(Circuit *circ, EntityType type, ID id) {
   circ_add_impl(circ, type, id);
 }
 
+void circ_add_type_id(Circuit *circ, EntityType type, ID id) {
+  circ_add_type_id_wo_log(circ, type, id);
+  cl_create(&circ->log, id, type);
+}
+
 ID circ_add_type(Circuit *circ, EntityType type) {
   circ_grow_entities(circ, circ->numEntities + 1);
   ID id = arrpop(circ->freelist);
   circ_add_impl(circ, type, id);
+  cl_create(&circ->log, id, type);
   return id;
 }
 
-void circ_remove(Circuit *circ, ID id) {
+static void circ_remove_wo_log(Circuit *circ, ID id, EntityType type) {
   assert(circ_has(circ, id));
 
   // remove the entity from table
-  EntityType type = tagtype_type(circ->typeTags[id_index(id)]);
   Table *table = circ->table[type];
   int row = circ->rows[id_index(id)];
   int lastRow = table->length - 1;
@@ -441,9 +484,16 @@ void circ_remove(Circuit *circ, ID id) {
   circ->numEntities--;
 }
 
+void circ_remove(Circuit *circ, ID id) {
+  EntityType type = tagtype_type(circ->typeTags[id_index(id)]);
+  circ_remove_wo_log(circ, id, type);
+  cl_delete(&circ->log, id, type);
+}
+
 void circ_add_tags(Circuit *circ, ID id, Tag tags) {
   assert(circ_has(circ, id));
   circ->typeTags[id_index(id)] |= tags;
+  cl_tag(&circ->log, id, tagtype_type(circ->typeTags[id_index(id)]), tags);
 }
 
 bool circ_has_tags(Circuit *circ, ID id, Tag tags) {
@@ -967,4 +1017,26 @@ void circ_remove_module(Circuit *circ, ID id) {
   circ_remove_symbol_kind(circ, circ_get(circ, id, SymbolKindID));
   circ_str_free(circ, circ_get(circ, id, Name));
   circ_remove(circ, id);
+}
+
+static void circ_cl_revert_snapshot(void *user) {
+  Circuit *circ = (Circuit *)user;
+  circ_clone(circ, circ->snapshot);
+}
+
+static void circ_cl_replay_create(void *user, ID id, uint8_t table) {
+  Circuit *circ = (Circuit *)user;
+  circ_add_type_id_wo_log(circ, table, id);
+}
+
+static void circ_cl_replay_delete(void *user, ID id, uint8_t table) {
+  Circuit *circ = (Circuit *)user;
+  circ_remove_wo_log(circ, id, table);
+}
+
+static void circ_cl_replay_update(
+  void *user, ID id, uint8_t table, uint8_t column, void *data, size_t size) {
+  Circuit *circ = (Circuit *)user;
+  size_t row = circ->rows[id_index(id)];
+  memcpy(circ_table_component_ptr(circ, table, column, row), data, size);
 }

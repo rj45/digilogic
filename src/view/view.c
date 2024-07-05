@@ -85,6 +85,8 @@ void view_init(
   circ_load_symbol_descs(&view->circuit, &layout, componentDescs, COMP_COUNT);
 
   view->circuit.top = circ_add_module(&view->circuit);
+
+  circ_snapshot(&view->circuit);
 }
 
 void view_reset(CircuitView *view) {

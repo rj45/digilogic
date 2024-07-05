@@ -19,6 +19,10 @@
 #include "core.h"
 #include "utest.h"
 
+static HMM_Vec2 testTextSize(void *user, const char *text) {
+  return HMM_V2(strlen(text) * 8, 8);
+}
+
 UTEST(bv, setlen) {
   bv(uint64_t) bv = NULL;
   bv_setlen(bv, 100);
@@ -60,17 +64,10 @@ UTEST(bv, clear_bit) {
 UTEST(ChangeLog, new) {
   ChangeLog log;
   cl_init(&log);
-  ASSERT_EQ(arrlen(log.log), 0);
-  ASSERT_EQ(log.redoIndex, 0);
-  cl_free(&log);
-}
-
-UTEST(ChangeLog, commit) {
-  ChangeLog log;
-  cl_init(&log);
-  cl_commit(&log);
-  ASSERT_EQ(arrlen(log.commitPoints), 1);
-  ASSERT_EQ(log.redoIndex, 1);
+  ASSERT_NE(log.log, NULL);
+  ASSERT_EQ(log.nextEntry, (LogEntry *)log.log);
+  ASSERT_EQ(log.lastEntry, NULL);
+  ASSERT_EQ(log.lastCommitStart, log.nextEntry);
   cl_free(&log);
 }
 
@@ -78,36 +75,101 @@ UTEST(ChangeLog, create) {
   ChangeLog log;
   cl_init(&log);
   cl_create(&log, id_make(0, 1, 1), 2);
-  ASSERT_EQ(arrlen(log.log), 1);
-  ASSERT_EQ(log.log[0].verb, LOG_CREATE);
-  ASSERT_EQ(log.log[0].id, id_make(0, 1, 1));
-  ASSERT_EQ(log.log[0].table, 2);
+  ASSERT_EQ(log.lastEntry->verb, LOG_CREATE);
+  ASSERT_EQ(log.lastEntry->id, id_make(0, 1, 1));
+  ASSERT_EQ(log.lastEntry->table, 2);
   cl_free(&log);
 }
 
 UTEST(ChangeLog, delete) {
   ChangeLog log;
   cl_init(&log);
-  cl_delete(&log, id_make(0, 1, 1));
-  ASSERT_EQ(arrlen(log.log), 1);
-  ASSERT_EQ(log.log[0].verb, LOG_DELETE);
-  ASSERT_EQ(log.log[0].id, id_make(0, 1, 1));
+  cl_delete(&log, id_make(0, 1, 1), 2);
+  ASSERT_EQ(log.lastEntry->verb, LOG_DELETE);
+  ASSERT_EQ(log.lastEntry->id, id_make(0, 1, 1));
+  ASSERT_EQ(log.lastEntry->table, 2);
+  cl_free(&log);
+}
+
+UTEST(ChangeLog, commit) {
+  ChangeLog log;
+  cl_init(&log);
+  cl_create(&log, id_make(0, 1, 1), 2);
+  cl_commit(&log);
+  ASSERT_EQ(log.lastEntry->verb, LOG_CREATE | LOG_COMMIT);
+  ASSERT_EQ(log.lastCommitStart, log.nextEntry);
   cl_free(&log);
 }
 
 UTEST(ChangeLog, update) {
   ChangeLog log;
   cl_init(&log);
-  cl_update(&log, id_make(0, 1, 1), 1, 2, 3, &(int){4}, sizeof(int));
-  ASSERT_EQ(arrlen(log.log), 1);
-  ASSERT_EQ(log.log[0].verb, LOG_UPDATE);
-  ASSERT_EQ(log.log[0].id, id_make(0, 1, 1));
-  ASSERT_EQ(log.log[0].table, 1);
-  ASSERT_EQ(log.updates[0].column, 2);
-  ASSERT_EQ(log.updates[0].row, 3);
-  ASSERT_EQ(log.updates[0].size, sizeof(int));
-  ASSERT_EQ(*(int *)log.updates[0].newValue, 4);
+  cl_update(&log, id_make(0, 1, 1), 1, 2, &(uint8_t){4}, sizeof(uint8_t));
+  ASSERT_EQ(log.lastEntry->verb, LOG_UPDATE);
+  ASSERT_EQ(log.lastEntry->id, id_make(0, 1, 1));
+  ASSERT_EQ(log.lastEntry->table, 1);
+  // +3 is to correct for alignment
+  ASSERT_EQ(log.lastEntry->size, sizeof(LogUpdate) + sizeof(uint8_t) + 3);
+  LogUpdate *update = (LogUpdate *)log.lastEntry;
+  ASSERT_EQ(update->column, 2);
+  ASSERT_EQ(update->newValue[0], 4);
   cl_free(&log);
+}
+
+UTEST(ChangeLog, end_to_end) {
+  Circuit circuit;
+  circ_init(&circuit);
+  SymbolLayout layout = (SymbolLayout){
+    .portSpacing = 20.0f,
+    .symbolWidth = 55.0f,
+    .borderWidth = 1.0f,
+    .labelPadding = 2.0f,
+    .user = NULL,
+    .textSize = testTextSize,
+  };
+  circ_load_symbol_descs(&circuit, &layout, circuit_symbol_descs(), COMP_COUNT);
+
+  circuit.top = circ_add_module(&circuit);
+  circ_snapshot(&circuit);
+
+  ID symID1 = circ_add_symbol(
+    &circuit, circuit.top, circ_get_symbol_kind_by_name(&circuit, "AND"));
+  circ_commit(&circuit);
+  ID symID2 = circ_add_symbol(
+    &circuit, circuit.top, circ_get_symbol_kind_by_name(&circuit, "OR"));
+  circ_commit(&circuit);
+  ID symID3 = circ_add_symbol(
+    &circuit, circuit.top, circ_get_symbol_kind_by_name(&circuit, "XOR"));
+  circ_commit(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 3);
+
+  circ_undo(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 2);
+
+  circ_undo(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 1);
+
+  circ_undo(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 0);
+
+  circ_redo(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 1);
+  ASSERT_TRUE(circ_has(&circuit, symID1));
+
+  circ_redo(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 2);
+  ASSERT_TRUE(circ_has(&circuit, symID2));
+
+  circ_redo(&circuit);
+
+  ASSERT_EQ(circ_len(&circuit, Symbol), 3);
+  ASSERT_TRUE(circ_has(&circuit, symID3));
 }
 
 ////////////////////////
@@ -264,10 +326,6 @@ UTEST(Circuit, circ_remove_enitity_beginning) {
   ASSERT_FALSE(circ_has(&circuit, id2));
   ASSERT_FALSE(circ_has(&circuit, id3));
   circ_free(&circuit);
-}
-
-static HMM_Vec2 testTextSize(void *user, const char *text) {
-  return HMM_V2(strlen(text) * 8, 8);
 }
 
 UTEST(Circuit, circ_load_symbol_descs) {

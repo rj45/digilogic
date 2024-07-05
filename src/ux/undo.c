@@ -247,33 +247,37 @@ static UndoCommand ux_flip_command(UndoCommand cmd) {
 }
 
 UndoCommand ux_undo(CircuitUX *ux) {
-  if (arrlen(ux->undoStack) == 0) {
-    return (UndoCommand){0};
-  }
+  // if (arrlen(ux->undoStack) == 0) {
+  //   return (UndoCommand){0};
+  // }
 
-  UndoCommand cmd = arrpop(ux->undoStack);
+  // UndoCommand cmd = arrpop(ux->undoStack);
 
-  // push the opposite of the command to the redo stack
-  UndoCommand redoCmd = ux_flip_command(cmd);
-  arrput(ux->redoStack, redoCmd);
+  // // push the opposite of the command to the redo stack
+  // UndoCommand redoCmd = ux_flip_command(cmd);
+  // arrput(ux->redoStack, redoCmd);
 
-  ux_perform_command(ux, redoCmd);
+  // ux_perform_command(ux, redoCmd);
+  circ_undo(&ux->view.circuit);
+  ux_route(ux);
   ux_build_bvh(ux);
-  return cmd;
+  return (UndoCommand){0};
 }
 
 UndoCommand ux_redo(CircuitUX *ux) {
-  if (arrlen(ux->redoStack) == 0) {
-    return (UndoCommand){0};
-  }
+  // if (arrlen(ux->redoStack) == 0) {
+  //   return (UndoCommand){0};
+  // }
 
-  UndoCommand cmd = arrpop(ux->redoStack);
+  // UndoCommand cmd = arrpop(ux->redoStack);
 
-  // push the opposite of the command to the undo stack
-  UndoCommand undoCmd = ux_flip_command(cmd);
-  arrput(ux->undoStack, undoCmd);
+  // // push the opposite of the command to the undo stack
+  // UndoCommand undoCmd = ux_flip_command(cmd);
+  // arrput(ux->undoStack, undoCmd);
 
-  ux_perform_command(ux, undoCmd);
+  // ux_perform_command(ux, undoCmd);
+  circ_redo(&ux->view.circuit);
+  ux_route(ux);
   ux_build_bvh(ux);
-  return cmd;
+  return (UndoCommand){0};
 }

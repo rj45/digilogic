@@ -249,6 +249,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       case STATE_MOVE_SELECTION:
         // rebuild the BVH after moving things
         ux_build_bvh(ux);
+        circ_commit(&ux->view.circuit);
         break;
 
       case STATE_CLICK_WIRING:
@@ -263,6 +264,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
           circ_get(&ux->view.circuit, ux->addingSymbol, SymbolKindID);
         Position pos = circ_get(&ux->view.circuit, ux->addingSymbol, Position);
         ux_do(ux, undo_cmd_add_symbol(pos, ux->addingSymbol, kindID));
+        circ_commit(&ux->view.circuit);
         ux_start_adding_symbol(ux, kindID);
 
         // rebuild the BVH after adding things
@@ -350,6 +352,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
             ux_connect_wire(
               ux, (PortRef){.symbol = ux->view.hovered[i].item, .port = id});
             ux_route(ux);
+            circ_commit(&ux->view.circuit);
             break;
           }
         }
@@ -359,6 +362,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         ux_cancel_wire(ux);
 
         ux_route(ux);
+        circ_commit(&ux->view.circuit);
 
         // rebuild the BVH after removing things
         ux_build_bvh(ux);
@@ -369,6 +373,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
         ux_add_waypoint(ux, worldMousePos);
         ux_route(ux);
         ux_build_bvh(ux);
+        circ_commit(&ux->view.circuit);
         break;
 
       default:

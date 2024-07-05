@@ -118,6 +118,7 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
           circ_clear(&ui->ux.view.circuit);
           circ_load_file(&ui->ux.view.circuit, loadfile);
           ux_route(&ui->ux);
+          circ_commit(&ui->ux.view.circuit);
           ux_build_bvh(&ui->ux);
           ui->showIntro = false;
         }
@@ -275,6 +276,7 @@ static bool ui_import_data(CircuitUI *ui, char *data) {
   }
 
   ux_route(&ui->ux);
+  circ_commit(&ui->ux.view.circuit);
   ux_build_bvh(&ui->ux);
 
   // autoroute_dump_anchor_boxes(ui->circuit.ux.router);
@@ -346,6 +348,7 @@ static void ui_intro_dialog(
         if (nk_button_label(ctx, "Load auto-save")) {
           circ_load_file(&ui->ux.view.circuit, platform_autosave_path());
           ux_route(&ui->ux);
+          circ_commit(&ui->ux.view.circuit);
           ux_build_bvh(&ui->ux);
           ui->showIntro = false;
         }
