@@ -21,6 +21,8 @@
 #define LOG_LEVEL LL_DEBUG
 #include "log.h"
 
+#define cl_entry_at(log, offset) ((LogEntry *)((uint8_t *)log->log + (offset)))
+
 void cl_init(ChangeLog *log) {
   *log = (ChangeLog){0};
   log->capacity = 1024;
@@ -28,34 +30,40 @@ void cl_init(ChangeLog *log) {
   if (log->log == NULL) {
     abort();
   }
-  log->nextEntry = (LogEntry *)log->log;
-  log->nextEntry->psize = 0;
-  log->lastCommitStart = NULL;
+  cl_clear(log);
 }
 
-void cl_free(ChangeLog *log) { free(log->log); }
+void cl_free(ChangeLog *log) {
+  free(log->log);
+  arrfree(log->commits);
+  arrfree(log->poppedCommits);
+}
 
 void cl_clear(ChangeLog *log) {
-  log->nextEntry = (LogEntry *)log->log;
-  log->lastCommitStart = NULL;
-  log->lastEntry = NULL;
-  log->redoEnd = NULL;
+  log->nextEntry = 0;
+  cl_entry_at(log, log->nextEntry)->psize = 0;
+  log->lastEntry = NO_LOG_INDEX;
+
+  arrsetlen(log->commits, 1);
+  log->commits[0] = 0;
+
+  arrsetlen(log->poppedCommits, 0);
+
+  log_debug("<<<CLEAR>>>");
 }
 
 static void cl_advance(ChangeLog *log) {
   // advance the pointers
   log->lastEntry = log->nextEntry;
-  log->nextEntry =
-    (LogEntry *)((uint8_t *)log->nextEntry + log->nextEntry->size);
-  log->nextEntry->psize = log->lastEntry->size;
+  log_debug(
+    "Advancing log by %d bytes", cl_entry_at(log, log->nextEntry)->size);
+  log->nextEntry += cl_entry_at(log, log->nextEntry)->size;
+  cl_entry_at(log, log->nextEntry)->psize =
+    cl_entry_at(log, log->lastEntry)->size;
 }
 
 static void cl_expand(ChangeLog *log, size_t size) {
-  size_t oldSize = (uint8_t *)log->nextEntry - (uint8_t *)log->log;
-  if (log->redoEnd != NULL) {
-    oldSize = (uint8_t *)log->redoEnd - (uint8_t *)log->log;
-  }
-  size_t newSize = oldSize + size;
+  size_t newSize = log->nextEntry + size + sizeof(LogEntry);
   if (newSize < log->capacity) {
     return;
   }
@@ -64,68 +72,56 @@ static void cl_expand(ChangeLog *log, size_t size) {
     newCapacity *= 2;
   }
 
-  // save offsets of pointers
-  ptrdiff_t lastCommitOffset =
-    log->lastCommitStart == NULL
-      ? -1
-      : (uint8_t *)log->lastCommitStart - (uint8_t *)log->log;
-  ptrdiff_t lastOffset = log->lastEntry == NULL
-                           ? -1
-                           : (uint8_t *)log->lastEntry - (uint8_t *)log->log;
-  size_t nextOffset = (uint8_t *)log->nextEntry - (uint8_t *)log->log;
-  ptrdiff_t redoEndOffset =
-    log->redoEnd == NULL ? -1 : (uint8_t *)log->redoEnd - (uint8_t *)log->log;
-
   log->log = realloc(log->log, newCapacity);
   if (log->log == NULL) {
     // TODO: handle OOM better
     abort();
   }
   log->capacity = newCapacity;
-
-  // restore pointers
-  log->lastCommitStart =
-    lastCommitOffset == -1
-      ? NULL
-      : (LogEntry *)((uint8_t *)log->log + lastCommitOffset);
-  log->lastEntry =
-    lastOffset == -1 ? NULL : (LogEntry *)((uint8_t *)log->log + lastOffset);
-  log->nextEntry = (LogEntry *)((uint8_t *)log->log + nextOffset);
-  log->redoEnd = redoEndOffset == -1
-                   ? NULL
-                   : (LogEntry *)((uint8_t *)log->log + redoEndOffset);
 }
 
-static inline void cl_truncate_redo(ChangeLog *log) { log->redoEnd = NULL; }
+static inline void cl_truncate_redo(ChangeLog *log) {
+  arrsetlen(log->poppedCommits, 0);
+}
 
 void cl_commit(ChangeLog *log) {
   cl_truncate_redo(log);
 
   log_debug("<<COMMIT>>");
 
-  log->lastCommitStart = log->nextEntry;
-  if (log->lastEntry != NULL) {
-    log->lastEntry->verb |= LOG_COMMIT;
+  if (log->commits[arrlen(log->commits) - 1] == log->nextEntry) {
+    log_debug("No changes to commit");
+    return;
   }
+
+  // mark the last entry as a commit
+  if (log->lastEntry != NO_LOG_INDEX) {
+    cl_entry_at(log, log->lastEntry)->verb |= LOG_COMMIT;
+  }
+
+  // add the commit to the list of commits
+  arrput(log->commits, log->nextEntry);
 }
 
 void cl_create(ChangeLog *log, ID id, uint8_t table) {
   cl_truncate_redo(log);
   cl_expand(log, sizeof(LogEntry));
-  log->nextEntry->verb = LOG_CREATE;
-  log->nextEntry->id = id;
-  log->nextEntry->table = table;
-  log->nextEntry->size = sizeof(LogEntry);
+  LogEntry *entry = cl_entry_at(log, log->nextEntry);
+  entry->verb = LOG_CREATE;
+  entry->id = id;
+  entry->table = table;
+  entry->size = sizeof(LogEntry);
   cl_advance(log);
 }
 
 void cl_delete(ChangeLog *log, ID id, uint8_t table) {
   cl_truncate_redo(log);
   cl_expand(log, sizeof(LogEntry));
-  log->nextEntry->verb = LOG_DELETE;
-  log->nextEntry->id = id;
-  log->nextEntry->table = table;
-  log->nextEntry->size = sizeof(LogEntry);
+  LogEntry *entry = cl_entry_at(log, log->nextEntry);
+  entry->verb = LOG_DELETE;
+  entry->id = id;
+  entry->table = table;
+  entry->size = sizeof(LogEntry);
   cl_advance(log);
 }
 
@@ -137,8 +133,9 @@ void cl_update(
   // scan entries since the last commit for an existing update we can
   // overwrite. This ensures things like dragging a component around only
   // creates a single change log entry for a given commit.
-  LogEntry *entry = log->lastCommitStart;
-  while (entry != log->nextEntry && entry != NULL) {
+  LogEntry *entry = cl_entry_at(log, log->commits[arrlen(log->commits) - 1]);
+  LogEntry *nextEntry = cl_entry_at(log, log->nextEntry);
+  while (entry != nextEntry) {
     if (
       (entry->verb & LOG_MASK) == LOG_UPDATE && entry->id == id &&
       entry->table == table) {
@@ -158,12 +155,14 @@ void cl_update(
     entrySize += alignof(LogUpdate) - (entrySize % alignof(LogUpdate));
   }
 
-  cl_expand(log, sizeof(LogUpdate) + entrySize);
-  log->nextEntry->verb = LOG_UPDATE;
-  log->nextEntry->id = id;
-  log->nextEntry->table = table;
-  log->nextEntry->size = entrySize;
-  LogUpdate *update = (LogUpdate *)log->nextEntry;
+  cl_expand(log, entrySize);
+
+  LogEntry *next = cl_entry_at(log, log->nextEntry);
+  next->verb = LOG_UPDATE;
+  next->id = id;
+  next->table = table;
+  next->size = entrySize;
+  LogUpdate *update = (LogUpdate *)next;
   update->column = column;
   update->valueSize = size;
   memcpy(update->newValue, newValue, size);
@@ -207,52 +206,21 @@ static void cl_replay_entry(ChangeLog *log, LogEntry *entry) {
 void cl_undo(ChangeLog *log) {
   log_debug("Undoing changes");
 
-  if (log->lastCommitStart == NULL) {
+  if (arrlen(log->commits) <= 1) {
     return;
   }
 
-  if (log->redoEnd == NULL) {
-    log->redoEnd = log->nextEntry;
-  }
+  // there should be no outstanding uncommitted changes
+  LogIndex currentCommitStart = arrpop(log->commits);
+  assert(currentCommitStart == log->nextEntry);
 
-  if (log->lastCommitStart == (LogEntry *)log->log) {
-    log->cl_revert_snapshot(log->user);
-    log->lastCommitStart = NULL;
-    log->lastEntry = NULL;
-    log->nextEntry = (LogEntry *)log->log;
-    return;
-  }
+  LogIndex prevCommitStart = log->commits[arrlen(log->commits) - 1];
+  arrput(log->poppedCommits, currentCommitStart);
 
-  // find the last commit point
-  LogEntry *prevCommitEnd = log->lastCommitStart;
+  log_debug("Current commit: %d", currentCommitStart);
+  log_debug("Prev commit: %d", prevCommitStart);
 
-  while (prevCommitEnd > (LogEntry *)log->log) {
-    assert(prevCommitEnd->psize > 0);
-    prevCommitEnd =
-      (LogEntry *)((uint8_t *)prevCommitEnd - prevCommitEnd->psize);
-    if (prevCommitEnd->verb & LOG_COMMIT) {
-      break;
-    }
-  }
-
-  while (prevCommitEnd > (LogEntry *)log->log) {
-    assert(prevCommitEnd->psize > 0);
-    prevCommitEnd =
-      (LogEntry *)((uint8_t *)prevCommitEnd - prevCommitEnd->psize);
-    if (prevCommitEnd->verb & LOG_COMMIT) {
-      break;
-    }
-  }
-
-  // TODO: remove this verification code
-  // LogEntry *testEntry = prevCommitEnd;
-  // testEntry = (LogEntry *)((uint8_t *)testEntry + testEntry->size);
-  // while (testEntry < log->lastCommitStart) {
-  //   assert((prevCommitEnd->verb & LOG_COMMIT) == 0);
-  //   testEntry = (LogEntry *)((uint8_t *)testEntry + testEntry->size);
-  // }
-
-  log_debug("Found last commit");
+  assert(currentCommitStart != prevCommitStart);
 
   // restore the snapshot
   log->cl_revert_snapshot(log->user);
@@ -263,7 +231,8 @@ void cl_undo(ChangeLog *log) {
 
   // replay all actions up to the previous commit point
   LogEntry *entry = (LogEntry *)log->log;
-  while (entry <= prevCommitEnd) {
+  LogEntry *last = cl_entry_at(log, prevCommitStart);
+  while (entry < last) {
     cl_replay_entry(log, entry);
     entry = (LogEntry *)((uint8_t *)entry + entry->size);
     count++;
@@ -271,32 +240,34 @@ void cl_undo(ChangeLog *log) {
 
   log_debug("Replayed %d actions", count);
 
-  log->lastEntry = prevCommitEnd;
-  log->nextEntry = (LogEntry *)((uint8_t *)prevCommitEnd + prevCommitEnd->size);
-  log->lastCommitStart = log->nextEntry;
+  log->nextEntry = prevCommitStart;
+  log->lastEntry = log->nextEntry - cl_entry_at(log, log->nextEntry)->psize;
 }
 
 void cl_redo(ChangeLog *log) {
-  if (log->redoEnd == NULL) {
+  if (arrlen(log->poppedCommits) == 0) {
     return;
   }
 
-  LogEntry *entry = log->nextEntry;
-  LogEntry *lastEntry = log->lastEntry;
-  while (entry != log->redoEnd) {
+  // there should be no outstanding uncommitted changes
+  assert(log->commits[arrlen(log->commits) - 1] == log->nextEntry);
+
+  LogIndex poppedCommitStart = arrpop(log->poppedCommits);
+  arrput(log->commits, poppedCommitStart);
+  log_debug("Popped commit: %d", poppedCommitStart);
+
+  int count = 0;
+
+  LogEntry *entry = cl_entry_at(log, log->nextEntry);
+  LogEntry *lastEntry = cl_entry_at(log, poppedCommitStart);
+  while (entry < lastEntry) {
     cl_replay_entry(log, entry);
-    if (entry->verb & LOG_COMMIT) {
-      break;
-    }
-    lastEntry = entry;
     entry = (LogEntry *)((uint8_t *)entry + entry->size);
+    count++;
   }
 
-  log->lastEntry = lastEntry;
-  log->nextEntry = entry;
-  log->lastCommitStart = entry;
+  log_debug("Redid %d actions", count);
 
-  if (entry == log->redoEnd) {
-    log->redoEnd = NULL;
-  }
+  log->nextEntry = poppedCommitStart;
+  log->lastEntry = log->nextEntry - cl_entry_at(log, log->nextEntry)->psize;
 }

@@ -202,6 +202,9 @@ arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result);
 
 #define MAX_COMPONENT_SIZE 10
 
+typedef uint32_t LogIndex;
+#define NO_LOG_INDEX 0xffffffff
+
 typedef struct LogEntry {
   PACK(enum {
     LOG_CREATE,
@@ -229,11 +232,11 @@ typedef struct ChangeLog {
   uint8_t *log;
   size_t capacity;
 
-  LogEntry *lastCommitStart;
-  LogEntry *lastEntry;
-  LogEntry *nextEntry;
+  arr(LogIndex) commits;
+  arr(LogIndex) poppedCommits;
 
-  LogEntry *redoEnd;
+  LogIndex lastEntry;
+  LogIndex nextEntry;
 
   void *user;
   void (*cl_revert_snapshot)(void *user);
@@ -810,6 +813,13 @@ static inline void
 circ_set_(Circuit *circuit, int table, int row, int column, void *value) {
   size_t size = circuit->tableMeta[table].componentSize[column];
   memcpy(circ_table_component_ptr(circuit, table, column, row), value, size);
+  if (
+    table == TYPE_NET &&
+    column ==
+      circuit->tableMeta[table].componentColumn[COMPONENT_WIRE_VERTICES]) {
+    // ignore updates to wire vertices -- contents are ephemeral pointers.
+    return;
+  }
   cl_update(
     &circuit->log, circuit->table[table]->id[row], table, column, value, size);
 }

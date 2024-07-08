@@ -367,6 +367,15 @@ void circ_clone(Circuit *dst, Circuit *src) {
   arrsetlen(dst->freelist, arrlen(src->freelist));
   memcpy(dst->freelist, src->freelist, arrlen(src->freelist) * sizeof(ID));
 
+  // if the dst has more capacity than the src, we need to add the extra
+  // entities to the freelist
+  for (ptrdiff_t i = dst->capacity - 1; i >= (ptrdiff_t)src->capacity; i--) {
+    dst->generations[i] = 0;
+    dst->typeTags[i] = 0;
+    dst->rows[i] = 0;
+    arrput(dst->freelist, id_make(0, 1, i));
+  }
+
   for (size_t i = 0; i < TYPE_COUNT; i++) {
     Table *srcTable = src->table[i];
     Table *dstTable = dst->table[i];
@@ -588,14 +597,18 @@ void circ_linked_list_remove(Circuit *circ, ID parent, ID child) {
 // ---
 
 void circ_clear(Circuit *circ) {
-  CircuitIter it = circ_iter(circ, Module);
-  while (circ_iter_next(&it)) {
-    Module *table = circ_iter_table(&it, Module);
-    for (ptrdiff_t i = table->length - 1; i >= 0; i--) {
-      circ_remove_module(circ, table->id[i]);
-    }
-  }
-  circ->top = circ_add_module(circ);
+  // CircuitIter it = circ_iter(circ, Module);
+  // while (circ_iter_next(&it)) {
+  //   Module *table = circ_iter_table(&it, Module);
+  //   for (ptrdiff_t i = table->length - 1; i >= 0; i--) {
+  //     circ_remove_module(circ, table->id[i]);
+  //   }
+  // }
+  // circ->top = circ_add_module(circ);
+
+  // restore the snapshot
+  circ_clone(circ, circ->snapshot);
+  cl_clear(&circ->log);
 }
 
 // ---
