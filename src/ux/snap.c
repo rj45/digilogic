@@ -16,38 +16,34 @@
 
 #include "core/core.h"
 #include "handmade_math.h"
+#include "render/draw.h"
 #include "ux.h"
 
 #define SNAP_DISTANCE_THRESHOLD 500
-#define SNAP_DISTANCE 12
+#define SNAP_DISTANCE 20
 
 HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
   ID selected = ux->view.selected[0];
   HMM_Vec2 oldCenter;
-  HMM_Vec2 halfSize;
 
-  float snapDistance = SNAP_DISTANCE / draw_get_zoom(ux->view.drawCtx);
+  float origin = draw_screen_to_world(ux->view.drawCtx, HMM_V2(0, 0)).X;
+  float snapDistance =
+    draw_screen_to_world(ux->view.drawCtx, HMM_V2(SNAP_DISTANCE, 0)).X - origin;
 
   if (circ_type_for_id(&ux->view.circuit, selected) == TYPE_SYMBOL) {
     oldCenter = circ_get(&ux->view.circuit, selected, Position);
-    SymbolKindID kind = circ_get(&ux->view.circuit, selected, SymbolKindID);
-    halfSize = HMM_MulV2F(circ_get(&ux->view.circuit, kind, Size), 0.5f);
   } else if (circ_type_for_id(&ux->view.circuit, selected) == TYPE_WAYPOINT) {
     oldCenter = circ_get(&ux->view.circuit, selected, Position);
-    halfSize = HMM_V2(0, 0);
   } else {
     return newCenter;
   }
 
-  HMM_Vec2 movedCenter = newCenter;
-
-  float top = movedCenter.Y - halfSize.Y;
-  float left = movedCenter.X - halfSize.X;
-  float bottom = movedCenter.Y + halfSize.Y;
-  float right = movedCenter.X + halfSize.X;
+  HMM_Vec2 preSnapCenter = newCenter;
 
   float snapDistanceThreshold =
-    SNAP_DISTANCE_THRESHOLD / draw_get_zoom(ux->view.drawCtx);
+    draw_screen_to_world(ux->view.drawCtx, HMM_V2(SNAP_DISTANCE_THRESHOLD, 0))
+      .X -
+    origin;
 
   Box snapDistanceBox = {
     .center = oldCenter,
@@ -56,37 +52,28 @@ HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
 
   ux->bvhQuery = bvh_query(&ux->bvh, snapDistanceBox, ux->bvhQuery);
 
+  float bestXDistance = snapDistance;
+  float bestYDistance = snapDistance;
+
   for (size_t i = 0; i < arrlen(ux->bvhQuery); i++) {
     ID id = ux->bvhQuery[i].item;
+
+    if (id == selected) {
+      continue;
+    }
 
     Box box = ux->bvhQuery[i].box;
     if (id == selected) {
       continue;
     }
 
-    float itemTop = box.center.Y - box.halfSize.Y;
-    float itemLeft = box.center.X - box.halfSize.X;
-    float itemBottom = box.center.Y + box.halfSize.Y;
-    float itemRight = box.center.X + box.halfSize.X;
-
-    if (HMM_ABS(top - itemTop) < SNAP_DISTANCE) {
-      newCenter.Y = itemTop + halfSize.Y;
-    }
-    if (HMM_ABS(left - itemLeft) < SNAP_DISTANCE) {
-      newCenter.X = itemLeft + halfSize.X;
-    }
-    if (HMM_ABS(bottom - itemBottom) < SNAP_DISTANCE) {
-      newCenter.Y = itemBottom - halfSize.Y;
-    }
-    if (HMM_ABS(right - itemRight) < SNAP_DISTANCE) {
-      newCenter.X = itemRight - halfSize.X;
-    }
-
-    if (HMM_ABS(movedCenter.Y - box.center.Y) < snapDistance) {
+    if (HMM_ABS(preSnapCenter.Y - box.center.Y) <= bestYDistance) {
+      bestYDistance = HMM_ABS(preSnapCenter.Y - box.center.Y);
       newCenter.Y = box.center.Y;
     }
 
-    if (HMM_ABS(movedCenter.X - box.center.X) < snapDistance) {
+    if (HMM_ABS(preSnapCenter.X - box.center.X) <= bestXDistance) {
+      bestXDistance = HMM_ABS(preSnapCenter.X - box.center.X);
       newCenter.X = box.center.X;
     }
   }
