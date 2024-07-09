@@ -54,14 +54,12 @@ UTEST(CircuitUX, selection_and_deselection) {
   circ_set_symbol_position(&ux.view.circuit, symbolID, position);
 
   // Test selection
-  UndoCommand selectCmd = undo_cmd_select_item(symbolID);
-  ux_do(&ux, selectCmd);
+  ux_select_item(&ux, symbolID);
   ASSERT_EQ(arrlen(ux.view.selected), 1);
   ASSERT_EQ(ux.view.selected[0], symbolID);
 
   // Test deselection
-  UndoCommand deselectCmd = undo_cmd_deselect_item(symbolID);
-  ux_do(&ux, deselectCmd);
+  ux_deselect_item(&ux, symbolID);
   ASSERT_EQ(arrlen(ux.view.selected), 0);
 
   ux_free(&ux);
@@ -79,14 +77,11 @@ UTEST(CircuitUX, move_component) {
   circ_set_symbol_position(&ux.view.circuit, symbolID, initialPosition);
 
   // Select the symbol
-  UndoCommand selectCmd = undo_cmd_select_item(symbolID);
-  ux_do(&ux, selectCmd);
+  ux_select_item(&ux, symbolID);
 
   // Move the symbol
   HMM_Vec2 newPosition = HMM_V2(200, 200);
-  UndoCommand moveCmd =
-    undo_cmd_move_selection(initialPosition, newPosition, false);
-  ux_do(&ux, moveCmd);
+  ux_move_selection(&ux, initialPosition, newPosition, false);
 
   Position finalPosition = circ_get(&ux.view.circuit, symbolID, Position);
   ASSERT_EQ(finalPosition.X, newPosition.X);
@@ -107,51 +102,12 @@ UTEST(CircuitUX, delete_component) {
   circ_set_symbol_position(&ux.view.circuit, symbolID, position);
 
   // Select the symbol
-  UndoCommand selectCmd = undo_cmd_select_item(symbolID);
-  ux_do(&ux, selectCmd);
+  ux_select_item(&ux, symbolID);
 
   // Delete the symbol
-  UndoCommand deleteCmd =
-    undo_cmd_del_symbol(position, symbolID, andSymbolKindID);
-  ux_do(&ux, deleteCmd);
+  ux_delete_selected(&ux);
 
   ASSERT_FALSE(circ_has(&ux.view.circuit, symbolID));
 
   ux_free(&ux);
-}
-
-UTEST(CircuitUX, undo_redo) {
-  // TODO: FIXME
-  // CircuitUX ux;
-  // ux_init(&ux, circuit_symbol_descs(), NULL, NULL);
-
-  // ID andSymbolKindID = circ_get_symbol_kind_by_name(&ux.view.circuit, "AND");
-
-  // ID symbolID =
-  //   circ_add_symbol(&ux.view.circuit, ux.view.circuit.top, andSymbolKindID);
-  // HMM_Vec2 position = HMM_V2(100, 100);
-  // circ_set_symbol_position(&ux.view.circuit, symbolID, position);
-
-  // // Select the symbol
-  // UndoCommand selectCmd = undo_cmd_select_item(symbolID);
-  // ux_do(&ux, selectCmd);
-
-  // // Move the symbol
-  // HMM_Vec2 newPosition = HMM_V2(200, 200);
-  // UndoCommand moveCmd = undo_cmd_move_selection(position, newPosition,
-  // false); ux_do(&ux, moveCmd);
-
-  // // Undo the move
-  // ux_undo(&ux);
-  // Position undoPosition = circ_get(&ux.view.circuit, symbolID, Position);
-  // ASSERT_EQ(undoPosition.X, position.X);
-  // ASSERT_EQ(undoPosition.Y, position.Y);
-
-  // // Redo the move
-  // ux_redo(&ux);
-  // Position redoPosition = circ_get(&ux.view.circuit, symbolID, Position);
-  // ASSERT_EQ(redoPosition.X, newPosition.X);
-  // ASSERT_EQ(redoPosition.Y, newPosition.Y);
-
-  // ux_free(&ux);
 }

@@ -51,8 +51,6 @@ void ux_reset(CircuitUX *ux) {
   view_reset(&ux->view);
   bvh_clear(&ux->bvh);
 
-  ux->undoStack = NULL;
-  ux->redoStack = NULL;
   ux->mouseDownState = STATE_UP;
   ux->clickedPort = (PortRef){0};
   ux->addingSymbol = NO_ID;
@@ -70,8 +68,6 @@ void ux_free(CircuitUX *ux) {
   view_free(&ux->view);
   bv_free(ux->input.keysDown);
   bv_free(ux->input.keysPressed);
-  arrfree(ux->undoStack);
-  arrfree(ux->redoStack);
   arrfree(ux->bvhQuery);
   autoroute_free(ux->router);
 }
@@ -94,12 +90,10 @@ void ux_route(CircuitUX *ux) { autoroute_route(ux->router, ux->routingConfig); }
 
 void ux_select_none(CircuitUX *ux) {
   if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
-    ux_do(ux, undo_cmd_deselect_area(ux->view.selectionBox));
+    ux_deselect_area(ux, ux->view.selectionBox);
   } else {
     while (arrlen(ux->view.selected) > 0) {
-      ux_do(
-        ux, undo_cmd_deselect_item(
-              ux->view.selected[arrlen(ux->view.selected) - 1]));
+      ux_deselect_item(ux, ux->view.selected[arrlen(ux->view.selected) - 1]);
     }
   }
 }
@@ -134,26 +128,24 @@ void ux_select_all(CircuitUX *ux) {
     }
   }
 
-  ux_do(ux, undo_cmd_select_area(box_from_tlbr(min, max)));
+  ux_select_area(ux, box_from_tlbr(min, max));
 }
 
 void ux_delete_selected(CircuitUX *ux) {
   for (size_t i = 0; i < arrlen(ux->view.selected); i++) {
     ID id = ux->view.selected[i];
     if (circ_type_for_id(&ux->view.circuit, id) == TYPE_SYMBOL) {
-      SymbolKindID kind = circ_get(&ux->view.circuit, id, SymbolKindID);
-      Position position = circ_get(&ux->view.circuit, id, Position);
-      ux_do(ux, undo_cmd_del_symbol(position, id, kind));
+      ux_del_symbol(ux, id);
     } else if (circ_type_for_id(&ux->view.circuit, id) == TYPE_WAYPOINT) {
-      Parent endpoint = circ_get(&ux->view.circuit, id, Parent);
-      Position position = circ_get(&ux->view.circuit, id, Position);
-      ux_do(ux, undo_cmd_del_waypoint(position, id, endpoint));
-      ux_route(ux);
+      ux_del_waypoint(ux, id);
     }
+    ux_route(ux);
+    ux_build_bvh(ux);
+    circ_commit(&ux->view.circuit);
   }
 }
 
-void ux_add_waypoint(CircuitUX *ux, HMM_Vec2 worldMousePos) {
+void ux_add_waypoint_near_mouse(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   // determine the closest endpoint to the mouse position
   ID closestEndpoint = NO_ID;
   for (size_t i = 0; i < arrlen(ux->view.hovered); i++) {
@@ -207,10 +199,7 @@ void ux_add_waypoint(CircuitUX *ux, HMM_Vec2 worldMousePos) {
   }
 
   // add a waypoint at the mouse position
-  ID waypointID = circ_add_waypoint(&ux->view.circuit, closestEndpoint);
-  circ_set_ptr(&ux->view.circuit, waypointID, Position, &worldMousePos);
-  log_info(
-    "Added waypoint %d at %f %f", waypointID, worldMousePos.X, worldMousePos.Y);
+  ux_add_waypoint(ux, closestEndpoint, worldMousePos);
 }
 
 static void ux_bvh_draw(BVH *bvh, DrawContext *drawCtx, int drawLevel);

@@ -19,7 +19,7 @@
 #include "ux.h"
 
 #define SNAP_DISTANCE_THRESHOLD 500
-#define SNAP_DISTANCE 8
+#define SNAP_DISTANCE 12
 
 HMM_Vec2 ux_calc_snap(CircuitUX *ux, HMM_Vec2 newCenter) {
   ID selected = ux->view.selected[0];

@@ -135,7 +135,7 @@ pub fn build(b: *std.Build) void {
                 "ux/ux.c",
                 "ux/input.c",
                 "ux/snap.c",
-                "ux/undo.c",
+                "ux/actions.c",
                 "view/view.c",
                 "import/digital.c",
                 "autoroute/autoroute.c",

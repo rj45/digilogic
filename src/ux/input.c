@@ -256,14 +256,13 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       case STATE_DRAG_WIRING:
         // rebuild the BVH after wiring things
         ux_build_bvh(ux);
+        circ_commit(&ux->view.circuit);
         break;
 
       case STATE_ADD_COMPONENT: {
         // "drop" the symbol here and start adding a new one
         SymbolKindID kindID =
           circ_get(&ux->view.circuit, ux->addingSymbol, SymbolKindID);
-        Position pos = circ_get(&ux->view.circuit, ux->addingSymbol, Position);
-        ux_do(ux, undo_cmd_add_symbol(pos, ux->addingSymbol, kindID));
         circ_commit(&ux->view.circuit);
         ux_start_adding_symbol(ux, kindID);
 
@@ -280,15 +279,14 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       case STATE_SELECT_ONE: // fallthrough
       case STATE_DESELECT:
         if (HMM_LenSqrV2(ux->view.selectionBox.halfSize) > 0.001f) {
-          ux_do(ux, undo_cmd_deselect_area(ux->view.selectionBox));
+          ux_deselect_area(ux, ux->view.selectionBox);
         } else {
           if (
             state == STATE_DESELECT ||
             (ux->input.modifiers & MODIFIER_SHIFT) == 0) {
             while (arrlen(ux->view.selected) > 0) {
-              ux_do(
-                ux, undo_cmd_deselect_item(
-                      ux->view.selected[arrlen(ux->view.selected) - 1]));
+              ux_deselect_item(
+                ux, ux->view.selected[arrlen(ux->view.selected) - 1]);
             }
           }
         }
@@ -310,8 +308,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
             }
           }
           if (found != NO_ID) {
-            ux_do(ux, undo_cmd_select_item(found));
-            ux->selectionCenter = ux_calc_selection_center(ux);
+            ux_select_item(ux, found);
           }
         }
         break;
@@ -370,7 +367,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
 
       case STATE_ADD_WAYPOINT:
         log_debug("add waypoint");
-        ux_add_waypoint(ux, worldMousePos);
+        ux_add_waypoint_near_mouse(ux, worldMousePos);
         ux_route(ux);
         ux_build_bvh(ux);
         circ_commit(&ux->view.circuit);
@@ -394,10 +391,8 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
     HMM_Vec2 oldCenter = ux->selectionCenter;
     HMM_Vec2 newCenter = HMM_AddV2(oldCenter, delta);
     if (HMM_LenSqrV2(delta) > 0.01f) {
-      ux_do(
-        ux,
-        undo_cmd_move_selection(
-          oldCenter, newCenter, (ux->input.modifiers & MODIFIER_CTRL) == 0));
+      ux_move_selection(
+        ux, oldCenter, newCenter, (ux->input.modifiers & MODIFIER_CTRL) == 0);
     }
 
     break;
@@ -411,7 +406,7 @@ static void ux_mouse_down_state_machine(CircuitUX *ux, HMM_Vec2 worldMousePos) {
       ux->selectionCenter = area.center;
     }
 
-    ux_do(ux, undo_cmd_select_area(area));
+    ux_select_area(ux, area);
     break;
   }
 

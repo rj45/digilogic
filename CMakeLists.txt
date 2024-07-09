@@ -11,7 +11,7 @@ set(DIGILOGIC_SRCS
     src/ux/ux.c
     src/ux/input.c
     src/ux/snap.c
-    src/ux/undo.c
+    src/ux/actions.c
     src/ui/ui.c
     src/view/view.c
     src/import/digital.c

@@ -197,118 +197,6 @@ typedef struct Input {
   HMM_Vec2 scroll;
 } Input;
 
-typedef struct UndoCommand {
-  enum {
-    UNDO_NONE,
-    UNDO_MOVE_SELECTION,
-    UNDO_SELECT_ITEM,
-    UNDO_SELECT_AREA,
-    UNDO_DESELECT_ITEM,
-    UNDO_DESELECT_AREA,
-    UNDO_ADD_SYMBOL,
-    UNDO_DEL_SYMBOL,
-    UNDO_ADD_WAYPOINT,
-    UNDO_DEL_WAYPOINT,
-  } verb;
-
-  union {
-    struct { // for UNDO_MOVE_SELECTION
-      HMM_Vec2 oldCenter;
-      HMM_Vec2 newCenter;
-      bool snap;
-    };
-    struct { // for UNDO_SELECT_ITEM, UNDO_DESELECT_ITEM
-      ID selectedID;
-    };
-    struct { // for UNDO_SELECT_AREA, UNDO_DESELECT_AREA
-      Box area;
-    };
-    struct { // for UNDO_ADD_SYMBOL, UNDO_DEL_SYMBOL, UNDO_ADD_WAYPONT,
-             // UNDO_DEL_WAYPOINT
-      HMM_Vec2 center;
-      ID parentID;
-      ID childID;
-    };
-  };
-} UndoCommand;
-
-static inline UndoCommand
-undo_cmd_move_selection(HMM_Vec2 oldCenter, HMM_Vec2 newCenter, bool snap) {
-  return (UndoCommand){
-    .verb = UNDO_MOVE_SELECTION,
-    .oldCenter = oldCenter,
-    .newCenter = newCenter,
-    .snap = false,
-  };
-}
-
-static inline UndoCommand undo_cmd_select_item(ID selectedID) {
-  return (UndoCommand){
-    .verb = UNDO_SELECT_ITEM,
-    .selectedID = selectedID,
-  };
-}
-static inline UndoCommand undo_cmd_deselect_item(ID selectedID) {
-  return (UndoCommand){
-    .verb = UNDO_DESELECT_ITEM,
-    .selectedID = selectedID,
-  };
-}
-
-static inline UndoCommand undo_cmd_select_area(Box area) {
-  return (UndoCommand){
-    .verb = UNDO_SELECT_AREA,
-    .area = area,
-  };
-}
-
-static inline UndoCommand undo_cmd_deselect_area(Box area) {
-  return (UndoCommand){
-    .verb = UNDO_DESELECT_AREA,
-    .area = area,
-  };
-}
-
-static inline UndoCommand
-undo_cmd_add_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
-  return (UndoCommand){
-    .verb = UNDO_ADD_SYMBOL,
-    .center = center,
-    .childID = symbolID,
-    .parentID = symbolKindID,
-  };
-}
-
-static inline UndoCommand
-undo_cmd_del_symbol(HMM_Vec2 center, ID symbolID, ID symbolKindID) {
-  return (UndoCommand){
-    .verb = UNDO_DEL_SYMBOL,
-    .center = center,
-    .childID = symbolID,
-    .parentID = symbolKindID,
-  };
-}
-
-static inline UndoCommand
-undo_cmd_add_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
-  return (UndoCommand){
-    .verb = UNDO_ADD_WAYPOINT,
-    .center = center,
-    .childID = waypointID,
-    .parentID = endpointID,
-  };
-}
-
-static inline UndoCommand
-undo_cmd_del_waypoint(HMM_Vec2 center, ID waypointID, ID endpointID) {
-  return (UndoCommand){
-    .verb = UNDO_DEL_WAYPOINT,
-    .center = center,
-    .childID = waypointID,
-    .parentID = endpointID,
-  };
-}
-
 typedef void AvoidRouter;
 
 typedef struct CircuitUX {
@@ -317,9 +205,6 @@ typedef struct CircuitUX {
   AutoRoute *router;
 
   bool changed;
-
-  arr(UndoCommand) undoStack;
-  arr(UndoCommand) redoStack;
 
   ToolState tool;
 
@@ -362,12 +247,22 @@ HMM_Vec2 ux_calc_selection_center(CircuitUX *ux);
 
 void ux_update(CircuitUX *ux);
 void ux_draw(CircuitUX *ux);
-void ux_do(CircuitUX *ux, UndoCommand command);
-UndoCommand ux_undo(CircuitUX *ux);
-UndoCommand ux_redo(CircuitUX *ux);
+void ux_undo(CircuitUX *ux);
+void ux_redo(CircuitUX *ux);
 void ux_select_none(CircuitUX *ux);
 void ux_select_all(CircuitUX *ux);
 void ux_delete_selected(CircuitUX *ux);
+
+// ux actions
+void ux_move_selection(
+  CircuitUX *ux, HMM_Vec2 oldCenter, HMM_Vec2 newCenter, bool snap);
+void ux_select_item(CircuitUX *ux, ID id);
+void ux_select_area(CircuitUX *ux, Box area);
+void ux_deselect_item(CircuitUX *ux, ID id);
+void ux_deselect_area(CircuitUX *ux, Box area);
+void ux_del_symbol(CircuitUX *ux, ID id);
+void ux_add_waypoint(CircuitUX *ux, ID parentID, HMM_Vec2 center);
+void ux_del_waypoint(CircuitUX *ux, ID id);
 
 void ux_start_adding_symbol(CircuitUX *ux, ID symbolKindID);
 void ux_stop_adding_symbol(CircuitUX *ux);
@@ -381,7 +276,7 @@ void ux_connect_wire(CircuitUX *ux, PortRef portRef);
 void ux_start_adding_waypoint(CircuitUX *ux);
 void ux_stop_adding_waypoint(CircuitUX *ux);
 
-void ux_add_waypoint(CircuitUX *ux, HMM_Vec2 worldMousePos);
+void ux_add_waypoint_near_mouse(CircuitUX *ux, HMM_Vec2 worldMousePos);
 
 void ux_route(CircuitUX *ux);
 void ux_build_bvh(CircuitUX *ux);
