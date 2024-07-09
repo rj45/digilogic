@@ -61,61 +61,6 @@ UTEST(bv, clear_bit) {
 // ChangeLog tests
 ////////////////////////
 
-// UTEST(ChangeLog, new) {
-//   ChangeLog log;
-//   cl_init(&log);
-//   ASSERT_NE(log.log, NULL);
-//   ASSERT_EQ(log.nextEntry, (LogEntry *)log.log);
-//   ASSERT_EQ(log.lastEntry, NULL);
-//   ASSERT_EQ(log.lastCommitStart, log.nextEntry);
-//   cl_free(&log);
-// }
-
-// UTEST(ChangeLog, create) {
-//   ChangeLog log;
-//   cl_init(&log);
-//   cl_create(&log, id_make(0, 1, 1), 2);
-//   ASSERT_EQ(log.lastEntry->verb, LOG_CREATE);
-//   ASSERT_EQ(log.lastEntry->id, id_make(0, 1, 1));
-//   ASSERT_EQ(log.lastEntry->table, 2);
-//   cl_free(&log);
-// }
-
-// UTEST(ChangeLog, delete) {
-//   ChangeLog log;
-//   cl_init(&log);
-//   cl_delete(&log, id_make(0, 1, 1), 2);
-//   ASSERT_EQ(log.lastEntry->verb, LOG_DELETE);
-//   ASSERT_EQ(log.lastEntry->id, id_make(0, 1, 1));
-//   ASSERT_EQ(log.lastEntry->table, 2);
-//   cl_free(&log);
-// }
-
-// UTEST(ChangeLog, commit) {
-//   ChangeLog log;
-//   cl_init(&log);
-//   cl_create(&log, id_make(0, 1, 1), 2);
-//   cl_commit(&log);
-//   ASSERT_EQ(log.lastEntry->verb, LOG_CREATE | LOG_COMMIT);
-//   ASSERT_EQ(log.lastCommitStart, log.nextEntry);
-//   cl_free(&log);
-// }
-
-// UTEST(ChangeLog, update) {
-//   ChangeLog log;
-//   cl_init(&log);
-//   cl_update(&log, id_make(0, 1, 1), 1, 2, &(uint8_t){4}, sizeof(uint8_t));
-//   ASSERT_EQ(log.lastEntry->verb, LOG_UPDATE);
-//   ASSERT_EQ(log.lastEntry->id, id_make(0, 1, 1));
-//   ASSERT_EQ(log.lastEntry->table, 1);
-//   // +3 is to correct for alignment
-//   ASSERT_EQ(log.lastEntry->size, sizeof(LogUpdate) + sizeof(uint8_t) + 3);
-//   LogUpdate *update = (LogUpdate *)log.lastEntry;
-//   ASSERT_EQ(update->column, 2);
-//   ASSERT_EQ(update->newValue[0], 4);
-//   cl_free(&log);
-// }
-
 UTEST(ChangeLog, undo_3_redo_3) {
   Circuit circuit;
   circ_init(&circuit);
@@ -147,14 +92,17 @@ UTEST(ChangeLog, undo_3_redo_3) {
   circ_undo(&circuit);
 
   ASSERT_EQ(circ_len(&circuit, Symbol), 2);
+  ASSERT_FALSE(circ_has(&circuit, symID3));
 
   circ_undo(&circuit);
 
   ASSERT_EQ(circ_len(&circuit, Symbol), 1);
+  ASSERT_FALSE(circ_has(&circuit, symID2));
 
   circ_undo(&circuit);
 
   ASSERT_EQ(circ_len(&circuit, Symbol), 0);
+  ASSERT_FALSE(circ_has(&circuit, symID1));
 
   // should do nothing
   circ_undo(&circuit);
@@ -176,6 +124,8 @@ UTEST(ChangeLog, undo_3_redo_3) {
 
   // should do nothing
   circ_redo(&circuit);
+
+  circ_free(&circuit);
 }
 
 UTEST(ChangeLog, undo_redo_undo_redo) {
@@ -225,6 +175,42 @@ UTEST(ChangeLog, undo_redo_undo_redo) {
   ASSERT_TRUE(circ_has(&circuit, symID1));
   ASSERT_TRUE(circ_has(&circuit, symID2));
   ASSERT_TRUE(circ_has(&circuit, symID3));
+
+  circ_free(&circuit);
+}
+
+UTEST(ChangeLog, discard) {
+  Circuit circuit;
+  circ_init(&circuit);
+  SymbolLayout layout = (SymbolLayout){
+    .portSpacing = 20.0f,
+    .symbolWidth = 55.0f,
+    .borderWidth = 1.0f,
+    .labelPadding = 2.0f,
+    .user = NULL,
+    .textSize = testTextSize,
+  };
+  circ_load_symbol_descs(&circuit, &layout, circuit_symbol_descs(), COMP_COUNT);
+
+  circuit.top = circ_add_module(&circuit);
+  circ_snapshot(&circuit);
+
+  circ_commit(&circuit);
+
+  ID symID1 = circ_add_symbol(
+    &circuit, circuit.top, circ_get_symbol_kind_by_name(&circuit, "AND"));
+  circ_commit(&circuit);
+  ID symID2 = circ_add_symbol(
+    &circuit, circuit.top, circ_get_symbol_kind_by_name(&circuit, "OR"));
+
+  ASSERT_TRUE(circ_has(&circuit, symID1));
+  ASSERT_TRUE(circ_has(&circuit, symID2));
+
+  circ_discard_since_last_commit(&circuit);
+
+  ASSERT_FALSE(circ_has(&circuit, symID2));
+
+  circ_free(&circuit);
 }
 
 ////////////////////////

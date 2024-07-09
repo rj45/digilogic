@@ -411,6 +411,7 @@ void circ_snapshot(Circuit *circ) {
 
 void circ_undo(Circuit *circ) { cl_undo(&circ->log); }
 void circ_redo(Circuit *circ) { cl_redo(&circ->log); }
+void circ_discard_since_last_commit(Circuit *circ) { cl_discard(&circ->log); }
 
 static void circ_add_impl(Circuit *circ, EntityType type, ID id) {
   Table *header = circ->table[type];

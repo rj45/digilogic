@@ -261,6 +261,7 @@ void cl_untag(ChangeLog *log, ID id, uint8_t table, uint16_t tag);
 
 void cl_undo(ChangeLog *log);
 void cl_redo(ChangeLog *log);
+void cl_discard(ChangeLog *log);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Circuit
@@ -898,6 +899,7 @@ static inline ID circ_lliter_get(LinkedListIter *iter) { return iter->current; }
 void circ_snapshot(Circuit *circ);
 void circ_undo(Circuit *circ);
 void circ_redo(Circuit *circ);
+void circ_discard_since_last_commit(Circuit *circ);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Higher level functions

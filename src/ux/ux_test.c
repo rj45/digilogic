@@ -27,7 +27,7 @@ UTEST(CircuitUX, adding_components) {
 
   ux_change_adding_symbol(&ux, orSymbolKindID);
 
-  ASSERT_FALSE(circ_has(&ux.view.circuit, oldID));
+  ASSERT_TRUE(!circ_has(&ux.view.circuit, oldID) || oldID == ux.addingSymbol);
   ASSERT_TRUE(circ_has(&ux.view.circuit, ux.addingSymbol));
   ASSERT_EQ(
     circ_get(&ux.view.circuit, ux.addingSymbol, SymbolKindID), orSymbolKindID);

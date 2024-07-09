@@ -18,7 +18,7 @@
 
 #include <stdalign.h>
 
-#define LOG_LEVEL LL_DEBUG
+#define LOG_LEVEL LL_INFO
 #include "log.h"
 
 #define cl_entry_at(log, offset) ((LogEntry *)((uint8_t *)log->log + (offset)))
@@ -269,5 +269,26 @@ void cl_redo(ChangeLog *log) {
   log_debug("Redid %d actions", count);
 
   log->nextEntry = poppedCommitStart;
+  log->lastEntry = log->nextEntry - cl_entry_at(log, log->nextEntry)->psize;
+}
+
+void cl_discard(ChangeLog *log) {
+  LogIndex prevCommitStart = log->commits[arrlen(log->commits) - 1];
+  if (log->nextEntry == prevCommitStart) {
+    return;
+  }
+
+  // restore the snapshot
+  log->cl_revert_snapshot(log->user);
+
+  // replay all actions up to the previous commit point
+  LogEntry *entry = (LogEntry *)log->log;
+  LogEntry *last = cl_entry_at(log, prevCommitStart);
+  while (entry < last) {
+    cl_replay_entry(log, entry);
+    entry = (LogEntry *)((uint8_t *)entry + entry->size);
+  }
+
+  log->nextEntry = prevCommitStart;
   log->lastEntry = log->nextEntry - cl_entry_at(log, log->nextEntry)->psize;
 }

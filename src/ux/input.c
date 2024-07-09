@@ -610,8 +610,10 @@ void ux_start_adding_symbol(CircuitUX *ux, ID symbolKindID) {
 
 void ux_stop_adding_symbol(CircuitUX *ux) {
   ux->mouseDownState = STATE_UP;
-  circ_remove_symbol(&ux->view.circuit, ux->addingSymbol);
+  circ_discard_since_last_commit(&ux->view.circuit);
   ux->addingSymbol = NO_ID;
+  ux_route(ux);
+  ux_build_bvh(ux);
 }
 
 void ux_change_adding_symbol(CircuitUX *ux, ID symbolKindID) {

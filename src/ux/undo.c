@@ -258,6 +258,12 @@ UndoCommand ux_undo(CircuitUX *ux) {
   // arrput(ux->redoStack, redoCmd);
 
   // ux_perform_command(ux, redoCmd);
+
+  if (ux->tool == TOOL_SYMBOL) {
+    // will crash if we allow this
+    return (UndoCommand){0};
+  }
+
   circ_undo(&ux->view.circuit);
   ux_route(ux);
   ux_build_bvh(ux);
@@ -274,6 +280,11 @@ UndoCommand ux_redo(CircuitUX *ux) {
   // // push the opposite of the command to the undo stack
   // UndoCommand undoCmd = ux_flip_command(cmd);
   // arrput(ux->undoStack, undoCmd);
+
+  if (ux->tool == TOOL_SYMBOL) {
+    // will crash if we allow this
+    return (UndoCommand){0};
+  }
 
   // ux_perform_command(ux, undoCmd);
   circ_redo(&ux->view.circuit);
