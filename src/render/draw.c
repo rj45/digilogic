@@ -148,6 +148,7 @@ void draw_begin_frame(DrawContext *draw) {
   draw->texts = 0;
 
   draw_push_transform(draw);
+  pl_update_screen_scale(draw->polyliner);
 }
 
 void draw_end_frame(DrawContext *draw) { draw_pop_transform(draw); }
@@ -193,9 +194,7 @@ void draw_stroked_line(
   pl_reset(draw->polyliner);
   pl_thickness(draw->polyliner, line_thickness);
   pl_cap_style(draw->polyliner, LC_SQUARE);
-  pl_start(draw->polyliner, start);
-  pl_lineto(draw->polyliner, end);
-  pl_finish(draw->polyliner);
+  pl_draw_line(draw->polyliner, start, end);
 
   draw->lineVertices += 2;
 }

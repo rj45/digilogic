@@ -568,6 +568,9 @@ Box draw_text_bounds(
 void draw_stroked_circle(
   DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float line_thickness,
   HMM_Vec4 color);
+void draw_stroked_rect(
+  DrawContext *draw, HMM_Vec2 position, HMM_Vec2 size, float radius,
+  float line_thickness, HMM_Vec4 color);
 
 void autoroute_draw_debug_lines(AutoRoute *ar, DrawContext *ctx) {
   RT_Slice_Node nodes;
@@ -579,15 +582,15 @@ void autoroute_draw_debug_lines(AutoRoute *ar, DrawContext *ctx) {
     const RT_Node *node = &nodes.ptr[i];
     RT_Point p1 = node->position;
     RT_NodeIndex neighbors[4] = {
-      node->neighbors.pos_x,
       node->neighbors.neg_x,
-      node->neighbors.pos_y,
       node->neighbors.neg_y,
+      node->neighbors.pos_x,
+      node->neighbors.pos_y,
     };
     draw_filled_circle(
       ctx, HMM_V2((float)p1.x - 1.5, (float)p1.y - 1.5), HMM_V2(3, 3),
       HMM_V4(0.5f, 1.0f, 1.0f, 0.5f));
-    for (size_t j = 0; j < 4; j++) {
+    for (size_t j = 0; j < 2; j++) {
       if (neighbors[j] < nodes.len) {
         RT_Point p2 = nodes.ptr[neighbors[j]].position;
         draw_stroked_line(
@@ -601,16 +604,20 @@ void autoroute_draw_debug_lines(AutoRoute *ar, DrawContext *ctx) {
     RT_BoundingBox *box = &ar->boxes[i];
     HMM_Vec2 tl =
       HMM_V2(box->center.x - box->half_width, box->center.y - box->half_height);
-    HMM_Vec2 br =
-      HMM_V2(box->center.x + box->half_width, box->center.y + box->half_height);
-    draw_stroked_line(
-      ctx, tl, HMM_V2(br.X, tl.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
-    draw_stroked_line(
-      ctx, HMM_V2(br.X, tl.Y), br, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
-    draw_stroked_line(
-      ctx, br, HMM_V2(tl.X, br.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
-    draw_stroked_line(
-      ctx, HMM_V2(tl.X, br.Y), tl, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    // HMM_Vec2 br =
+    //   HMM_V2(box->center.x + box->half_width, box->center.y +
+    //   box->half_height);
+    draw_stroked_rect(
+      ctx, tl, HMM_V2(box->half_width * 2.0f, box->half_height * 2.0f), 0, 1,
+      HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    // draw_stroked_line(
+    //   ctx, tl, HMM_V2(br.X, tl.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    // draw_stroked_line(
+    //   ctx, HMM_V2(br.X, tl.Y), br, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    // draw_stroked_line(
+    //   ctx, br, HMM_V2(tl.X, br.Y), 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
+    // draw_stroked_line(
+    //   ctx, HMM_V2(tl.X, br.Y), tl, 1, HMM_V4(0.7f, 0.5f, 0.5f, 0.5f));
   }
 }
 

@@ -22,7 +22,7 @@
 
 #include "ux.h"
 
-#define LOG_LEVEL LL_DEBUG
+#define LOG_LEVEL LL_INFO
 #include "log.h"
 
 #define MAX_ZOOM 20.0f

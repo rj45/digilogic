@@ -71,4 +71,10 @@ void pl_finish(PolyLiner *pl);
 // draw a polyline all at once
 void pl_draw_lines(PolyLiner *pl, HMM_Vec2 *pts, int numPts);
 
+// draw a single line
+void pl_draw_line(PolyLiner *pl, HMM_Vec2 p0, HMM_Vec2 p1);
+
+// call this once per frame before drawing anything
+void pl_update_screen_scale(PolyLiner *pl);
+
 #endif // POLYLINE_H

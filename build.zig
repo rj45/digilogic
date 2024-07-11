@@ -20,7 +20,9 @@ const crab = @import("build.crab");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
+    const optimize = b.standardOptimizeOption(.{
+        .preferred_optimize_mode = .ReleaseFast,
+    });
 
     const digilogic = b.addExecutable(.{
         .name = "digilogic",
@@ -65,7 +67,7 @@ pub fn build(b: *std.Build) void {
         } else {
             cflags.appendSlice(&.{
                 "-g",
-                "-O0",
+                "-Og",
                 "-fno-omit-frame-pointer",
                 "-fno-optimize-sibling-calls",
                 "-Wall",
@@ -448,8 +450,6 @@ fn build_nfd(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.buil
     nfd.linkLibC();
 
     if (target.result.os.tag.isDarwin()) {
-        nfd.root_module.addCMacro("NVD_USE_COCOA", "1");
-
         nfd.addCSourceFile(.{
             .file = b.path("thirdparty/nfd/nfd_cocoa.m"),
             .flags = cflags,

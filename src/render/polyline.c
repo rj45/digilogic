@@ -36,6 +36,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <assert.h>
 #include <stdbool.h>
 
+#define arr(T) T *
+
 typedef struct LineSegment {
   HMM_Vec2 a;
   HMM_Vec2 b;
@@ -52,38 +54,43 @@ typedef struct PolyLiner {
   float screenScale;
   JointStyle jointStyle;
   CapStyle capStyle;
-  PolySegment *segments;
+  arr(PolySegment) segments;
   HMM_Vec2 pen;
+  arr(sgp_triangle) triangles;
 } PolyLiner;
 
-LineSegment line_segment_add(LineSegment seg, HMM_Vec2 toAdd) {
+static inline LineSegment line_segment_add(LineSegment seg, HMM_Vec2 toAdd) {
   return (LineSegment){
     .a = HMM_AddV2(seg.a, toAdd),
     .b = HMM_AddV2(seg.b, toAdd),
   };
 }
 
-LineSegment line_segment_sub(LineSegment seg, HMM_Vec2 toSub) {
+static inline LineSegment line_segment_sub(LineSegment seg, HMM_Vec2 toSub) {
   return (LineSegment){
     .a = HMM_SubV2(seg.a, toSub),
     .b = HMM_SubV2(seg.b, toSub),
   };
 }
 
-HMM_Vec2 line_segment_dir_norm(LineSegment seg) {
+static inline HMM_Vec2 line_segment_dir_norm(LineSegment seg) {
   return HMM_NormV2(HMM_SubV2(seg.b, seg.a));
 }
 
-HMM_Vec2 line_segment_dir(LineSegment seg) { return HMM_SubV2(seg.b, seg.a); }
+static inline HMM_Vec2 line_segment_dir(LineSegment seg) {
+  return HMM_SubV2(seg.b, seg.a);
+}
 
-HMM_Vec2 line_segment_normal(LineSegment seg) {
+static inline HMM_Vec2 line_segment_normal(LineSegment seg) {
   HMM_Vec2 dir = line_segment_dir_norm(seg);
   return HMM_V2(-dir.Y, dir.X);
 }
 
-float HMM_CrossV2(HMM_Vec2 a, HMM_Vec2 b) { return a.X * b.Y - a.Y * b.X; }
+static inline float HMM_CrossV2(HMM_Vec2 a, HMM_Vec2 b) {
+  return a.X * b.Y - a.Y * b.X;
+}
 
-bool line_segment_intersection(
+static bool line_segment_intersection(
   LineSegment a, LineSegment b, HMM_Vec2 *point, bool infiniteLines) {
   HMM_Vec2 r = line_segment_dir(a);
   HMM_Vec2 s = line_segment_dir(b);
@@ -110,7 +117,7 @@ bool line_segment_intersection(
   return true;
 }
 
-void pl_add_polysegment(PolyLiner *pl, LineSegment center) {
+static inline void pl_add_polysegment(PolyLiner *pl, LineSegment center) {
   HMM_Vec2 offset = HMM_MulV2F(line_segment_normal(center), pl->thickness);
   PolySegment seg = {
     .center = center,
@@ -120,7 +127,7 @@ void pl_add_polysegment(PolyLiner *pl, LineSegment center) {
   arrput(pl->segments, seg);
 }
 
-float HMM_AngleV2(HMM_Vec2 a, HMM_Vec2 b) {
+static inline float HMM_AngleV2(HMM_Vec2 a, HMM_Vec2 b) {
   return HMM_ACosF(HMM_DotV2(a, b) / (HMM_LenV2(a) * HMM_LenV2(b)));
 }
 
@@ -129,6 +136,16 @@ float HMM_AngleV2(HMM_Vec2 a, HMM_Vec2 b) {
 #define ROUND_MIN_ANGLE (0.349066f) // 20 degrees
 
 #define ROUND_MIN_LENGTH (1.5f)
+
+static inline void pl_draw_filled_triangle(
+  PolyLiner *pl, float ax, float ay, float bx, float by, float cx, float cy) {
+  sgp_triangle tri = {
+    .a = {ax, ay},
+    .b = {bx, by},
+    .c = {cx, cy},
+  };
+  arrput(pl->triangles, tri);
+}
 
 void pl_create_triangle_fan(
   PolyLiner *pl, HMM_Vec2 connectTo, HMM_Vec2 origin, HMM_Vec2 start,
@@ -186,8 +203,8 @@ void pl_create_triangle_fan(
     }
 
     // emit the triangle
-    sgp_draw_filled_triangle(
-      startPoint.X, startPoint.Y, endPoint.X, endPoint.Y, connectTo.X,
+    pl_draw_filled_triangle(
+      pl, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y, connectTo.X,
       connectTo.Y);
 
     startPoint = endPoint;
@@ -295,8 +312,8 @@ void pl_create_joint(
     // connect the intersection points according to the joint style
     if (pl->jointStyle == LJ_BEVEL) {
       // simply connect the intersection points
-      sgp_draw_filled_triangle(
-        outer1->b.X, outer1->b.Y, outer2->a.X, outer2->a.Y, innerSec.X,
+      pl_draw_filled_triangle(
+        pl, outer1->b.X, outer1->b.Y, outer2->a.X, outer2->a.Y, innerSec.X,
         innerSec.Y);
     } else if (pl->jointStyle == LJ_ROUND) {
       // draw a circle between the ends of the outer edges,
@@ -320,6 +337,7 @@ PolyLiner *pl_create() {
 
 void pl_free(PolyLiner *pl) {
   arrfree(pl->segments);
+  arrfree(pl->triangles);
   free(pl);
 }
 
@@ -370,11 +388,38 @@ void pl_draw_path(PolyLiner *pl, HMM_Vec2 *pts, int numPts) {
   pl_finish(pl);
 }
 
+void pl_draw_line(PolyLiner *pl, HMM_Vec2 p0, HMM_Vec2 p1) {
+  LineSegment center = {p0, p1};
+
+  HMM_Vec2 offset = HMM_MulV2F(line_segment_normal(center), pl->thickness);
+  PolySegment seg = {
+    .center = center,
+    .edge1 = line_segment_add(center, offset),
+    .edge2 = line_segment_sub(center, offset),
+  };
+  HMM_Vec2 start1 = seg.edge1.a;
+  HMM_Vec2 start2 = seg.edge2.a;
+  HMM_Vec2 end1 = seg.edge1.b;
+  HMM_Vec2 end2 = seg.edge2.b;
+
+  sgp_triangle tri[2] = {
+    {
+      .a = {start1.X, start1.Y},
+      .b = {start2.X, start2.Y},
+      .c = {end1.X, end1.Y},
+    },
+    {
+      .a = {end1.X, end1.Y},
+      .b = {start2.X, start2.Y},
+      .c = {end2.X, end2.Y},
+    },
+  };
+  sgp_draw_filled_triangles(tri, 2);
+
+  arrsetlen(pl->triangles, 0);
+}
+
 void pl_finish(PolyLiner *pl) {
-  sgp_mat2x3 xform = sgp_query_state()->transform;
-  float scaleX = HMM_LenV2(HMM_V2(xform.v[0][0], xform.v[1][0]));
-  float scaleY = HMM_LenV2(HMM_V2(xform.v[0][1], xform.v[1][1]));
-  pl->screenScale = (scaleX + scaleY) / 2.0f;
 
   if (arrlen(pl->segments) == 0) {
     // nothing to draw
@@ -455,14 +500,24 @@ void pl_finish(PolyLiner *pl) {
         pl, seg, &pl->segments[i + 1], &end1, &end2, &nextStart1, &nextStart2);
     }
 
-    sgp_draw_filled_triangle(
-      start1.X, start1.Y, start2.X, start2.Y, end1.X, end1.Y);
-    sgp_draw_filled_triangle(
-      end1.X, end1.Y, start2.X, start2.Y, end2.X, end2.Y);
+    pl_draw_filled_triangle(
+      pl, start1.X, start1.Y, start2.X, start2.Y, end1.X, end1.Y);
+    pl_draw_filled_triangle(
+      pl, end1.X, end1.Y, start2.X, start2.Y, end2.X, end2.Y);
 
     start1 = nextStart1;
     start2 = nextStart2;
   }
 
+  sgp_draw_filled_triangles(pl->triangles, arrlen(pl->triangles));
+  arrsetlen(pl->triangles, 0);
+
   return;
+}
+
+void pl_update_screen_scale(PolyLiner *pl) {
+  sgp_mat2x3 xform = sgp_query_state()->transform;
+  float scaleX = HMM_LenV2(HMM_V2(xform.v[0][0], xform.v[1][0]));
+  float scaleY = HMM_LenV2(HMM_V2(xform.v[0][1], xform.v[1][1]));
+  pl->screenScale = (scaleX + scaleY) / 2.0f;
 }
