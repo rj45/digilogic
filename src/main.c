@@ -68,8 +68,6 @@ typedef struct my_app_t {
 
   const char *filename;
 
-  bool loaded;
-
   assetsys_t *assetsys;
 
   FONScontext *fsctx;
@@ -87,6 +85,8 @@ typedef struct my_app_t {
   int frameIntervalIndex;
 
   uint64_t frameIntervalTime;
+
+  ErrStack errs;
 } my_app_t;
 
 static void fons_error(void *user_ptr, int error, int val) {
@@ -116,6 +116,8 @@ static void fons_error(void *user_ptr, int error, int val) {
 static void init(void *user_data) {
   my_app_t *app = (my_app_t *)user_data;
   log_info("Initialized sokol_app");
+
+  errstack_init(&app->errs);
 
   sg_setup(&(sg_desc){
     .environment = sglue_environment(),
@@ -195,7 +197,8 @@ static void init(void *user_data) {
   draw_init(&app->draw, app->fsctx);
 
   ui_init(
-    &app->ui, circuit_symbol_descs(), &app->draw, (FontHandle)&app->fonsFont);
+    &app->ui, &app->errs, circuit_symbol_descs(), &app->draw,
+    (FontHandle)&app->fonsFont);
 
   app->ui.assetsys = app->assetsys;
 

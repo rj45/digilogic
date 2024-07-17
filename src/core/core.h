@@ -54,6 +54,62 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+// Error Handling
+////////////////////////////////////////////////////////////////////////////////
+
+#define MAX_ERRORS 50
+#define MAX_USER_MSG_LEN 256
+#define MAX_DEV_MSG_LEN 1024
+
+typedef int32_t ErrorCode;
+
+typedef struct ErrorInfo {
+  const char *file;
+  const char *func;
+  int line;
+  ErrorCode code;
+  char userMsg[MAX_USER_MSG_LEN];
+  char devMsg[MAX_DEV_MSG_LEN];
+} ErrorInfo;
+
+typedef struct ErrStack {
+  ErrorInfo errStack[MAX_ERRORS];
+  int topOfStack;
+} ErrStack;
+
+// Initializes an error stack.
+void errstack_init(ErrStack *errs);
+
+// Friendly error message meant to be displayed to the user. Can be optionally
+// augmented with a more detailed message meant for the developer with
+// `errorf_detailed`. Returns false for convenience.
+#define errorf_friendly(errs, code, fmt, ...)                                  \
+  errorf_friendly_(                                                            \
+    (errs), __FILE__, __func__, __LINE__, (code), (fmt), ##__VA_ARGS__)
+bool errorf_friendly_(
+  ErrStack *errs, const char *file, const char *func, int line, ErrorCode code,
+  const char *fmt, ...);
+
+// Detailed error message meant to be displayed to the developer. Expected to be
+// called after `errorf_friendly`. Returns false for convenience.
+bool errorf_detailed(ErrStack *errs, const char *fmt, ...);
+
+// Returns the last error code in the stack, useful for checking if an error can
+// be handled. Generally not displayed to the user.
+ErrorCode errstack_last(ErrStack *errs);
+
+// Returns true if there are any errors in the stack.
+static inline bool errstack_has_error(ErrStack *errs) {
+  return errs->topOfStack > 0;
+}
+
+// Prints the error stack to stderr.
+void errstack_print(ErrStack *errs);
+
+// Clears the errors.
+void errstack_clear(ErrStack *errs);
+
+////////////////////////////////////////////////////////////////////////////////
 // Generational Handle IDs
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -709,6 +765,8 @@ typedef struct Circuit {
   // changelog & events
   ChangeLog log;
   struct Circuit *snapshot;
+
+  ErrStack *errs;
 } Circuit;
 
 static inline bool circ_has(Circuit *circuit, ID id) {
@@ -789,7 +847,7 @@ static inline size_t circ_table_len(Circuit *circuit, EntityType type) {
 
 #define circ_len(circuit, type) circ_table_len(circuit, circ_entity_type(type))
 
-void circ_init(Circuit *circ);
+void circ_init(Circuit *circ, ErrStack *errs);
 void circ_free(Circuit *circ);
 void circ_clone(Circuit *dst, Circuit *src);
 void circ_load_symbol_descs(

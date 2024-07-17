@@ -65,12 +65,12 @@ static HMM_Vec2 calcTextSize(void *user, const char *text) {
 }
 
 void view_init(
-  CircuitView *view, const SymbolDesc *componentDescs, DrawContext *drawCtx,
-  FontHandle font) {
+  CircuitView *view, ErrStack *errs, const SymbolDesc *componentDescs,
+  DrawContext *drawCtx, FontHandle font) {
   *view = (CircuitView){
     .drawCtx = drawCtx,
   };
-  circ_init(&view->circuit);
+  circ_init(&view->circuit, errs);
 
   theme_init(&view->theme, font);
 

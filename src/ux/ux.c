@@ -30,8 +30,8 @@
 void ux_global_init() { autoroute_global_init(); }
 
 void ux_init(
-  CircuitUX *ux, const SymbolDesc *componentDescs, DrawContext *drawCtx,
-  FontHandle font) {
+  CircuitUX *ux, ErrStack *errs, const SymbolDesc *componentDescs,
+  DrawContext *drawCtx, FontHandle font) {
   *ux = (CircuitUX){
     .routingConfig.minimizeGraph = true,
     .routingConfig.performCentering = true,
@@ -41,7 +41,7 @@ void ux_init(
   bv_clear_all(ux->input.keysDown);
   bv_clear_all(ux->input.keysPressed);
 
-  view_init(&ux->view, componentDescs, drawCtx, font);
+  view_init(&ux->view, errs, componentDescs, drawCtx, font);
   bvh_init(&ux->bvh);
 
   ux->router = autoroute_create(&ux->view.circuit);

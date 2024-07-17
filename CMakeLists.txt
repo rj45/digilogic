@@ -8,6 +8,7 @@ set(DIGILOGIC_SRCS
     src/core/bvh.c
     src/core/circuit.c
     src/core/changelog.c
+    src/core/errors.c
     src/ux/ux.c
     src/ux/input.c
     src/ux/snap.c

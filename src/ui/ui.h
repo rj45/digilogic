@@ -64,8 +64,8 @@ typedef struct CircuitUI {
 } CircuitUI;
 
 void ui_init(
-  CircuitUI *ui, const SymbolDesc *componentDescs, DrawContext *drawCtx,
-  FontHandle font);
+  CircuitUI *ui, ErrStack *errs, const SymbolDesc *componentDescs,
+  DrawContext *drawCtx, FontHandle font);
 void ui_free(CircuitUI *ui);
 void ui_update(
   CircuitUI *ui, struct nk_context *ctx, float width, float height);

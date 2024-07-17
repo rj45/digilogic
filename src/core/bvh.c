@@ -72,6 +72,9 @@ arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result) {
   arrput(bvh->stack, 0);
   while (arrlen(bvh->stack) > 0) {
     uint32_t index = arrpop(bvh->stack);
+    if (index >= arrlen(bvh->nodeHeap)) {
+      continue;
+    }
     BVHNode *node = &bvh->nodeHeap[index];
     if (box_intersect_box(box, node->box)) {
       if (node->numLeaves == 0) {
@@ -79,6 +82,7 @@ arr(BVHLeaf) bvh_query(BVH *bvh, Box box, arr(BVHLeaf) result) {
         arrput(bvh->stack, bvh_right(index));
       } else {
         for (uint32_t i = 0; i < node->numLeaves; i++) {
+          assert(node->firstLeaf + i < arrlen(bvh->leaves));
           if (box_intersect_box(box, bvh->leaves[node->firstLeaf + i].box)) {
             // leaf may be in the BVH multiple times, so we need to check
             // if it's already in the result array

@@ -31,11 +31,11 @@
 #include "log.h"
 
 void ui_init(
-  CircuitUI *ui, const SymbolDesc *componentDescs, DrawContext *drawCtx,
-  FontHandle font) {
+  CircuitUI *ui, ErrStack *errs, const SymbolDesc *componentDescs,
+  DrawContext *drawCtx, FontHandle font) {
   *ui = (CircuitUI){.showIntro = true, .scale = 1.0f};
-  ux_init(&ui->ux, componentDescs, drawCtx, font);
-  circ_init(&ui->saveCopy);
+  ux_init(&ui->ux, errs, componentDescs, drawCtx, font);
+  circ_init(&ui->saveCopy, errs);
   thread_mutex_init(&ui->saveMutex);
 }
 
@@ -219,13 +219,13 @@ static void ui_menu_bar(CircuitUI *ui, struct nk_context *ctx, float width) {
 static void
 ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
   // TODO: display the entire NOTICE file here
-  float posFactor = 1.0f / 5.0f;
-  float sizeFactor = 3.0f / 5.0f;
-  if (ui->uiScale > 1) {
-    posFactor = 1.0f / 10.0f;
-    sizeFactor = 8.0f / 10.0f;
-  }
   if (ui->showAbout) {
+    float posFactor = 1.0f / 5.0f;
+    float sizeFactor = 3.0f / 5.0f;
+    if (ui->uiScale > 1) {
+      posFactor = 1.0f / 10.0f;
+      sizeFactor = 8.0f / 10.0f;
+    }
     if (nk_begin(
           ctx, "About",
           nk_rect(
@@ -263,6 +263,42 @@ ui_about(CircuitUI *ui, struct nk_context *ctx, float width, float height) {
       nk_label(ctx, "https://www.patreon.com/rj45Creates", NK_TEXT_CENTERED);
     } else {
       ui->showAbout = false;
+    }
+    nk_end(ctx);
+  }
+}
+
+static void ui_error_dialog(
+  CircuitUI *ui, struct nk_context *ctx, float width, float height) {
+
+  if (errstack_has_error(ui->ux.view.circuit.errs)) {
+    float posFactor = 1.0f / 3.0f;
+    float sizeFactor = 1.0f / 3.0f;
+    if (ui->uiScale > 1) {
+      posFactor = 2.0f / 5.0f;
+      sizeFactor = 3.0f / 5.0f;
+    }
+    if (nk_begin(
+          ctx, "Error",
+          nk_rect(
+            width * posFactor, height * posFactor, width * sizeFactor,
+            height * sizeFactor),
+          NK_WINDOW_CLOSABLE | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE)) {
+
+      nk_layout_row_dynamic(ctx, sv(ui, 25), 1);
+
+      ErrStack *errs = ui->ux.view.circuit.errs;
+
+      nk_label(ctx, "An error occurred:", NK_TEXT_LEFT);
+      nk_label(ctx, errs->errStack[errs->topOfStack - 1].userMsg, NK_TEXT_LEFT);
+
+      nk_label(ctx, "", NK_TEXT_LEFT);
+      nk_label(ctx, "Caused by:", NK_TEXT_LEFT);
+      for (int i = errs->topOfStack - 2; i >= 0; i--) {
+        nk_label(ctx, errs->errStack[i].userMsg, NK_TEXT_LEFT);
+      }
+    } else {
+      errstack_clear(ui->ux.view.circuit.errs);
     }
     nk_end(ctx);
   }
@@ -507,6 +543,7 @@ void ui_update(
   ui_intro_dialog(ui, ctx, width, height);
   ui_replay_controls(ui, ctx, width, height);
   ui_toolbox(ui, ctx, width, height);
+  ui_error_dialog(ui, ctx, width, height);
 
   ux_update(&ui->ux);
 

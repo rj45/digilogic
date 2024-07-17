@@ -31,7 +31,8 @@ UTEST(View, view_add_symbols) {
 
   DrawContext *draw = draw_create();
 
-  view_init(&view, circuit_symbol_descs(), draw, NULL);
+  ErrStack errs = {0};
+  view_init(&view, &errs, circuit_symbol_descs(), draw, NULL);
 
   SymbolKindID andKindID = circ_get_symbol_kind_by_name(&view.circuit, "AND");
   SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit, "OR");
@@ -59,7 +60,8 @@ UTEST(View, view_draw_symbols) {
   CircuitView view = {0};
   DrawContext *draw = draw_create();
 
-  view_init(&view, circuit_symbol_descs(), draw, NULL);
+  ErrStack errs = {0};
+  view_init(&view, &errs, circuit_symbol_descs(), draw, NULL);
 
   SymbolKindID orKindID = circ_get_symbol_kind_by_name(&view.circuit, "OR");
   ID orID = circ_add_symbol(&view.circuit, view.circuit.top, orKindID);
@@ -82,7 +84,8 @@ UTEST(View, view_draw_component_with_wires) {
   CircuitView view = {0};
   DrawContext *draw = draw_create();
 
-  view_init(&view, circuit_symbol_descs(), draw, NULL);
+  ErrStack errs = {0};
+  view_init(&view, &errs, circuit_symbol_descs(), draw, NULL);
   AutoRoute *router = autoroute_create(&view.circuit);
 
   SymbolKindID xorKindID = circ_get_symbol_kind_by_name(&view.circuit, "XOR");

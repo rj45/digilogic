@@ -134,6 +134,7 @@ pub fn build(b: *std.Build) void {
                 "core/bvh.c",
                 "core/circuit.c",
                 "core/changelog.c",
+                "core/errors.c",
                 "ux/ux.c",
                 "ux/input.c",
                 "ux/snap.c",

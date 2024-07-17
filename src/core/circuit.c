@@ -123,8 +123,10 @@ static void circ_cl_replay_delete(void *user, ID id, uint8_t table);
 static void circ_cl_replay_update(
   void *user, ID id, uint8_t table, uint8_t column, void *data, size_t size);
 
-void circ_init(Circuit *circ) {
+void circ_init(Circuit *circ, ErrStack *errs) {
   *circ = (Circuit){0};
+
+  circ->errs = errs;
 
   strpool_init(
     &circ->strpool, &(strpool_config_t){
@@ -404,7 +406,7 @@ void circ_clone(Circuit *dst, Circuit *src) {
 
 void circ_snapshot(Circuit *circ) {
   circ->snapshot = malloc(sizeof(Circuit));
-  circ_init(circ->snapshot);
+  circ_init(circ->snapshot, circ->errs);
   circ_clone(circ->snapshot, circ);
   cl_clear(&circ->log);
 }
