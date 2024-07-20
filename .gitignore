@@ -1,22 +1,24 @@
-test
-digilogic
-gen
-src/apple.m
-build
-zig-cache
-.zig-cache
-zig-out
-.cache
-*.dSYM
-thirdparty/adaptagrams
-thirdparty/routing
+# Mac stuff:
 .DS_Store
-circuit.dot
-circuit.pdf
-res/assets.zip
-untitled.dlc
-.vs
+
+# user vscode configs
 .vscode
-routing_data.dat
+
+# trunk output folder
+dist
+
+# Rust compile target directories:
+target
+target_ra
+target_wasm
+
+# https://github.com/lycheeverse/lychee
+.lycheecache
+
+# clangd cache
+.cache
+
+# can regenerate this with bear, but it's unique to your system so not in git
+#   cargo clean
+#   bear --append -- cargo build
 compile_commands.json
-.aider*
