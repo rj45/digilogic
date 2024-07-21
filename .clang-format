@@ -1,9 +1,0 @@
----
-Language:        Cpp
-BasedOnStyle:  LLVM
-AlignAfterOpenBracket: AlwaysBreak
-AlignArrayOfStructures: None
-IndentWidth: 2
-ContinuationIndentWidth: 2
-...
-
