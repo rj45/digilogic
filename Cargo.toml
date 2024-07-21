@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/digilogic_core",
+    "crates/digilogic_routing",
+    "crates/digilogic",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Ryan \"rj45\" Sanche", "Mathis Rech"]
+license = "Apache-2.0"
+rust-version = "1.79"
