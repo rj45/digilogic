@@ -4,3 +4,25 @@ version.workspace = true
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+log.workspace = true
+serde.workspace = true
+wgpu.workspace = true
+egui.workspace = true
+egui-wgpu.workspace = true
+eframe.workspace = true
+vello.workspace = true
+
+digilogic_core = { path = "../digilogic_core" }
+digilogic_routing = { path = "../digilogic_routing" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true
