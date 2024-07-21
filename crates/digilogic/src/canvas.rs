@@ -66,7 +66,7 @@ impl Canvas {
                 #[cfg(not(target_os = "macos"))]
                 num_init_threads: None,
                 #[cfg(target_os = "macos")]
-                num_init_threads: Some(1),
+                num_init_threads: std::num::NonZeroUsize::new(1),
             },
         )
         .unwrap();
