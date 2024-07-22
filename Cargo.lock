@@ -972,6 +972,7 @@ version = "0.1.0"
 dependencies = [
  "digilogic_core",
  "digilogic_routing",
+ "digilogic_serde",
  "eframe",
  "egui",
  "egui-wgpu",
@@ -994,12 +995,16 @@ dependencies = [
 [[package]]
 name = "digilogic_routing"
 version = "0.1.0"
+dependencies = [
+ "digilogic_core",
+]
 
 [[package]]
 name = "digilogic_serde"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "digilogic_core",
  "serde",
  "serde_json",
 ]

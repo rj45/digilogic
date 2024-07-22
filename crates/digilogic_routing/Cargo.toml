@@ -7,3 +7,7 @@ rust-version.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+
+digilogic_core = { path = "../digilogic_core" }

@@ -19,6 +19,7 @@ vello.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }
+digilogic_serde = { path = "../digilogic_serde" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger.workspace = true
