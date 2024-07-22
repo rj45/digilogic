@@ -1,0 +1,1587 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "0:1:13",
+      "symbolKind": "0:1:15",
+      "name": "",
+      "prefix": "",
+      "symbols": [
+        {
+          "id": "0:1:20",
+          "position": [
+            253.0,
+            300.0
+          ],
+          "number": 3
+        },
+        {
+          "id": "0:1:21",
+          "position": [
+            253.0,
+            360.0
+          ],
+          "number": 4
+        },
+        {
+          "id": "0:1:22",
+          "position": [
+            253.0,
+            580.0
+          ],
+          "number": 6
+        },
+        {
+          "id": "0:1:23",
+          "position": [
+            253.0,
+            40.0
+          ],
+          "number": 2
+        },
+        {
+          "id": "0:1:24",
+          "position": [
+            927.0,
+            580.0
+          ],
+          "number": 1
+        },
+        {
+          "id": "0:1:25",
+          "position": [
+            547.0,
+            370.0
+          ],
+          "number": 3
+        },
+        {
+          "id": "0:1:26",
+          "position": [
+            547.0,
+            290.0
+          ],
+          "number": 2
+        },
+        {
+          "id": "0:1:27",
+          "position": [
+            547.0,
+            450.0
+          ],
+          "number": 4
+        },
+        {
+          "id": "0:1:28",
+          "position": [
+            727.0,
+            470.0
+          ],
+          "number": 5
+        },
+        {
+          "id": "0:1:29",
+          "position": [
+            727.0,
+            550.0
+          ],
+          "number": 6
+        },
+        {
+          "id": "0:1:2a",
+          "position": [
+            827.0,
+            570.0
+          ],
+          "number": 7
+        },
+        {
+          "id": "0:1:2b",
+          "position": [
+            367.0,
+            370.0
+          ],
+          "number": 1
+        },
+        {
+          "id": "0:1:2c",
+          "position": [
+            253.0,
+            400.0
+          ],
+          "number": 5
+        },
+        {
+          "id": "0:1:2d",
+          "position": [
+            1867.0,
+            340.0
+          ],
+          "number": 2
+        },
+        {
+          "id": "0:1:2e",
+          "position": [
+            1767.0,
+            330.0
+          ],
+          "number": 20
+        },
+        {
+          "id": "0:1:2f",
+          "position": [
+            1627.0,
+            210.0
+          ],
+          "number": 18
+        },
+        {
+          "id": "0:1:30",
+          "position": [
+            1487.0,
+            150.0
+          ],
+          "number": 14
+        },
+        {
+          "id": "0:1:31",
+          "position": [
+            1327.0,
+            170.0
+          ],
+          "number": 10
+        },
+        {
+          "id": "0:1:32",
+          "position": [
+            1487.0,
+            270.0
+          ],
+          "number": 15
+        },
+        {
+          "id": "0:1:33",
+          "position": [
+            1327.0,
+            290.0
+          ],
+          "number": 11
+        },
+        {
+          "id": "0:1:34",
+          "position": [
+            1627.0,
+            450.0
+          ],
+          "number": 19
+        },
+        {
+          "id": "0:1:35",
+          "position": [
+            1487.0,
+            390.0
+          ],
+          "number": 16
+        },
+        {
+          "id": "0:1:36",
+          "position": [
+            1327.0,
+            410.0
+          ],
+          "number": 12
+        },
+        {
+          "id": "0:1:37",
+          "position": [
+            1487.0,
+            510.0
+          ],
+          "number": 17
+        },
+        {
+          "id": "0:1:38",
+          "position": [
+            1327.0,
+            530.0
+          ],
+          "number": 13
+        },
+        {
+          "id": "0:1:39",
+          "position": [
+            1067.0,
+            40.0
+          ],
+          "number": 8
+        },
+        {
+          "id": "0:1:3a",
+          "position": [
+            1187.0,
+            0.0
+          ],
+          "number": 9
+        },
+        {
+          "id": "0:1:3b",
+          "position": [
+            253.0,
+            0.0
+          ],
+          "number": 1
+        }
+      ],
+      "nets": [
+        {
+          "id": "0:1:3c",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:3d",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:3e",
+                  "position": [
+                    1300.0,
+                    540.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:38"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:3f",
+                      "position": [
+                        1140.0,
+                        220.0
+                      ]
+                    },
+                    {
+                      "id": "0:1:16",
+                      "position": [
+                        1140.0,
+                        500.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:17",
+                  "position": [
+                    1300.0,
+                    420.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:36"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:18",
+                      "position": [
+                        1220.0,
+                        440.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:19",
+                  "position": [
+                    1160.0,
+                    0.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:3a"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:1a",
+                      "position": [
+                        1150.0,
+                        0.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:1b",
+                  "position": [
+                    280.0,
+                    0.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:3b"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:1c",
+                      "position": [
+                        710.0,
+                        0.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:1d",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:1e",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:1f",
+                  "position": [
+                    1300.0,
+                    300.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:33"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:40",
+                      "position": [
+                        1220.0,
+                        260.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:41",
+                  "position": [
+                    1300.0,
+                    180.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:31"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:42",
+                      "position": [
+                        1260.0,
+                        200.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:43",
+                  "position": [
+                    1214.0,
+                    0.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:3a"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:44",
+                      "position": [
+                        1220.0,
+                        100.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:45",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:46",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:47",
+                  "position": [
+                    520.0,
+                    300.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:26"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:48",
+                      "position": [
+                        480.0,
+                        350.0
+                      ]
+                    },
+                    {
+                      "id": "0:1:49",
+                      "position": [
+                        480.0,
+                        390.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:4a",
+                  "position": [
+                    520.0,
+                    460.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:27"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:4b",
+                      "position": [
+                        480.0,
+                        440.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:4c",
+                  "position": [
+                    520.0,
+                    380.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:25"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:4d",
+                      "position": [
+                        500.0,
+                        400.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:4e",
+                  "position": [
+                    394.0,
+                    370.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2b"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:4f",
+                      "position": [
+                        450.0,
+                        380.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:50",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:51",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:52",
+                  "position": [
+                    900.0,
+                    580.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:24"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:53",
+                  "position": [
+                    854.0,
+                    570.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2a"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:54",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:55",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:56",
+                  "position": [
+                    700.0,
+                    480.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:28"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:57",
+                      "position": [
+                        480.0,
+                        540.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:58",
+                  "position": [
+                    700.0,
+                    560.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:29"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:59",
+                      "position": [
+                        590.0,
+                        580.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:5a",
+                  "position": [
+                    280.0,
+                    580.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:22"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:5b",
+                      "position": [
+                        380.0,
+                        580.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:5c",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:5d",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:5e",
+                  "position": [
+                    1300.0,
+                    520.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:38"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:5f",
+                      "position": [
+                        1020.0,
+                        400.0
+                      ]
+                    },
+                    {
+                      "id": "0:1:60",
+                      "position": [
+                        1020.0,
+                        160.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:61",
+                  "position": [
+                    1300.0,
+                    280.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:33"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:62",
+                      "position": [
+                        1160.0,
+                        280.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:63",
+                  "position": [
+                    1040.0,
+                    40.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:39"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:64",
+                      "position": [
+                        1030.0,
+                        40.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:65",
+                  "position": [
+                    280.0,
+                    40.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:23"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:66",
+                      "position": [
+                        650.0,
+                        40.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:67",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:68",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:69",
+                  "position": [
+                    1460.0,
+                    380.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:35"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:6a",
+                      "position": [
+                        660.0,
+                        410.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:6b",
+                  "position": [
+                    700.0,
+                    540.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:29"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:6c",
+                      "position": [
+                        660.0,
+                        500.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:6d",
+                  "position": [
+                    700.0,
+                    460.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:28"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:6e",
+                      "position": [
+                        680.0,
+                        460.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:6f",
+                  "position": [
+                    574.0,
+                    450.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:27"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:70",
+                      "position": [
+                        630.0,
+                        460.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:71",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:72",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:73",
+                  "position": [
+                    340.0,
+                    380.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2b"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:74",
+                  "position": [
+                    280.0,
+                    400.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2c"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:75",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:76",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:77",
+                  "position": [
+                    1300.0,
+                    400.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:36"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:78",
+                      "position": [
+                        1100.0,
+                        280.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:79",
+                  "position": [
+                    1300.0,
+                    160.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:31"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:7a",
+                      "position": [
+                        1200.0,
+                        160.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:7b",
+                  "position": [
+                    1094.0,
+                    40.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:39"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:7c",
+                      "position": [
+                        1100.0,
+                        100.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:7d",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:7e",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:7f",
+                  "position": [
+                    1840.0,
+                    340.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2d"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:80",
+                  "position": [
+                    1794.0,
+                    330.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2e"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:81",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:82",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:83",
+                  "position": [
+                    520.0,
+                    280.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:26"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:84",
+                      "position": [
+                        500.0,
+                        290.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:85",
+                  "position": [
+                    520.0,
+                    440.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:27"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:86",
+                      "position": [
+                        500.0,
+                        330.0
+                      ]
+                    },
+                    {
+                      "id": "0:1:87",
+                      "position": [
+                        500.0,
+                        400.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:88",
+                  "position": [
+                    520.0,
+                    360.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:25"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:89",
+                      "position": [
+                        510.0,
+                        360.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:8a",
+                  "position": [
+                    280.0,
+                    300.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:20"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:8b",
+                      "position": [
+                        390.0,
+                        300.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:8c",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:8d",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:8e",
+                  "position": [
+                    800.0,
+                    580.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2a"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:8f",
+                      "position": [
+                        640.0,
+                        490.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:90",
+                  "position": [
+                    1460.0,
+                    260.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:32"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:91",
+                      "position": [
+                        640.0,
+                        300.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "0:1:92",
+                  "position": [
+                    574.0,
+                    370.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:25"
+                  },
+                  "waypoints": [
+                    {
+                      "id": "0:1:93",
+                      "position": [
+                        620.0,
+                        380.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:94",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:95",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:96",
+                  "position": [
+                    1740.0,
+                    320.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2e"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:97",
+                  "position": [
+                    1654.0,
+                    210.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2f"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:98",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:99",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:9a",
+                  "position": [
+                    1460.0,
+                    520.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:37"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:9b",
+                  "position": [
+                    1354.0,
+                    530.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:38"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:9c",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:9d",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:9e",
+                  "position": [
+                    1600.0,
+                    460.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:34"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:9f",
+                  "position": [
+                    1514.0,
+                    510.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:37"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:a0",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:a1",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:a2",
+                  "position": [
+                    1600.0,
+                    200.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2f"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:a3",
+                  "position": [
+                    1514.0,
+                    150.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:30"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:a4",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:a5",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:a6",
+                  "position": [
+                    1460.0,
+                    400.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:35"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:a7",
+                  "position": [
+                    1354.0,
+                    410.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:36"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:a8",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:a9",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:aa",
+                  "position": [
+                    1740.0,
+                    340.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2e"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:ab",
+                  "position": [
+                    1654.0,
+                    450.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:34"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:ac",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:ad",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:ae",
+                  "position": [
+                    340.0,
+                    360.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2b"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:af",
+                  "position": [
+                    280.0,
+                    360.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:21"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:b0",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:b1",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:b2",
+                  "position": [
+                    1460.0,
+                    280.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:32"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:b3",
+                  "position": [
+                    1354.0,
+                    290.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:33"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:b4",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:b5",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:b6",
+                  "position": [
+                    1600.0,
+                    220.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2f"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:b7",
+                  "position": [
+                    1514.0,
+                    270.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:32"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:b8",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:b9",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:ba",
+                  "position": [
+                    800.0,
+                    560.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:2a"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:bb",
+                  "position": [
+                    754.0,
+                    550.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:29"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:bc",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:bd",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:be",
+                  "position": [
+                    1460.0,
+                    160.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:30"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:bf",
+                  "position": [
+                    1354.0,
+                    170.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:31"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:c0",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:c1",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:c2",
+                  "position": [
+                    1460.0,
+                    500.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:37"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:c3",
+                  "position": [
+                    754.0,
+                    470.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:28"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:c4",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:c5",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:c6",
+                  "position": [
+                    1460.0,
+                    140.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:30"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:c7",
+                  "position": [
+                    574.0,
+                    290.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:26"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0:1:c8",
+          "name": "",
+          "subnets": [
+            {
+              "id": "0:1:c9",
+              "name": "",
+              "subnetBits": [],
+              "endpoints": [
+                {
+                  "id": "0:1:ca",
+                  "position": [
+                    1600.0,
+                    440.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:34"
+                  },
+                  "waypoints": []
+                },
+                {
+                  "id": "0:1:cb",
+                  "position": [
+                    1514.0,
+                    390.0
+                  ],
+                  "portref": {
+                    "symbol": "0:1:35"
+                  },
+                  "waypoints": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
