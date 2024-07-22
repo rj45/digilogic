@@ -36,6 +36,10 @@ pub struct CircuitID(Entity);
 // Entity part components
 /////
 
+/// The Children of the Entity
+#[derive(Component)]
+pub struct Children(SmallVec<[Entity; 2]>);
+
 /// The Position of the Entity in its parent's coordinate system
 #[derive(Component)]
 pub struct Position {
@@ -145,121 +149,48 @@ pub struct Hovered;
 
 /// A Port is a connection point for an Endpoint. For sub-Circuits,
 /// it also connects to an Input or Output Symbol in the child Circuit.
-///
-/// Ports generally have these components:
-/// - Parent: the Symbol or SymbolKind that the Port belongs to
-/// - EndpointID: the Endpoint that the Port is connected to (Symbol Ports only)
-/// - Name: the name of the Port
-/// - Shape: the shape to draw for the Port
-/// - Number: the pin number of the Port
-/// - BitWidth: the bitwidth of the Port
-/// - Input: if the Port is an input or inout Port
-/// - Output: if the Port is an output or inout Port
-/// - Selected: if the Port is selected
-/// - Hovered: if the Port is hovered
-/// - Hidden: if the Port is hidden
 #[derive(Component)]
 pub struct Port;
 
 /// A SymbolKind is a template for a Symbol. It has Port Children which
 /// are cloned into the Symbol as its Port Children when the Symbol is
 /// instantiated.
-///
-/// SymbolKinds generally have these components:
-/// - Name: the name of the SymbolKind
-/// - Shape: the Shape of the SymbolKind
-/// - CircuitID: the Circuit if the SymbolKind represents a sub-Circuit
-/// - DesignatorPrefix: the prefix for the Reference Designator
-/// - Children: the Ports that the SymbolKind has
-/// - Selected: if the SymbolKind is selected for adding to the circuit
-/// - Hidden: if the SymbolKind is hidden from displaying in UI lists
 #[derive(Component)]
 pub struct SymbolKind;
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
 /// are its input and output Ports. It represents an all or part of an
 /// electronic component.
-///
-/// Symbols generally have these components:
-/// - Name: the name of the Symbol (cloned from SymbolKind)
-/// - Shape: the Shape of the Symbol when drawn (cloned from SymbolKind)
-/// - DesignatorPrefix: the prefix for the Reference Designator (cloned from SymbolKind)
-/// - DesignatorNumber: the number for the Reference Designator
-/// - DesignatorSuffix: the suffix for the Reference Designator
-/// - Position: the Position of the Symbol
-/// - Rotation: the Rotation of the Symbol
-/// - Size: the Size of the Symbol (cloned from SymbolKind)
-/// - SymbolKindID: the SymbolKind that the Symbol is an instance of
-/// - Parent: the Circuit that the Symbol is part of
-/// - Children: the Ports that the Symbol has (which are cloned from SymbolKind)
-/// - PartOf: if the Symbol is part of a set of Symbols
-///   (ie. a gate in a chip with many gates)
-/// - Selected: if the Symbol is selected
-/// - Hovered: if the Symbol is hovered
-/// - Hidden: if the Symbol is hidden
 #[derive(Component)]
 pub struct Symbol;
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
 /// Which of the Net's wires depends on the Endpoint the Waypoint is attached to.
-///
-/// Waypoints generally have these components:
-/// - Position: the Position of the Waypoint
-/// - Parent: the Endpoint that the Waypoint is attached to
-/// - Selected: if the Waypoint is selected
-/// - Hovered: if the Waypoint is hovered
-/// - Hidden: if the Waypoint is hidden
 #[derive(Component)]
 pub struct Waypoint;
 
 /// An Endpoint is a connection point for a Wire. It connects to a Port
 /// in a Symbol. Its Parent is the Subnet that the Endpoint is part of.
 /// It has Waypoint Children.
-///
-/// Endpoints generally have these components:
-/// - Parent: the Subnet that the Endpoint is connected to
-/// - PortID: the Port that the Endpoint is connected to (optional)
-/// - Position: the Position of the Endpoint
-/// - Shape: the Shape of the Endpoint (optional)
 #[derive(Component)]
 pub struct Endpoint;
 
-/// A Subnet is a subset of the Net's Endpoints that uses a subset of the
+/// A Wire is a connection between two or more Endpoints. It has Endpoint Children.
+#[derive(Component)]
+pub struct Wire;
+
+/// A Subnet is a subset of the Net's Wires that uses a subset of the
 /// Net's bits.
-///
-/// Subnets generally have these components:
-/// - Parent: the Net that the Subnet is part of
-/// - Children: the Endpoints that the Subnet has
-/// - BitWidth: the bitwidth of the Subnet, must match the Bits length
-/// - Bits: the list of bits that the Subnet uses
-/// - Name: the name of the Subnet (optional)
-/// - Selected: if the Subnet is selected
-/// - Hovered: if the Subnet is hovered
-/// - Hidden: if the Subnet is hidden
 #[derive(Component)]
 pub struct Subnet;
 
 /// A Net is a set of Subnets that are connected together. It has
 /// Subnet Children, and a Netlist Parent. Often a Net will have
 /// only one Subnet, unless there's a bus split.
-///
-/// Nets generally have these components:
-/// - Parent: Circuit the Net is part of
-/// - Children: the Subnets that the Net has
-/// - Name: the name of the Net (optional)
-/// - BitWidth: the bitwidth of the Net
-/// - Selected: if the Net is selected
-/// - Hovered: if the Net is hovered
-/// - Hidden: if the Net is hidden
 #[derive(Component)]
 pub struct Net;
 
 /// A Circuit is a set of Symbols and Nets forming an Electronic Circuit.
 /// It has Symbol and Net Children, and a SymbolKind
-///
-/// Circuits generally have these components:
-/// - SymbolKindID: the SymbolKind that represents the Circuit in parent
-///   Circuits
-/// - Children: the Symbols and Nets that the Circuit has
 #[derive(Component)]
 pub struct Circuit;
