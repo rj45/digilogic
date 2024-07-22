@@ -1,7 +1,8 @@
-use std::collections::HashMap;
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use serde_json::Value;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Id(pub u64);
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -13,11 +14,11 @@ pub struct CircuitFile {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Module {
-    pub id: String,
+    pub id: Id,
     pub name: String,
     pub prefix: String,
     #[serde(rename = "symbolKind")]
-    pub symbol_kind: String,
+    pub symbol_kind: Id,
     pub symbols: Vec<Symbol>,
     pub nets: Vec<Net>
 }
@@ -25,15 +26,15 @@ pub struct Module {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Symbol {
-    pub id: String,
-    pub position: Vec<f64>,
+    pub id: Id,
+    pub position: [f32; 2],
     pub number: u32
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Net {
-    pub id: String,
+    pub id: Id,
     pub name: String,
     pub subnets: Vec<Subnet>
 }
@@ -41,20 +42,33 @@ pub struct Net {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Subnet {
-    pub id: String,
+    pub id: Id,
     pub name: String,
     #[serde(rename = "subnetBits")]
-    pub subnet_bits: Vec<Value>,
+    pub subnet_bits: Vec<serde_json::Value>,
     pub endpoints: Vec<Endpoint>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct PortRef {
+    pub symbol: Id,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Waypoint {
+    pub id: Id,
+    pub position: [f32; 2],
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Endpoint {
-    pub id: String,
-    pub position: Vec<f64>,
-    pub portref: HashMap<String, String>,
-    pub waypoints: Vec<Value>
+    pub id: Id,
+    pub position: [f32; 2],
+    pub portref: PortRef,
+    pub waypoints: Vec<Waypoint>
 }
 
 impl TryFrom<&str> for CircuitFile {
@@ -71,6 +85,13 @@ impl CircuitFile {
         let file = std::fs::File::open(path)?;
         let reader = std::io::BufReader::new(file);
         Ok(serde_json::from_reader(reader)?)
+    }
+
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<()> {
+        let file = std::fs::File::create(path)?;
+        let writer = std::io::BufWriter::new(file);
+        serde_json::to_writer_pretty(writer, self)?;
+        Ok(())
     }
 }
 
