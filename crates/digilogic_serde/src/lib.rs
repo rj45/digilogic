@@ -1,6 +1,5 @@
-use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
-
-use anyhow::Result;
+use std::collections::HashMap;
+use std::path::Path;
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 
@@ -59,54 +58,38 @@ pub struct Endpoint {
 }
 
 impl TryFrom<&str> for CircuitFile {
-    type Error = anyhow::Error;
+    type Error = serde_json::Error;
 
-    fn try_from(value: &str) -> Result<Self> {
-        Ok(serde_json::from_str(value)?)
+    #[inline]
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str(value)
     }    
 }
 
 impl CircuitFile {
-    pub fn load(path: PathBuf) -> Result<Self> {
-        let mut file = File::open(path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        Ok(Self::try_from(contents.as_str())?)
+    pub fn load<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let file = std::fs::File::open(path)?;
+        let reader = std::io::BufReader::new(file);
+        Ok(serde_json::from_reader(reader)?)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-    use anyhow::Result;
-    use crate::CircuitFile;
+    use super::CircuitFile;
 
-    fn get_sample_path(sample_file: &str) -> PathBuf {
-        let cwd = std::env::current_dir().expect("Could not determine current working directory");
-        cwd.join("assets/testdata").join(sample_file)
+    #[test]
+    fn reads_small_sample() {
+        CircuitFile::load("testdata/small.dlc").unwrap();
     }
 
     #[test]
-    fn reads_small_sample() -> Result<()> {
-        let file_path = get_sample_path("small.dlc");
-        let circuit_file = CircuitFile::load(file_path.into());
-        assert!(circuit_file.is_ok());
-        Ok(())
+    fn reads_medium_sample() {
+        CircuitFile::load("testdata/medium.dlc").unwrap();
     }
 
     #[test]
-    fn reads_medium_sample() -> Result<()> {
-        let file_path = get_sample_path("medium.dlc");
-        let circuit_file = CircuitFile::load(file_path.into());
-        assert!(circuit_file.is_ok());
-        Ok(())
-    }
-
-    #[test]
-    fn reads_large_sample() -> Result<()> {
-        let file_path = get_sample_path("large.dlc");
-        let circuit_file = CircuitFile::load(file_path.into());
-        assert!(circuit_file.is_ok());
-        Ok(())
+    fn reads_large_sample() {
+        CircuitFile::load("testdata/large.dlc").unwrap();
     }
 }
