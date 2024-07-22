@@ -990,6 +990,7 @@ name = "digilogic_core"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "smallvec",
 ]
 
 [[package]]
