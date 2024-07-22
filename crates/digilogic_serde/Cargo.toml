@@ -1,15 +1,15 @@
 [package]
-name = "digilogic_circuitfile"
+name = "digilogic_serde"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
-
-[lints]
-workspace = true
