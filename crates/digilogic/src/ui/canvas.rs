@@ -47,8 +47,8 @@ fn create_texture(
 }
 
 impl Canvas {
-    pub fn create(render_state: &egui_wgpu::RenderState, width: u32, height: u32) -> Self {
-        let (texture, texture_view) = create_texture(render_state, width, height);
+    pub fn create(render_state: &egui_wgpu::RenderState) -> Self {
+        let (texture, texture_view) = create_texture(render_state, 1, 1);
 
         let texture_id = render_state.renderer.write().register_native_texture(
             &render_state.device,

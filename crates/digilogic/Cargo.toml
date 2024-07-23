@@ -16,6 +16,7 @@ egui.workspace = true
 egui-wgpu.workspace = true
 eframe.workspace = true
 vello.workspace = true
+bevy_ecs.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }

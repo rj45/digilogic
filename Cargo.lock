@@ -1038,6 +1038,7 @@ dependencies = [
 name = "digilogic"
 version = "0.1.0"
 dependencies = [
+ "bevy_ecs",
  "digilogic_core",
  "digilogic_routing",
  "digilogic_serde",
