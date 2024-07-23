@@ -13,22 +13,23 @@ pub fn load_json(
     mut commands: Commands,
     symbol_kinds_q: Query<(EntityRef, &Name), With<SymbolKind>>,
     mut ev_load: EventReader<LoadEvent>,
-    mut ev_loaded: EventWriter<LoadedEvent>,
+    // mut ev_loaded: EventWriter<LoadedEvent>,
 ) {
     for ev in ev_load.read() {
-        let result = CircuitFile::load("testdata/small.dlc");
+        let result = CircuitFile::load(&ev.filename);
         match result {
             Ok(circuit) => {
                 let circuit_id =
                     translate_circuit(&mut commands, &symbol_kinds_q, &circuit).unwrap();
-                ev_loaded.send(LoadedEvent {
-                    filename: ev.filename.clone(),
-                    circuit: CircuitID(circuit_id.clone()),
-                });
+                // ev_loaded.send(LoadedEvent {
+                //     filename: ev.filename.clone(),
+                //     circuit: CircuitID(circuit_id.clone()),
+                // });
+                _ = circuit_id;
             }
             Err(e) => {
                 // TODO: instead of this, send an ErrorEvent
-                eprintln!("Error loading circuit: {:?}", e);
+                eprintln!("Error loading circuit {:?}: {:?}", ev.filename, e);
             }
         }
     }

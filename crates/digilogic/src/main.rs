@@ -5,6 +5,8 @@ mod ui;
 use bevy_ecs::event::Event;
 use bevy_ecs::system::Resource;
 use bevy_ecs::world::World;
+use digilogic_serde::load_json;
+use egui::load;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Resource)]
@@ -54,27 +56,31 @@ impl App {
 
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = bevy_ecs::event::Events<FileDialogEvent>;
+    type LoadEvents = bevy_ecs::event::Events<digilogic_core::events::LoadEvent>;
+    let file_dialog_event: Option<FileDialogEvent>;
+    {
+        let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
+        let mut file_dialog_events = file_dialog_events.drain();
+        file_dialog_event = file_dialog_events.next();
 
-    let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
-    let mut file_dialog_events = file_dialog_events.drain();
-    let file_dialog_event = file_dialog_events.next();
-
-    assert!(
-        file_dialog_events.next().is_none(),
-        "multiple file dialog events in one frame",
-    );
+        assert!(
+            file_dialog_events.next().is_none(),
+            "multiple file dialog events in one frame",
+        );
+    }
 
     if let Some(file_dialog_event) = file_dialog_event {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let dialog = rfd::FileDialog::new().add_filter("Digilogic Circuit", &["dlc"]);
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
             let dialog = dialog.set_parent(frame);
 
             match file_dialog_event {
                 FileDialogEvent::Open => {
                     if let Some(file) = dialog.pick_file() {
-                        // TODO: load circuit file
+                        let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
+                        load_events.send(digilogic_core::events::LoadEvent { filename: file });
                     }
                 }
                 FileDialogEvent::Save => {
@@ -113,9 +119,11 @@ impl eframe::App for App {
             let mut world = World::new();
 
             world.insert_resource(self.state.take().unwrap());
-            self.schedule.add_systems(event_update_system);
+            self.schedule.add_systems((event_update_system, load_json));
             EventRegistry::register_event::<HierarchyEvent>(&mut world);
             EventRegistry::register_event::<FileDialogEvent>(&mut world);
+            EventRegistry::register_event::<digilogic_core::events::LoadEvent>(&mut world);
+            EventRegistry::register_event::<digilogic_core::events::LoadedEvent>(&mut world);
             UiPlugin::new(context, frame).build(&mut world, &mut self.schedule);
 
             world

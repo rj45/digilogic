@@ -1,16 +1,16 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, path::PathBuf, sync::Arc};
 
 use super::components::CircuitID;
 use bevy_ecs::prelude::*;
 
 #[derive(Event)]
 pub struct LoadEvent {
-    pub filename: String,
+    pub filename: PathBuf,
 }
 
 #[derive(Event)]
 pub struct LoadedEvent {
-    pub filename: String,
+    pub filename: PathBuf,
     pub circuit: CircuitID,
 }
 
