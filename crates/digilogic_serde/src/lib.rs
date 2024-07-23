@@ -1,116 +1,110 @@
-use std::path::Path;
-use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Id(pub u64);
+use bevy_ecs::prelude::*;
+use bevy_hierarchy::BuildChildren;
+use digilogic_core::bundles::*;
+use digilogic_core::components::*;
+use digilogic_core::events::{LoadEvent, LoadedEvent};
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CircuitFile {
-    pub version: u32,
-    pub modules: Vec<Module>
-}
+mod circuitfile;
+use circuitfile::*;
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Module {
-    pub id: Id,
-    pub name: String,
-    pub prefix: String,
-    #[serde(rename = "symbolKind")]
-    pub symbol_kind: Id,
-    pub symbols: Vec<Symbol>,
-    pub nets: Vec<Net>
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Symbol {
-    pub id: Id,
-    pub position: [f32; 2],
-    pub number: u32
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Net {
-    pub id: Id,
-    pub name: String,
-    pub subnets: Vec<Subnet>
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Subnet {
-    pub id: Id,
-    pub name: String,
-    #[serde(rename = "subnetBits")]
-    pub subnet_bits: Vec<serde_json::Value>,
-    pub endpoints: Vec<Endpoint>
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct PortRef {
-    pub symbol: Id,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Waypoint {
-    pub id: Id,
-    pub position: [f32; 2],
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Endpoint {
-    pub id: Id,
-    pub position: [f32; 2],
-    pub portref: PortRef,
-    pub waypoints: Vec<Waypoint>
-}
-
-impl TryFrom<&str> for CircuitFile {
-    type Error = serde_json::Error;
-
-    #[inline]
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(value)
-    }    
-}
-
-impl CircuitFile {
-    pub fn load<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let file = std::fs::File::open(path)?;
-        let reader = std::io::BufReader::new(file);
-        Ok(serde_json::from_reader(reader)?)
-    }
-
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<()> {
-        let file = std::fs::File::create(path)?;
-        let writer = std::io::BufWriter::new(file);
-        serde_json::to_writer_pretty(writer, self)?;
-        Ok(())
+pub fn load_json(
+    mut commands: Commands,
+    symbol_kinds_q: Query<(EntityRef, &Name), With<SymbolKind>>,
+    mut ev_load: EventReader<LoadEvent>,
+    mut ev_loaded: EventWriter<LoadedEvent>,
+) {
+    for ev in ev_load.read() {
+        let result = CircuitFile::load("testdata/small.dlc");
+        match result {
+            Ok(circuit) => {
+                let circuit_id =
+                    translate_circuit(&mut commands, &symbol_kinds_q, &circuit).unwrap();
+                ev_loaded.send(LoadedEvent {
+                    filename: ev.filename.clone(),
+                    circuit: CircuitID(circuit_id.clone()),
+                });
+            }
+            Err(e) => {
+                // TODO: instead of this, send an ErrorEvent
+                eprintln!("Error loading circuit: {:?}", e);
+            }
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::CircuitFile;
+fn translate_circuit(
+    commands: &mut Commands,
+    symbol_kinds_q: &Query<(EntityRef, &Name), With<SymbolKind>>,
+    circuit: &CircuitFile,
+) -> anyhow::Result<Entity> {
+    let mut id_map = HashMap::new();
+    let modules = &circuit.modules;
 
-    #[test]
-    fn reads_small_sample() {
-        CircuitFile::load("testdata/small.dlc").unwrap();
+    for module in modules.iter() {
+        let circuit_symbol_kind_id = commands
+            .spawn(SymbolKindBundle {
+                marker: SymbolKind,
+                visible: Default::default(),
+                name: Name(module.name.clone()),
+                size: Default::default(),
+                designator_prefix: DesignatorPrefix(module.prefix.clone()),
+            })
+            .id();
+        id_map.insert(module.symbol_kind.clone(), circuit_symbol_kind_id);
+
+        let circuit_id = commands
+            .spawn(CircuitBundle {
+                marker: Circuit,
+                symbol_kind: SymbolKindID(circuit_symbol_kind_id),
+            })
+            .id();
+        id_map.insert(module.id.clone(), circuit_id);
+
+        for symbol in module.symbols.iter() {
+            let symbol_kind_id;
+            if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
+                // find a symbol kind by the same name
+                let (kind, _) = symbol_kinds_q
+                    .iter()
+                    .filter(|(_, name)| name.0 == *kind_name)
+                    .next()
+                    .ok_or_else(|| anyhow::anyhow!("SymbolKind {} not found", kind_name))?;
+                symbol_kind_id = kind.id();
+            } else if let Some(kind_id) = symbol.symbol_kind_id.as_ref() {
+                symbol_kind_id = id_map.get(&kind_id).unwrap().clone();
+            } else {
+                return Err(anyhow::anyhow!("Symbol {} has no SymbolKind", symbol.id.0));
+            }
+            let (kind, _) = symbol_kinds_q.get(symbol_kind_id).unwrap();
+            let name = kind.get::<Name>().unwrap().0.clone();
+            let designator_prefix = kind.get::<DesignatorPrefix>().unwrap().0.clone();
+            let shape = kind.get::<Shape>().unwrap().0;
+            let size = kind.get::<Size>().unwrap();
+
+            let symbol_id = commands
+                .spawn(SymbolBundle {
+                    marker: Symbol,
+                    visible: Visible {
+                        shape: Shape(shape),
+                        ..Default::default()
+                    },
+                    name: Name(name),
+                    designator_prefix: DesignatorPrefix(designator_prefix),
+                    designator_number: DesignatorNumber(symbol.number),
+                    rotation: Default::default(),
+                    size: Size {
+                        width: size.width,
+                        height: size.height,
+                    },
+                    symbol_kind: SymbolKindID(circuit_symbol_kind_id),
+                })
+                .set_parent(circuit_id)
+                .id();
+            id_map.insert(symbol.id.clone(), symbol_id);
+        }
     }
 
-    #[test]
-    fn reads_medium_sample() {
-        CircuitFile::load("testdata/medium.dlc").unwrap();
-    }
-
-    #[test]
-    fn reads_large_sample() {
-        CircuitFile::load("testdata/large.dlc").unwrap();
-    }
+    Ok(id_map.get(&modules[0].id).unwrap().clone())
 }

@@ -2,13 +2,14 @@
   "version": 2,
   "modules": [
     {
-      "id": 275,
+      "id": "0:1:13",
+      "symbolKind": "0:1:15",
       "name": "",
       "prefix": "",
-      "symbolKind": 277,
       "symbols": [
         {
-          "id": 278,
+          "id": "0:1:20",
+          "symbolKindName": "IN",
           "position": [
             313.0,
             160.0
@@ -16,7 +17,8 @@
           "number": 1
         },
         {
-          "id": 279,
+          "id": "0:1:21",
+          "symbolKindName": "IN",
           "position": [
             313.0,
             280.0
@@ -24,7 +26,8 @@
           "number": 2
         },
         {
-          "id": 280,
+          "id": "0:1:22",
+          "symbolKindName": "AND",
           "position": [
             607.0,
             250.0
@@ -32,7 +35,8 @@
           "number": 3
         },
         {
-          "id": 281,
+          "id": "0:1:23",
+          "symbolKindName": "OR",
           "position": [
             447.0,
             170.0
@@ -40,7 +44,8 @@
           "number": 1
         },
         {
-          "id": 282,
+          "id": "0:1:24",
+          "symbolKindName": "NOT",
           "position": [
             447.0,
             280.0
@@ -48,7 +53,8 @@
           "number": 2
         },
         {
-          "id": 283,
+          "id": "0:1:25",
+          "symbolKindName": "OUT",
           "position": [
             747.0,
             260.0
@@ -58,33 +64,35 @@
       ],
       "nets": [
         {
-          "id": 284,
+          "id": "0:1:26",
           "name": "",
           "subnets": [
             {
-              "id": 285,
+              "id": "0:1:27",
               "name": "",
               "subnetBits": [],
               "endpoints": [
                 {
-                  "id": 286,
+                  "id": "0:1:28",
                   "position": [
                     420.0,
                     160.0
                   ],
                   "portref": {
-                    "symbol": 281
+                    "portName": "A",
+                    "symbol": "0:1:23"
                   },
                   "waypoints": []
                 },
                 {
-                  "id": 287,
+                  "id": "0:1:29",
                   "position": [
                     340.0,
                     160.0
                   ],
                   "portref": {
-                    "symbol": 278
+                    "portName": "Y",
+                    "symbol": "0:1:20"
                   },
                   "waypoints": []
                 }
@@ -93,33 +101,35 @@
           ]
         },
         {
-          "id": 288,
+          "id": "0:1:2a",
           "name": "",
           "subnets": [
             {
-              "id": 289,
+              "id": "0:1:2b",
               "name": "",
               "subnetBits": [],
               "endpoints": [
                 {
-                  "id": 290,
+                  "id": "0:1:2c",
                   "position": [
                     580.0,
                     240.0
                   ],
                   "portref": {
-                    "symbol": 280
+                    "portName": "A",
+                    "symbol": "0:1:22"
                   },
                   "waypoints": []
                 },
                 {
-                  "id": 291,
+                  "id": "0:1:2d",
                   "position": [
                     474.0,
                     170.0
                   ],
                   "portref": {
-                    "symbol": 281
+                    "portName": "Y",
+                    "symbol": "0:1:23"
                   },
                   "waypoints": []
                 }
@@ -128,33 +138,35 @@
           ]
         },
         {
-          "id": 292,
+          "id": "0:1:2e",
           "name": "",
           "subnets": [
             {
-              "id": 293,
+              "id": "0:1:2f",
               "name": "",
               "subnetBits": [],
               "endpoints": [
                 {
-                  "id": 294,
+                  "id": "0:1:30",
                   "position": [
                     720.0,
                     260.0
                   ],
                   "portref": {
-                    "symbol": 283
+                    "portName": "A",
+                    "symbol": "0:1:25"
                   },
                   "waypoints": []
                 },
                 {
-                  "id": 295,
+                  "id": "0:1:31",
                   "position": [
                     634.0,
                     250.0
                   ],
                   "portref": {
-                    "symbol": 280
+                    "portName": "Y",
+                    "symbol": "0:1:22"
                   },
                   "waypoints": []
                 }
@@ -163,26 +175,27 @@
           ]
         },
         {
-          "id": 296,
+          "id": "0:1:32",
           "name": "",
           "subnets": [
             {
-              "id": 297,
+              "id": "0:1:33",
               "name": "",
               "subnetBits": [],
               "endpoints": [
                 {
-                  "id": 298,
+                  "id": "0:1:34",
                   "position": [
                     420.0,
                     180.0
                   ],
                   "portref": {
-                    "symbol": 281
+                    "portName": "B",
+                    "symbol": "0:1:23"
                   },
                   "waypoints": [
                     {
-                      "id": 299,
+                      "id": "0:1:35",
                       "position": [
                         400.0,
                         240.0
@@ -191,17 +204,18 @@
                   ]
                 },
                 {
-                  "id": 300,
+                  "id": "0:1:36",
                   "position": [
                     420.0,
                     280.0
                   ],
                   "portref": {
-                    "symbol": 282
+                    "portName": "A",
+                    "symbol": "0:1:24"
                   },
                   "waypoints": [
                     {
-                      "id": 301,
+                      "id": "0:1:37",
                       "position": [
                         410.0,
                         280.0
@@ -210,17 +224,18 @@
                   ]
                 },
                 {
-                  "id": 302,
+                  "id": "0:1:38",
                   "position": [
                     340.0,
                     280.0
                   ],
                   "portref": {
-                    "symbol": 279
+                    "portName": "Y",
+                    "symbol": "0:1:21"
                   },
                   "waypoints": [
                     {
-                      "id": 303,
+                      "id": "0:1:39",
                       "position": [
                         370.0,
                         280.0
@@ -233,33 +248,35 @@
           ]
         },
         {
-          "id": 304,
+          "id": "0:1:3a",
           "name": "",
           "subnets": [
             {
-              "id": 305,
+              "id": "0:1:3b",
               "name": "",
               "subnetBits": [],
               "endpoints": [
                 {
-                  "id": 306,
+                  "id": "0:1:3c",
                   "position": [
                     580.0,
                     260.0
                   ],
                   "portref": {
-                    "symbol": 280
+                    "portName": "B",
+                    "symbol": "0:1:22"
                   },
                   "waypoints": []
                 },
                 {
-                  "id": 307,
+                  "id": "0:1:3d",
                   "position": [
                     474.0,
                     280.0
                   ],
                   "portref": {
-                    "symbol": 282
+                    "portName": "Y",
+                    "symbol": "0:1:24"
                   },
                   "waypoints": []
                 }

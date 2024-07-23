@@ -1098,6 +1098,8 @@ name = "digilogic_serde"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bevy_ecs",
+ "bevy_hierarchy",
  "digilogic_core",
  "serde",
  "serde_json",

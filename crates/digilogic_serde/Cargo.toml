@@ -13,5 +13,7 @@ workspace = true
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
+bevy_ecs.workspace = true
+bevy_hierarchy.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }
