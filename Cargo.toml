@@ -41,9 +41,10 @@ eframe = { version = "0.28.1", default-features = false, features = [
     "wgpu",
     "persistence",
 ] }
+rfd = "0.14.1"
 vello = "0.2.1"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 bevy_ecs = "0.14"
-bevy_hierarchy = "0.14"
+bevy_hierarchy = { version = "0.14", default-features = false }
 smallvec = "1.13"

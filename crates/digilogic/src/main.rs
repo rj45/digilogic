@@ -2,7 +2,12 @@
 
 mod ui;
 
-#[derive(serde::Serialize, serde::Deserialize, bevy_ecs::system::Resource)]
+use bevy_ecs::event::Event;
+use bevy_ecs::system::Resource;
+use bevy_ecs::world::World;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Resource)]
 struct AppState {
     dark_mode: bool,
 }
@@ -13,9 +18,15 @@ impl Default for AppState {
     }
 }
 
+#[derive(Event)]
+enum FileDialogEvent {
+    Open,
+    Save,
+}
+
 struct App {
     state: Option<AppState>,
-    world: Option<bevy_ecs::world::World>,
+    world: Option<World>,
     schedule: bevy_ecs::schedule::Schedule,
 }
 
@@ -41,6 +52,46 @@ impl App {
     }
 }
 
+fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
+    type FileDialogEvents = bevy_ecs::event::Events<FileDialogEvent>;
+
+    let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
+    let mut file_dialog_events = file_dialog_events.drain();
+    let file_dialog_event = file_dialog_events.next();
+
+    assert!(
+        file_dialog_events.next().is_none(),
+        "multiple file dialog events in one frame",
+    );
+
+    if let Some(file_dialog_event) = file_dialog_event {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let dialog = rfd::FileDialog::new().add_filter("Digilogic Circuit", &["dlc"]);
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            let dialog = dialog.set_parent(frame);
+
+            match file_dialog_event {
+                FileDialogEvent::Open => {
+                    if let Some(file) = dialog.pick_file() {
+                        // TODO: load circuit file
+                    }
+                }
+                FileDialogEvent::Save => {
+                    if let Some(file) = dialog.save_file() {
+                        // TODO: save circuit file
+                    }
+                }
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            todo!();
+        }
+    }
+}
+
 impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         let state = if let Some(world) = self.world.as_ref() {
@@ -54,16 +105,24 @@ impl eframe::App for App {
 
     fn update(&mut self, context: &egui::Context, frame: &mut eframe::Frame) {
         use crate::ui::UiPlugin;
+        use bevy_ecs::event::*;
+        use bevy_hierarchy::HierarchyEvent;
         use digilogic_core::Plugin;
 
         let world = self.world.get_or_insert_with(|| {
-            let mut world = bevy_ecs::world::World::new();
+            let mut world = World::new();
+
             world.insert_resource(self.state.take().unwrap());
+            self.schedule.add_systems(event_update_system);
+            EventRegistry::register_event::<HierarchyEvent>(&mut world);
+            EventRegistry::register_event::<FileDialogEvent>(&mut world);
             UiPlugin::new(context, frame).build(&mut world, &mut self.schedule);
+
             world
         });
 
         self.schedule.run(world);
+        handle_file_dialog(world, frame);
     }
 }
 

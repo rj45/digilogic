@@ -4,7 +4,7 @@ use canvas::*;
 mod draw;
 use draw::*;
 
-use crate::AppState;
+use crate::{AppState, FileDialogEvent};
 use bevy_ecs::prelude::*;
 use egui::*;
 use egui_wgpu::RenderState;
@@ -24,9 +24,24 @@ impl Egui {
     }
 }
 
-fn update_main_menu(egui: &Egui, ui: &mut Ui, app_state: &mut AppState) {
+fn update_main_menu(
+    egui: &Egui,
+    ui: &mut Ui,
+    app_state: &mut AppState,
+    file_dialog_events: &mut EventWriter<FileDialogEvent>,
+) {
     menu::bar(ui, |ui| {
         ui.menu_button("File", |ui| {
+            if ui.button("Open").clicked() {
+                file_dialog_events.send(FileDialogEvent::Open);
+            }
+
+            if ui.button("Save").clicked() {
+                file_dialog_events.send(FileDialogEvent::Save);
+            }
+
+            ui.separator();
+
             #[cfg(not(target_arch = "wasm32"))]
             if ui.button("Quit").clicked() {
                 egui.context.send_viewport_cmd(ViewportCommand::Close);
@@ -57,9 +72,10 @@ fn update(
     mut canvas: NonSendMut<Canvas>,
     scene: Res<Scene>,
     mut app_state: ResMut<AppState>,
+    mut file_dialog_events: EventWriter<FileDialogEvent>,
 ) {
     TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
-        update_main_menu(&egui, ui, &mut app_state);
+        update_main_menu(&egui, ui, &mut app_state, &mut file_dialog_events);
     });
 
     TopBottomPanel::bottom("bottom_panel").show(&egui.context, |ui| {
