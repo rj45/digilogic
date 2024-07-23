@@ -10,5 +10,5 @@ workspace = true
 
 [dependencies]
 bevy_ecs.workspace = true
-bevy_heirarchy.workspace = true
+bevy_hierarchy.workspace = true
 smallvec.workspace = true

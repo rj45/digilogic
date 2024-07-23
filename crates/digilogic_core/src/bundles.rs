@@ -1,6 +1,6 @@
 use super::components::*;
 use bevy_ecs::prelude::*;
-use bevy_heirarchy::{Children, Parent};
+use bevy_hierarchy::{Children, Parent};
 
 /// A Visible is a bundle of the components needed to render an entity.
 ///
