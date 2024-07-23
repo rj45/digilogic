@@ -4,9 +4,8 @@ use canvas::*;
 mod draw;
 use draw::*;
 
-use crate::app::AppState;
+use crate::AppState;
 use bevy_ecs::prelude::*;
-use digilogic_core::Plugin;
 use egui::*;
 use egui_wgpu::RenderState;
 
@@ -86,7 +85,7 @@ impl<'a> UiPlugin<'a> {
     }
 }
 
-impl Plugin for UiPlugin<'_> {
+impl digilogic_core::Plugin for UiPlugin<'_> {
     fn build(self, world: &mut World, schedule: &mut Schedule) {
         let render_state = self.frame.wgpu_render_state().unwrap();
         let canvas = Canvas::create(render_state);
