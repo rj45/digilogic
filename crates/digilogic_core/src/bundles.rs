@@ -11,7 +11,7 @@ use bevy_hierarchy::{Children, Parent};
 /// - Selected - if the entity is selected
 /// - Hovered - if the entity is hovered
 /// - Hidden - if the entity is hidden
-#[derive(Bundle)]
+#[derive(Default, Bundle)]
 pub struct Visible {
     // the Position of the entity relative to its Parent
     pub position: Position,
@@ -21,6 +21,8 @@ pub struct Visible {
 
 /// A Port is a connection point for an Endpoint. For sub-Circuits,
 /// it also connects to an Input or Output Symbol in the child Circuit.
+///
+/// Ports have a Symbol or SymbolKind as a Parent
 ///
 /// Ports optionally can have some of these additional components:
 /// - EndpointID - the Endpoint that the Port is connected to (Symbol Ports only)
@@ -47,6 +49,8 @@ pub struct PortBundle {
 /// are cloned into the Symbol as its Port Children when the Symbol is
 /// instantiated.
 ///
+/// SymbolKinds have Ports as Children
+///
 /// SymbolKinds optionally can have some of these additional components:
 /// - CircuitID - the Circuit if the SymbolKind represents a sub-Circuit
 #[derive(Bundle)]
@@ -60,16 +64,17 @@ pub struct SymbolKindBundle {
     /// The name of the SymbolKind
     pub name: Name,
 
+    pub size: Size,
+
     /// The DesignatorPrefix of the SymbolKind (ie. R for resistor, C for capacitor, etc)
     pub designator_prefix: DesignatorPrefix,
-
-    /// The Ports that the SymbolKind has
-    pub ports: Children,
 }
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
 /// are its input and output Ports. It represents an all or part of an
 /// electronic component.
+///
+/// Symbols have a Circuit as a Parent, and Ports as Children
 ///
 /// Symbols optionally can have some of these additional components:
 /// - DesignatorSuffix - the suffix for the Reference Designator
@@ -99,12 +104,6 @@ pub struct SymbolBundle {
 
     /// The SymbolKind that the Symbol is an instance of
     pub symbol_kind: SymbolKindID,
-
-    /// The Circuit that the Symbol is part of
-    pub circuit: Parent,
-
-    /// The Ports that the Symbol has
-    pub ports: Children,
 }
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
@@ -125,6 +124,8 @@ pub struct WaypointBundle {
 /// in a Symbol. Its Parent is the Wire that the Endpoint is part of.
 /// It has Waypoint Children.
 ///
+/// Endpoints have a Parent that is a Wire and Waypoints as Children
+///
 /// Endpoints optionally can have some of these additional components:
 /// - PortID - the Port that the Endpoint is connected to
 #[derive(Bundle)]
@@ -134,16 +135,12 @@ pub struct EndpointBundle {
 
     /// Endpoints are Visible
     pub visible: Visible,
-
-    /// The Wire that the Endpoint belongs to
-    pub wire: Parent,
-
-    /// The Waypoints that the Endpoint has
-    pub waypoints: Children,
 }
 
 /// A Wire is a connection between two or more Endpoints. It has Endpoint Children.
 /// Note: Wires are drawn a different way than other Shapes, and so are not Visible.
+///
+/// Wires have a Parent that is a Subnet and Endpoints as Children
 ///
 /// Wires optionally can have some of these additional components:
 /// - Selected - if the Wire is selected
@@ -153,14 +150,13 @@ pub struct EndpointBundle {
 pub struct WireBundle {
     /// The marker that this is a Wire
     pub marker: Wire,
-
-    /// The Endpoints that the Wire has
-    pub endpoints: Children,
     // TODO: add vertices?
 }
 
 /// A Subnet is a subset of the Net's Endpoints that uses a subset of the
 /// Net's bits.
+///
+/// Subnets have a Net as a Parent, and Wires as Children
 ///
 /// Subnets optionally can have some of these additional components:
 /// - ???
@@ -168,12 +164,6 @@ pub struct WireBundle {
 pub struct SubnetBundle {
     /// The marker that this is a Subnet
     pub marker: Subnet,
-
-    /// The Net that the Subnet is part of
-    pub net: Parent,
-
-    /// The Wires that the Subnet has
-    pub wires: Children,
 
     /// The bit width of the Subnet
     pub bit_width: BitWidth,
@@ -186,16 +176,12 @@ pub struct SubnetBundle {
 /// Subnet Children, and a Circuit Parent. Often a Net will have
 /// only one Subnet, unless there's a bus split.
 ///
+/// Nets have a Circuit as a Parent, and Subnets as Children
+///
 /// Nets optionally can have some of these additional components:
 /// - ???
 #[derive(Bundle)]
 pub struct NetBundle {
-    /// The Circuit the Net is part of
-    pub circuit: Parent,
-
-    /// The Subnets that the Net has
-    pub subnets: Children,
-
     /// The name of the Net
     pub name: Name,
 
@@ -206,13 +192,15 @@ pub struct NetBundle {
 /// A Circuit is a set of Symbols and Nets forming an Electronic Circuit.
 /// It has Symbol and Net Children, and a SymbolKind
 ///
+/// Circuits have a Children component that contains the Symbols and Nets
+///
 /// Circuits optionally can have some of these additional components:
 /// - ???
 #[derive(Component)]
-pub struct Circuit {
+pub struct CircuitBundle {
+    /// The marker that this is a Circuit
+    pub marker: Circuit,
+
     /// The SymbolKind that represents the Circuit in parent Circuits
     pub symbol_kind: SymbolKindID,
-
-    /// The Symbols and Nets that the Circuit has
-    pub children: Vec<Entity>,
 }

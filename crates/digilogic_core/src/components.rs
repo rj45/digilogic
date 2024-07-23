@@ -6,94 +6,91 @@ use smallvec::SmallVec;
 /////
 
 #[derive(Component)]
-pub struct PortID(Entity);
+pub struct PortID(pub Entity);
 
 #[derive(Component)]
-pub struct SymbolKindID(Entity);
+pub struct SymbolKindID(pub Entity);
 
 #[derive(Component)]
-pub struct SymbolID(Entity);
+pub struct SymbolID(pub Entity);
 
 #[derive(Component)]
-pub struct WaypointID(Entity);
+pub struct WaypointID(pub Entity);
 
 #[derive(Component)]
-pub struct EndpointID(Entity);
+pub struct EndpointID(pub Entity);
 
 #[derive(Component)]
-pub struct WireID(Entity);
+pub struct WireID(pub Entity);
 
 #[derive(Component)]
-pub struct SubnetID(Entity);
+pub struct SubnetID(pub Entity);
 
 #[derive(Component)]
-pub struct NetID(Entity);
+pub struct NetID(pub Entity);
 
 #[derive(Component)]
-pub struct CircuitID(Entity);
+pub struct CircuitID(pub Entity);
 
 /////
 // Entity part components
 /////
 
-/// The Children of the Entity
-#[derive(Component)]
-pub struct Children(SmallVec<[Entity; 2]>);
-
 /// The Position of the Entity in its parent's coordinate system
-#[derive(Component)]
+#[derive(Default, Component)]
 pub struct Position {
-    x: f32,
-    y: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 /// The Transform of the Entity in the world coordinate system,
 /// which should always be kept up-to-date with the Position / Rotation
 /// of the Entity, as well as its parent. This is a 3x2 matrix.
-#[derive(Component)]
+#[derive(Default, Component)]
 pub struct Transform {
-    m_00: f32,
-    m_01: f32,
-    m_10: f32,
-    m_11: f32,
-    m_20: f32,
-    m_21: f32,
+    pub m_00: f32,
+    pub m_01: f32,
+    pub m_10: f32,
+    pub m_11: f32,
+    pub m_20: f32,
+    pub m_21: f32,
 }
 
 /// The Size of the Entity
-#[derive(Component)]
+#[derive(Default, Component)]
 pub struct Size {
-    width: f32,
-    height: f32,
+    pub width: f32,
+    pub height: f32,
 }
 
 /// The Shape of the Entity as an index into the Shapes Vello can draw
-#[derive(Component)]
-pub struct Shape(u32);
+#[derive(Default, Component)]
+pub struct Shape(pub u32);
 
 /// A Name for the entity.
 #[derive(Component)]
-pub struct Name(String);
+pub struct Name(pub String);
 
 /// The Reference Designator prefix (like U for ICs, R for resistors, etc.)
 #[derive(Component)]
-pub struct DesignatorPrefix(String);
+pub struct DesignatorPrefix(pub String);
 
 /// The Reference Designator number (like 1, 2, 3, etc.)
 #[derive(Component)]
-pub struct DesignatorNumber(u32);
+pub struct DesignatorNumber(pub u32);
 
 /// The Reference Designator suffix (like A, B, C, etc.) if it has one
 #[derive(Component)]
-pub struct DesignatorSuffix(String);
+pub struct DesignatorSuffix(pub String);
 
 /// The Number of the entity (pin number, etc.)
 #[derive(Component)]
-pub struct Number(i32);
+pub struct Number(pub i32);
 
 /// The rotation of the entity in 90 degree increments
-#[derive(Component)]
+#[derive(Default, Component)]
 pub enum Rotation {
+    #[default]
     Rot0,
     Rot90,
     Rot180,
@@ -103,7 +100,7 @@ pub enum Rotation {
 // The bitwidth of a Port / Symbol / Net.
 // Can be up to 255 bits wide.
 #[derive(Component)]
-pub struct BitWidth(u8);
+pub struct BitWidth(pub u8);
 
 /// The list of bits that the entity uses in a Net. The order of the
 /// bits becomes the order they are presented to the Ports the Subnet's
@@ -113,7 +110,7 @@ pub struct BitWidth(u8);
 /// the Net's bit 1, bit 1 being the Net's bit 3, and bit 2 being the
 /// Net's bit 0.
 #[derive(Component)]
-pub struct Bits(SmallVec<[u8; 8]>);
+pub struct Bits(pub SmallVec<[u8; 8]>);
 
 /// The entity is an input
 #[derive(Component)]
@@ -126,8 +123,8 @@ pub struct Output;
 /// The entity is part of a set of entities. For example, one gate in a chip.
 #[derive(Component)]
 pub struct PartOf {
-    first: Entity,
-    index: u32,
+    pub first: Entity,
+    pub index: u32,
 }
 
 /// Whether to hide the entity when drawing
