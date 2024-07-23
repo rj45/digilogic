@@ -57,17 +57,19 @@ impl App {
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = bevy_ecs::event::Events<FileDialogEvent>;
     type LoadEvents = bevy_ecs::event::Events<digilogic_core::events::LoadEvent>;
-    let file_dialog_event: Option<FileDialogEvent>;
-    {
+
+    let file_dialog_event = {
         let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
         let mut file_dialog_events = file_dialog_events.drain();
-        file_dialog_event = file_dialog_events.next();
+        let file_dialog_event = file_dialog_events.next();
 
         assert!(
             file_dialog_events.next().is_none(),
             "multiple file dialog events in one frame",
         );
-    }
+
+        file_dialog_event
+    };
 
     if let Some(file_dialog_event) = file_dialog_event {
         #[cfg(not(target_arch = "wasm32"))]

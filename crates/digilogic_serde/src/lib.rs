@@ -11,9 +11,9 @@ use circuitfile::*;
 
 pub fn load_json(
     mut commands: Commands,
-    symbol_kinds_q: Query<(EntityRef, &Name), With<SymbolKind>>,
+    symbol_kinds_q: Query<(Entity, &Name, &DesignatorPrefix, &Shape, &Size), With<SymbolKind>>,
     mut ev_load: EventReader<LoadEvent>,
-    // mut ev_loaded: EventWriter<LoadedEvent>,
+    mut ev_loaded: EventWriter<LoadedEvent>,
 ) {
     for ev in ev_load.read() {
         let result = CircuitFile::load(&ev.filename);
@@ -21,10 +21,10 @@ pub fn load_json(
             Ok(circuit) => {
                 let circuit_id =
                     translate_circuit(&mut commands, &symbol_kinds_q, &circuit).unwrap();
-                // ev_loaded.send(LoadedEvent {
-                //     filename: ev.filename.clone(),
-                //     circuit: CircuitID(circuit_id.clone()),
-                // });
+                ev_loaded.send(LoadedEvent {
+                    filename: ev.filename.clone(),
+                    circuit: CircuitID(circuit_id.clone()),
+                });
                 _ = circuit_id;
             }
             Err(e) => {
@@ -37,7 +37,7 @@ pub fn load_json(
 
 fn translate_circuit(
     commands: &mut Commands,
-    symbol_kinds_q: &Query<(EntityRef, &Name), With<SymbolKind>>,
+    symbol_kinds_q: &Query<(Entity, &Name, &DesignatorPrefix, &Shape, &Size), With<SymbolKind>>,
     circuit: &CircuitFile,
 ) -> anyhow::Result<Entity> {
     let mut id_map = HashMap::new();
@@ -64,35 +64,32 @@ fn translate_circuit(
         id_map.insert(module.id.clone(), circuit_id);
 
         for symbol in module.symbols.iter() {
-            let symbol_kind_id;
-            if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
+            let symbol_kind_id = if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
                 // find a symbol kind by the same name
-                let (kind, _) = symbol_kinds_q
+                let (kind, _, _, _, _) = symbol_kinds_q
                     .iter()
-                    .filter(|(_, name)| name.0 == *kind_name)
+                    .filter(|(_, name, _, _, _)| name.0 == *kind_name)
                     .next()
                     .ok_or_else(|| anyhow::anyhow!("SymbolKind {} not found", kind_name))?;
-                symbol_kind_id = kind.id();
+                kind
             } else if let Some(kind_id) = symbol.symbol_kind_id.as_ref() {
-                symbol_kind_id = id_map.get(&kind_id).unwrap().clone();
+                id_map.get(&kind_id).unwrap().clone()
             } else {
                 return Err(anyhow::anyhow!("Symbol {} has no SymbolKind", symbol.id.0));
-            }
-            let (kind, _) = symbol_kinds_q.get(symbol_kind_id).unwrap();
-            let name = kind.get::<Name>().unwrap().0.clone();
-            let designator_prefix = kind.get::<DesignatorPrefix>().unwrap().0.clone();
-            let shape = kind.get::<Shape>().unwrap().0;
-            let size = kind.get::<Size>().unwrap();
+            };
+
+            let (_, name, designator_prefix, shape, size) =
+                symbol_kinds_q.get(symbol_kind_id).unwrap();
 
             let symbol_id = commands
                 .spawn(SymbolBundle {
                     marker: Symbol,
                     visible: Visible {
-                        shape: Shape(shape),
+                        shape: Shape(shape.0),
                         ..Default::default()
                     },
-                    name: Name(name),
-                    designator_prefix: DesignatorPrefix(designator_prefix),
+                    name: Name(name.0.clone()),
+                    designator_prefix: DesignatorPrefix(designator_prefix.0.clone()),
                     designator_number: DesignatorNumber(symbol.number),
                     rotation: Default::default(),
                     size: Size {
