@@ -1,8 +1,9 @@
+use digilogic_core::SharedStr;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Clone)]
-pub struct Id(pub String);
+pub struct Id(pub SharedStr);
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -15,8 +16,8 @@ pub struct CircuitFile {
 #[serde(deny_unknown_fields)]
 pub struct Module {
     pub id: Id,
-    pub name: String,
-    pub prefix: String,
+    pub name: SharedStr,
+    pub prefix: SharedStr,
     #[serde(rename = "symbolKind")]
     pub symbol_kind: Id,
     pub symbols: Vec<Symbol>,
@@ -28,7 +29,7 @@ pub struct Module {
 pub struct Symbol {
     pub id: Id,
     #[serde(rename = "symbolKindName")]
-    pub symbol_kind_name: Option<String>,
+    pub symbol_kind_name: Option<SharedStr>,
     #[serde(rename = "symbolKindID")]
     pub symbol_kind_id: Option<Id>,
     pub position: [f32; 2],
@@ -39,7 +40,7 @@ pub struct Symbol {
 #[serde(deny_unknown_fields)]
 pub struct Net {
     pub id: Id,
-    pub name: String,
+    pub name: SharedStr,
     pub subnets: Vec<Subnet>,
 }
 
@@ -47,7 +48,7 @@ pub struct Net {
 #[serde(deny_unknown_fields)]
 pub struct Subnet {
     pub id: Id,
-    pub name: String,
+    pub name: SharedStr,
     #[serde(rename = "subnetBits")]
     pub subnet_bits: Vec<serde_json::Value>,
     pub endpoints: Vec<Endpoint>,
@@ -58,7 +59,7 @@ pub struct Subnet {
 pub struct PortRef {
     pub symbol: Id,
     #[serde(rename = "portName")]
-    pub port_name: Option<String>,
+    pub port_name: Option<SharedStr>,
     pub port: Option<Id>,
 }
 

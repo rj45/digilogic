@@ -1,3 +1,4 @@
+use crate::SharedStr;
 use bevy_ecs::prelude::*;
 use smallvec::SmallVec;
 
@@ -69,11 +70,11 @@ pub struct Shape(pub u32);
 
 /// A Name for the entity.
 #[derive(Component)]
-pub struct Name(pub String);
+pub struct Name(pub SharedStr);
 
 /// The Reference Designator prefix (like U for ICs, R for resistors, etc.)
 #[derive(Component)]
-pub struct DesignatorPrefix(pub String);
+pub struct DesignatorPrefix(pub SharedStr);
 
 /// The Reference Designator number (like 1, 2, 3, etc.)
 #[derive(Component)]
@@ -81,7 +82,7 @@ pub struct DesignatorNumber(pub u32);
 
 /// The Reference Designator suffix (like A, B, C, etc.) if it has one
 #[derive(Component)]
-pub struct DesignatorSuffix(pub String);
+pub struct DesignatorSuffix(pub SharedStr);
 
 /// The Number of the entity (pin number, etc.)
 #[derive(Component)]
