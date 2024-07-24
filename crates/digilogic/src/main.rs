@@ -113,6 +113,7 @@ impl eframe::App for App {
         use crate::ui::UiPlugin;
         use bevy_ecs::event::*;
         use bevy_hierarchy::HierarchyEvent;
+        use digilogic_core::CorePlugin;
         use digilogic_core::Plugin;
         use digilogic_serde::LoadSavePlugin;
 
@@ -123,6 +124,9 @@ impl eframe::App for App {
             self.schedule.add_systems(event_update_system);
             EventRegistry::register_event::<HierarchyEvent>(&mut world);
             EventRegistry::register_event::<FileDialogEvent>(&mut world);
+
+            // Plugins
+            CorePlugin::default().build(&mut world, &mut self.schedule);
             UiPlugin::new(context, frame).build(&mut world, &mut self.schedule);
             LoadSavePlugin::default().build(&mut world, &mut self.schedule);
 

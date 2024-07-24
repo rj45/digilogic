@@ -1,6 +1,18 @@
+use crate::components::CircuitID;
 use std::{error::Error, path::PathBuf, sync::Arc};
 
 use bevy_ecs::prelude::*;
+
+#[derive(Event)]
+pub struct LoadEvent {
+    pub filename: PathBuf,
+}
+
+#[derive(Event)]
+pub struct LoadedEvent {
+    pub filename: PathBuf,
+    pub circuit: CircuitID,
+}
 
 // TODO: fixme
 // #[derive(Event)]

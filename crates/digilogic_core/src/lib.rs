@@ -172,3 +172,15 @@ impl<'de> serde::Deserialize<'de> for SharedStr {
 pub trait Plugin {
     fn build(self, world: &mut World, schedule: &mut Schedule);
 }
+
+#[derive(Default)]
+pub struct CorePlugin;
+
+impl Plugin for CorePlugin {
+    fn build(self, world: &mut World, _schedule: &mut Schedule) {
+        use bevy_ecs::event::EventRegistry;
+
+        EventRegistry::register_event::<events::LoadEvent>(world);
+        EventRegistry::register_event::<events::LoadedEvent>(world);
+    }
+}
