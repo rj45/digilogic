@@ -2,8 +2,6 @@ pub mod bundles;
 pub mod components;
 pub mod events;
 
-use bevy_ecs::schedule::Schedule;
-use bevy_ecs::world::World;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -169,18 +167,12 @@ impl<'de> serde::Deserialize<'de> for SharedStr {
     }
 }
 
-pub trait Plugin {
-    fn build(self, world: &mut World, schedule: &mut Schedule);
-}
-
 #[derive(Default)]
 pub struct CorePlugin;
 
-impl Plugin for CorePlugin {
-    fn build(self, world: &mut World, _schedule: &mut Schedule) {
-        use bevy_ecs::event::EventRegistry;
-
-        EventRegistry::register_event::<events::LoadEvent>(world);
-        EventRegistry::register_event::<events::LoadedEvent>(world);
+impl bevy_app::Plugin for CorePlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_event::<events::LoadEvent>();
+        app.add_event::<events::LoadedEvent>();
     }
 }

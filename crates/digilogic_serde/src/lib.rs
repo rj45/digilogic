@@ -109,8 +109,8 @@ fn translate_circuit(
 #[derive(Default)]
 pub struct LoadSavePlugin;
 
-impl digilogic_core::Plugin for LoadSavePlugin {
-    fn build(self, world: &mut World, schedule: &mut Schedule) {
-        schedule.add_systems(load_json);
+impl bevy_app::Plugin for LoadSavePlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(bevy_app::Update, load_json);
     }
 }

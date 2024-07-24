@@ -3,7 +3,6 @@
 mod ui;
 
 use bevy_ecs::event::Event;
-use bevy_ecs::schedule::Schedule;
 use bevy_ecs::system::Resource;
 use bevy_ecs::world::World;
 use serde::{Deserialize, Serialize};
@@ -25,35 +24,8 @@ enum FileDialogEvent {
     Save,
 }
 
-struct App {
-    world: World,
-    schedule: Schedule,
-}
-
-fn init_world(
-    app_state: AppState,
-    context: &egui::Context,
-    render_state: &egui_wgpu::RenderState,
-) -> (World, Schedule) {
-    use bevy_ecs::event::*;
-    use bevy_hierarchy::HierarchyEvent;
-    use digilogic_core::Plugin;
-
-    let mut world = World::new();
-    let mut schedule = Schedule::default();
-
-    world.insert_resource(app_state);
-    schedule.add_systems(event_update_system);
-    EventRegistry::register_event::<HierarchyEvent>(&mut world);
-    EventRegistry::register_event::<FileDialogEvent>(&mut world);
-
-    // Plugins
-    digilogic_core::CorePlugin::default().build(&mut world, &mut schedule);
-    digilogic_serde::LoadSavePlugin::default().build(&mut world, &mut schedule);
-    ui::UiPlugin::new(context, render_state).build(&mut world, &mut schedule);
-
-    (world, schedule)
-}
+#[repr(transparent)]
+struct App(bevy_app::App);
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -72,8 +44,19 @@ impl App {
         };
         context.set_visuals(visuals);
 
-        let (world, schedule) = init_world(app_state, context, render_state);
-        Self { world, schedule }
+        let mut app = bevy_app::App::default();
+        app.insert_resource(app_state);
+        app.add_event::<FileDialogEvent>();
+
+        // Plugins
+        app.add_plugins((
+            bevy_hierarchy::HierarchyPlugin::default(),
+            digilogic_core::CorePlugin::default(),
+            digilogic_serde::LoadSavePlugin::default(),
+            ui::UiPlugin::new(context, render_state),
+        ));
+
+        Self(app)
     }
 }
 
@@ -125,13 +108,28 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
 
 impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        let app_state = self.world.get_resource::<AppState>().unwrap();
+        let app_state = self.0.world().get_resource::<AppState>().unwrap();
         eframe::set_value(storage, eframe::APP_KEY, app_state);
     }
 
-    fn update(&mut self, _: &egui::Context, frame: &mut eframe::Frame) {
-        self.schedule.run(&mut self.world);
-        handle_file_dialog(&mut self.world, frame);
+    fn update(&mut self, context: &egui::Context, frame: &mut eframe::Frame) {
+        match self.0.plugins_state() {
+            bevy_app::PluginsState::Adding => {
+                context.request_repaint_after_secs(0.01);
+            }
+            bevy_app::PluginsState::Ready => {
+                self.0.finish();
+                context.request_repaint();
+            }
+            bevy_app::PluginsState::Finished => {
+                self.0.cleanup();
+                context.request_repaint();
+            }
+            bevy_app::PluginsState::Cleaned => {
+                self.0.update();
+                handle_file_dialog(self.0.world_mut(), frame);
+            }
+        }
     }
 }
 

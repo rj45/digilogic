@@ -89,27 +89,26 @@ fn update(
     });
 }
 
-pub struct UiPlugin<'a> {
-    context: &'a Context,
-    render_state: &'a RenderState,
+pub struct UiPlugin {
+    context: Context,
+    render_state: RenderState,
 }
 
-impl<'a> UiPlugin<'a> {
-    #[inline]
-    pub fn new(context: &'a Context, render_state: &'a RenderState) -> Self {
+impl UiPlugin {
+    pub fn new(context: &Context, render_state: &RenderState) -> Self {
         Self {
-            context,
-            render_state,
+            context: context.clone(),
+            render_state: render_state.clone(),
         }
     }
 }
 
-impl digilogic_core::Plugin for UiPlugin<'_> {
-    fn build(self, world: &mut World, schedule: &mut Schedule) {
-        world.insert_non_send_resource(Canvas::create(self.render_state));
-        world.insert_resource(Egui::new(self.context, self.render_state));
-        world.insert_resource(Scene::default());
-        schedule.add_systems(draw);
-        schedule.add_systems(update.after(draw));
+impl bevy_app::Plugin for UiPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.insert_non_send_resource(Canvas::create(&self.render_state));
+        app.insert_resource(Egui::new(&self.context, &self.render_state));
+        app.insert_resource(Scene::default());
+        app.add_systems(bevy_app::Update, draw);
+        app.add_systems(bevy_app::Update, update.after(draw));
     }
 }
