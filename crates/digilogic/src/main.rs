@@ -54,7 +54,7 @@ impl App {
 
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = bevy_ecs::event::Events<FileDialogEvent>;
-    type LoadEvents = bevy_ecs::event::Events<digilogic_serde::LoadEvent>;
+    type LoadEvents = bevy_ecs::event::Events<digilogic_core::events::LoadEvent>;
 
     let file_dialog_event = {
         let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
@@ -80,7 +80,7 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
                 FileDialogEvent::Open => {
                     if let Some(file) = dialog.pick_file() {
                         let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
-                        load_events.send(digilogic_serde::LoadEvent { filename: file });
+                        load_events.send(digilogic_core::events::LoadEvent { filename: file });
                     }
                 }
                 FileDialogEvent::Save => {

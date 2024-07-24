@@ -5,19 +5,8 @@ use bevy_ecs::prelude::*;
 use bevy_hierarchy::BuildChildren;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
+use digilogic_core::events::*;
 use std::collections::HashMap;
-use std::path::PathBuf;
-
-#[derive(Event)]
-pub struct LoadEvent {
-    pub filename: PathBuf,
-}
-
-#[derive(Event)]
-pub struct LoadedEvent {
-    pub filename: PathBuf,
-    pub circuit: CircuitID,
-}
 
 fn load_json(
     mut commands: Commands,
@@ -122,10 +111,6 @@ pub struct LoadSavePlugin;
 
 impl digilogic_core::Plugin for LoadSavePlugin {
     fn build(self, world: &mut World, schedule: &mut Schedule) {
-        use bevy_ecs::event::EventRegistry;
-
-        EventRegistry::register_event::<LoadEvent>(world);
-        EventRegistry::register_event::<LoadedEvent>(world);
         schedule.add_systems(load_json);
     }
 }
