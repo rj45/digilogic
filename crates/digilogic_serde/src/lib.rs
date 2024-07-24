@@ -63,47 +63,64 @@ fn translate_circuit(
         id_map.insert(module.id.clone(), circuit_id);
 
         for symbol in module.symbols.iter() {
-            let symbol_kind_id = if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
-                // find a symbol kind by the same name
-                let (kind, _, _, _, _) = symbol_kinds_q
-                    .iter()
-                    .filter(|(_, name, _, _, _)| name.0 == *kind_name)
-                    .next()
-                    .ok_or_else(|| anyhow::anyhow!("SymbolKind {} not found", kind_name))?;
-                kind
-            } else if let Some(kind_id) = symbol.symbol_kind_id.as_ref() {
-                id_map.get(&kind_id).unwrap().clone()
-            } else {
-                return Err(anyhow::anyhow!("Symbol {} has no SymbolKind", symbol.id.0));
-            };
-
-            let (_, name, designator_prefix, shape, size) =
-                symbol_kinds_q.get(symbol_kind_id).unwrap();
-
-            let symbol_id = commands
-                .spawn(SymbolBundle {
-                    marker: Symbol,
-                    visible: Visible {
-                        shape: Shape(shape.0),
-                        ..Default::default()
-                    },
-                    name: Name(name.0.clone()),
-                    designator_prefix: DesignatorPrefix(designator_prefix.0.clone()),
-                    designator_number: DesignatorNumber(symbol.number),
-                    rotation: Default::default(),
-                    size: Size {
-                        width: size.width,
-                        height: size.height,
-                    },
-                    symbol_kind: SymbolKindID(circuit_symbol_kind_id),
-                })
-                .set_parent(circuit_id)
-                .id();
-            id_map.insert(symbol.id.clone(), symbol_id);
+            translate_symbol(
+                symbol,
+                symbol_kinds_q,
+                &mut id_map,
+                commands,
+                circuit_symbol_kind_id,
+                circuit_id,
+            )?;
         }
     }
 
     Ok(id_map.get(&modules[0].id).unwrap().clone())
+}
+
+// TODO: a context struct would reduce the number of arguments
+fn translate_symbol(
+    symbol: &circuitfile::Symbol,
+    symbol_kinds_q: &Query<(Entity, &Name, &DesignatorPrefix, &Shape, &Size), With<SymbolKind>>,
+    id_map: &mut HashMap<Id, Entity>,
+    commands: &mut Commands,
+    circuit_symbol_kind_id: Entity,
+    circuit_id: Entity,
+) -> Result<(), anyhow::Error> {
+    let symbol_kind_id = if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
+        // find a symbol kind by the same name
+        let (kind, _, _, _, _) = symbol_kinds_q
+            .iter()
+            .filter(|(_, name, _, _, _)| name.0 == *kind_name)
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("SymbolKind {} not found", kind_name))?;
+        kind
+    } else if let Some(kind_id) = symbol.symbol_kind_id.as_ref() {
+        id_map.get(&kind_id).unwrap().clone()
+    } else {
+        return Err(anyhow::anyhow!("Symbol {} has no SymbolKind", symbol.id.0));
+    };
+    let (_, name, designator_prefix, shape, size) = symbol_kinds_q.get(symbol_kind_id).unwrap();
+    let symbol_id = commands
+        .spawn(SymbolBundle {
+            marker: Symbol,
+            visible: Visible {
+                shape: Shape(shape.0),
+                ..Default::default()
+            },
+            name: Name(name.0.clone()),
+            designator_prefix: DesignatorPrefix(designator_prefix.0.clone()),
+            designator_number: DesignatorNumber(symbol.number),
+            rotation: Default::default(),
+            size: Size {
+                width: size.width,
+                height: size.height,
+            },
+            symbol_kind: SymbolKindID(circuit_symbol_kind_id),
+        })
+        .set_parent(circuit_id)
+        .id();
+    id_map.insert(symbol.id.clone(), symbol_id);
+    Ok(())
 }
 
 #[derive(Default)]
