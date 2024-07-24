@@ -91,23 +91,23 @@ fn update(
 
 pub struct UiPlugin<'a> {
     context: &'a Context,
-    frame: &'a mut eframe::Frame,
+    render_state: &'a RenderState,
 }
 
 impl<'a> UiPlugin<'a> {
     #[inline]
-    pub fn new(context: &'a Context, frame: &'a mut eframe::Frame) -> Self {
-        Self { context, frame }
+    pub fn new(context: &'a Context, render_state: &'a RenderState) -> Self {
+        Self {
+            context,
+            render_state,
+        }
     }
 }
 
 impl digilogic_core::Plugin for UiPlugin<'_> {
     fn build(self, world: &mut World, schedule: &mut Schedule) {
-        let render_state = self.frame.wgpu_render_state().unwrap();
-        let canvas = Canvas::create(render_state);
-
-        world.insert_non_send_resource(canvas);
-        world.insert_resource(Egui::new(self.context, render_state));
+        world.insert_non_send_resource(Canvas::create(self.render_state));
+        world.insert_resource(Egui::new(self.context, self.render_state));
         world.insert_resource(Scene::default());
         schedule.add_systems(draw);
         schedule.add_systems(update.after(draw));

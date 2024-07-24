@@ -3,6 +3,7 @@
 mod ui;
 
 use bevy_ecs::event::Event;
+use bevy_ecs::schedule::Schedule;
 use bevy_ecs::system::Resource;
 use bevy_ecs::world::World;
 use serde::{Deserialize, Serialize};
@@ -25,30 +26,54 @@ enum FileDialogEvent {
 }
 
 struct App {
-    state: Option<AppState>,
-    world: Option<World>,
-    schedule: bevy_ecs::schedule::Schedule,
+    world: World,
+    schedule: Schedule,
+}
+
+fn init_world(
+    app_state: AppState,
+    context: &egui::Context,
+    render_state: &egui_wgpu::RenderState,
+) -> (World, Schedule) {
+    use bevy_ecs::event::*;
+    use bevy_hierarchy::HierarchyEvent;
+    use digilogic_core::Plugin;
+
+    let mut world = World::new();
+    let mut schedule = Schedule::default();
+
+    world.insert_resource(app_state);
+    schedule.add_systems(event_update_system);
+    EventRegistry::register_event::<HierarchyEvent>(&mut world);
+    EventRegistry::register_event::<FileDialogEvent>(&mut world);
+
+    // Plugins
+    digilogic_core::CorePlugin::default().build(&mut world, &mut schedule);
+    digilogic_serde::LoadSavePlugin::default().build(&mut world, &mut schedule);
+    ui::UiPlugin::new(context, render_state).build(&mut world, &mut schedule);
+
+    (world, schedule)
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let state: AppState = cc
+        let context = &cc.egui_ctx;
+        let render_state = cc.wgpu_render_state.as_ref().unwrap();
+
+        let app_state: AppState = cc
             .storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
 
-        let visuals = if state.dark_mode {
+        let visuals = if app_state.dark_mode {
             egui::Visuals::dark()
         } else {
             egui::Visuals::light()
         };
-        cc.egui_ctx.set_visuals(visuals);
+        context.set_visuals(visuals);
 
-        Self {
-            state: Some(state),
-            world: None,
-            schedule: Default::default(),
-        }
+        let (world, schedule) = init_world(app_state, context, render_state);
+        Self { world, schedule }
     }
 }
 
@@ -100,41 +125,13 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
 
 impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        let state = if let Some(world) = self.world.as_ref() {
-            world.get_resource::<AppState>().unwrap()
-        } else {
-            self.state.as_ref().unwrap()
-        };
-
-        eframe::set_value(storage, eframe::APP_KEY, state);
+        let app_state = self.world.get_resource::<AppState>().unwrap();
+        eframe::set_value(storage, eframe::APP_KEY, app_state);
     }
 
-    fn update(&mut self, context: &egui::Context, frame: &mut eframe::Frame) {
-        use crate::ui::UiPlugin;
-        use bevy_ecs::event::*;
-        use bevy_hierarchy::HierarchyEvent;
-        use digilogic_core::CorePlugin;
-        use digilogic_core::Plugin;
-        use digilogic_serde::LoadSavePlugin;
-
-        let world = self.world.get_or_insert_with(|| {
-            let mut world = World::new();
-
-            world.insert_resource(self.state.take().unwrap());
-            self.schedule.add_systems(event_update_system);
-            EventRegistry::register_event::<HierarchyEvent>(&mut world);
-            EventRegistry::register_event::<FileDialogEvent>(&mut world);
-
-            // Plugins
-            CorePlugin::default().build(&mut world, &mut self.schedule);
-            UiPlugin::new(context, frame).build(&mut world, &mut self.schedule);
-            LoadSavePlugin::default().build(&mut world, &mut self.schedule);
-
-            world
-        });
-
-        self.schedule.run(world);
-        handle_file_dialog(world, frame);
+    fn update(&mut self, _: &egui::Context, frame: &mut eframe::Frame) {
+        self.schedule.run(&mut self.world);
+        handle_file_dialog(&mut self.world, frame);
     }
 }
 
