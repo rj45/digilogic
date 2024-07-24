@@ -1,15 +1,25 @@
-use std::collections::HashMap;
+mod circuitfile;
+use circuitfile::*;
 
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::BuildChildren;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
-use digilogic_core::events::{LoadEvent, LoadedEvent};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
-mod circuitfile;
-use circuitfile::*;
+#[derive(Event)]
+pub struct LoadEvent {
+    pub filename: PathBuf,
+}
 
-pub fn load_json(
+#[derive(Event)]
+pub struct LoadedEvent {
+    pub filename: PathBuf,
+    pub circuit: CircuitID,
+}
+
+fn load_json(
     mut commands: Commands,
     symbol_kinds_q: Query<(Entity, &Name, &DesignatorPrefix, &Shape, &Size), With<SymbolKind>>,
     mut ev_load: EventReader<LoadEvent>,
@@ -105,4 +115,17 @@ fn translate_circuit(
     }
 
     Ok(id_map.get(&modules[0].id).unwrap().clone())
+}
+
+#[derive(Default)]
+pub struct LoadSavePlugin;
+
+impl digilogic_core::Plugin for LoadSavePlugin {
+    fn build(self, world: &mut World, schedule: &mut Schedule) {
+        use bevy_ecs::event::EventRegistry;
+
+        EventRegistry::register_event::<LoadEvent>(world);
+        EventRegistry::register_event::<LoadedEvent>(world);
+        schedule.add_systems(load_json);
+    }
 }

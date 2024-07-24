@@ -5,8 +5,6 @@ mod ui;
 use bevy_ecs::event::Event;
 use bevy_ecs::system::Resource;
 use bevy_ecs::world::World;
-use digilogic_serde::load_json;
-use egui::load;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Resource)]
@@ -56,7 +54,7 @@ impl App {
 
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = bevy_ecs::event::Events<FileDialogEvent>;
-    type LoadEvents = bevy_ecs::event::Events<digilogic_core::events::LoadEvent>;
+    type LoadEvents = bevy_ecs::event::Events<digilogic_serde::LoadEvent>;
 
     let file_dialog_event = {
         let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
@@ -82,7 +80,7 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
                 FileDialogEvent::Open => {
                     if let Some(file) = dialog.pick_file() {
                         let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
-                        load_events.send(digilogic_core::events::LoadEvent { filename: file });
+                        load_events.send(digilogic_serde::LoadEvent { filename: file });
                     }
                 }
                 FileDialogEvent::Save => {
@@ -116,17 +114,17 @@ impl eframe::App for App {
         use bevy_ecs::event::*;
         use bevy_hierarchy::HierarchyEvent;
         use digilogic_core::Plugin;
+        use digilogic_serde::LoadSavePlugin;
 
         let world = self.world.get_or_insert_with(|| {
             let mut world = World::new();
 
             world.insert_resource(self.state.take().unwrap());
-            self.schedule.add_systems((event_update_system, load_json));
+            self.schedule.add_systems(event_update_system);
             EventRegistry::register_event::<HierarchyEvent>(&mut world);
             EventRegistry::register_event::<FileDialogEvent>(&mut world);
-            EventRegistry::register_event::<digilogic_core::events::LoadEvent>(&mut world);
-            EventRegistry::register_event::<digilogic_core::events::LoadedEvent>(&mut world);
             UiPlugin::new(context, frame).build(&mut world, &mut self.schedule);
+            LoadSavePlugin::default().build(&mut world, &mut self.schedule);
 
             world
         });
