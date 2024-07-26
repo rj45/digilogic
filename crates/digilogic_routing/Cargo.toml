@@ -9,5 +9,8 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+bevy_ecs.workspace = true
+bevy_app.workspace = true
+bevy_hierarchy.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }

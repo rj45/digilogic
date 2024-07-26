@@ -9,19 +9,22 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
-pub enum SharedStr {
+enum SharedStrRepr {
     Static(&'static str),
     Arc(Arc<str>),
 }
+
+#[repr(transparent)]
+pub struct SharedStr(SharedStrRepr);
 
 impl Deref for SharedStr {
     type Target = str;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        match self {
-            &Self::Static(s) => s,
-            Self::Arc(s) => s,
+        match self.0 {
+            SharedStrRepr::Static(s) => s,
+            SharedStrRepr::Arc(ref s) => s,
         }
     }
 }
@@ -42,9 +45,9 @@ impl Borrow<str> for SharedStr {
 
 impl Clone for SharedStr {
     fn clone(&self) -> Self {
-        match self {
-            &Self::Static(s) => Self::Static(s),
-            Self::Arc(s) => Self::Arc(Arc::clone(s)),
+        match self.0 {
+            SharedStrRepr::Static(s) => Self(SharedStrRepr::Static(s)),
+            SharedStrRepr::Arc(ref s) => Self(SharedStrRepr::Arc(Arc::clone(s))),
         }
     }
 }
@@ -72,17 +75,24 @@ impl Hash for SharedStr {
     }
 }
 
+impl SharedStr {
+    #[inline]
+    pub const fn new_static(s: &'static str) -> Self {
+        Self(SharedStrRepr::Static(s))
+    }
+}
+
 impl From<&str> for SharedStr {
     #[inline]
     fn from(s: &str) -> Self {
-        Self::Arc(s.into())
+        Self(SharedStrRepr::Arc(s.into()))
     }
 }
 
 impl From<String> for SharedStr {
     #[inline]
     fn from(s: String) -> Self {
-        Self::Arc(s.into())
+        Self(SharedStrRepr::Arc(s.into()))
     }
 }
 
