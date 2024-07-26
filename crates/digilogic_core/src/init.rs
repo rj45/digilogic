@@ -4,7 +4,6 @@ use crate::SharedStr;
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::BuildChildren;
 
-#[derive(Clone)]
 struct PortDef {
     name: &'static str,
     bit_width: u8,
@@ -181,7 +180,7 @@ pub fn init_builtin_symbol_kinds(mut commands: Commands) {
                 },
                 name: Name(SharedStr::new_static(kind.name)),
                 size: kind.size,
-                designator_prefix: DesignatorPrefix(kind.designator_prefix.into()),
+                designator_prefix: DesignatorPrefix(SharedStr::new_static(kind.designator_prefix)),
             })
             .id();
 
