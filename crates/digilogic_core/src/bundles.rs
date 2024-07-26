@@ -120,11 +120,11 @@ pub struct WaypointBundle {
     pub endpoint: Parent,
 }
 
-/// An Endpoint is a connection point for a Wire. It connects to a Port
-/// in a Symbol. Its Parent is the Wire that the Endpoint is part of.
+/// An Endpoint is a connection point for a Net. It connects to a Port
+/// in a Symbol. Its Parent is the Net that the Endpoint is part of.
 /// It has Waypoint Children.
 ///
-/// Endpoints have a Parent that is a Wire and Waypoints as Children
+/// Endpoints have a Parent that is a Net and Waypoints as Children
 ///
 /// Endpoints optionally can have some of these additional components:
 /// - PortID - the Port that the Endpoint is connected to
@@ -137,46 +137,9 @@ pub struct EndpointBundle {
     pub visible: Visible,
 }
 
-/// A Wire is a connection between two or more Endpoints. It has Endpoint Children.
-/// Note: Wires are drawn a different way than other Shapes, and so are not Visible.
+/// A Net is a set of Endpoints that are connected together.
 ///
-/// Wires have a Parent that is a Subnet and Endpoints as Children
-///
-/// Wires optionally can have some of these additional components:
-/// - Selected - if the Wire is selected
-/// - Hovered - if the Wire is hovered
-/// - Hidden - if the Wire is hidden
-#[derive(Bundle)]
-pub struct WireBundle {
-    /// The marker that this is a Wire
-    pub marker: Wire,
-    // TODO: add vertices?
-}
-
-/// A Subnet is a subset of the Net's Endpoints that uses a subset of the
-/// Net's bits.
-///
-/// Subnets have a Net as a Parent, and Wires as Children
-///
-/// Subnets optionally can have some of these additional components:
-/// - ???
-#[derive(Bundle)]
-pub struct SubnetBundle {
-    /// The marker that this is a Subnet
-    pub marker: Subnet,
-
-    /// The bit width of the Subnet
-    pub bit_width: BitWidth,
-
-    /// The bits that the Subnet uses
-    pub bits: Bits,
-}
-
-/// A Net is a set of Subnets that are connected together. It has
-/// Subnet Children, and a Circuit Parent. Often a Net will have
-/// only one Subnet, unless there's a bus split.
-///
-/// Nets have a Circuit as a Parent, and Subnets as Children
+/// Nets have a Circuit as a Parent, and Endpoints as Children
 ///
 /// Nets optionally can have some of these additional components:
 /// - ???

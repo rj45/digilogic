@@ -1,5 +1,5 @@
 use crate::components::CircuitID;
-use std::{error::Error, path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use bevy_ecs::prelude::*;
 

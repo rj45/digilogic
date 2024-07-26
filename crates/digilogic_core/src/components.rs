@@ -103,13 +103,11 @@ pub enum Rotation {
 #[derive(Component)]
 pub struct BitWidth(pub u8);
 
-/// The list of bits that the entity uses in a Net. The order of the
-/// bits becomes the order they are presented to the Ports the Subnet's
-/// Endpoints are connected to. So, for example, if a Net is 4 bits wide,
-/// and a Subnet uses bits 1, 3, and 0, then the Ports the Subnet's
-/// Endpoints are connected to will be presented with 3 bits, bit 0 being
-/// the Net's bit 1, bit 1 being the Net's bit 3, and bit 2 being the
-/// Net's bit 0.
+/// The list of bits that the entity uses in a Net. The order of the bits becomes
+/// the order they are presented to the input of the entity. So, for example, if
+/// a Net is 4 bits wide, and an entity uses bits 1, 3, and 0, then the entity
+/// will be presented with 3 bits, bit 0 being the Net's bit 1, bit 1 being the
+/// Net's bit 3, and bit 2 being the Net's bit 0.
 #[derive(Component)]
 pub struct Bits(pub SmallVec<[u8; 8]>);
 
@@ -172,15 +170,6 @@ pub struct Waypoint;
 /// It has Waypoint Children.
 #[derive(Component)]
 pub struct Endpoint;
-
-/// A Wire is a connection between two or more Endpoints. It has Endpoint Children.
-#[derive(Component)]
-pub struct Wire;
-
-/// A Subnet is a subset of the Net's Wires that uses a subset of the
-/// Net's bits.
-#[derive(Component)]
-pub struct Subnet;
 
 /// A Net is a set of Subnets that are connected together. It has
 /// Subnet Children, and a Netlist Parent. Often a Net will have
