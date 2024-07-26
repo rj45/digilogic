@@ -29,8 +29,7 @@ const PORT_ORIGIN: Origin = Origin {
     x: PORT_HALF_WIDTH,
     y: PORT_HALF_WIDTH,
 };
-
-const PORT_SHAPE: Shape = Shape(0); // todo: fixme
+const PORT_SHAPE: Shape = Shape::Port; // todo: fixme
 
 const GATE_PORTS_2_INPUT: &[PortDef] = &[
     PortDef {
@@ -92,7 +91,7 @@ const KINDS: &[SymbolKindDef] = &[
             height: 60.0,
         },
         origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape(1),                    // TODO: fixme
+        shape: Shape::And,                  // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
     SymbolKindDef {
@@ -103,7 +102,7 @@ const KINDS: &[SymbolKindDef] = &[
             height: 60.0,
         },
         origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape(2),                    // TODO: fixme
+        shape: Shape::Or,                   // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
     SymbolKindDef {
@@ -114,7 +113,7 @@ const KINDS: &[SymbolKindDef] = &[
             height: 60.0,
         },
         origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape(3),                    // TODO: fixme
+        shape: Shape::Xor,                  // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
     SymbolKindDef {
@@ -125,7 +124,7 @@ const KINDS: &[SymbolKindDef] = &[
             height: 40.0,
         },
         origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape(4),                    // TODO: fixme
+        shape: Shape::Not,                  // TODO: fixme
         ports: GATE_PORTS_1_INPUT,
     },
     SymbolKindDef {
@@ -136,7 +135,7 @@ const KINDS: &[SymbolKindDef] = &[
             height: 20.0,
         },
         origin: Origin { x: 40.0, y: 10.0 }, // position of the first port
-        shape: Shape(5),                     // TODO: fixme
+        shape: Shape::Input,                 // TODO: fixme
         ports: &[PortDef {
             name: "I",
             position: Position { x: 0.0, y: 0.0 },
@@ -155,7 +154,7 @@ const KINDS: &[SymbolKindDef] = &[
             height: 20.0,
         },
         origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape(6),                    // TODO: fixme
+        shape: Shape::Output,               // TODO: fixme
         ports: &[PortDef {
             name: "O",
             position: Position { x: 0.0, y: 0.0 },

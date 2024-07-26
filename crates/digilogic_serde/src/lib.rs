@@ -104,7 +104,7 @@ fn translate_symbol(
         .spawn(SymbolBundle {
             marker: Symbol,
             visible: Visible {
-                shape: Shape(shape.0),
+                shape: shape.clone(),
                 ..Default::default()
             },
             name: Name(name.0.clone()),

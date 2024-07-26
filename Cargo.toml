@@ -43,6 +43,7 @@ eframe = { version = "0.28.1", default-features = false, features = [
 ] }
 rfd = "0.14.1"
 vello = "0.2.1"
+vello_svg = "0.3"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 bevy_ecs = "0.14"

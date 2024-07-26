@@ -73,7 +73,17 @@ pub struct Size {
 
 /// The Shape of the Entity as an index into the Shapes Vello can draw
 #[derive(Default, Component, Copy, Clone)]
-pub struct Shape(pub u32);
+pub enum Shape {
+    #[default]
+    Chip,
+    Port,
+    And,
+    Or,
+    Xor,
+    Not,
+    Input,
+    Output,
+}
 
 /// A Name for the entity.
 #[derive(Component)]

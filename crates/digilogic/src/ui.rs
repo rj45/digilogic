@@ -108,6 +108,8 @@ impl bevy_app::Plugin for UiPlugin {
         app.insert_non_send_resource(Canvas::create(&self.render_state));
         app.insert_resource(Egui::new(&self.context, &self.render_state));
         app.insert_resource(Scene::default());
+        app.insert_resource(SymbolSVGs(Vec::new()));
+        app.add_systems(bevy_app::Startup, init_symbol_shapes);
         app.add_systems(bevy_app::Update, draw);
         app.add_systems(bevy_app::Update, update.after(draw));
     }

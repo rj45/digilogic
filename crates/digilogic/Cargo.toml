@@ -17,6 +17,7 @@ egui-wgpu.workspace = true
 eframe.workspace = true
 rfd.workspace = true
 vello.workspace = true
+vello_svg.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true
 bevy_hierarchy.workspace = true
