@@ -15,7 +15,13 @@ use bevy_hierarchy::{Children, Parent};
 pub struct Visible {
     // the Position of the entity relative to its Parent
     pub position: Position,
-    pub transform: Transform,
+
+    // Where 0,0 is in the entity's coordinate system relative to its top left corner.
+    // That is, this will be subtracted from the position to get the position of the
+    // top left corner of the entity.
+    pub origin: Origin,
+
+    // The shape to draw for the entity
     pub shape: Shape,
 }
 
@@ -34,11 +40,11 @@ pub struct PortBundle {
     // The marker that this is a Port
     pub marker: Port,
 
+    // The name of the Port
+    pub name: Name,
+
     /// Ports are Visible
     pub visible: Visible,
-
-    /// The Symbol or SymbolKind that the Port belongs to
-    pub symbol: Parent,
 
     /// The bit width of the Port. This must match the bit width of any
     /// connected subnet.

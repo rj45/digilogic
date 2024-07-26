@@ -1,6 +1,7 @@
 pub mod bundles;
 pub mod components;
 pub mod events;
+mod init;
 
 use std::borrow::Borrow;
 use std::fmt;
@@ -174,5 +175,7 @@ impl bevy_app::Plugin for CorePlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_event::<events::LoadEvent>();
         app.add_event::<events::LoadedEvent>();
+
+        app.add_systems(bevy_app::Startup, init::init_builtin_symbol_kinds);
     }
 }

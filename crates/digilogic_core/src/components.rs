@@ -38,8 +38,15 @@ pub struct CircuitID(pub Entity);
 /////
 
 /// The Position of the Entity in its parent's coordinate system
-#[derive(Default, Component)]
+#[derive(Default, Component, Copy, Clone)]
 pub struct Position {
+    pub x: f32,
+    pub y: f32,
+}
+
+/// The Origin of the Entity in its own coordinate system
+#[derive(Default, Component, Copy, Clone)]
+pub struct Origin {
     pub x: f32,
     pub y: f32,
 }
@@ -58,14 +65,14 @@ pub struct Transform {
 }
 
 /// The Size of the Entity
-#[derive(Default, Component)]
+#[derive(Default, Component, Copy, Clone)]
 pub struct Size {
     pub width: f32,
     pub height: f32,
 }
 
 /// The Shape of the Entity as an index into the Shapes Vello can draw
-#[derive(Default, Component)]
+#[derive(Default, Component, Copy, Clone)]
 pub struct Shape(pub u32);
 
 /// A Name for the entity.
