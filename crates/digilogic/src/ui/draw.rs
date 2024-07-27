@@ -2,6 +2,8 @@ use bevy_ecs::prelude::*;
 use digilogic_core::components::Shape;
 use vello::kurbo::Affine;
 
+include!("bez_path.rs");
+
 #[derive(Default, Resource)]
 pub struct Scene(pub vello::Scene);
 
@@ -45,6 +47,7 @@ pub fn draw(mut scene: ResMut<Scene>, symbol_svgs: Res<SymbolSVGs>) {
 
 pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolSVGs>) {
     use vello_svg::usvg::{Options, Size, Tree};
+
     // Chip
     let svg = Tree::from_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>", &Options::default()).unwrap();
     symbol_svgs.0.push(vello_svg::render_tree(&svg));
