@@ -8,6 +8,14 @@ macro_rules! bez_path_M {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -61,6 +69,14 @@ macro_rules! bez_path_m {
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
@@ -116,6 +132,14 @@ macro_rules! bez_path_L {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -169,6 +193,14 @@ macro_rules! bez_path_l {
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
@@ -224,6 +256,14 @@ macro_rules! bez_path_H {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -276,6 +316,14 @@ macro_rules! bez_path_h {
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
@@ -330,6 +378,14 @@ macro_rules! bez_path_V {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -383,6 +439,14 @@ macro_rules! bez_path_v {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -435,6 +499,14 @@ macro_rules! bez_path_C {
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
@@ -497,6 +569,14 @@ macro_rules! bez_path_c {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -558,6 +638,14 @@ macro_rules! bez_path_Q {
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
     };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
@@ -615,6 +703,14 @@ macro_rules! bez_path_q {
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; z) => {
         $bez_path.close_path();
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; Z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
+    };
+    ($bez_path:ident, $cur_x:ident, $cur_y:ident; z M $($tail:tt)*) => {
+        $bez_path.close_path();
+        $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
     };
     ($bez_path:ident, $cur_x:ident, $cur_y:ident; M $($tail:tt)*) => {
         $crate::ui::draw::bez_path_M!($bez_path, $cur_x, $cur_y; $($tail)*);
@@ -821,6 +917,16 @@ mod bez_path_test {
             LineTo((3.0, 1.0).into()),
             CurveTo((4.4, 3.1).into(), (4.4, 4.9).into(), (3.0, 7.0).into()),
             ClosePath,
+        ]);
+    }
+
+    #[test]
+    fn continue_after_close() {
+        let p = bez_path!(M 1,1 Z M 2,2);
+        assert_eq!(p.elements(), &[
+            MoveTo((1.0, 1.0).into()),
+            ClosePath,
+            MoveTo((2.0, 2.0).into()),
         ]);
     }
 }
