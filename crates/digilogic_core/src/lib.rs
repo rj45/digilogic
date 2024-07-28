@@ -1,7 +1,7 @@
 pub mod bundles;
 pub mod components;
 pub mod events;
-mod init;
+pub mod symbol;
 
 #[macro_use]
 extern crate static_assertions;
@@ -238,9 +238,8 @@ pub struct CorePlugin;
 
 impl bevy_app::Plugin for CorePlugin {
     fn build(&self, app: &mut bevy_app::App) {
+        app.init_resource::<symbol::SymbolRegistry>();
         app.add_event::<events::LoadEvent>();
         app.add_event::<events::LoadedEvent>();
-
-        app.add_systems(bevy_app::Startup, init::init_builtin_symbol_kinds);
     }
 }

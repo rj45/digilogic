@@ -1,6 +1,5 @@
 use super::components::*;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::{Children, Parent};
 
 /// A Visible is a bundle of the components needed to render an entity.
 ///
@@ -38,7 +37,7 @@ pub struct Visible {
 #[derive(Bundle)]
 pub struct PortBundle {
     // The marker that this is a Port
-    pub marker: Port,
+    pub port: Port,
 
     // The name of the Port
     pub name: Name,
@@ -49,31 +48,6 @@ pub struct PortBundle {
     /// The bit width of the Port. This must match the bit width of any
     /// connected subnet.
     pub bit_width: BitWidth,
-}
-
-/// A SymbolKind is a template for a Symbol. It has Port Children which
-/// are cloned into the Symbol as its Port Children when the Symbol is
-/// instantiated.
-///
-/// SymbolKinds have Ports as Children
-///
-/// SymbolKinds optionally can have some of these additional components:
-/// - CircuitID - the Circuit if the SymbolKind represents a sub-Circuit
-#[derive(Bundle)]
-pub struct SymbolKindBundle {
-    // The marker that this is a SymbolKind
-    pub marker: SymbolKind,
-
-    /// SymbolKinds are Visible
-    pub visible: Visible,
-
-    /// The name of the SymbolKind
-    pub name: Name,
-
-    pub size: Size,
-
-    /// The DesignatorPrefix of the SymbolKind (ie. R for resistor, C for capacitor, etc)
-    pub designator_prefix: DesignatorPrefix,
 }
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
@@ -88,7 +62,7 @@ pub struct SymbolKindBundle {
 #[derive(Bundle)]
 pub struct SymbolBundle {
     /// The marker that this is a Symbol
-    pub marker: Symbol,
+    pub symbol: Symbol,
 
     /// Symbols are Visible
     pub visible: Visible,
@@ -117,13 +91,13 @@ pub struct SymbolBundle {
 #[derive(Bundle)]
 pub struct WaypointBundle {
     /// The marker that this is a Waypoint
-    pub marker: Waypoint,
+    pub waypoint: Waypoint,
 
     /// Waypoints are Visible
     pub visible: Visible,
 
     /// The Endpoint that the Waypoint is attached to
-    pub endpoint: Parent,
+    pub endpoint: EndpointID,
 }
 
 /// An Endpoint is a connection point for a Net. It connects to a Port
@@ -137,7 +111,7 @@ pub struct WaypointBundle {
 #[derive(Bundle)]
 pub struct EndpointBundle {
     /// The marker that this is an Endpoint
-    pub marker: Endpoint,
+    pub enpoint: Endpoint,
 
     /// Endpoints are Visible
     pub visible: Visible,
@@ -151,6 +125,9 @@ pub struct EndpointBundle {
 /// - ???
 #[derive(Bundle)]
 pub struct NetBundle {
+    /// The marker that this is a Net
+    pub net: Net,
+
     /// The name of the Net
     pub name: Name,
 
@@ -168,7 +145,7 @@ pub struct NetBundle {
 #[derive(Component)]
 pub struct CircuitBundle {
     /// The marker that this is a Circuit
-    pub marker: Circuit,
+    pub circuit: Circuit,
 
     /// The SymbolKind that represents the Circuit in parent Circuits
     pub symbol_kind: SymbolKindID,

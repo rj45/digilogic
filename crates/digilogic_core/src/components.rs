@@ -10,7 +10,7 @@ use smallvec::SmallVec;
 pub struct PortID(pub Entity);
 
 #[derive(Component)]
-pub struct SymbolKindID(pub Entity);
+pub struct SymbolKindID(pub usize);
 
 #[derive(Component)]
 pub struct SymbolID(pub Entity);
@@ -165,17 +165,13 @@ pub struct Hovered;
 #[derive(Component)]
 pub struct Port;
 
-/// A SymbolKind is a template for a Symbol. It has Port Children which
-/// are cloned into the Symbol as its Port Children when the Symbol is
-/// instantiated.
-#[derive(Component)]
-pub struct SymbolKind;
-
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
 /// are its input and output Ports. It represents an all or part of an
 /// electronic component.
 #[derive(Component)]
-pub struct Symbol;
+pub struct Symbol {
+    pub ports: SmallVec<[Entity; 7]>,
+}
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
 /// Which of the Net's wires depends on the Endpoint the Waypoint is attached to.
@@ -185,16 +181,23 @@ pub struct Waypoint;
 /// An Endpoint is a connection point for a Wire. It connects to a Port
 /// in a Symbol. Its Parent is the Subnet that the Endpoint is part of.
 /// It has Waypoint Children.
-#[derive(Component)]
-pub struct Endpoint;
+#[derive(Default, Component)]
+pub struct Endpoint {
+    pub waypoints: SmallVec<[Entity; 2]>,
+}
 
 /// A Net is a set of Subnets that are connected together. It has
 /// Subnet Children, and a Netlist Parent. Often a Net will have
 /// only one Subnet, unless there's a bus split.
-#[derive(Component)]
-pub struct Net;
+#[derive(Default, Component)]
+pub struct Net {
+    pub endpoints: SmallVec<[Entity; 2]>,
+}
 
 /// A Circuit is a set of Symbols and Nets forming an Electronic Circuit.
 /// It has Symbol and Net Children, and a SymbolKind
-#[derive(Component)]
-pub struct Circuit;
+#[derive(Default, Component)]
+pub struct Circuit {
+    pub symbols: Vec<Entity>,
+    pub nets: Vec<Entity>,
+}

@@ -12,6 +12,5 @@ workspace = true
 serde.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true
-bevy_hierarchy.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true

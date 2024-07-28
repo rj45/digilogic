@@ -50,7 +50,6 @@ impl App {
 
         // Plugins
         app.add_plugins((
-            bevy_hierarchy::HierarchyPlugin::default(),
             digilogic_core::CorePlugin::default(),
             digilogic_serde::LoadSavePlugin::default(),
             ui::UiPlugin::new(context, render_state),

@@ -20,7 +20,6 @@ vello.workspace = true
 vello_svg.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true
-bevy_hierarchy.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }

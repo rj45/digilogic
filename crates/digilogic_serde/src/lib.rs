@@ -2,7 +2,6 @@ mod circuitfile;
 use circuitfile::*;
 
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::BuildChildren;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::events::*;

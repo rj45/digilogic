@@ -1,11 +1,10 @@
-use crate::bundles::*;
 use crate::components::*;
 use crate::SharedStr;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::BuildChildren;
 
+#[derive(Clone)]
 struct PortDef {
-    name: &'static str,
+    name: SharedStr,
     bit_width: u8,
     position: Position,
     origin: Origin,
@@ -14,9 +13,10 @@ struct PortDef {
     output: bool,
 }
 
-struct SymbolKindDef {
-    name: &'static str,
-    designator_prefix: &'static str,
+#[derive(Clone)]
+struct SymbolKind {
+    name: SharedStr,
+    designator_prefix: SharedStr,
     ports: &'static [PortDef],
     size: Size,
     origin: Origin,
@@ -33,7 +33,7 @@ const PORT_SHAPE: Shape = Shape::Port; // todo: fixme
 
 const GATE_PORTS_2_INPUT: &[PortDef] = &[
     PortDef {
-        name: "A",
+        name: SharedStr::new_static("A"),
         position: Position { x: 0.0, y: 0.0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
@@ -42,7 +42,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
         output: false,
     },
     PortDef {
-        name: "B",
+        name: SharedStr::new_static("B"),
         position: Position { x: 0.0, y: 40.0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
@@ -51,7 +51,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
         output: false,
     },
     PortDef {
-        name: "Y",
+        name: SharedStr::new_static("Y"),
         position: Position { x: 80.0, y: 20.0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
@@ -63,7 +63,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
 
 const GATE_PORTS_1_INPUT: &[PortDef] = &[
     PortDef {
-        name: "A",
+        name: SharedStr::new_static("A"),
         position: Position { x: 0.0, y: 0.0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
@@ -72,7 +72,7 @@ const GATE_PORTS_1_INPUT: &[PortDef] = &[
         output: false,
     },
     PortDef {
-        name: "Y",
+        name: SharedStr::new_static("Y"),
         position: Position { x: 40.0, y: 0.0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
@@ -82,10 +82,10 @@ const GATE_PORTS_1_INPUT: &[PortDef] = &[
     },
 ];
 
-const KINDS: &[SymbolKindDef] = &[
-    SymbolKindDef {
-        name: "AND",
-        designator_prefix: "U",
+const KINDS: &[SymbolKind] = &[
+    SymbolKind {
+        name: SharedStr::new_static("AND"),
+        designator_prefix: SharedStr::new_static("U"),
         size: Size {
             width: 80.0,
             height: 60.0,
@@ -94,9 +94,9 @@ const KINDS: &[SymbolKindDef] = &[
         shape: Shape::And,                  // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
-    SymbolKindDef {
-        name: "OR",
-        designator_prefix: "U",
+    SymbolKind {
+        name: SharedStr::new_static("OR"),
+        designator_prefix: SharedStr::new_static("U"),
         size: Size {
             width: 80.0,
             height: 60.0,
@@ -105,9 +105,9 @@ const KINDS: &[SymbolKindDef] = &[
         shape: Shape::Or,                   // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
-    SymbolKindDef {
-        name: "XOR",
-        designator_prefix: "U",
+    SymbolKind {
+        name: SharedStr::new_static("XOR"),
+        designator_prefix: SharedStr::new_static("U"),
         size: Size {
             width: 80.0,
             height: 60.0,
@@ -116,9 +116,9 @@ const KINDS: &[SymbolKindDef] = &[
         shape: Shape::Xor,                  // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
-    SymbolKindDef {
-        name: "NOT",
-        designator_prefix: "U",
+    SymbolKind {
+        name: SharedStr::new_static("NOT"),
+        designator_prefix: SharedStr::new_static("U"),
         size: Size {
             width: 60.0,
             height: 40.0,
@@ -127,9 +127,9 @@ const KINDS: &[SymbolKindDef] = &[
         shape: Shape::Not,                  // TODO: fixme
         ports: GATE_PORTS_1_INPUT,
     },
-    SymbolKindDef {
-        name: "IN",
-        designator_prefix: "J",
+    SymbolKind {
+        name: SharedStr::new_static("IN"),
+        designator_prefix: SharedStr::new_static("J"),
         size: Size {
             width: 40.0,
             height: 20.0,
@@ -137,7 +137,7 @@ const KINDS: &[SymbolKindDef] = &[
         origin: Origin { x: 40.0, y: 10.0 }, // position of the first port
         shape: Shape::Input,                 // TODO: fixme
         ports: &[PortDef {
-            name: "I",
+            name: SharedStr::new_static("I"),
             position: Position { x: 0.0, y: 0.0 },
             origin: PORT_ORIGIN,
             bit_width: 1,
@@ -146,9 +146,9 @@ const KINDS: &[SymbolKindDef] = &[
             output: true,
         }],
     },
-    SymbolKindDef {
-        name: "OUT",
-        designator_prefix: "J",
+    SymbolKind {
+        name: SharedStr::new_static("OUT"),
+        designator_prefix: SharedStr::new_static("J"),
         size: Size {
             width: 40.0,
             height: 20.0,
@@ -156,7 +156,7 @@ const KINDS: &[SymbolKindDef] = &[
         origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
         shape: Shape::Output,               // TODO: fixme
         ports: &[PortDef {
-            name: "O",
+            name: SharedStr::new_static("O"),
             position: Position { x: 0.0, y: 0.0 },
             origin: PORT_ORIGIN,
             bit_width: 1,
@@ -167,41 +167,13 @@ const KINDS: &[SymbolKindDef] = &[
     },
 ];
 
-pub fn init_builtin_symbol_kinds(mut commands: Commands) {
-    for kind in KINDS.iter() {
-        let kind_id = commands
-            .spawn(SymbolKindBundle {
-                marker: SymbolKind,
-                visible: Visible {
-                    shape: kind.shape,
-                    origin: kind.origin,
-                    ..Default::default()
-                },
-                name: Name(SharedStr::new_static(kind.name)),
-                size: kind.size,
-                designator_prefix: DesignatorPrefix(SharedStr::new_static(kind.designator_prefix)),
-            })
-            .id();
+#[derive(Resource)]
+pub struct SymbolRegistry {
+    kinds: Vec<SymbolKind>,
+}
 
-        for port in kind.ports.iter() {
-            let mut port_cmd = commands.spawn(PortBundle {
-                marker: Port,
-                name: Name(SharedStr::new_static(port.name)),
-                visible: Visible {
-                    shape: port.shape,
-                    origin: port.origin,
-                    position: port.position,
-                    ..Default::default()
-                },
-                bit_width: BitWidth(port.bit_width),
-            });
-            port_cmd.set_parent(kind_id);
-            if port.input {
-                port_cmd.insert(Input);
-            }
-            if port.output {
-                port_cmd.insert(Output);
-            }
-        }
+impl Default for SymbolRegistry {
+    fn default() -> Self {
+        Self { kinds: KINDS.to_vec() }
     }
 }
