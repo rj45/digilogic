@@ -37,42 +37,8 @@ pub struct CircuitID(pub Entity);
 // Entity part components
 /////
 
-/// The Position of the Entity in its parent's coordinate system
-#[derive(Default, Component, Copy, Clone)]
-pub struct Position {
-    pub x: f32,
-    pub y: f32,
-}
-
-/// The Origin of the Entity in its own coordinate system
-#[derive(Default, Component, Copy, Clone)]
-pub struct Origin {
-    pub x: f32,
-    pub y: f32,
-}
-
-/// The Transform of the Entity in the world coordinate system,
-/// which should always be kept up-to-date with the Position / Rotation
-/// of the Entity, as well as its parent. This is a 3x2 matrix.
-#[derive(Default, Component)]
-pub struct Transform {
-    pub m_00: f32,
-    pub m_01: f32,
-    pub m_10: f32,
-    pub m_11: f32,
-    pub m_20: f32,
-    pub m_21: f32,
-}
-
-/// The Size of the Entity
-#[derive(Default, Component, Copy, Clone)]
-pub struct Size {
-    pub width: f32,
-    pub height: f32,
-}
-
 /// The Shape of the Entity as an index into the Shapes Vello can draw
-#[derive(Default, Component, Copy, Clone)]
+#[derive(Default, Component, Clone, Copy)]
 pub enum Shape {
     #[default]
     Chip,
@@ -104,16 +70,6 @@ pub struct DesignatorSuffix(pub SharedStr);
 /// The Number of the entity (pin number, etc.)
 #[derive(Component)]
 pub struct Number(pub i32);
-
-/// The rotation of the entity in 90 degree increments
-#[derive(Default, Component)]
-pub enum Rotation {
-    #[default]
-    Rot0,
-    Rot90,
-    Rot180,
-    Rot270,
-}
 
 // The bitwidth of a Port / Symbol / Net.
 // Can be up to 255 bits wide.

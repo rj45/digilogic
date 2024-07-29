@@ -1,4 +1,5 @@
 use crate::components::*;
+use crate::transform::*;
 use crate::SharedStr;
 use bevy_ecs::prelude::*;
 
@@ -23,7 +24,7 @@ struct SymbolKind {
     shape: Shape,
 }
 
-const PORT_HALF_WIDTH: f32 = 1.5;
+const PORT_HALF_WIDTH: i32 = 2;
 
 const PORT_ORIGIN: Origin = Origin {
     x: PORT_HALF_WIDTH,
@@ -34,7 +35,7 @@ const PORT_SHAPE: Shape = Shape::Port; // todo: fixme
 const GATE_PORTS_2_INPUT: &[PortDef] = &[
     PortDef {
         name: SharedStr::new_static("A"),
-        position: Position { x: 0.0, y: 0.0 },
+        position: Position { x: 0, y: 0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
         shape: PORT_SHAPE,
@@ -43,7 +44,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
     },
     PortDef {
         name: SharedStr::new_static("B"),
-        position: Position { x: 0.0, y: 40.0 },
+        position: Position { x: 0, y: 40 },
         origin: PORT_ORIGIN,
         bit_width: 1,
         shape: PORT_SHAPE,
@@ -52,7 +53,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
     },
     PortDef {
         name: SharedStr::new_static("Y"),
-        position: Position { x: 80.0, y: 20.0 },
+        position: Position { x: 80, y: 20 },
         origin: PORT_ORIGIN,
         bit_width: 1,
         shape: PORT_SHAPE,
@@ -64,7 +65,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
 const GATE_PORTS_1_INPUT: &[PortDef] = &[
     PortDef {
         name: SharedStr::new_static("A"),
-        position: Position { x: 0.0, y: 0.0 },
+        position: Position { x: 0, y: 0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
         shape: PORT_SHAPE,
@@ -73,7 +74,7 @@ const GATE_PORTS_1_INPUT: &[PortDef] = &[
     },
     PortDef {
         name: SharedStr::new_static("Y"),
-        position: Position { x: 40.0, y: 0.0 },
+        position: Position { x: 40, y: 0 },
         origin: PORT_ORIGIN,
         bit_width: 1,
         shape: PORT_SHAPE,
@@ -87,58 +88,58 @@ const KINDS: &[SymbolKind] = &[
         name: SharedStr::new_static("AND"),
         designator_prefix: SharedStr::new_static("U"),
         size: Size {
-            width: 80.0,
-            height: 60.0,
+            width: 80,
+            height: 60,
         },
-        origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape::And,                  // TODO: fixme
+        origin: Origin { x: 0, y: 10 }, // position of the first port
+        shape: Shape::And,              // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
     SymbolKind {
         name: SharedStr::new_static("OR"),
         designator_prefix: SharedStr::new_static("U"),
         size: Size {
-            width: 80.0,
-            height: 60.0,
+            width: 80,
+            height: 60,
         },
-        origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape::Or,                   // TODO: fixme
+        origin: Origin { x: 0, y: 10 }, // position of the first port
+        shape: Shape::Or,               // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
     SymbolKind {
         name: SharedStr::new_static("XOR"),
         designator_prefix: SharedStr::new_static("U"),
         size: Size {
-            width: 80.0,
-            height: 60.0,
+            width: 80,
+            height: 60,
         },
-        origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape::Xor,                  // TODO: fixme
+        origin: Origin { x: 0, y: 10 }, // position of the first port
+        shape: Shape::Xor,              // TODO: fixme
         ports: GATE_PORTS_2_INPUT,
     },
     SymbolKind {
         name: SharedStr::new_static("NOT"),
         designator_prefix: SharedStr::new_static("U"),
         size: Size {
-            width: 60.0,
-            height: 40.0,
+            width: 60,
+            height: 40,
         },
-        origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape::Not,                  // TODO: fixme
+        origin: Origin { x: 0, y: 10 }, // position of the first port
+        shape: Shape::Not,              // TODO: fixme
         ports: GATE_PORTS_1_INPUT,
     },
     SymbolKind {
         name: SharedStr::new_static("IN"),
         designator_prefix: SharedStr::new_static("J"),
         size: Size {
-            width: 40.0,
-            height: 20.0,
+            width: 40,
+            height: 20,
         },
-        origin: Origin { x: 40.0, y: 10.0 }, // position of the first port
-        shape: Shape::Input,                 // TODO: fixme
+        origin: Origin { x: 40, y: 10 }, // position of the first port
+        shape: Shape::Input,             // TODO: fixme
         ports: &[PortDef {
             name: SharedStr::new_static("I"),
-            position: Position { x: 0.0, y: 0.0 },
+            position: Position { x: 0, y: 0 },
             origin: PORT_ORIGIN,
             bit_width: 1,
             shape: PORT_SHAPE,
@@ -150,14 +151,14 @@ const KINDS: &[SymbolKind] = &[
         name: SharedStr::new_static("OUT"),
         designator_prefix: SharedStr::new_static("J"),
         size: Size {
-            width: 40.0,
-            height: 20.0,
+            width: 40,
+            height: 20,
         },
-        origin: Origin { x: 0.0, y: 10.0 }, // position of the first port
-        shape: Shape::Output,               // TODO: fixme
+        origin: Origin { x: 0, y: 10 }, // position of the first port
+        shape: Shape::Output,           // TODO: fixme
         ports: &[PortDef {
             name: SharedStr::new_static("O"),
-            position: Position { x: 0.0, y: 0.0 },
+            position: Position { x: 0, y: 0 },
             origin: PORT_ORIGIN,
             bit_width: 1,
             shape: PORT_SHAPE,
@@ -174,6 +175,8 @@ pub struct SymbolRegistry {
 
 impl Default for SymbolRegistry {
     fn default() -> Self {
-        Self { kinds: KINDS.to_vec() }
+        Self {
+            kinds: KINDS.to_vec(),
+        }
     }
 }

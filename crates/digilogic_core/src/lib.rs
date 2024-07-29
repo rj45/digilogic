@@ -2,6 +2,7 @@ pub mod bundles;
 pub mod components;
 pub mod events;
 pub mod symbol;
+pub mod transform;
 
 #[macro_use]
 extern crate static_assertions;
@@ -241,5 +242,6 @@ impl bevy_app::Plugin for CorePlugin {
         app.init_resource::<symbol::SymbolRegistry>();
         app.add_event::<events::LoadEvent>();
         app.add_event::<events::LoadedEvent>();
+        app.add_systems(bevy_app::Update, transform::update_bounding_boxes);
     }
 }

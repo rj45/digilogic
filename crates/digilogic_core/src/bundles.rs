@@ -1,4 +1,5 @@
-use super::components::*;
+use crate::components::*;
+use crate::transform::*;
 use bevy_ecs::prelude::*;
 
 /// A Visible is a bundle of the components needed to render an entity.
