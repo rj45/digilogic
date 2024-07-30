@@ -167,7 +167,9 @@ impl SymbolKind {
             .collect();
         let symbol_id = commands
             .spawn(SymbolBundle {
-                symbol: Symbol { ports: ports },
+                symbol: Symbol {
+                    ports: ports.clone(),
+                },
                 name: Name(self.name.clone()),
                 designator_prefix: DesignatorPrefix(self.designator_prefix.clone()),
                 designator_number: DesignatorNumber(designator_number),
@@ -181,8 +183,12 @@ impl SymbolKind {
                     global_transform: GlobalTransform::default(),
                 },
             })
-            .insert(CircuitID(circuit_id))
+            .insert(Parent(circuit_id))
             .id();
+
+        for port in ports.iter() {
+            commands.entity(*port).insert(Parent(symbol_id));
+        }
 
         commands.add(move |world: &mut World| {
             let mut circuit = world.get_mut::<Circuit>(circuit_id).unwrap();
