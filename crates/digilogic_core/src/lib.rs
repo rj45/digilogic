@@ -86,6 +86,13 @@ impl PartialEq<str> for SharedStr {
     }
 }
 
+impl PartialEq<SharedStr> for str {
+    #[inline]
+    fn eq(&self, other: &SharedStr) -> bool {
+        self == other.deref()
+    }
+}
+
 impl Eq for SharedStr {}
 
 impl Hash for SharedStr {
@@ -149,13 +156,6 @@ impl From<Arc<str>> for SharedStr {
     #[inline]
     fn from(s: Arc<str>) -> Self {
         Self(SharedStrRepr::Arc(s))
-    }
-}
-
-impl PartialEq<SharedStr> for str {
-    #[inline]
-    fn eq(&self, other: &SharedStr) -> bool {
-        self.deref() == other.deref()
     }
 }
 
