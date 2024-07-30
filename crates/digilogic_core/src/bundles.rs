@@ -52,7 +52,7 @@ pub struct SymbolBundle {
     pub designator_number: DesignatorNumber,
 
     /// The SymbolKind that the Symbol is an instance of
-    pub symbol_kind: SymbolKindID,
+    pub symbol_kind: SymbolKindIndex,
 
     pub shape: Shape,
     pub transform: TransformBundle,
@@ -112,11 +112,8 @@ pub struct NetBundle {
 ///
 /// Circuits optionally can have some of these additional components:
 /// - ???
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct CircuitBundle {
     /// The marker that this is a Circuit
     pub circuit: Circuit,
-
-    /// The SymbolKind that represents the Circuit in parent Circuits
-    pub symbol_kind: SymbolKindID,
 }

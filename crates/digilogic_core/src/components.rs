@@ -12,8 +12,8 @@ pub struct Parent(pub Entity);
 #[derive(Component)]
 pub struct PortID(pub Entity);
 
-#[derive(Component)]
-pub struct SymbolKindID(pub usize);
+#[derive(Component, Clone, Copy)]
+pub struct SymbolKindIndex(pub usize);
 
 #[derive(Component)]
 pub struct SymbolID(pub Entity);

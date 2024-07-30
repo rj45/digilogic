@@ -7,8 +7,6 @@ pub mod transform;
 #[macro_use]
 extern crate static_assertions;
 
-use bevy_ecs::component::Component;
-use bevy_ecs::entity::Entity;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -151,6 +149,13 @@ impl From<Arc<str>> for SharedStr {
     #[inline]
     fn from(s: Arc<str>) -> Self {
         Self(SharedStrRepr::Arc(s))
+    }
+}
+
+impl PartialEq<SharedStr> for str {
+    #[inline]
+    fn eq(&self, other: &SharedStr) -> bool {
+        self.deref() == other.deref()
     }
 }
 
