@@ -22,7 +22,7 @@ macro_rules! const_max {
     };
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub struct Vec2i {
     pub x: i32,
@@ -46,6 +46,11 @@ impl Vec2i {
             x: const_max!(self.x, rhs.y),
             y: const_max!(self.x, rhs.y),
         }
+    }
+
+    #[inline]
+    pub const fn manhatten_distance_to(self, other: Self) -> u32 {
+        self.x.abs_diff(other.x) + self.y.abs_diff(other.y)
     }
 }
 
@@ -94,7 +99,7 @@ impl SubAssign for Vec2i {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Rotation {
     #[default]
@@ -153,7 +158,7 @@ impl Vec2i {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct Transform {
     pub translation: Vec2i,
     pub rotation: Rotation,
@@ -198,7 +203,7 @@ impl Vec2i {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component)]
 #[repr(transparent)]
 pub struct GlobalTransform(Transform);
 
@@ -218,7 +223,7 @@ pub struct TransformBundle {
 }
 
 /// The bounding box of the entity relative to its center
-#[derive(Default, Component, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component)]
 #[repr(C)]
 pub struct BoundingBox {
     min: Vec2i,
@@ -271,6 +276,38 @@ impl BoundingBox {
     }
 
     #[inline]
+    pub const fn width(self) -> u32 {
+        self.max.x.abs_diff(self.min.x)
+    }
+
+    #[inline]
+    pub const fn height(self) -> u32 {
+        self.max.y.abs_diff(self.min.y)
+    }
+
+    #[inline]
+    pub const fn contains(self, point: Vec2i) -> bool {
+        (self.min().x <= point.x)
+            && (self.max().x >= point.x)
+            && (self.min().y <= point.y)
+            && (self.max().y >= point.y)
+    }
+
+    //#[inline]
+    //pub const fn intersects_with(self, min: Vec2i, max: Vec2i) -> bool {
+    //    assert!(min.x <= max.x);
+    //    assert!(min.y <= max.y);
+
+    //    let intersects_x = ((self.min_x() >= min.x) && (self.max_x() <= max.x))
+    //        || ((self.min_x() <= min.x) && (self.max_x() >= min.x))
+    //        || ((self.min_x() <= max.x) && (self.max_x() >= max.x));
+    //    let intersects_y = ((self.min_y() >= min.y) && (self.max_y() <= max.y))
+    //        || ((self.min_y() <= min.y) && (self.max_y() >= min.y))
+    //        || ((self.min_y() <= max.y) && (self.max_y() >= max.y));
+    //    intersects_x && intersects_y
+    //}
+
+    #[inline]
     pub fn translate(mut self, translation: Vec2i) -> Self {
         self.min += translation;
         self.max += translation;
@@ -291,7 +328,7 @@ impl BoundingBox {
 }
 
 /// The computed absolute bounding box of the entity
-#[derive(Default, Component)]
+#[derive(Default, Debug, Component)]
 pub struct AbsoluteBoundingBox(BoundingBox);
 
 impl Deref for AbsoluteBoundingBox {

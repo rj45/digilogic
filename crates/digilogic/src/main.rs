@@ -47,11 +47,13 @@ impl App {
         let mut app = bevy_app::App::default();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
+        app.init_resource::<digilogic_routing::RoutingConfig>();
 
         // Plugins
         app.add_plugins((
             digilogic_core::CorePlugin::default(),
             digilogic_serde::LoadSavePlugin::default(),
+            digilogic_routing::RoutingPlugin::default(),
             ui::UiPlugin::new(context, render_state),
         ));
 
