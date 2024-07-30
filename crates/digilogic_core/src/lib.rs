@@ -7,6 +7,8 @@ pub mod transform;
 #[macro_use]
 extern crate static_assertions;
 
+use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -242,6 +244,6 @@ impl bevy_app::Plugin for CorePlugin {
         app.init_resource::<symbol::SymbolRegistry>();
         app.add_event::<events::LoadEvent>();
         app.add_event::<events::LoadedEvent>();
-        app.add_systems(bevy_app::Update, transform::update_bounding_boxes);
+        app.add_systems(bevy_app::PostUpdate, transform::update_transforms);
     }
 }

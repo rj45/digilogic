@@ -2,29 +2,6 @@ use crate::components::*;
 use crate::transform::*;
 use bevy_ecs::prelude::*;
 
-/// A Visible is a bundle of the components needed to render an entity.
-///
-/// Can optionally have these additional components:
-/// - Parent - the parent entity, if it has one
-/// - Size - the shape will be scaled to fit the Size
-/// - Rotation - the rotation of the shape and its children
-/// - Selected - if the entity is selected
-/// - Hovered - if the entity is hovered
-/// - Hidden - if the entity is hidden
-#[derive(Default, Bundle)]
-pub struct Visible {
-    // the Position of the entity relative to its Parent
-    pub position: Position,
-
-    // Where 0,0 is in the entity's coordinate system relative to its top left corner.
-    // That is, this will be subtracted from the position to get the position of the
-    // top left corner of the entity.
-    pub origin: Origin,
-
-    // The shape to draw for the entity
-    pub shape: Shape,
-}
-
 /// A Port is a connection point for an Endpoint. For sub-Circuits,
 /// it also connects to an Input or Output Symbol in the child Circuit.
 ///
@@ -43,12 +20,12 @@ pub struct PortBundle {
     // The name of the Port
     pub name: Name,
 
-    /// Ports are Visible
-    pub visible: Visible,
-
     /// The bit width of the Port. This must match the bit width of any
     /// connected subnet.
     pub bit_width: BitWidth,
+
+    pub shape: Shape,
+    pub transform: TransformBundle,
 }
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
@@ -65,9 +42,6 @@ pub struct SymbolBundle {
     /// The marker that this is a Symbol
     pub symbol: Symbol,
 
-    /// Symbols are Visible
-    pub visible: Visible,
-
     /// The name of the Symbol
     pub name: Name,
 
@@ -77,14 +51,11 @@ pub struct SymbolBundle {
     /// The designator number of the Symbol
     pub designator_number: DesignatorNumber,
 
-    /// The rotation of the Symbol
-    pub rotation: Rotation,
-
-    /// The size of the Symbol, cloned from SymbolKind
-    pub size: Size,
-
     /// The SymbolKind that the Symbol is an instance of
     pub symbol_kind: SymbolKindID,
+
+    pub shape: Shape,
+    pub transform: TransformBundle,
 }
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
@@ -94,11 +65,10 @@ pub struct WaypointBundle {
     /// The marker that this is a Waypoint
     pub waypoint: Waypoint,
 
-    /// Waypoints are Visible
-    pub visible: Visible,
-
     /// The Endpoint that the Waypoint is attached to
     pub endpoint: EndpointID,
+
+    pub transform: TransformBundle,
 }
 
 /// An Endpoint is a connection point for a Net. It connects to a Port
@@ -114,8 +84,7 @@ pub struct EndpointBundle {
     /// The marker that this is an Endpoint
     pub enpoint: Endpoint,
 
-    /// Endpoints are Visible
-    pub visible: Visible,
+    pub transform: TransformBundle,
 }
 
 /// A Net is a set of Endpoints that are connected together.

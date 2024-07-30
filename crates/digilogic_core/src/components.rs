@@ -2,6 +2,9 @@ use crate::SharedStr;
 use bevy_ecs::prelude::*;
 use smallvec::SmallVec;
 
+#[derive(Component)]
+pub struct Parent(pub Entity);
+
 /////
 // Entity ID components
 /////
