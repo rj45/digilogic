@@ -50,7 +50,7 @@ pub struct Subnet {
     pub id: Id,
     pub name: SharedStr,
     #[serde(rename = "subnetBits")]
-    pub subnet_bits: Vec<serde_json::Value>,
+    pub subnet_bits: Vec<u8>,
     pub endpoints: Vec<Endpoint>,
 }
 

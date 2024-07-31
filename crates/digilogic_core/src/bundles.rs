@@ -60,13 +60,10 @@ pub struct SymbolBundle {
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
 /// Which of the Net's wires depends on the Endpoint the Waypoint is attached to.
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct WaypointBundle {
     /// The marker that this is a Waypoint
     pub waypoint: Waypoint,
-
-    /// The Endpoint that the Waypoint is attached to
-    pub endpoint: EndpointID,
 
     pub transform: TransformBundle,
 }
@@ -79,7 +76,7 @@ pub struct WaypointBundle {
 ///
 /// Endpoints optionally can have some of these additional components:
 /// - PortID - the Port that the Endpoint is connected to
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct EndpointBundle {
     /// The marker that this is an Endpoint
     pub enpoint: Endpoint,

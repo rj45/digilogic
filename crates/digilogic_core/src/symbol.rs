@@ -123,14 +123,31 @@ const KINDS: &[SymbolKind] = &[
     },
 ];
 
+pub struct SymbolBuilder<'a> {
+    registry: &'a SymbolRegistry,
+    kind_index: usize,
+    name: Option<SharedStr>,
+    designator_number: Option<u32>,
+    position: Option<Vec2i>,
+    bit_width: Option<BitWidth>,
+}
+
 #[derive(Resource)]
 pub struct SymbolRegistry {
     kinds: Vec<SymbolKind>,
 }
 
 impl SymbolRegistry {
-    pub fn get(&self, name: &SharedStr) -> Option<&SymbolKind> {
-        self.kinds.iter().find(|kind| kind.name == *name)
+    pub fn get(&self, name: &SharedStr) -> Option<SymbolBuilder> {
+        let kind = self.kinds.iter().position(|kind| kind.name == *name);
+        kind.map(|kind| SymbolBuilder {
+            registry: self,
+            kind_index: kind,
+            name: None,
+            designator_number: None,
+            position: None,
+            bit_width: None,
+        })
     }
 
     pub fn get_by_index(&self, index: usize) -> Option<&SymbolKind> {
@@ -152,32 +169,53 @@ impl Default for SymbolRegistry {
     }
 }
 
-impl SymbolKind {
-    pub fn build(
-        &self,
-        commands: &mut Commands,
-        circuit_id: Entity,
-        designator_number: u32,
-        bit_width: BitWidth,
-    ) -> Entity {
-        let ports: SmallVec<[Entity; 7]> = self
+impl SymbolBuilder<'_> {
+    pub fn name(&mut self, name: SharedStr) -> &mut Self {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn designator_number(&mut self, number: u32) -> &mut Self {
+        self.designator_number = Some(number);
+        self
+    }
+
+    pub fn position(&mut self, position: Vec2i) -> &mut Self {
+        self.position = Some(position);
+        self
+    }
+
+    pub fn bit_width(&mut self, bit_width: BitWidth) -> &mut Self {
+        self.bit_width = Some(bit_width);
+        self
+    }
+
+    pub fn build(&self, commands: &mut Commands, circuit_id: Entity) -> Entity {
+        let kind = self.registry.kinds.get(self.kind_index as usize).unwrap();
+
+        let ports: SmallVec<[Entity; 7]> = kind
             .ports
             .iter()
-            .map(|port| port.build(commands, &bit_width))
+            .map(|port| {
+                port.build(
+                    commands,
+                    self.bit_width.as_ref().unwrap_or_else(|| &BitWidth(1)),
+                )
+            })
             .collect();
         let symbol_id = commands
             .spawn(SymbolBundle {
                 symbol: Symbol {
                     ports: ports.clone(),
                 },
-                name: Name(self.name.clone()),
-                designator_prefix: DesignatorPrefix(self.designator_prefix.clone()),
-                designator_number: DesignatorNumber(designator_number),
-                symbol_kind: SymbolKindIndex(self.index.0),
-                shape: self.shape,
+                name: Name(self.name.as_ref().unwrap_or_else(|| &kind.name).clone()),
+                designator_prefix: DesignatorPrefix(kind.designator_prefix.clone()),
+                designator_number: DesignatorNumber(self.designator_number.unwrap_or_else(|| 0)),
+                symbol_kind: SymbolKindIndex(kind.index.0),
+                shape: kind.shape,
                 transform: TransformBundle {
                     transform: Transform {
-                        translation: Vec2i::default(),
+                        translation: self.position.unwrap_or_else(|| Vec2i { x: 0, y: 0 }),
                         rotation: Rotation::Rot0,
                     },
                     global_transform: GlobalTransform::default(),

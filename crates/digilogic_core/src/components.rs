@@ -134,7 +134,7 @@ pub struct Symbol {
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
 /// Which of the Net's wires depends on the Endpoint the Waypoint is attached to.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Waypoint;
 
 /// An Endpoint is a connection point for a Wire. It connects to a Port
