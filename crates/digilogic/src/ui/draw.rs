@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
-use digilogic_core::components::Shape;
+use digilogic_core::{components::Shape, transform::GlobalTransform};
 use vello::{
-    kurbo::{Affine, BezPath, Stroke},
+    kurbo::{Affine, BezPath, Stroke, Vec2},
     peniko::{Brush, Color, Fill},
 };
 
@@ -13,105 +13,38 @@ pub struct Scene(pub vello::Scene);
 #[derive(Default, Resource)]
 pub struct SymbolSVGs(pub Vec<BezPath>);
 
-pub fn draw(mut scene: ResMut<Scene>, symbol_svgs: Res<SymbolSVGs>) {
+pub fn draw(
+    mut scene: ResMut<Scene>,
+    symbol_svgs: Res<SymbolSVGs>,
+    shapes: Query<(&Shape, &GlobalTransform)>,
+) {
     let scene = &mut scene.0;
     scene.reset();
 
-    scene.fill(
-        Fill::NonZero,
-        Affine::scale(10.0).then_translate((100.0, 100.0).into()),
-        &Brush::Solid(Color::rgb8(128, 128, 128)),
-        None,
-        &symbol_svgs.0[Shape::And as usize],
-    );
+    for (&shape, transform) in shapes.iter() {
+        let transform = Affine::scale(10.0)
+            .then_rotate(transform.rotation.radians())
+            .then_translate(Vec2::new(
+                transform.translation.x as f64,
+                transform.translation.y as f64,
+            ));
 
-    scene.stroke(
-        &Stroke::new(0.25),
-        Affine::scale(10.0).then_translate((100.0, 100.0).into()),
-        &Brush::Solid(Color::rgb8(255, 255, 255)),
-        None,
-        &symbol_svgs.0[Shape::And as usize],
-    );
+        scene.fill(
+            Fill::NonZero,
+            transform,
+            &Brush::Solid(Color::GRAY),
+            None,
+            &symbol_svgs.0[shape as usize],
+        );
 
-    scene.fill(
-        Fill::NonZero,
-        Affine::scale(10.0).then_translate((100.0, 200.0).into()),
-        &Brush::Solid(Color::rgb8(128, 128, 128)),
-        None,
-        &symbol_svgs.0[Shape::Or as usize],
-    );
-
-    scene.stroke(
-        &Stroke::new(0.25),
-        Affine::scale(10.0).then_translate((100.0, 200.0).into()),
-        &Brush::Solid(Color::rgb8(255, 255, 255)),
-        None,
-        &symbol_svgs.0[Shape::Or as usize],
-    );
-
-    scene.fill(
-        Fill::NonZero,
-        Affine::scale(10.0).then_translate((100.0, 300.0).into()),
-        &Brush::Solid(Color::rgb8(128, 128, 128)),
-        None,
-        &symbol_svgs.0[Shape::Xor as usize],
-    );
-
-    scene.stroke(
-        &Stroke::new(0.25),
-        Affine::scale(10.0).then_translate((100.0, 300.0).into()),
-        &Brush::Solid(Color::rgb8(255, 255, 255)),
-        None,
-        &symbol_svgs.0[Shape::Xor as usize],
-    );
-
-    scene.fill(
-        Fill::NonZero,
-        Affine::scale(10.0).then_translate((100.0, 400.0).into()),
-        &Brush::Solid(Color::rgb8(128, 128, 128)),
-        None,
-        &symbol_svgs.0[Shape::Not as usize],
-    );
-
-    scene.stroke(
-        &Stroke::new(0.25),
-        Affine::scale(10.0).then_translate((100.0, 400.0).into()),
-        &Brush::Solid(Color::rgb8(255, 255, 255)),
-        None,
-        &symbol_svgs.0[Shape::Not as usize],
-    );
-
-    scene.fill(
-        Fill::NonZero,
-        Affine::scale(10.0).then_translate((100.0, 500.0).into()),
-        &Brush::Solid(Color::rgb8(128, 128, 128)),
-        None,
-        &symbol_svgs.0[Shape::Input as usize],
-    );
-
-    scene.stroke(
-        &Stroke::new(0.25),
-        Affine::scale(10.0).then_translate((100.0, 500.0).into()),
-        &Brush::Solid(Color::rgb8(255, 255, 255)),
-        None,
-        &symbol_svgs.0[Shape::Input as usize],
-    );
-
-    scene.fill(
-        Fill::NonZero,
-        Affine::scale(10.0).then_translate((100.0, 600.0).into()),
-        &Brush::Solid(Color::rgb8(128, 128, 128)),
-        None,
-        &symbol_svgs.0[Shape::Output as usize],
-    );
-
-    scene.stroke(
-        &Stroke::new(0.25),
-        Affine::scale(10.0).then_translate((100.0, 600.0).into()),
-        &Brush::Solid(Color::rgb8(255, 255, 255)),
-        None,
-        &symbol_svgs.0[Shape::Output as usize],
-    );
+        scene.stroke(
+            &Stroke::new(0.5),
+            transform,
+            &Brush::Solid(Color::WHITE),
+            None,
+            &symbol_svgs.0[shape as usize],
+        );
+    }
 }
 
 pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolSVGs>) {
