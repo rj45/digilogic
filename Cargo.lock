@@ -1621,6 +1621,7 @@ dependencies = [
  "bevy_core",
  "bevy_ecs",
  "bevy_reflect",
+ "bitflags 2.6.0",
  "digilogic_core",
  "digilogic_routing",
  "digilogic_serde",

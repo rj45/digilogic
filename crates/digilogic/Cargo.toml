@@ -27,6 +27,7 @@ bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_app.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
+bitflags.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }
