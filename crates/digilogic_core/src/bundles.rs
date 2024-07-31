@@ -109,7 +109,7 @@ pub struct NetBundle {
 ///
 /// Circuits optionally can have some of these additional components:
 /// - ???
-#[derive(Component, Default)]
+#[derive(Bundle, Default)]
 pub struct CircuitBundle {
     /// The marker that this is a Circuit
     pub circuit: Circuit,
