@@ -46,8 +46,13 @@ vello = "0.2.1"
 vello_svg = "0.3"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
-bevy_ecs = "0.14"
-bevy_app = "0.14"
+bevy_core = "0.14.0"
+bevy_ecs = "0.14.0"
+bevy_reflect = "0.14.0"
+bevy_app = "0.14.0"
+bevy-inspector-egui = { version = "0.25.1", default-features = false, features = [
+    "highlight_changes",
+] }
 smallvec = "1.13"
 static_assertions = "1.1.0"
 bitflags = "2.6.0"

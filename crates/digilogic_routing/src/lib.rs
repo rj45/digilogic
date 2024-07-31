@@ -1,9 +1,11 @@
 mod graph;
+use bevy_ecs::reflect;
 pub use graph::*;
 
 mod segment_tree;
 
 use bevy_ecs::prelude::*;
+use bevy_reflect::Reflect;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 
@@ -14,14 +16,15 @@ type HashMap<K, V> = ahash::AHashMap<K, V>;
 #[repr(transparent)]
 pub struct Graph(GraphData);
 
-#[derive(Default, Component)]
+#[derive(Default, Component, Reflect)]
 #[repr(transparent)]
 pub struct Vertices(pub Vec<[f32; 2]>);
 
 #[derive(Default, Event)]
 pub struct Route;
 
-#[derive(Resource)]
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
 pub struct RoutingConfig {
     pub minimal: bool,
 }
@@ -75,6 +78,8 @@ pub struct RoutingPlugin;
 
 impl bevy_app::Plugin for RoutingPlugin {
     fn build(&self, app: &mut bevy_app::App) {
+        app.register_type::<Vertices>();
+        app.register_type::<RoutingConfig>();
         app.init_resource::<RoutingConfig>();
         app.observe(inject_graph);
         app.observe(inject_vertices);

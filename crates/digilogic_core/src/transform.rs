@@ -1,5 +1,6 @@
 use crate::components::Parent;
 use bevy_ecs::prelude::*;
+use bevy_reflect::Reflect;
 use std::ops::{Add, AddAssign, Deref, Mul, MulAssign, Sub, SubAssign};
 
 macro_rules! const_min {
@@ -22,7 +23,7 @@ macro_rules! const_max {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 #[repr(C)]
 pub struct Vec2i {
     pub x: i32,
@@ -99,7 +100,7 @@ impl SubAssign for Vec2i {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 #[repr(u8)]
 pub enum Rotation {
     #[default]
@@ -158,7 +159,7 @@ impl Vec2i {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct Transform {
     pub translation: Vec2i,
     pub rotation: Rotation,
@@ -203,7 +204,7 @@ impl Vec2i {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 #[repr(transparent)]
 pub struct GlobalTransform(Transform);
 
@@ -223,7 +224,7 @@ pub struct TransformBundle {
 }
 
 /// The bounding box of the entity relative to its center
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 #[repr(C)]
 pub struct BoundingBox {
     min: Vec2i,
@@ -328,7 +329,7 @@ impl BoundingBox {
 }
 
 /// The computed absolute bounding box of the entity
-#[derive(Default, Debug, Component)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct AbsoluteBoundingBox(BoundingBox);
 
 impl Deref for AbsoluteBoundingBox {

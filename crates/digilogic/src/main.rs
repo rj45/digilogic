@@ -2,12 +2,12 @@
 
 mod ui;
 
-use bevy_ecs::event::Event;
-use bevy_ecs::system::Resource;
-use bevy_ecs::world::World;
+use bevy_ecs::prelude::*;
+use bevy_reflect::Reflect;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Resource)]
+#[derive(Serialize, Deserialize, Resource, Reflect)]
+#[reflect(Resource)]
 struct AppState {
     dark_mode: bool,
 }
@@ -45,9 +45,15 @@ impl App {
         context.set_visuals(visuals);
 
         let mut app = bevy_app::App::default();
+        app.add_plugins((
+            bevy_core::TaskPoolPlugin::default(),
+            bevy_core::TypeRegistrationPlugin::default(),
+            bevy_core::FrameCountPlugin::default(),
+        ));
+
+        app.register_type::<AppState>();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
-        app.init_resource::<digilogic_routing::RoutingConfig>();
 
         // Plugins
         app.add_plugins((

@@ -10,7 +10,10 @@ workspace = true
 
 [dependencies]
 serde.workspace = true
+egui.workspace = true
 bevy_ecs.workspace = true
+bevy_reflect.workspace = true
 bevy_app.workspace = true
+bevy-inspector-egui.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
