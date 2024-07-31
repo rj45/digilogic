@@ -46,10 +46,7 @@ fn translate_circuit(
     for module in modules.iter() {
         let circuit_id = commands
             .spawn(CircuitBundle {
-                circuit: digilogic_core::components::Circuit {
-                    symbols: Default::default(),
-                    nets: Default::default(),
-                },
+                ..Default::default()
             })
             .id();
         id_map.insert(module.id.clone(), circuit_id);
@@ -163,7 +160,7 @@ fn translate_endpoint(
                     },
                     ..Default::default()
                 },
-                global_transform: Default::default(),
+                ..Default::default()
             },
             ..Default::default()
         })
@@ -198,7 +195,7 @@ fn translate_waypoint(
                     },
                     ..Default::default()
                 },
-                global_transform: Default::default(),
+                ..Default::default()
             },
             ..Default::default()
         })
