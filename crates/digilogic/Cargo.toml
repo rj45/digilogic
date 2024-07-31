@@ -8,6 +8,10 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = ["inspector"]
+inspector = ["dep:bevy-inspector-egui", "digilogic_core/inspector"]
+
 [dependencies]
 log.workspace = true
 serde.workspace = true
@@ -22,7 +26,7 @@ bevy_core.workspace = true
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_app.workspace = true
-bevy-inspector-egui.workspace = true
+bevy-inspector-egui = { workspace = true, optional = true }
 
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }

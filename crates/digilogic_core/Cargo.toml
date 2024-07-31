@@ -8,12 +8,15 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+inspector = ["dep:bevy-inspector-egui"]
+
 [dependencies]
 serde.workspace = true
 egui.workspace = true
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_app.workspace = true
-bevy-inspector-egui.workspace = true
+bevy-inspector-egui = { workspace = true, optional = true }
 smallvec.workspace = true
 static_assertions.workspace = true

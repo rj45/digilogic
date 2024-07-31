@@ -15,8 +15,9 @@ pub struct CorePlugin;
 
 impl bevy_app::Plugin for CorePlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.register_type::<SharedStr>()
-            .register_type_data::<SharedStr, bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl>();
+        app.register_type::<SharedStr>();
+        #[cfg(feature = "inspector")]
+        app.register_type_data::<SharedStr, bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl>();
 
         app.register_type::<components::Parent>()
             .register_type::<components::PortID>()

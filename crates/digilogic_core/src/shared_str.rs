@@ -1,5 +1,3 @@
-use bevy_inspector_egui::inspector_egui_impls::InspectorPrimitive;
-use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use bevy_reflect::prelude::*;
 use std::borrow::Borrow;
 use std::fmt;
@@ -243,33 +241,39 @@ impl<'de> serde::Deserialize<'de> for SharedStr {
     }
 }
 
-fn inspector_ui(mut s: &str, ui: &mut egui::Ui) {
-    if s.contains('\n') {
-        ui.text_edit_multiline(&mut s);
-    } else {
-        ui.text_edit_singleline(&mut s);
-    }
-}
+#[cfg(feature = "inspector")]
+mod inspector {
+    use bevy_inspector_egui::inspector_egui_impls::InspectorPrimitive;
+    use bevy_inspector_egui::reflect_inspector::InspectorUi;
 
-impl InspectorPrimitive for SharedStr {
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) -> bool {
-        inspector_ui(self, ui);
-        false
+    fn inspector_ui(mut s: &str, ui: &mut egui::Ui) {
+        if s.contains('\n') {
+            ui.text_edit_multiline(&mut s);
+        } else {
+            ui.text_edit_singleline(&mut s);
+        }
     }
 
-    fn ui_readonly(
-        &self,
-        ui: &mut egui::Ui,
-        _: &dyn std::any::Any,
-        _: egui::Id,
-        _: InspectorUi<'_, '_>,
-    ) {
-        inspector_ui(self, ui);
+    impl InspectorPrimitive for super::SharedStr {
+        fn ui(
+            &mut self,
+            ui: &mut egui::Ui,
+            _: &dyn std::any::Any,
+            _: egui::Id,
+            _: InspectorUi<'_, '_>,
+        ) -> bool {
+            inspector_ui(self, ui);
+            false
+        }
+
+        fn ui_readonly(
+            &self,
+            ui: &mut egui::Ui,
+            _: &dyn std::any::Any,
+            _: egui::Id,
+            _: InspectorUi<'_, '_>,
+        ) {
+            inspector_ui(self, ui);
+        }
     }
 }

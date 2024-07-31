@@ -89,8 +89,8 @@ fn update(
     });
 }
 
-#[cfg(debug_assertions)]
-pub fn debug_inspect(world: &mut World) {
+#[cfg(feature = "inspector")]
+pub fn inspect(world: &mut World) {
     let Some(egui) = world.get_resource::<Egui>() else {
         return;
     };
@@ -135,14 +135,14 @@ impl bevy_app::Plugin for UiPlugin {
         app.add_systems(bevy_app::Update, draw);
         app.add_systems(bevy_app::Update, update.after(draw));
 
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "inspector")]
         {
             // Crashes if these types are not registered
             app.register_type::<std::path::PathBuf>();
             app.register_type::<std::time::Instant>();
 
             app.add_plugins(bevy_inspector_egui::DefaultInspectorConfigPlugin);
-            app.add_systems(bevy_app::Last, debug_inspect);
+            app.add_systems(bevy_app::Last, inspect);
         }
     }
 }
