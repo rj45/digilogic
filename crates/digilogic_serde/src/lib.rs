@@ -2,6 +2,7 @@ mod circuitfile;
 use circuitfile::*;
 
 use bevy_ecs::prelude::*;
+use bevy_hierarchy::BuildChildren;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::events::*;
@@ -117,13 +118,9 @@ fn translate_net(
             name: Name(net.name.clone()),
             bit_width: BitWidth(1),
         })
-        .insert(Parent(circuit_id))
+        .set_parent(circuit_id)
         .id();
     id_map.insert(net.id.clone(), net_id);
-    commands.add(move |world: &mut World| {
-        let mut circuit = world.get_mut::<Circuit>(circuit_id).unwrap();
-        circuit.nets.push(net_id);
-    });
 
     for subnet in net.subnets.iter() {
         translate_subnet(subnet, id_map, commands, net_id)?;
@@ -164,15 +161,10 @@ fn translate_endpoint(
             },
             ..Default::default()
         })
-        .insert(Parent(net_id))
+        .set_parent(net_id)
         .id();
     id_map.insert(endpoint.id.clone(), endpoint_id);
-    commands.add(move |world: &mut World| {
-        let mut net = world
-            .get_mut::<digilogic_core::components::Net>(net_id)
-            .unwrap();
-        net.endpoints.push(endpoint_id);
-    });
+
     for waypoint in endpoint.waypoints.iter() {
         translate_waypoint(waypoint, id_map, commands, endpoint_id)?;
     }
@@ -199,14 +191,9 @@ fn translate_waypoint(
             },
             ..Default::default()
         })
+        .set_parent(endpoint_id)
         .id();
     id_map.insert(waypoint.id.clone(), waypoint_id);
-    commands.add(move |world: &mut World| {
-        let mut endpoint = world
-            .get_mut::<digilogic_core::components::Endpoint>(endpoint_id)
-            .unwrap();
-        endpoint.waypoints.push(waypoint_id);
-    });
     Ok(())
 }
 

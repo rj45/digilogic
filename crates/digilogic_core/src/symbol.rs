@@ -4,6 +4,7 @@ use crate::transform::*;
 use crate::visibility::VisibilityBundle;
 use crate::SharedStr;
 use bevy_ecs::prelude::*;
+use bevy_hierarchy::BuildChildren;
 use smallvec::SmallVec;
 
 #[derive(Clone)]
@@ -131,6 +132,7 @@ pub struct SymbolBuilder<'a> {
     designator_number: Option<u32>,
     position: Option<Vec2i>,
     bit_width: Option<BitWidth>,
+    ports: SmallVec<[Entity; 7]>,
 }
 
 #[derive(Resource)]
@@ -148,6 +150,7 @@ impl SymbolRegistry {
             designator_number: None,
             position: None,
             bit_width: None,
+            ports: SmallVec::new(),
         })
     }
 
@@ -191,24 +194,15 @@ impl SymbolBuilder<'_> {
         self
     }
 
-    pub fn build(&self, commands: &mut Commands, circuit_id: Entity) -> Entity {
+    pub fn ports(&self) -> &[Entity] {
+        &self.ports
+    }
+
+    pub fn build(&mut self, commands: &mut Commands, circuit_id: Entity) -> Entity {
         let kind = self.registry.kinds.get(self.kind_index as usize).unwrap();
 
-        let ports: SmallVec<[Entity; 7]> = kind
-            .ports
-            .iter()
-            .map(|port| {
-                port.build(
-                    commands,
-                    self.bit_width.as_ref().unwrap_or_else(|| &BitWidth(1)),
-                )
-            })
-            .collect();
         let symbol_id = commands
             .spawn(SymbolBundle {
-                symbol: Symbol {
-                    ports: ports.clone(),
-                },
                 name: Name(self.name.as_ref().unwrap_or_else(|| &kind.name).clone()),
                 designator_prefix: DesignatorPrefix(kind.designator_prefix.clone()),
                 designator_number: DesignatorNumber(self.designator_number.unwrap_or_else(|| 0)),
@@ -219,16 +213,24 @@ impl SymbolBuilder<'_> {
                         translation: self.position.unwrap_or_else(|| Vec2i { x: 0, y: 0 }),
                         rotation: Rotation::Rot0,
                     },
-                    global_transform: GlobalTransform::default(),
+                    ..Default::default()
                 },
-                visibility: VisibilityBundle::default(),
+                ..Default::default()
             })
-            .insert(Parent(circuit_id))
+            .set_parent(circuit_id)
             .id();
 
-        for port in ports.iter() {
-            commands.entity(*port).insert(Parent(symbol_id));
-        }
+        self.ports = kind
+            .ports
+            .iter()
+            .map(|port| {
+                port.build(
+                    commands,
+                    symbol_id,
+                    self.bit_width.as_ref().unwrap_or_else(|| &BitWidth(1)),
+                )
+            })
+            .collect();
 
         commands.add(move |world: &mut World| {
             let mut circuit = world.get_mut::<Circuit>(circuit_id).unwrap();
@@ -240,7 +242,7 @@ impl SymbolBuilder<'_> {
 }
 
 impl PortDef {
-    fn build(&self, commands: &mut Commands, bit_width: &BitWidth) -> Entity {
+    fn build(&self, commands: &mut Commands, symbol_id: Entity, bit_width: &BitWidth) -> Entity {
         commands
             .spawn(PortBundle {
                 port: Port,
@@ -256,6 +258,7 @@ impl PortDef {
                 bit_width: BitWidth(bit_width.0),
                 visibility: VisibilityBundle::default(),
             })
+            .set_parent(symbol_id)
             .id()
     }
 }

@@ -10,7 +10,7 @@ use smallvec::SmallVec;
 #[derive(Component, Reflect)]
 pub struct PortID(pub Entity);
 
-#[derive(Component, Clone, Copy, Reflect)]
+#[derive(Component, Clone, Copy, Reflect, Default)]
 pub struct SymbolKindIndex(pub usize);
 
 #[derive(Component, Reflect)]

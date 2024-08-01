@@ -1676,6 +1676,7 @@ dependencies = [
  "anyhow",
  "bevy_app",
  "bevy_ecs",
+ "bevy_hierarchy",
  "bevy_reflect",
  "digilogic_core",
  "serde",

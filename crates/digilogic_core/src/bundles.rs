@@ -39,7 +39,7 @@ pub struct PortBundle {
 /// Symbols optionally can have some of these additional components:
 /// - DesignatorSuffix - the suffix for the Reference Designator
 /// - PartOf - if the Symbol is part of a set of Symbols (ie one gate of a chip with many)
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct SymbolBundle {
     /// The marker that this is a Symbol
     pub symbol: Symbol,
