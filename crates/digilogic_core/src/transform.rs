@@ -1,7 +1,8 @@
 use crate::components::Parent;
+use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
-use std::ops::{Add, AddAssign, Deref, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 macro_rules! const_min {
     ($a:expr, $b:expr) => {
@@ -159,7 +160,7 @@ impl Vec2i {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
 pub struct Transform {
     pub translation: Vec2i,
     pub rotation: Rotation,
@@ -204,18 +205,9 @@ impl Vec2i {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Deref, Component, Reflect)]
 #[repr(transparent)]
 pub struct GlobalTransform(Transform);
-
-impl Deref for GlobalTransform {
-    type Target = Transform;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 #[derive(Default, Bundle)]
 pub struct TransformBundle {
@@ -224,7 +216,7 @@ pub struct TransformBundle {
 }
 
 /// The bounding box of the entity relative to its center
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
 #[repr(C)]
 pub struct BoundingBox {
     min: Vec2i,
@@ -329,17 +321,9 @@ impl BoundingBox {
 }
 
 /// The computed absolute bounding box of the entity
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Deref, Component, Reflect)]
+#[repr(transparent)]
 pub struct AbsoluteBoundingBox(BoundingBox);
-
-impl Deref for AbsoluteBoundingBox {
-    type Target = BoundingBox;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 #[derive(Default, Bundle)]
 pub struct BoundingBoxBundle {

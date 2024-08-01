@@ -1645,6 +1645,7 @@ version = "0.1.0"
 dependencies = [
  "bevy-inspector-egui",
  "bevy_app",
+ "bevy_derive",
  "bevy_ecs",
  "bevy_reflect",
  "egui",

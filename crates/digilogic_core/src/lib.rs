@@ -3,6 +3,7 @@ pub mod components;
 pub mod events;
 pub mod symbol;
 pub mod transform;
+pub mod visibility;
 
 #[macro_use]
 extern crate static_assertions;
@@ -40,7 +41,6 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<components::Input>()
             .register_type::<components::Output>()
             .register_type::<components::PartOf>()
-            .register_type::<components::Hidden>()
             .register_type::<components::Selected>()
             .register_type::<components::Hovered>()
             .register_type::<components::Port>()
@@ -54,11 +54,16 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<transform::Transform>()
             .register_type::<transform::BoundingBox>()
             .register_type::<transform::GlobalTransform>()
-            .register_type::<transform::AbsoluteBoundingBox>();
+            .register_type::<transform::AbsoluteBoundingBox>()
+            .register_type::<visibility::Visibility>()
+            .register_type::<visibility::ComputedVisibility>();
 
         app.init_resource::<symbol::SymbolRegistry>();
         app.add_event::<events::LoadEvent>();
         app.add_event::<events::LoadedEvent>();
-        app.add_systems(bevy_app::PostUpdate, transform::update_transforms);
+        app.add_systems(
+            bevy_app::PostUpdate,
+            (transform::update_transforms, visibility::update_visibility),
+        );
     }
 }

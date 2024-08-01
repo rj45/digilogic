@@ -103,11 +103,6 @@ pub struct PartOf {
     pub index: u32,
 }
 
-/// Whether to hide the entity when drawing
-// TODO: should be sparse?
-#[derive(Component, Reflect)]
-pub struct Hidden;
-
 /// Whether the entity is selected
 // TODO: should be sparse?
 #[derive(Component, Reflect)]

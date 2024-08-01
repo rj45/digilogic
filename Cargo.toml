@@ -49,6 +49,7 @@ web-sys = "0.3"
 bevy_core = "0.14.0"
 bevy_ecs = "0.14.0"
 bevy_reflect = "0.14.0"
+bevy_derive = "0.14.0"
 bevy_app = "0.14.0"
 bevy-inspector-egui = { version = "0.25.1", default-features = false, features = [
     "highlight_changes",
