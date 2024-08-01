@@ -45,17 +45,20 @@ impl App {
         context.set_visuals(visuals);
 
         let mut app = bevy_app::App::default();
+
+        // Bevy plugins
         app.add_plugins((
             bevy_core::TaskPoolPlugin::default(),
             bevy_core::TypeRegistrationPlugin::default(),
             bevy_core::FrameCountPlugin::default(),
+            bevy_hierarchy::HierarchyPlugin::default(),
         ));
 
         app.register_type::<AppState>();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
 
-        // Plugins
+        // Digilogic plugins
         app.add_plugins((
             digilogic_core::CorePlugin::default(),
             digilogic_serde::LoadSavePlugin::default(),

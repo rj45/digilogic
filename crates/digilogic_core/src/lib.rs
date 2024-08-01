@@ -20,8 +20,7 @@ impl bevy_app::Plugin for CorePlugin {
         #[cfg(feature = "inspector")]
         app.register_type_data::<SharedStr, bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl>();
 
-        app.register_type::<components::Parent>()
-            .register_type::<components::PortID>()
+        app.register_type::<components::PortID>()
             .register_type::<components::SymbolKindIndex>()
             .register_type::<components::SymbolID>()
             .register_type::<components::WaypointID>()

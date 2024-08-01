@@ -3,9 +3,6 @@ use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use smallvec::SmallVec;
 
-#[derive(Component, Reflect)]
-pub struct Parent(pub Entity);
-
 /////
 // Entity ID components
 /////

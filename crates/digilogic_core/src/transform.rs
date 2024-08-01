@@ -1,6 +1,6 @@
-use crate::components::Parent;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
+use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -347,7 +347,7 @@ pub(crate) fn update_transforms(
             let mut transform = *transform;
             let mut next_parent = parent;
             while let Some(parent) = next_parent {
-                let Ok((parent_transform, parent)) = ancestors.get(parent.0) else {
+                let Ok((parent_transform, parent)) = ancestors.get(parent.get()) else {
                     break;
                 };
 

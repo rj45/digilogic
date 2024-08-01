@@ -1,6 +1,6 @@
-use crate::components::Parent;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
+use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
@@ -46,7 +46,7 @@ pub(crate) fn update_visibility(
                     break;
                 };
 
-                let Ok((parent_vis, parent)) = ancestors.get(parent.0) else {
+                let Ok((parent_vis, parent)) = ancestors.get(parent.get()) else {
                     break;
                 };
 

@@ -24,6 +24,7 @@ vello.workspace = true
 vello_svg.workspace = true
 bevy_core.workspace = true
 bevy_ecs.workspace = true
+bevy_hierarchy.workspace = true
 bevy_reflect.workspace = true
 bevy_app.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }

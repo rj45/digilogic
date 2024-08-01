@@ -15,6 +15,7 @@ inspector = ["dep:bevy-inspector-egui"]
 serde.workspace = true
 egui.workspace = true
 bevy_ecs.workspace = true
+bevy_hierarchy.workspace = true
 bevy_reflect.workspace = true
 bevy_derive.workspace = true
 bevy_app.workspace = true
