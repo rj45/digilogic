@@ -59,7 +59,7 @@ fn translate_circuit(
     symbols: &SymbolRegistry,
     basedir: &Path,
 ) -> anyhow::Result<Entity> {
-    File::create_new("test.json")?
+    File::create("test.json")?
         .write_all(serde_json::to_string_pretty(circuit).unwrap().as_bytes())?;
 
     Ok(Entity::PLACEHOLDER)

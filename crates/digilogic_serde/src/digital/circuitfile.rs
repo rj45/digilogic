@@ -20,7 +20,7 @@ pub struct Attributes {
 #[serde(deny_unknown_fields)]
 pub struct AttributesEntry {
     #[serde(rename = "$value")]
-    pub value: Vec<AttributeValue>,
+    pub value: [AttributeValue; 2],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -34,11 +34,12 @@ pub enum AttributeValue {
     Value(Value),
     InverterConfig(InverterConfig),
     IntFormat(String),
-    Long(String),
-    Int(String),
+    Long(i64),
+    Int(i32),
     Boolean(String),
     Rotation(Rotation),
     String(String),
+    ShapeType(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -59,10 +60,10 @@ pub struct VisualElement {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AwtColor {
-    pub red: String,
-    pub green: String,
-    pub blue: String,
-    pub alpha: String,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub alpha: u8,
 }
 
 #[derive(Serialize, Deserialize)]
