@@ -83,7 +83,7 @@ pub struct WaypointBundle {
 #[derive(Bundle, Default)]
 pub struct EndpointBundle {
     /// The marker that this is an Endpoint
-    pub enpoint: Endpoint,
+    pub endpoint: Endpoint,
 
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,

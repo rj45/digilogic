@@ -104,7 +104,7 @@ const KINDS: &[SymbolKind] = &[
         bounding_box: BoundingBox::from_half_size(20, 10),
         shape: Shape::Input,
         ports: &[PortDef {
-            name: SharedStr::new_static("I"),
+            name: SharedStr::new_static("Y"),
             position: Vec2i { x: 0, y: 0 },
             input: false,
             output: true,
@@ -117,13 +117,18 @@ const KINDS: &[SymbolKind] = &[
         bounding_box: BoundingBox::from_half_size(20, 10),
         shape: Shape::Output,
         ports: &[PortDef {
-            name: SharedStr::new_static("O"),
+            name: SharedStr::new_static("A"),
             position: Vec2i { x: 0, y: 0 },
             input: true,
             output: false,
         }],
     },
 ];
+
+pub struct PortInfo {
+    pub name: SharedStr,
+    pub id: Entity,
+}
 
 pub struct SymbolBuilder<'a> {
     registry: &'a SymbolRegistry,
@@ -132,7 +137,7 @@ pub struct SymbolBuilder<'a> {
     designator_number: Option<u32>,
     position: Option<Vec2i>,
     bit_width: Option<BitWidth>,
-    ports: SmallVec<[Entity; 7]>,
+    ports: SmallVec<[PortInfo; 7]>,
 }
 
 #[derive(Resource)]
@@ -194,7 +199,7 @@ impl SymbolBuilder<'_> {
         self
     }
 
-    pub fn ports(&self) -> &[Entity] {
+    pub fn ports(&self) -> &[PortInfo] {
         &self.ports
     }
 
@@ -203,14 +208,14 @@ impl SymbolBuilder<'_> {
 
         let symbol_id = commands
             .spawn(SymbolBundle {
-                name: Name(self.name.as_ref().unwrap_or_else(|| &kind.name).clone()),
+                name: Name(self.name.as_ref().unwrap_or(&kind.name).clone()),
                 designator_prefix: DesignatorPrefix(kind.designator_prefix.clone()),
-                designator_number: DesignatorNumber(self.designator_number.unwrap_or_else(|| 0)),
+                designator_number: DesignatorNumber(self.designator_number.unwrap_or_default()),
                 symbol_kind: SymbolKindIndex(kind.index.0),
                 shape: kind.shape,
                 transform: TransformBundle {
                     transform: Transform {
-                        translation: self.position.unwrap_or_else(|| Vec2i { x: 0, y: 0 }),
+                        translation: self.position.unwrap_or_default(),
                         rotation: Rotation::Rot0,
                     },
                     ..Default::default()
@@ -224,11 +229,15 @@ impl SymbolBuilder<'_> {
             .ports
             .iter()
             .map(|port| {
-                port.build(
+                let id = port.build(
                     commands,
                     symbol_id,
-                    self.bit_width.as_ref().unwrap_or_else(|| &BitWidth(1)),
-                )
+                    self.bit_width.as_ref().unwrap_or(&BitWidth(1)),
+                );
+                PortInfo {
+                    name: port.name.clone(),
+                    id,
+                }
             })
             .collect();
 

@@ -43,6 +43,7 @@ fn translate_circuit(
 ) -> anyhow::Result<Entity> {
     let mut id_map = HashMap::new();
     let modules = &circuit.modules;
+    let mut top_id: Option<Entity> = None;
 
     for module in modules.iter() {
         let circuit_id = commands
@@ -50,7 +51,6 @@ fn translate_circuit(
                 ..Default::default()
             })
             .id();
-        id_map.insert(module.id.clone(), circuit_id);
 
         for symbol in module.symbols.iter() {
             translate_symbol(symbol, &mut id_map, commands, circuit_id, symbols)?;
@@ -59,9 +59,12 @@ fn translate_circuit(
         for net in module.nets.iter() {
             translate_net(net, &mut id_map, commands, circuit_id)?;
         }
+        if let None = top_id {
+            top_id = Some(circuit_id);
+        }
     }
 
-    Ok(id_map.get(&modules[0].id).unwrap().clone())
+    Ok(top_id.unwrap())
 }
 
 // TODO: a context struct would reduce the number of arguments
@@ -93,14 +96,18 @@ fn translate_symbol(
         ));
     }
     let mut symbol_builder = symbol_builder.unwrap();
-    let symbol_id = symbol_builder
+    symbol_builder
         .designator_number(symbol.number)
         .position(Vec2i {
             x: symbol.position[0] as i32,
             y: symbol.position[1] as i32,
         })
         .build(commands, circuit_id);
-    id_map.insert(symbol.id.clone(), symbol_id);
+    for port in symbol_builder.ports().iter() {
+        let symbol_name_pair = format!("{}:{}", symbol.id.0, port.name);
+        id_map.insert(Id(symbol_name_pair.into()), port.id);
+    }
+
     Ok(())
 }
 
@@ -120,7 +127,6 @@ fn translate_net(
         })
         .set_parent(circuit_id)
         .id();
-    id_map.insert(net.id.clone(), net_id);
 
     for subnet in net.subnets.iter() {
         translate_subnet(subnet, id_map, commands, net_id)?;
@@ -147,23 +153,42 @@ fn translate_endpoint(
     commands: &mut Commands,
     net_id: Entity,
 ) -> Result<(), anyhow::Error> {
-    let endpoint_id = commands
-        .spawn(EndpointBundle {
-            transform: TransformBundle {
-                transform: Transform {
-                    translation: Vec2i {
-                        x: endpoint.position[0] as i32,
-                        y: endpoint.position[1] as i32,
-                    },
-                    ..Default::default()
+    let portref = &endpoint.portref;
+
+    let port_id = if let Some(port_name) = portref.port_name.as_ref() {
+        let port_name_pair = format!("{}:{}", portref.symbol.0, port_name);
+        if let Some(id) = id_map.get(&Id(port_name_pair.into())) {
+            Some(*id)
+        } else {
+            return Err(anyhow::anyhow!(
+                "Endpoint {} references unknown port {} on {}",
+                endpoint.id.0,
+                port_name,
+                portref.symbol.0
+            ));
+        }
+    } else {
+        None
+    };
+
+    let mut endpoint_ent = commands.spawn(EndpointBundle {
+        transform: TransformBundle {
+            transform: Transform {
+                translation: Vec2i {
+                    x: endpoint.position[0] as i32,
+                    y: endpoint.position[1] as i32,
                 },
                 ..Default::default()
             },
             ..Default::default()
-        })
-        .set_parent(net_id)
-        .id();
-    id_map.insert(endpoint.id.clone(), endpoint_id);
+        },
+        ..Default::default()
+    });
+    endpoint_ent.set_parent(net_id);
+    if let Some(port_id) = port_id {
+        endpoint_ent.insert(PortID(port_id));
+    }
+    let endpoint_id = endpoint_ent.id();
 
     for waypoint in endpoint.waypoints.iter() {
         translate_waypoint(waypoint, id_map, commands, endpoint_id)?;
