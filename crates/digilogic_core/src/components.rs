@@ -56,19 +56,19 @@ pub enum Shape {
 }
 
 /// A Name for the entity.
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct Name(pub SharedStr);
 
 /// The Reference Designator prefix (like U for ICs, R for resistors, etc.)
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct DesignatorPrefix(pub SharedStr);
 
 /// The Reference Designator number (like 1, 2, 3, etc.)
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct DesignatorNumber(pub u32);
 
 /// The Reference Designator suffix (like A, B, C, etc.) if it has one
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct DesignatorSuffix(pub SharedStr);
 
 /// The Number of the entity (pin number, etc.)
@@ -89,11 +89,11 @@ pub struct BitWidth(pub u8);
 pub struct Bits(pub SmallVec<[u8; 8]>);
 
 /// The entity is an input
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct Input;
 
 /// The entity is an output
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct Output;
 
 /// The entity is part of a set of entities. For example, one gate in a chip.
@@ -117,13 +117,13 @@ pub struct Hovered;
 
 /// A Port is a connection point for an Endpoint. For sub-Circuits,
 /// it also connects to an Input or Output Symbol in the child Circuit.
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct Port;
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
 /// are its input and output Ports. It represents an all or part of an
 /// electronic component.
-#[derive(Component, Reflect)]
+#[derive(Default, Component, Reflect)]
 pub struct Symbol {
     pub ports: SmallVec<[Entity; 7]>,
 }

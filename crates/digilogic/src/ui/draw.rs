@@ -1,10 +1,10 @@
 use bevy_ecs::prelude::*;
 use bitflags::bitflags;
-use digilogic_core::{components::Shape, transform::GlobalTransform};
-use vello::{
-    kurbo::{Affine, BezPath, Stroke, Vec2},
-    peniko::{Brush, Color, Fill},
-};
+use digilogic_core::components::Shape;
+use digilogic_core::transform::GlobalTransform;
+use digilogic_core::visibility::ComputedVisibility;
+use vello::kurbo::{Affine, BezPath, Stroke, Vec2};
+use vello::peniko::{Brush, Color, Fill};
 
 include!("bez_path.rs");
 
@@ -36,12 +36,16 @@ const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 pub fn draw(
     mut scene: ResMut<Scene>,
     symbol_svgs: Res<SymbolShapes>,
-    shapes: Query<(&Shape, &GlobalTransform)>,
+    shapes: Query<(&Shape, &GlobalTransform, Option<&ComputedVisibility>)>,
 ) {
     let scene = &mut scene.0;
     scene.reset();
 
-    for (&shape, transform) in shapes.iter() {
+    for (&shape, transform, vis) in shapes.iter() {
+        if !*vis.copied().unwrap_or_default() {
+            continue;
+        }
+
         let transform = Affine::scale(1.0)
             .then_rotate(transform.rotation.radians())
             .then_translate(Vec2::new(

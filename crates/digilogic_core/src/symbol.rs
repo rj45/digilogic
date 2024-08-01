@@ -1,6 +1,7 @@
 use crate::bundles::{PortBundle, SymbolBundle};
 use crate::components::*;
 use crate::transform::*;
+use crate::visibility::VisibilityBundle;
 use crate::SharedStr;
 use bevy_ecs::prelude::*;
 use smallvec::SmallVec;
@@ -220,6 +221,7 @@ impl SymbolBuilder<'_> {
                     },
                     global_transform: GlobalTransform::default(),
                 },
+                visibility: VisibilityBundle::default(),
             })
             .insert(Parent(circuit_id))
             .id();
@@ -252,6 +254,7 @@ impl PortDef {
                     global_transform: GlobalTransform::default(),
                 },
                 bit_width: BitWidth(bit_width.0),
+                visibility: VisibilityBundle::default(),
             })
             .id()
     }

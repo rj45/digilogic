@@ -1,5 +1,6 @@
 use crate::components::*;
 use crate::transform::*;
+use crate::visibility::*;
 use bevy_ecs::prelude::*;
 
 /// A Port is a connection point for an Endpoint. For sub-Circuits,
@@ -26,6 +27,7 @@ pub struct PortBundle {
 
     pub shape: Shape,
     pub transform: TransformBundle,
+    pub visibility: VisibilityBundle,
 }
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
@@ -56,6 +58,7 @@ pub struct SymbolBundle {
 
     pub shape: Shape,
     pub transform: TransformBundle,
+    pub visibility: VisibilityBundle,
 }
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
@@ -66,6 +69,7 @@ pub struct WaypointBundle {
     pub waypoint: Waypoint,
 
     pub transform: TransformBundle,
+    pub visibility: VisibilityBundle,
 }
 
 /// An Endpoint is a connection point for a Net. It connects to a Port
@@ -82,6 +86,7 @@ pub struct EndpointBundle {
     pub enpoint: Endpoint,
 
     pub transform: TransformBundle,
+    pub visibility: VisibilityBundle,
 }
 
 /// A Net is a set of Endpoints that are connected together.
