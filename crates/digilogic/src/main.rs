@@ -90,7 +90,9 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     if let Some(file_dialog_event) = file_dialog_event {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let dialog = rfd::FileDialog::new().add_filter("Digilogic Circuit", &["dlc"]);
+            let dialog = rfd::FileDialog::new()
+                .add_filter("Digilogic Circuit", &["dlc"])
+                .add_filter("Digital Circuit", &["dig"]);
             #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
             let dialog = dialog.set_parent(frame);
 
