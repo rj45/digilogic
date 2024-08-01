@@ -13,29 +13,32 @@ pub struct Circuit {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Attributes {
-    pub entry: Vec<AttributesEntry>,
+    pub entry: Option<Vec<AttributesEntry>>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AttributesEntry {
-    pub file: Option<String>,
-    pub boolean: Option<String>,
-    #[serde(rename = "shapeType")]
-    pub shape_type: Option<String>,
-    #[serde(rename = "awt-color")]
-    pub awt_color: Option<AttributesEntryAwtColor>,
-    pub string: Vec<String>,
-    pub int: Option<String>,
+    #[serde(rename = "$value")]
+    pub value: Vec<AttributeValue>,
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AttributesEntryAwtColor {
-    pub red: String,
-    pub green: String,
-    pub blue: String,
-    pub alpha: String,
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub enum AttributeValue {
+    #[serde(rename = "awt-color")]
+    AwtColor(AwtColor),
+    Data(String),
+    File(String),
+    TestData(TestData),
+    Value(Value),
+    InverterConfig(InverterConfig),
+    IntFormat(String),
+    Long(String),
+    Int(String),
+    Boolean(String),
+    Rotation(Rotation),
+    String(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -49,37 +52,13 @@ pub struct VisualElements {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct VisualElement {
     pub element_name: String,
-    pub element_attributes: ElementAttributes,
+    pub element_attributes: Attributes,
     pub pos: Point,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ElementAttributes {
-    pub entry: Vec<ElementAttributesEntry>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct ElementAttributesEntry {
-    #[serde(rename = "awt-color")]
-    pub awt_color: Option<ElementAttributesEntryAwtColor>,
-    pub data: Option<String>,
-    pub file: Option<String>,
-    pub test_data: Option<TestData>,
-    pub value: Option<Value>,
-    pub inverter_config: Option<InverterConfig>,
-    pub int_format: Option<String>,
-    pub long: Option<String>,
-    pub int: Option<String>,
-    pub boolean: Option<String>,
-    pub rotation: Option<Rotation>,
-    pub string: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ElementAttributesEntryAwtColor {
+pub struct AwtColor {
     pub red: String,
     pub green: String,
     pub blue: String,
@@ -103,7 +82,7 @@ pub struct Value {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InverterConfig {
-    pub string: Vec<String>,
+    pub string: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -135,5 +114,5 @@ pub struct Wire {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MeasurementOrdering {
-    pub string: Vec<String>,
+    pub string: Option<Vec<String>>,
 }

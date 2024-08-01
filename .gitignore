@@ -14,3 +14,6 @@ target_wasm
 
 # https://github.com/lycheeverse/lychee
 .lycheecache
+
+# for testing
+test.json

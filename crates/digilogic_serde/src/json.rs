@@ -19,8 +19,10 @@ pub(crate) fn load_json(
     symbols: Res<SymbolRegistry>,
 ) {
     for ev in ev_load.read() {
-        if !(ev.filename).ends_with(".dlc") {
-            continue;
+        if let Some(ext) = (ev.filename).extension() {
+            if ext != "dlc" {
+                continue;
+            }
         }
 
         let result = CircuitFile::load(&ev.filename);
