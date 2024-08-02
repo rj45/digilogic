@@ -7,31 +7,31 @@ use smallvec::SmallVec;
 // Entity ID components
 /////
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct PortID(pub Entity);
 
-#[derive(Component, Clone, Copy, Reflect, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct SymbolKindIndex(pub usize);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct SymbolID(pub Entity);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct WaypointID(pub Entity);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct EndpointID(pub Entity);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct WireID(pub Entity);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct SubnetID(pub Entity);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct NetID(pub Entity);
 
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct CircuitID(pub Entity);
 
 /////

@@ -1,15 +1,14 @@
+use super::{PanZoom, Scene, Viewport};
 use bevy_ecs::prelude::*;
+use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
-use digilogic_core::components::Shape;
+use digilogic_core::components::{CircuitID, Shape};
 use digilogic_core::transform::GlobalTransform;
 use digilogic_core::visibility::ComputedVisibility;
 use vello::kurbo::{Affine, BezPath, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
 
 include!("bez_path.rs");
-
-#[derive(Default, Resource)]
-pub struct Scene(pub vello::Scene);
 
 bitflags! {
     pub struct PathKind: u8 {
@@ -34,45 +33,56 @@ pub struct SymbolShapes(pub Vec<SymbolShape>);
 const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 
 pub fn draw(
-    mut scene: ResMut<Scene>,
     symbol_svgs: Res<SymbolShapes>,
-    shapes: Query<(&Shape, &GlobalTransform, Option<&ComputedVisibility>)>,
+    mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
+    children: Query<&Children>,
+    shapes: Query<(
+        &Shape,
+        Option<&GlobalTransform>,
+        Option<&ComputedVisibility>,
+    )>,
 ) {
-    let scene = &mut scene.0;
-    scene.reset();
+    for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
+        scene.reset();
 
-    for (&shape, transform, vis) in shapes.iter() {
-        if !*vis.copied().unwrap_or_default() {
-            continue;
-        }
+        for child in children.iter_descendants(circuit.0) {
+            if let Ok((&shape, transform, vis)) = shapes.get(child) {
+                if !*vis.copied().unwrap_or_default() {
+                    continue;
+                }
 
-        let transform = Affine::scale(1.0)
-            .then_rotate(transform.rotation.radians())
-            .then_translate(Vec2::new(
-                transform.translation.x as f64,
-                transform.translation.y as f64,
-            ));
+                let transform = transform.copied().unwrap_or_default();
+                let transform = Affine::scale(1.0)
+                    .then_rotate(transform.rotation.radians())
+                    .then_translate(Vec2::new(
+                        transform.translation.x as f64,
+                        transform.translation.y as f64,
+                    ))
+                    .then_translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
+                    .then_scale(pan_zoom.zoom as f64);
 
-        let symbol_shape = &symbol_svgs.0[shape as usize];
-        for path in symbol_shape.paths.iter() {
-            if path.kind.contains(PathKind::FILL) {
-                scene.fill(
-                    Fill::NonZero,
-                    transform,
-                    &Brush::Solid(Color::GRAY),
-                    None,
-                    &path.path,
-                );
-            }
+                let symbol_shape = &symbol_svgs.0[shape as usize];
+                for path in symbol_shape.paths.iter() {
+                    if path.kind.contains(PathKind::FILL) {
+                        scene.fill(
+                            Fill::NonZero,
+                            transform,
+                            &Brush::Solid(Color::GRAY),
+                            None,
+                            &path.path,
+                        );
+                    }
 
-            if path.kind.contains(PathKind::STROKE) {
-                scene.stroke(
-                    &Stroke::new(SYMBOL_STROKE_WIDTH),
-                    transform,
-                    &Brush::Solid(Color::WHITE),
-                    None,
-                    &path.path,
-                );
+                    if path.kind.contains(PathKind::STROKE) {
+                        scene.stroke(
+                            &Stroke::new(SYMBOL_STROKE_WIDTH),
+                            transform,
+                            &Brush::Solid(Color::WHITE),
+                            None,
+                            &path.path,
+                        );
+                    }
+                }
             }
         }
     }

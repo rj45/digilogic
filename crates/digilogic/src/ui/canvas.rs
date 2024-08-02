@@ -1,6 +1,30 @@
 use vello::*;
 use wgpu::*;
 
+#[repr(transparent)]
+pub struct CanvasRenderer(Renderer);
+
+impl CanvasRenderer {
+    pub fn new(render_state: &egui_wgpu::RenderState) -> Self {
+        let renderer = Renderer::new(
+            &render_state.device,
+            RendererOptions {
+                surface_format: None,
+                use_cpu: false,
+                antialiasing_support: std::iter::once(ANTIALIASING_METHOD).collect(),
+
+                #[cfg(not(target_os = "macos"))]
+                num_init_threads: None,
+                #[cfg(target_os = "macos")]
+                num_init_threads: std::num::NonZeroUsize::new(1),
+            },
+        )
+        .unwrap();
+
+        Self(renderer)
+    }
+}
+
 #[inline]
 const fn egui_to_vello_color(color: egui::Color32) -> vello::peniko::Color {
     vello::peniko::Color {
@@ -11,11 +35,11 @@ const fn egui_to_vello_color(color: egui::Color32) -> vello::peniko::Color {
     }
 }
 
+#[derive(bevy_ecs::component::Component)]
 pub struct Canvas {
     texture: Texture,
     texture_view: TextureView,
     texture_id: egui::TextureId,
-    renderer: Renderer,
 }
 
 const TEXTURE_FILTER: FilterMode = FilterMode::Nearest;
@@ -56,26 +80,10 @@ impl Canvas {
             TEXTURE_FILTER,
         );
 
-        let renderer = Renderer::new(
-            &render_state.device,
-            RendererOptions {
-                surface_format: None,
-                use_cpu: false,
-                antialiasing_support: std::iter::once(ANTIALIASING_METHOD).collect(),
-
-                #[cfg(not(target_os = "macos"))]
-                num_init_threads: None,
-                #[cfg(target_os = "macos")]
-                num_init_threads: std::num::NonZeroUsize::new(1),
-            },
-        )
-        .unwrap();
-
         Self {
             texture,
             texture_view,
             texture_id,
-            renderer,
         }
     }
 
@@ -113,12 +121,14 @@ impl Canvas {
     }
 
     pub fn render(
-        &mut self,
+        &self,
+        renderer: &mut CanvasRenderer,
         render_state: &egui_wgpu::RenderState,
         scene: &Scene,
         background: egui::Color32,
     ) {
-        self.renderer
+        renderer
+            .0
             .render_to_texture(
                 &render_state.device,
                 &render_state.queue,

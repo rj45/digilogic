@@ -17,6 +17,7 @@ log.workspace = true
 serde.workspace = true
 wgpu.workspace = true
 egui.workspace = true
+egui_dock.workspace = true
 egui-wgpu.workspace = true
 eframe.workspace = true
 rfd.workspace = true
@@ -26,6 +27,7 @@ bevy_core.workspace = true
 bevy_ecs.workspace = true
 bevy_hierarchy.workspace = true
 bevy_reflect.workspace = true
+bevy_derive.workspace = true
 bevy_app.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 bitflags.workspace = true

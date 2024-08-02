@@ -5,8 +5,12 @@ mod draw;
 use draw::*;
 
 use crate::{AppState, FileDialogEvent};
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
+use digilogic_core::components::CircuitID;
+use digilogic_core::events::LoadedEvent;
 use egui::*;
+use egui_dock::*;
 use egui_wgpu::RenderState;
 
 #[derive(Resource)]
@@ -22,6 +26,38 @@ impl Egui {
             render_state: render_state.clone(),
         }
     }
+}
+
+#[derive(Default, Component)]
+struct Viewport;
+
+#[derive(Component)]
+struct PanZoom {
+    pan: Vec2,
+    zoom: f32,
+}
+
+impl Default for PanZoom {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            pan: Vec2::ZERO,
+            zoom: 1.0,
+        }
+    }
+}
+
+#[derive(Default, Deref, DerefMut, Component)]
+#[repr(transparent)]
+struct Scene(vello::Scene);
+
+#[derive(Bundle)]
+struct ViewportBundle {
+    viewport: Viewport,
+    circuit: CircuitID,
+    pan_zoom: PanZoom,
+    scene: Scene,
+    canvas: Canvas,
 }
 
 fn update_main_menu(
@@ -50,29 +86,86 @@ fn update_main_menu(
         ui.add_space(16.0);
 
         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            widgets::global_dark_light_mode_switch(ui);
+            egui::widgets::global_dark_light_mode_switch(ui);
             app_state.dark_mode = egui.context.style().visuals.dark_mode;
         });
     });
 }
 
-fn update_canvas(egui: &Egui, ui: &mut Ui, canvas: &mut Canvas, scene: &Scene) {
+fn update_viewport(
+    egui: &Egui,
+    ui: &mut Ui,
+    renderer: &mut CanvasRenderer,
+    pan_zoom: &mut PanZoom,
+    scene: &Scene,
+    canvas: &mut Canvas,
+) {
     let canvas_size = ui.available_size();
     let canvas_width = (canvas_size.x.floor() as u32).max(1);
     let canvas_height = (canvas_size.y.floor() as u32).max(1);
 
     canvas.resize(&egui.render_state, canvas_width, canvas_height);
-    canvas.render(&egui.render_state, &scene.0, ui.visuals().extreme_bg_color);
+    canvas.render(
+        renderer,
+        &egui.render_state,
+        &scene.0,
+        ui.visuals().extreme_bg_color,
+    );
 
     Image::new((canvas.texture_id(), canvas_size)).ui(ui);
 }
 
+struct TabViewer<'res, 'world, 'state, 'a, 'b, 'c> {
+    egui: &'res Egui,
+    renderer: &'res mut CanvasRenderer,
+    viewports: Query<'world, 'state, (&'a mut PanZoom, &'b Scene, &'c mut Canvas)>,
+}
+
+impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_> {
+    type Tab = Entity;
+
+    fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
+        // TODO: display actual circuit name
+        format!("Tab {}", *tab).into()
+    }
+
+    fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
+        if let Ok((mut pan_zoom, scene, mut canvas)) = self.viewports.get_mut(*tab) {
+            update_viewport(
+                self.egui,
+                ui,
+                self.renderer,
+                &mut pan_zoom,
+                scene,
+                &mut canvas,
+            );
+        }
+    }
+
+    fn id(&mut self, tab: &mut Self::Tab) -> Id {
+        Id::new(*tab)
+    }
+
+    fn closeable(&mut self, _tab: &mut Self::Tab) -> bool {
+        false // TODO
+    }
+
+    fn on_close(&mut self, _tab: &mut Self::Tab) -> bool {
+        false // TODO
+    }
+
+    fn scroll_bars(&self, _tab: &Self::Tab) -> [bool; 2] {
+        [false; 2]
+    }
+}
+
 fn update(
     egui: Res<Egui>,
-    mut canvas: NonSendMut<Canvas>,
-    scene: Res<Scene>,
+    mut dock_state: NonSendMut<DockState<Entity>>,
+    mut renderer: NonSendMut<CanvasRenderer>,
     mut app_state: ResMut<AppState>,
     mut file_dialog_events: EventWriter<FileDialogEvent>,
+    viewports: Query<(&mut PanZoom, &Scene, &mut Canvas)>,
 ) {
     TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
         update_main_menu(&egui, ui, &mut app_state, &mut file_dialog_events);
@@ -85,12 +178,41 @@ fn update(
     });
 
     CentralPanel::default().show(&egui.context, |ui| {
-        update_canvas(&egui, ui, &mut canvas, &scene);
+        let mut tab_viewer = TabViewer {
+            egui: &egui,
+            renderer: &mut renderer,
+            viewports,
+        };
+
+        DockArea::new(&mut dock_state)
+            .style(egui_dock::Style::from_egui(egui.context.style().as_ref()))
+            .show_inside(ui, &mut tab_viewer);
     });
 }
 
+fn add_tabs(
+    mut commands: Commands,
+    egui: Res<Egui>,
+    mut dock_state: NonSendMut<DockState<Entity>>,
+    mut loaded_events: EventReader<LoadedEvent>,
+) {
+    for loaded_event in loaded_events.read() {
+        let viewport = commands
+            .spawn(ViewportBundle {
+                viewport: Viewport,
+                circuit: loaded_event.circuit,
+                pan_zoom: PanZoom::default(),
+                scene: Scene::default(),
+                canvas: Canvas::create(&egui.render_state),
+            })
+            .id();
+
+        dock_state.main_surface_mut().push_to_first_leaf(viewport);
+    }
+}
+
 #[cfg(feature = "inspector")]
-pub fn inspect(world: &mut World) {
+fn inspect(world: &mut World) {
     let Some(egui) = world.get_resource::<Egui>() else {
         return;
     };
@@ -127,13 +249,14 @@ impl UiPlugin {
 
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.insert_non_send_resource(Canvas::create(&self.render_state));
+        app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
+        app.insert_non_send_resource(CanvasRenderer::new(&self.render_state));
         app.insert_resource(Egui::new(&self.context, &self.render_state));
-        app.insert_resource(Scene::default());
         app.insert_resource(SymbolShapes(Vec::new()));
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
         app.add_systems(bevy_app::Update, draw);
         app.add_systems(bevy_app::Update, update.after(draw));
+        app.add_systems(bevy_app::Update, add_tabs);
 
         #[cfg(feature = "inspector")]
         {

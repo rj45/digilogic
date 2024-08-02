@@ -220,7 +220,8 @@ impl SymbolBuilder<'_> {
                     },
                     ..Default::default()
                 },
-                ..Default::default()
+                symbol: Symbol::default(),
+                visibility: VisibilityBundle::default(),
             })
             .set_parent(circuit_id)
             .id();
