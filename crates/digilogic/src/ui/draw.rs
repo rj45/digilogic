@@ -7,6 +7,7 @@ use digilogic_core::transform::GlobalTransform;
 use digilogic_core::visibility::ComputedVisibility;
 use vello::kurbo::{Affine, BezPath, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
+use vello_svg::usvg::tiny_skia_path::Scalar;
 
 include!("bez_path.rs");
 
@@ -52,8 +53,7 @@ pub fn draw(
                 }
 
                 let transform = transform.copied().unwrap_or_default();
-                let transform = Affine::scale(1.0)
-                    .then_rotate(transform.rotation.radians())
+                let transform = Affine::rotate(transform.rotation.radians())
                     .then_translate(Vec2::new(
                         transform.translation.x as f64,
                         transform.translation.y as f64,

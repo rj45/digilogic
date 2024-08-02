@@ -13,6 +13,27 @@ use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
 
+const MIN_LINEAR_ZOOM: f32 = 0.0;
+const MAX_LINEAR_ZOOM: f32 = 1.0;
+const MIN_ZOOM: f32 = 0.125;
+const MAX_ZOOM: f32 = 8.0;
+
+#[inline]
+fn zoom_to_linear(zoom: f32) -> f32 {
+    let b = (MAX_ZOOM / MIN_ZOOM).ln() / (MAX_LINEAR_ZOOM - MIN_LINEAR_ZOOM);
+    let a = MIN_ZOOM * (-b * MIN_LINEAR_ZOOM).exp();
+
+    ((zoom * zoom) / a).ln() / b
+}
+
+#[inline]
+fn linear_to_zoom(linear: f32) -> f32 {
+    let b = (MAX_ZOOM / MIN_ZOOM).ln() / (MAX_LINEAR_ZOOM - MIN_LINEAR_ZOOM);
+    let a = MIN_ZOOM * (-b * MIN_LINEAR_ZOOM).exp();
+
+    (a * (b * linear).exp()).sqrt()
+}
+
 #[derive(Resource)]
 struct Egui {
     context: Context,
@@ -100,19 +121,36 @@ fn update_viewport(
     scene: &Scene,
     canvas: &mut Canvas,
 ) {
-    let canvas_size = ui.available_size();
-    let canvas_width = (canvas_size.x.floor() as u32).max(1);
-    let canvas_height = (canvas_size.y.floor() as u32).max(1);
+    TopBottomPanel::bottom("status_bar")
+        .show_separator_line(false)
+        .show_inside(ui, |ui| {
+            ui.label(format!("{:.0}%", pan_zoom.zoom * pan_zoom.zoom * 100.0));
+        });
 
-    canvas.resize(&egui.render_state, canvas_width, canvas_height);
-    canvas.render(
-        renderer,
-        &egui.render_state,
-        &scene.0,
-        ui.visuals().extreme_bg_color,
-    );
+    CentralPanel::default().show_inside(ui, |ui| {
+        let canvas_size = ui.available_size();
+        let canvas_width = (canvas_size.x.floor() as u32).max(1);
+        let canvas_height = (canvas_size.y.floor() as u32).max(1);
 
-    Image::new((canvas.texture_id(), canvas_size)).ui(ui);
+        canvas.resize(&egui.render_state, canvas_width, canvas_height);
+        canvas.render(
+            renderer,
+            &egui.render_state,
+            &scene.0,
+            ui.visuals().extreme_bg_color,
+        );
+
+        let response = Image::new((canvas.texture_id(), canvas_size))
+            .ui(ui)
+            .interact(Sense::click_and_drag());
+
+        if response.hovered() {
+            let linear = zoom_to_linear(pan_zoom.zoom);
+            let linear_delta = ui.input(|state| state.smooth_scroll_delta.y) / 600.0;
+            let linear = (linear + linear_delta).clamp(MIN_LINEAR_ZOOM, MAX_LINEAR_ZOOM);
+            pan_zoom.zoom = linear_to_zoom(linear);
+        }
+    });
 }
 
 struct TabViewer<'res, 'world, 'state, 'a, 'b, 'c> {
