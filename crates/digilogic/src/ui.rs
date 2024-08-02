@@ -149,13 +149,18 @@ fn update_viewport(
         }
 
         if let Some(mouse_pos) = response.hover_pos() {
-            //let mouse_world_pos =
-            //    (mouse_pos - response.rect.left_top() - pan_zoom.pan) / pan_zoom.zoom;
+            let old_mouse_world_pos =
+                (mouse_pos - response.rect.left_top()) / pan_zoom.zoom - pan_zoom.pan;
 
             let linear = zoom_to_linear(pan_zoom.zoom);
             let linear_delta = ui.input(|state| state.smooth_scroll_delta.y) / 600.0;
             let linear = (linear + linear_delta).clamp(MIN_LINEAR_ZOOM, MAX_LINEAR_ZOOM);
             pan_zoom.zoom = linear_to_zoom(linear);
+
+            let new_mouse_world_pos =
+                (mouse_pos - response.rect.left_top()) / pan_zoom.zoom - pan_zoom.pan;
+
+            pan_zoom.pan += new_mouse_world_pos - old_mouse_world_pos;
         }
     });
 }
