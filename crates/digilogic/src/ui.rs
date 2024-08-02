@@ -52,7 +52,7 @@ impl Egui {
 #[derive(Default, Component)]
 struct Viewport;
 
-#[derive(Component)]
+#[derive(Debug, Clone, Copy, Component)]
 struct PanZoom {
     pan: Vec2,
     zoom: f32,
@@ -144,7 +144,14 @@ fn update_viewport(
             .ui(ui)
             .interact(Sense::click_and_drag());
 
-        if response.hovered() {
+        if response.dragged_by(PointerButton::Middle) {
+            pan_zoom.pan += response.drag_delta() / pan_zoom.zoom;
+        }
+
+        if let Some(mouse_pos) = response.hover_pos() {
+            //let mouse_world_pos =
+            //    (mouse_pos - response.rect.left_top() - pan_zoom.pan) / pan_zoom.zoom;
+
             let linear = zoom_to_linear(pan_zoom.zoom);
             let linear_delta = ui.input(|state| state.smooth_scroll_delta.y) / 600.0;
             let linear = (linear + linear_delta).clamp(MIN_LINEAR_ZOOM, MAX_LINEAR_ZOOM);
