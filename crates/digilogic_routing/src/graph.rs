@@ -1,6 +1,7 @@
 use crate::segment_tree::*;
 use crate::HashMap;
 use bevy_ecs::prelude::*;
+use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
@@ -276,10 +277,10 @@ pub(crate) struct BoundingBoxList {
 impl BoundingBoxList {
     fn build<'a, Iter>(&mut self, symbols: Iter)
     where
-        Iter: Iterator<Item = (&'a Symbol, &'a AbsoluteBoundingBox)> + Clone,
+        Iter: Iterator<Item = (&'a AbsoluteBoundingBox, &'a Children)> + Clone,
     {
         self.horizontal_bounding_boxes
-            .build(symbols.clone().enumerate().map(|(i, (_, bb))| Segment {
+            .build(symbols.clone().enumerate().map(|(i, (bb, _))| Segment {
                 start_inclusive: bb.min().y,
                 end_inclusive: bb.max().y,
                 value: HorizontalBoundingBox {
@@ -290,7 +291,7 @@ impl BoundingBoxList {
             }));
 
         self.vertical_bounding_boxes
-            .build(symbols.enumerate().map(|(i, (_, bb))| Segment {
+            .build(symbols.enumerate().map(|(i, (bb, _))| Segment {
                 start_inclusive: bb.min().x,
                 end_inclusive: bb.max().x,
                 value: VerticalBoundingBox {
@@ -682,7 +683,7 @@ fn scan_pos_y(
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct GraphData {
+pub struct GraphData {
     pub(crate) bounding_boxes: BoundingBoxList,
     x_coords: Vec<i32>,
     y_coords: Vec<i32>,
@@ -911,29 +912,32 @@ impl GraphData {
     /// If the graph had previously been built, this will reset it and reuse the resources.
     pub(crate) fn build(
         &mut self,
-        circuit: &Circuit,
-        symbols: &Query<(&Symbol, &AbsoluteBoundingBox)>,
+        circuit_children: &Children,
+        symbols: &Query<(&AbsoluteBoundingBox, &Children), With<Symbol>>,
         ports: &Query<&GlobalTransform, With<Port>>,
         minimal: bool,
     ) {
         use std::collections::hash_map::Entry;
 
-        let symbols = circuit
-            .symbols
+        let symbols = circuit_children
             .iter()
-            .map(|&symbol_id| symbols.get(symbol_id).unwrap());
+            .filter_map(|&symbol_id| symbols.get(symbol_id).ok());
 
         self.bounding_boxes.build(symbols.clone());
 
-        let port_anchors = symbols.clone().enumerate().flat_map(|(i, (symbol, _))| {
-            symbol.ports.iter().map(move |&port_id| {
-                let port_transform = ports.get(port_id).unwrap();
-                // TODO: ports have to store their connect directions, and the directions need to respect the symbols rotation
-                Anchor::new_port(port_transform.translation, i, Directions::ALL)
-            })
-        });
+        let port_anchors = symbols
+            .clone()
+            .enumerate()
+            .flat_map(|(i, (_, symbol_children))| {
+                symbol_children.iter().filter_map(move |&port_id| {
+                    ports.get(port_id).ok().map(|port_transform| {
+                        // TODO: ports have to store their connect directions, and the directions need to respect the symbols rotation
+                        Anchor::new_port(port_transform.translation, i, Directions::ALL)
+                    })
+                })
+            });
 
-        let corner_anchors = symbols.clone().flat_map(|(_, bb)| {
+        let corner_anchors = symbols.clone().flat_map(|(bb, _)| {
             [
                 Anchor::new(Vec2i {
                     x: bb.min().x - 1,

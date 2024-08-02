@@ -242,11 +242,6 @@ impl SymbolBuilder<'_> {
             })
             .collect();
 
-        commands.add(move |world: &mut World| {
-            let mut circuit = world.get_mut::<Circuit>(circuit_id).unwrap();
-            circuit.symbols.push(symbol_id);
-        });
-
         symbol_id
     }
 }

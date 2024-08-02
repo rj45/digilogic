@@ -116,9 +116,7 @@ fn translate_net(
 ) -> Result<(), anyhow::Error> {
     let net_id = commands
         .spawn(NetBundle {
-            net: digilogic_core::components::Net {
-                endpoints: Default::default(),
-            },
+            net: digilogic_core::components::Net,
             name: Name(net.name.clone()),
             bit_width: BitWidth(1),
         })
