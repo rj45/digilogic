@@ -45,68 +45,46 @@ pub fn draw(
     for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
         scene.reset();
 
-        draw_recurse(
-            &children,
-            circuit.0,
-            &shapes,
-            pan_zoom,
-            &symbol_shapes,
-            &mut scene,
-        );
-    }
-}
-
-fn draw_recurse(
-    children: &Query<&Children>,
-    parent: Entity,
-    shapes: &Query<(
-        &digilogic_core::components::Shape,
-        Option<&GlobalTransform>,
-        Option<&ComputedVisibility>,
-    )>,
-    pan_zoom: &PanZoom,
-    symbol_shapes: &Res<SymbolShapes>,
-    scene: &mut Mut<Scene>,
-) {
-    for child in children.iter_descendants(parent) {
-        if let Ok((&shape, transform, vis)) = shapes.get(child) {
-            if !*vis.copied().unwrap_or_default() {
-                continue;
-            }
-
-            let transform = transform.copied().unwrap_or_default();
-            let transform = Affine::rotate(transform.rotation.radians())
-                .then_translate(Vec2::new(
-                    transform.translation.x as f64,
-                    transform.translation.y as f64,
-                ))
-                .then_translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
-                .then_scale(pan_zoom.zoom as f64);
-
-            let symbol_shape = &symbol_shapes.0[shape as usize];
-            for path in symbol_shape.paths.iter() {
-                if path.kind.contains(PathKind::FILL) {
-                    scene.fill(
-                        Fill::NonZero,
-                        transform,
-                        &Brush::Solid(Color::GRAY),
-                        None,
-                        &path.path,
-                    );
+        for child in children.iter_descendants(circuit.0) {
+            if let Ok((&shape, transform, vis)) = shapes.get(child) {
+                if !*vis.copied().unwrap_or_default() {
+                    continue;
                 }
 
-                if path.kind.contains(PathKind::STROKE) {
-                    scene.stroke(
-                        &Stroke::new(SYMBOL_STROKE_WIDTH),
-                        transform,
-                        &Brush::Solid(Color::WHITE),
-                        None,
-                        &path.path,
-                    );
-                }
-            }
+                let transform = transform.copied().unwrap_or_default();
+                let transform = Affine::rotate(transform.rotation.radians())
+                    .then_translate(Vec2::new(
+                        transform.translation.x as f64,
+                        transform.translation.y as f64,
+                    ))
+                    .then_translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
+                    .then_scale(pan_zoom.zoom as f64);
 
-            draw_recurse(children, child, shapes, pan_zoom, symbol_shapes, scene);
+                let symbol_shape = &symbol_shapes.0[shape as usize];
+                for path in symbol_shape.paths.iter() {
+                    if path.kind.contains(PathKind::FILL) {
+                        scene.fill(
+                            Fill::NonZero,
+                            transform,
+                            &Brush::Solid(Color::GRAY),
+                            None,
+                            &path.path,
+                        );
+                    }
+
+                    if path.kind.contains(PathKind::STROKE) {
+                        scene.stroke(
+                            &Stroke::new(SYMBOL_STROKE_WIDTH),
+                            transform,
+                            &Brush::Solid(Color::WHITE),
+                            None,
+                            &path.path,
+                        );
+                    }
+                }
+
+                // draw_recurse(children, child, shapes, pan_zoom, symbol_shapes, scene);
+            }
         }
     }
 }
