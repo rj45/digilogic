@@ -2,10 +2,10 @@ use super::{PanZoom, Scene, Viewport};
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
-use digilogic_core::components::CircuitID;
+use digilogic_core::components::{CircuitID, Shape};
 use digilogic_core::transform::GlobalTransform;
 use digilogic_core::visibility::ComputedVisibility;
-use vello::kurbo::{Affine, BezPath, Shape, Stroke, Vec2};
+use vello::kurbo::{Affine, BezPath, Shape as _, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
 
 include!("bez_path.rs");
@@ -37,7 +37,7 @@ pub fn draw(
     mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
     children: Query<&Children>,
     shapes: Query<(
-        &digilogic_core::components::Shape,
+        &Shape,
         Option<&GlobalTransform>,
         Option<&ComputedVisibility>,
     )>,
@@ -82,8 +82,6 @@ pub fn draw(
                         );
                     }
                 }
-
-                // draw_recurse(children, child, shapes, pan_zoom, symbol_shapes, scene);
             }
         }
     }
