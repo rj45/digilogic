@@ -91,10 +91,12 @@ fn update_main_menu(
         ui.menu_button("File", |ui| {
             if ui.button("Open").clicked() {
                 file_dialog_events.send(FileDialogEvent::Open);
+                ui.close_menu();
             }
 
             if ui.button("Save").clicked() {
                 file_dialog_events.send(FileDialogEvent::Save);
+                ui.close_menu();
             }
 
             ui.separator();
