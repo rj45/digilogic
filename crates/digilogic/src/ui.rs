@@ -7,6 +7,7 @@ use draw::*;
 use crate::{AppState, FileDialogEvent};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_hierarchy::prelude::*;
 use bevy_reflect::Reflect;
 use digilogic_core::components::{Circuit, CircuitID, Name};
@@ -219,20 +220,18 @@ fn forward_hover_events(
     });
 }
 
-struct TabViewer<'res, 'w1, 's1, 'w2, 'w3, 's3, 'w4, 's4, 'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+struct TabViewer<'res, 'w1, 's1, 'w2, 'w3, 's3, 'w4, 's4, 'w5> {
     commands: &'res mut Commands<'w1, 's1>,
     egui: &'res Egui,
     renderer: &'res mut CanvasRenderer,
     unloaded_events: &'res mut EventWriter<'w2, UnloadedEvent>,
     viewports:
-        &'res mut Query<'w3, 's3, (&'a CircuitID, &'b mut PanZoom, &'c Scene, &'d mut Canvas)>,
-    circuits: &'res mut Query<'w4, 's4, (Option<&'e Name>, &'f mut ViewportCount), With<Circuit>>,
-    input_events: &'res mut EventWriter<'g, crate::ux::InputEvent>,
+        &'res mut Query<'w3, 's3, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
+    circuits: &'res mut Query<'w4, 's4, (Option<Read<Name>>, Write<ViewportCount>), With<Circuit>>,
+    input_events: &'res mut EventWriter<'w5, crate::ux::InputEvent>,
 }
 
-impl egui_dock::TabViewer
-    for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
-{
+impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     type Tab = Entity;
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
@@ -310,8 +309,8 @@ fn update_tabs(
     mut dock_state: NonSendMut<DockState<Entity>>,
     mut renderer: NonSendMut<CanvasRenderer>,
     mut unloaded_events: EventWriter<UnloadedEvent>,
-    mut viewports: Query<(&CircuitID, &mut PanZoom, &Scene, &mut Canvas)>,
-    mut circuits: Query<(Option<&Name>, &mut ViewportCount), With<Circuit>>,
+    mut viewports: Query<(Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
+    mut circuits: Query<(Option<Read<Name>>, Write<ViewportCount>), With<Circuit>>,
     mut input_events: EventWriter<crate::ux::InputEvent>,
 ) {
     CentralPanel::default().show(&egui.context, |ui| {
