@@ -1677,6 +1677,7 @@ dependencies = [
 name = "digilogic_serde"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "bevy_app",
  "bevy_ecs",

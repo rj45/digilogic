@@ -1,36 +1,22 @@
 mod circuitfile;
 use circuitfile::*;
 
+use crate::HashMap;
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::BuildChildren;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
-use digilogic_core::events::*;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
-use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 
-pub(crate) fn load_json(
+pub fn load_json(
     commands: &mut Commands,
-    filename: PathBuf,
-    ev_loaded: &mut EventWriter<LoadedEvent>,
+    filename: &Path,
     symbols: &SymbolRegistry,
-) {
-    let result = CircuitFile::load(&filename);
-    match result {
-        Ok(circuit) => {
-            let circuit_id = translate_circuit(commands, &circuit, symbols).unwrap();
-            ev_loaded.send(LoadedEvent {
-                filename: filename,
-                circuit: CircuitID(circuit_id),
-            });
-        }
-        Err(e) => {
-            // TODO: instead of this, send an ErrorEvent
-            eprintln!("Error loading circuit {}: {:?}", filename.display(), e);
-        }
-    }
+) -> anyhow::Result<Entity> {
+    let circuit = CircuitFile::load(filename)?;
+    translate_circuit(commands, &circuit, symbols)
 }
 
 fn translate_circuit(

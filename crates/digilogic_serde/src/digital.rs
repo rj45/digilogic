@@ -1,48 +1,28 @@
 mod circuitfile;
-use serde_xml_rs::from_reader;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
 
+use anyhow::{anyhow, Result};
 use bevy_ecs::prelude::*;
-use digilogic_core::components::*;
-use digilogic_core::events::*;
 use digilogic_core::symbol::SymbolRegistry;
+use std::fs::File;
+use std::io::{BufReader, Write};
+use std::path::Path;
 
-pub(crate) fn load_digital(
+pub fn load_digital(
     commands: &mut Commands,
-    filename: PathBuf,
-    ev_loaded: &mut EventWriter<LoadedEvent>,
+    filename: &Path,
     symbols: &SymbolRegistry,
-) {
+) -> Result<Entity> {
     println!("Loading digital circuit {}", filename.display());
 
-    if let None = filename.as_path().parent() {
-        eprintln!("Error getting parent directory of {}", filename.display());
-        return;
-    }
-    let basedir = filename.as_path().parent().unwrap();
+    let basedir = filename.parent().ok_or(anyhow!(
+        "error getting parent directory of {}",
+        filename.display(),
+    ))?;
 
-    if let Ok(file) = File::open(&filename) {
-        let result = from_reader(file);
-        match result {
-            Ok(circuit) => {
-                let circuit_id = translate_circuit(commands, &circuit, symbols, basedir).unwrap();
-                ev_loaded.send(LoadedEvent {
-                    filename: filename,
-                    circuit: CircuitID(circuit_id.clone()),
-                });
-            }
-            Err(e) => {
-                // TODO: instead of this, send an ErrorEvent
-                eprintln!("Error loading circuit {}: {:?}", filename.display(), e);
-            }
-        }
-    } else {
-        // TODO: instead of this, send an ErrorEvent
-        eprintln!("Error opening file {}", filename.display());
-    }
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+    let circuit = serde_xml_rs::from_reader(reader)?;
+    translate_circuit(commands, &circuit, symbols, basedir)
 }
 
 fn translate_circuit(
@@ -50,7 +30,7 @@ fn translate_circuit(
     circuit: &circuitfile::Circuit,
     symbols: &SymbolRegistry,
     basedir: &Path,
-) -> anyhow::Result<Entity> {
+) -> Result<Entity> {
     File::create("test.json")?
         .write_all(serde_json::to_string_pretty(circuit).unwrap().as_bytes())?;
 
