@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ui;
+mod ux;
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

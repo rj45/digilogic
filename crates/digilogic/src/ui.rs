@@ -121,6 +121,7 @@ fn update_main_menu(
     });
 }
 
+#[allow(clippy::too_many_arguments)] // TODO: fixme
 fn update_viewport(
     egui: &Egui,
     ui: &mut Ui,
@@ -128,6 +129,8 @@ fn update_viewport(
     pan_zoom: &mut PanZoom,
     scene: &Scene,
     canvas: &mut Canvas,
+    input_events: &mut EventWriter<crate::ux::InputEvent>,
+    viewport: Entity,
 ) {
     TopBottomPanel::bottom("status_bar")
         .show_separator_line(false)
@@ -169,11 +172,54 @@ fn update_viewport(
                 (mouse_pos - response.rect.left_top()) / pan_zoom.zoom - pan_zoom.pan;
 
             pan_zoom.pan += new_mouse_world_pos - old_mouse_world_pos;
+
+            // note: this will only happen if the mouse is hovering the viewport
+            forward_hover_events(ui, input_events, new_mouse_world_pos, viewport);
         }
     });
 }
 
-struct TabViewer<'res, 'w1, 's1, 'w2, 'w3, 's3, 'w4, 's4, 'a, 'b, 'c, 'd, 'e, 'f> {
+fn forward_hover_events(
+    ui: &mut Ui,
+    input_events: &mut EventWriter<crate::ux::InputEvent>,
+    world_mouse_pos: Vec2,
+    viewport: Entity,
+) {
+    ui.input(|state| {
+        for event in state.events.iter() {
+            match event {
+                egui::Event::PointerMoved(_) => {
+                    input_events.send(crate::ux::InputEvent {
+                        event: egui::Event::PointerMoved(
+                            (world_mouse_pos.x, world_mouse_pos.y).into(),
+                        ),
+                        viewport,
+                    });
+                }
+                egui::Event::PointerButton {
+                    button,
+                    pressed,
+                    modifiers,
+                    ..
+                } => {
+                    input_events.send(crate::ux::InputEvent {
+                        event: egui::Event::PointerButton {
+                            pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
+                            button: *button,
+                            pressed: *pressed,
+                            modifiers: *modifiers,
+                        },
+                        viewport,
+                    });
+                }
+                // TODO: forward other events
+                _ => {}
+            }
+        }
+    });
+}
+
+struct TabViewer<'res, 'w1, 's1, 'w2, 'w3, 's3, 'w4, 's4, 'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     commands: &'res mut Commands<'w1, 's1>,
     egui: &'res Egui,
     renderer: &'res mut CanvasRenderer,
@@ -181,9 +227,12 @@ struct TabViewer<'res, 'w1, 's1, 'w2, 'w3, 's3, 'w4, 's4, 'a, 'b, 'c, 'd, 'e, 'f
     viewports:
         &'res mut Query<'w3, 's3, (&'a CircuitID, &'b mut PanZoom, &'c Scene, &'d mut Canvas)>,
     circuits: &'res mut Query<'w4, 's4, (Option<&'e Name>, &'f mut ViewportCount), With<Circuit>>,
+    input_events: &'res mut EventWriter<'g, crate::ux::InputEvent>,
 }
 
-impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl egui_dock::TabViewer
+    for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
+{
     type Tab = Entity;
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
@@ -205,6 +254,8 @@ impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
                 &mut pan_zoom,
                 scene,
                 &mut canvas,
+                self.input_events,
+                *tab,
             );
         }
     }
@@ -252,6 +303,7 @@ fn update_menu(
     });
 }
 
+#[allow(clippy::too_many_arguments)] // TODO: fixme
 fn update_tabs(
     mut commands: Commands,
     egui: Res<Egui>,
@@ -260,6 +312,7 @@ fn update_tabs(
     mut unloaded_events: EventWriter<UnloadedEvent>,
     mut viewports: Query<(&CircuitID, &mut PanZoom, &Scene, &mut Canvas)>,
     mut circuits: Query<(Option<&Name>, &mut ViewportCount), With<Circuit>>,
+    mut input_events: EventWriter<crate::ux::InputEvent>,
 ) {
     CentralPanel::default().show(&egui.context, |ui| {
         let mut tab_viewer = TabViewer {
@@ -269,6 +322,7 @@ fn update_tabs(
             unloaded_events: &mut unloaded_events,
             viewports: &mut viewports,
             circuits: &mut circuits,
+            input_events: &mut input_events,
         };
 
         DockArea::new(&mut dock_state)
@@ -345,6 +399,7 @@ impl UiPlugin {
 
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
+        app.add_event::<crate::ux::InputEvent>();
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
         app.insert_non_send_resource(CanvasRenderer::new(&self.render_state));
         app.insert_resource(Egui::new(&self.context, &self.render_state));
