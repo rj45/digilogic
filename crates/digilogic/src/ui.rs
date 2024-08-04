@@ -252,7 +252,7 @@ fn update_menu(
     });
 }
 
-fn update(
+fn update_tabs(
     mut commands: Commands,
     egui: Res<Egui>,
     mut dock_state: NonSendMut<DockState<Entity>>,
@@ -352,10 +352,8 @@ impl bevy_app::Plugin for UiPlugin {
         app.register_type::<ViewportCount>()
             .register_type::<Viewport>();
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
-        app.add_systems(bevy_app::Update, draw);
-        app.add_systems(bevy_app::Update, update_menu.after(draw));
-        app.add_systems(bevy_app::Update, update.after(update_menu));
-        app.add_systems(bevy_app::Update, add_tabs);
+        app.add_systems(bevy_app::Update, (draw, update_menu, add_tabs));
+        app.add_systems(bevy_app::Update, update_tabs.after(draw).after(update_menu));
 
         #[cfg(feature = "inspector")]
         {
