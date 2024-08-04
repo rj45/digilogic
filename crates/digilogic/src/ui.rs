@@ -8,6 +8,7 @@ use crate::{AppState, FileDialogEvent};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
+use bevy_ecs::system::SystemParam;
 use bevy_hierarchy::prelude::*;
 use bevy_reflect::Reflect;
 use digilogic_core::components::{Circuit, CircuitID, Name};
@@ -122,6 +123,22 @@ fn update_main_menu(
     });
 }
 
+fn update_menu(
+    egui: Res<Egui>,
+    mut app_state: ResMut<AppState>,
+    mut file_dialog_events: EventWriter<FileDialogEvent>,
+) {
+    TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
+        update_main_menu(&egui, ui, &mut app_state, &mut file_dialog_events);
+    });
+
+    TopBottomPanel::bottom("bottom_panel").show(&egui.context, |ui| {
+        ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
+            warn_if_debug_build(ui);
+        });
+    });
+}
+
 #[allow(clippy::too_many_arguments)] // TODO: fixme
 fn update_viewport(
     egui: &Egui,
@@ -220,18 +237,18 @@ fn forward_hover_events(
     });
 }
 
-struct TabViewer<'res, 'w1, 's1, 'w2, 'w3, 's3, 'w4, 's4, 'w5> {
-    commands: &'res mut Commands<'w1, 's1>,
-    egui: &'res Egui,
-    renderer: &'res mut CanvasRenderer,
-    unloaded_events: &'res mut EventWriter<'w2, UnloadedEvent>,
-    viewports:
-        &'res mut Query<'w3, 's3, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
-    circuits: &'res mut Query<'w4, 's4, (Option<Read<Name>>, Write<ViewportCount>), With<Circuit>>,
-    input_events: &'res mut EventWriter<'w5, crate::ux::InputEvent>,
+#[derive(SystemParam)]
+struct TabViewer<'w, 's> {
+    commands: Commands<'w, 's>,
+    egui: Res<'w, Egui>,
+    renderer: NonSendMut<'w, CanvasRenderer>,
+    unloaded_events: EventWriter<'w, UnloadedEvent>,
+    viewports: Query<'w, 's, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
+    circuits: Query<'w, 's, (Option<Read<Name>>, Write<ViewportCount>)>,
+    input_events: EventWriter<'w, crate::ux::InputEvent>,
 }
 
-impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl egui_dock::TabViewer for TabViewer<'_, '_> {
     type Tab = Entity;
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
@@ -247,13 +264,13 @@ impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
         if let Ok((_, mut pan_zoom, scene, mut canvas)) = self.viewports.get_mut(*tab) {
             update_viewport(
-                self.egui,
+                &self.egui,
                 ui,
-                self.renderer,
+                &mut self.renderer,
                 &mut pan_zoom,
                 scene,
                 &mut canvas,
-                self.input_events,
+                &mut self.input_events,
                 *tab,
             );
         }
@@ -286,46 +303,12 @@ impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-fn update_menu(
-    egui: Res<Egui>,
-    mut app_state: ResMut<AppState>,
-    mut file_dialog_events: EventWriter<FileDialogEvent>,
-) {
-    TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
-        update_main_menu(&egui, ui, &mut app_state, &mut file_dialog_events);
-    });
+fn update_tabs(mut dock_state: NonSendMut<DockState<Entity>>, mut tab_viewer: TabViewer) {
+    let context = tab_viewer.egui.context.clone();
 
-    TopBottomPanel::bottom("bottom_panel").show(&egui.context, |ui| {
-        ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
-            warn_if_debug_build(ui);
-        });
-    });
-}
-
-#[allow(clippy::too_many_arguments)] // TODO: fixme
-fn update_tabs(
-    mut commands: Commands,
-    egui: Res<Egui>,
-    mut dock_state: NonSendMut<DockState<Entity>>,
-    mut renderer: NonSendMut<CanvasRenderer>,
-    mut unloaded_events: EventWriter<UnloadedEvent>,
-    mut viewports: Query<(Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
-    mut circuits: Query<(Option<Read<Name>>, Write<ViewportCount>), With<Circuit>>,
-    mut input_events: EventWriter<crate::ux::InputEvent>,
-) {
-    CentralPanel::default().show(&egui.context, |ui| {
-        let mut tab_viewer = TabViewer {
-            commands: &mut commands,
-            egui: &egui,
-            renderer: &mut renderer,
-            unloaded_events: &mut unloaded_events,
-            viewports: &mut viewports,
-            circuits: &mut circuits,
-            input_events: &mut input_events,
-        };
-
+    CentralPanel::default().show(&context, |ui| {
         DockArea::new(&mut dock_state)
-            .style(egui_dock::Style::from_egui(egui.context.style().as_ref()))
+            .style(egui_dock::Style::from_egui(context.style().as_ref()))
             .show_inside(ui, &mut tab_viewer);
     });
 }
