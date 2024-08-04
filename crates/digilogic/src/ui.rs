@@ -236,16 +236,10 @@ impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
     }
 }
 
-fn update(
-    mut commands: Commands,
+fn update_menu(
     egui: Res<Egui>,
-    mut dock_state: NonSendMut<DockState<Entity>>,
-    mut renderer: NonSendMut<CanvasRenderer>,
     mut app_state: ResMut<AppState>,
     mut file_dialog_events: EventWriter<FileDialogEvent>,
-    mut unloaded_events: EventWriter<UnloadedEvent>,
-    mut viewports: Query<(&CircuitID, &mut PanZoom, &Scene, &mut Canvas)>,
-    mut circuits: Query<(Option<&Name>, &mut ViewportCount), With<Circuit>>,
 ) {
     TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
         update_main_menu(&egui, ui, &mut app_state, &mut file_dialog_events);
@@ -256,7 +250,17 @@ fn update(
             warn_if_debug_build(ui);
         });
     });
+}
 
+fn update(
+    mut commands: Commands,
+    egui: Res<Egui>,
+    mut dock_state: NonSendMut<DockState<Entity>>,
+    mut renderer: NonSendMut<CanvasRenderer>,
+    mut unloaded_events: EventWriter<UnloadedEvent>,
+    mut viewports: Query<(&CircuitID, &mut PanZoom, &Scene, &mut Canvas)>,
+    mut circuits: Query<(Option<&Name>, &mut ViewportCount), With<Circuit>>,
+) {
     CentralPanel::default().show(&egui.context, |ui| {
         let mut tab_viewer = TabViewer {
             commands: &mut commands,
@@ -349,7 +353,8 @@ impl bevy_app::Plugin for UiPlugin {
             .register_type::<Viewport>();
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
         app.add_systems(bevy_app::Update, draw);
-        app.add_systems(bevy_app::Update, update.after(draw));
+        app.add_systems(bevy_app::Update, update_menu.after(draw));
+        app.add_systems(bevy_app::Update, update.after(update_menu));
         app.add_systems(bevy_app::Update, add_tabs);
 
         #[cfg(feature = "inspector")]

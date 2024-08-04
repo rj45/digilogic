@@ -49,25 +49,23 @@ fn load_file(
     let file_id = FileId::for_path(&ev.filename)?;
     let circuit = if let Some(circuit) = registry.0.get(&file_id) {
         *circuit
-    } else {
-        if let Some(ext) = ev.filename.extension() {
-            let circuit = if ext == "dlc" {
-                json::load_json(commands, &ev.filename, symbols)
-            } else if ext == "dig" {
-                digital::load_digital(commands, &ev.filename, symbols)
-            } else {
-                Err(anyhow!(
-                    "unsupported file extension '{}'",
-                    ext.to_string_lossy()
-                ))
-            }?;
-
-            let circuit = CircuitID(circuit);
-            registry.insert(file_id, circuit);
-            circuit
+    } else if let Some(ext) = ev.filename.extension() {
+        let circuit = if ext == "dlc" {
+            json::load_json(commands, &ev.filename, symbols)
+        } else if ext == "dig" {
+            digital::load_digital(commands, &ev.filename, symbols)
         } else {
-            bail!("file without extension is not supported");
-        }
+            Err(anyhow!(
+                "unsupported file extension '{}'",
+                ext.to_string_lossy()
+            ))
+        }?;
+
+        let circuit = CircuitID(circuit);
+        registry.0.insert(file_id, circuit);
+        circuit
+    } else {
+        bail!("file without extension is not supported");
     };
 
     Ok(LoadedEvent {
