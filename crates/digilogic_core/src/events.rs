@@ -14,6 +14,11 @@ pub struct LoadedEvent {
     pub circuit: CircuitID,
 }
 
+#[derive(Event)]
+pub struct UnloadedEvent {
+    pub circuit: CircuitID,
+}
+
 // TODO: fixme
 // #[derive(Event)]
 // pub struct ErrorEvent {

@@ -1680,6 +1680,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "bevy_app",
+ "bevy_derive",
  "bevy_ecs",
  "bevy_hierarchy",
  "bevy_reflect",

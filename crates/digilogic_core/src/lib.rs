@@ -58,8 +58,11 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<visibility::ComputedVisibility>();
 
         app.init_resource::<symbol::SymbolRegistry>();
-        app.add_event::<events::LoadEvent>();
-        app.add_event::<events::LoadedEvent>();
+
+        app.add_event::<events::LoadEvent>()
+            .add_event::<events::LoadedEvent>()
+            .add_event::<events::UnloadedEvent>();
+
         app.add_systems(
             bevy_app::PostUpdate,
             (transform::update_transforms, visibility::update_visibility),

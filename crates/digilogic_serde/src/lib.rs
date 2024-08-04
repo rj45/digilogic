@@ -2,6 +2,7 @@ mod digital;
 mod json;
 
 use anyhow::{anyhow, bail, Result};
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use digilogic_core::components::CircuitID;
 use digilogic_core::events::*;
@@ -13,16 +14,16 @@ type HashMap<K, V> = ahash::AHashMap<K, V>;
 #[cfg(target_family = "unix")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct FileId(u64);
+struct FileId(u64);
 
 #[cfg(not(target_family = "unix"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct FileId(PathBuf);
+struct FileId(PathBuf);
 
 impl FileId {
     #[cfg(target_family = "unix")]
-    pub fn for_path<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+    fn for_path<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
         use std::os::unix::fs::MetadataExt;
 
         let metadata = std::fs::metadata(path)?;
@@ -30,14 +31,14 @@ impl FileId {
     }
 
     #[cfg(not(target_family = "unix"))]
-    pub fn for_path<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+    fn for_path<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
         path.as_ref().canonicalize().map(Self)
     }
 }
 
-#[derive(Debug, Default, Resource)]
+#[derive(Debug, Default, Deref, DerefMut, Resource)]
 #[repr(transparent)]
-pub struct FileRegistry(HashMap<FileId, CircuitID>);
+struct FileRegistry(HashMap<FileId, CircuitID>);
 
 fn load_file(
     commands: &mut Commands,
@@ -62,7 +63,7 @@ fn load_file(
             }?;
 
             let circuit = CircuitID(circuit);
-            registry.0.insert(file_id, circuit);
+            registry.insert(file_id, circuit);
             circuit
         } else {
             bail!("file without extension is not supported");
@@ -95,12 +96,24 @@ fn handle_load_events(
     }
 }
 
+fn handle_unloaded_events(
+    mut registry: ResMut<FileRegistry>,
+    mut ev_unloaded: EventReader<UnloadedEvent>,
+) {
+    for ev in ev_unloaded.read() {
+        registry.retain(|_, v| *v != ev.circuit);
+    }
+}
+
 #[derive(Default)]
 pub struct LoadSavePlugin;
 
 impl bevy_app::Plugin for LoadSavePlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.init_resource::<FileRegistry>();
-        app.add_systems(bevy_app::Update, handle_load_events);
+        app.add_systems(
+            bevy_app::Update,
+            (handle_load_events, handle_unloaded_events),
+        );
     }
 }
