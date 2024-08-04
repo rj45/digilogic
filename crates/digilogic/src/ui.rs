@@ -187,8 +187,13 @@ impl egui_dock::TabViewer for TabViewer<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
     type Tab = Entity;
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
-        // TODO: display actual circuit name
-        format!("Tab {}", *tab).into()
+        if let Ok((&circuit, _, _, _)) = self.viewports.get(*tab) {
+            if let Ok((Some(name), _)) = self.circuits.get(circuit.0) {
+                return name.0.as_str().into();
+            }
+        }
+
+        format!("{}", *tab).into()
     }
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {

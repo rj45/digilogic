@@ -29,11 +29,8 @@ impl Default for SharedStr {
     }
 }
 
-impl Deref for SharedStr {
-    type Target = str;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
+impl SharedStr {
+    pub fn as_str(&self) -> &str {
         match self.0 {
             SharedStrRepr::Static(s) => s,
             SharedStrRepr::Arc(ref s) => s,
@@ -48,17 +45,26 @@ impl Deref for SharedStr {
     }
 }
 
+impl Deref for SharedStr {
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
 impl AsRef<str> for SharedStr {
     #[inline]
     fn as_ref(&self) -> &str {
-        self.deref()
+        self.as_str()
     }
 }
 
 impl Borrow<str> for SharedStr {
     #[inline]
     fn borrow(&self) -> &str {
-        self.deref()
+        self.as_str()
     }
 }
 
@@ -75,21 +81,21 @@ impl Clone for SharedStr {
 impl PartialEq for SharedStr {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.deref() == other.deref()
+        self.as_str() == other.as_str()
     }
 }
 
 impl PartialEq<str> for SharedStr {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self.deref() == other
+        self.as_str() == other
     }
 }
 
 impl PartialEq<SharedStr> for str {
     #[inline]
     fn eq(&self, other: &SharedStr) -> bool {
-        self == other.deref()
+        self == other.as_str()
     }
 }
 
@@ -98,7 +104,7 @@ impl Eq for SharedStr {}
 impl Hash for SharedStr {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Hash::hash(self.deref(), state)
+        Hash::hash(self.as_str(), state)
     }
 }
 
@@ -161,13 +167,13 @@ impl From<Arc<str>> for SharedStr {
 
 impl fmt::Debug for SharedStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.deref(), f)
+        fmt::Debug::fmt(self.as_str(), f)
     }
 }
 
 impl fmt::Display for SharedStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.deref(), f)
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 
