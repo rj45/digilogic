@@ -25,7 +25,7 @@ impl FileId {
     pub fn for_path<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
         use std::os::unix::fs::MetadataExt;
 
-        let metadata = std::fs::metadata(path);
+        let metadata = std::fs::metadata(path)?;
         Ok(Self(metadata.ino()))
     }
 
