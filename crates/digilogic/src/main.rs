@@ -64,6 +64,7 @@ impl App {
             digilogic_core::CorePlugin::default(),
             digilogic_serde::LoadSavePlugin::default(),
             digilogic_routing::RoutingPlugin::default(),
+            ux::UxPlugin::default(),
             ui::UiPlugin::new(context, render_state),
         ));
 

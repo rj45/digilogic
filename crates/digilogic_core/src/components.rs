@@ -144,3 +144,8 @@ pub struct Net;
 /// It has Symbol and Net Children, and a SymbolKind
 #[derive(Default, Component, Reflect)]
 pub struct Circuit;
+
+/// A Viewport is a view into the Circuit. Mostly handled by the UI layer
+/// but defined here for other systems to use.
+#[derive(Default, Component, Reflect)]
+pub struct Viewport;

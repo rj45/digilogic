@@ -11,7 +11,7 @@ use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
 use bevy_hierarchy::prelude::*;
 use bevy_reflect::Reflect;
-use digilogic_core::components::{Circuit, CircuitID, Name};
+use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
 use digilogic_core::events::{LoadedEvent, UnloadedEvent};
 use egui::*;
 use egui_dock::*;
@@ -56,9 +56,6 @@ impl Egui {
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 #[repr(transparent)]
 struct ViewportCount(u16);
-
-#[derive(Default, Component, Reflect)]
-struct Viewport;
 
 #[derive(Debug, Clone, Copy, Component)]
 struct PanZoom {
@@ -381,7 +378,6 @@ impl UiPlugin {
 
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_event::<crate::ux::InputEvent>();
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
         app.insert_non_send_resource(CanvasRenderer::new(&self.render_state));
         app.insert_resource(Egui::new(&self.context, &self.render_state));
