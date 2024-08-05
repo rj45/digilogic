@@ -144,7 +144,7 @@ fn update_viewport(
     pan_zoom: &mut PanZoom,
     scene: &Scene,
     canvas: &mut Canvas,
-    input_events: &mut EventWriter<crate::ux::InputEvent>,
+    commands: &mut Commands,
     viewport: Entity,
 ) {
     TopBottomPanel::bottom("status_bar")
@@ -189,14 +189,14 @@ fn update_viewport(
             pan_zoom.pan += new_mouse_world_pos - old_mouse_world_pos;
 
             // note: this will only happen if the mouse is hovering the viewport
-            forward_hover_events(ui, input_events, new_mouse_world_pos, viewport);
+            forward_hover_events(ui, commands, new_mouse_world_pos, viewport);
         }
     });
 }
 
 fn forward_hover_events(
     ui: &mut Ui,
-    input_events: &mut EventWriter<crate::ux::InputEvent>,
+    commands: &mut Commands,
     world_mouse_pos: Vec2,
     viewport: Entity,
 ) {
@@ -204,12 +204,15 @@ fn forward_hover_events(
         for event in state.events.iter() {
             match event {
                 egui::Event::PointerMoved(_) => {
-                    input_events.send(crate::ux::InputEvent {
-                        event: egui::Event::PointerMoved(
-                            (world_mouse_pos.x, world_mouse_pos.y).into(),
-                        ),
+                    commands.trigger_targets(
+                        crate::ux::InputEvent {
+                            event: egui::Event::PointerMoved(
+                                (world_mouse_pos.x, world_mouse_pos.y).into(),
+                            ),
+                            viewport,
+                        },
                         viewport,
-                    });
+                    );
                 }
                 egui::Event::PointerButton {
                     button,
@@ -217,15 +220,18 @@ fn forward_hover_events(
                     modifiers,
                     ..
                 } => {
-                    input_events.send(crate::ux::InputEvent {
-                        event: egui::Event::PointerButton {
-                            pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
-                            button: *button,
-                            pressed: *pressed,
-                            modifiers: *modifiers,
+                    commands.trigger_targets(
+                        crate::ux::InputEvent {
+                            event: egui::Event::PointerButton {
+                                pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
+                                button: *button,
+                                pressed: *pressed,
+                                modifiers: *modifiers,
+                            },
+                            viewport,
                         },
                         viewport,
-                    });
+                    );
                 }
                 // TODO: forward other events
                 _ => {}
@@ -242,7 +248,6 @@ struct TabViewer<'w, 's> {
     unloaded_events: EventWriter<'w, UnloadedEvent>,
     viewports: Query<'w, 's, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
     circuits: Query<'w, 's, (Option<Read<Name>>, Write<ViewportCount>)>,
-    input_events: EventWriter<'w, crate::ux::InputEvent>,
 }
 
 impl egui_dock::TabViewer for TabViewer<'_, '_> {
@@ -267,7 +272,7 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
                 &mut pan_zoom,
                 scene,
                 &mut canvas,
-                &mut self.input_events,
+                &mut self.commands,
                 *tab,
             );
         }
