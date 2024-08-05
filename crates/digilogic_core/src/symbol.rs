@@ -222,6 +222,10 @@ impl SymbolBuilder<'_> {
                 },
                 symbol: Symbol::default(),
                 visibility: VisibilityBundle::default(),
+                bounds: BoundingBoxBundle {
+                    bounding_box: kind.bounding_box,
+                    ..Default::default()
+                },
             })
             .set_parent(circuit_id)
             .id();
@@ -262,6 +266,14 @@ impl PortDef {
                 },
                 bit_width: BitWidth(bit_width.0),
                 visibility: VisibilityBundle::default(),
+                bounds: BoundingBoxBundle {
+                    bounding_box: BoundingBox::from_center_half_size(
+                        self.position,
+                        PORT_HALF_WIDTH as u32,
+                        PORT_HALF_WIDTH as u32,
+                    ),
+                    ..Default::default()
+                },
             })
             .set_parent(symbol_id)
             .id()

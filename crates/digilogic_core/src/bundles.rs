@@ -28,6 +28,7 @@ pub struct PortBundle {
     pub shape: Shape,
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,
+    pub bounds: BoundingBoxBundle,
 }
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which
@@ -59,6 +60,7 @@ pub struct SymbolBundle {
     pub shape: Shape,
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,
+    pub bounds: BoundingBoxBundle,
 }
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
@@ -70,6 +72,7 @@ pub struct WaypointBundle {
 
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,
+    pub bounds: BoundingBoxBundle,
 }
 
 /// An Endpoint is a connection point for a Net. It connects to a Port
@@ -87,6 +90,7 @@ pub struct EndpointBundle {
 
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,
+    pub bounds: BoundingBoxBundle,
 }
 
 /// A Net is a set of Endpoints that are connected together.

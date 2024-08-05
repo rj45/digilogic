@@ -355,10 +355,15 @@ pub(crate) fn update_transforms(
                 next_parent = parent;
             }
 
-            global_transform.0 = transform;
+            if global_transform.0 != transform {
+                global_transform.0 = transform;
+            }
             if let Some(mut abs_bb) = abs_bb {
                 let bb = bb.copied().unwrap_or_default();
-                abs_bb.0 = bb.transform(transform);
+                let new_abs_bb = bb.transform(transform);
+                if abs_bb.0 != new_abs_bb {
+                    abs_bb.0 = new_abs_bb;
+                }
             }
         });
 }
