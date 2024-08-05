@@ -2,7 +2,7 @@ use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
-use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 macro_rules! const_min {
     ($a:expr, $b:expr) => {
@@ -98,6 +98,25 @@ impl SubAssign for Vec2i {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
+    }
+}
+
+impl Div<i32> for Vec2i {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, rhs: i32) -> Self::Output {
+        Self {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
+
+impl DivAssign<i32> for Vec2i {
+    #[inline]
+    fn div_assign(&mut self, rhs: i32) {
+        *self = *self / rhs;
     }
 }
 
@@ -219,8 +238,8 @@ pub struct TransformBundle {
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
 #[repr(C)]
 pub struct BoundingBox {
-    min: Vec2i,
-    max: Vec2i,
+    pub min: Vec2i,
+    pub max: Vec2i,
 }
 
 impl BoundingBox {
@@ -301,6 +320,22 @@ impl BoundingBox {
     //}
 
     #[inline]
+    pub fn intersects(self, other: Self) -> bool {
+        // TODO: this would be a lot more efficient if we used center + half size representation
+        let a = self.center();
+        let b = other.center();
+
+        // this way of detecting intersections minimizes the number of branches
+        (a.x.abs_diff(b.x) * 2 < (self.width() + other.width()))
+            && (a.y.abs_diff(b.y) * 2 < (self.height() + other.height()))
+    }
+
+    #[inline]
+    pub fn center(self) -> Vec2i {
+        (self.min + self.max) / 2
+    }
+
+    #[inline]
     pub fn translate(mut self, translation: Vec2i) -> Self {
         self.min += translation;
         self.max += translation;
@@ -320,10 +355,28 @@ impl BoundingBox {
     }
 }
 
+impl bvh_arena::BoundingVolume for BoundingBox {
+    fn merge(self, other: Self) -> Self {
+        let min = self.min.min(other.min);
+        let max = self.max.max(other.max);
+        Self::from_points(min, max)
+    }
+
+    #[inline]
+    fn area(&self) -> f32 {
+        (self.width() * self.height()) as f32
+    }
+
+    #[inline]
+    fn overlaps(&self, other: &Self) -> bool {
+        self.intersects(*other)
+    }
+}
+
 /// The computed absolute bounding box of the entity
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Deref, Component, Reflect)]
 #[repr(transparent)]
-pub struct AbsoluteBoundingBox(BoundingBox);
+pub struct AbsoluteBoundingBox(pub BoundingBox);
 
 #[derive(Default, Bundle)]
 pub struct BoundingBoxBundle {
