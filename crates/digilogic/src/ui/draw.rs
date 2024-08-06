@@ -52,7 +52,8 @@ pub fn draw(
                 }
 
                 let transform = transform.copied().unwrap_or_default();
-                let transform = Affine::rotate(transform.rotation.radians())
+                let transform = Affine::scale(transform.scale.to_f64())
+                    .then_rotate(transform.rotation.radians())
                     .then_translate(Vec2::new(
                         transform.translation.x.to_f64(),
                         transform.translation.y.to_f64(),

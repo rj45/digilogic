@@ -188,12 +188,14 @@ impl Vec2 {
 pub struct Transform {
     pub translation: Vec2,
     pub rotation: Rotation,
+    pub scale: Fixed,
 }
 
 impl Transform {
     pub const IDENTITY: Self = Self {
         translation: Vec2::ZERO,
         rotation: Rotation::Rot0,
+        scale: fixed!(1),
     };
 }
 
@@ -209,8 +211,9 @@ impl Mul for Transform {
 
     fn mul(self, rhs: Self) -> Self::Output {
         Self {
-            translation: self.translation + rhs.translation.rotate(self.rotation),
+            translation: self.translation + (rhs.translation * self.scale).rotate(self.rotation),
             rotation: self.rotation * rhs.rotation,
+            scale: self.scale * rhs.scale,
         }
     }
 }

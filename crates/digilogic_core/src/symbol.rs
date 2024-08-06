@@ -279,7 +279,7 @@ impl SymbolBuilder<'_> {
                 transform: TransformBundle {
                     transform: Transform {
                         translation: self.position.unwrap_or_default(),
-                        rotation: Rotation::Rot0,
+                        ..Default::default()
                     },
                     ..Default::default()
                 },
@@ -323,7 +323,7 @@ impl PortDef {
                 transform: TransformBundle {
                     transform: Transform {
                         translation: self.position,
-                        rotation: Rotation::Rot0,
+                        ..Default::default()
                     },
                     global_transform: GlobalTransform::default(),
                 },
