@@ -36,7 +36,7 @@ impl SpatialIndex {
 
 pub(crate) fn update_spatial_index(
     mut index: ResMut<SpatialIndex>,
-    mut query: Query<(Entity, &AbsoluteBoundingBox), Changed<AbsoluteBoundingBox>>,
+    query: Query<(Entity, &AbsoluteBoundingBox), Changed<AbsoluteBoundingBox>>,
 ) {
     query.iter().for_each(|(entity, bounds)| {
         index.update(entity, bounds.0);

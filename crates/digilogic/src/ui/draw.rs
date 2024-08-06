@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
 use digilogic_core::components::{CircuitID, Shape};
-use digilogic_core::transform::GlobalTransform;
+use digilogic_core::transform::{AbsoluteBoundingBox, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
 use vello::kurbo::{Affine, BezPath, Shape as _, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
@@ -82,6 +82,35 @@ pub fn draw(
                         );
                     }
                 }
+            }
+        }
+    }
+}
+
+pub fn draw_bounding_boxes(
+    mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
+    children: Query<&Children>,
+    boxes: Query<(&AbsoluteBoundingBox,)>,
+) {
+    for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
+        for child in children.iter_descendants(circuit.0) {
+            if let Ok((&bounds,)) = boxes.get(child) {
+                let transform =
+                    Affine::translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
+                        .then_scale(pan_zoom.zoom as f64);
+
+                scene.stroke(
+                    &Stroke::new(1.0),
+                    transform,
+                    &Brush::Solid(Color::RED),
+                    None,
+                    &vello::kurbo::Rect::new(
+                        bounds.min.x as f64,
+                        bounds.min.y as f64,
+                        bounds.max.x as f64,
+                        bounds.max.y as f64,
+                    ),
+                );
             }
         }
     }

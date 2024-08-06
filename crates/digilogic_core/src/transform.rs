@@ -37,16 +37,16 @@ impl Vec2i {
     #[inline]
     pub const fn min(self, rhs: Self) -> Self {
         Self {
-            x: const_min!(self.x, rhs.y),
-            y: const_min!(self.x, rhs.y),
+            x: const_min!(self.x, rhs.x),
+            y: const_min!(self.y, rhs.y),
         }
     }
 
     #[inline]
     pub const fn max(self, rhs: Self) -> Self {
         Self {
-            x: const_max!(self.x, rhs.y),
-            y: const_max!(self.x, rhs.y),
+            x: const_max!(self.x, rhs.x),
+            y: const_max!(self.y, rhs.y),
         }
     }
 
@@ -273,6 +273,16 @@ impl BoundingBox {
             max: Vec2i {
                 x: half_width as i32,
                 y: half_height as i32,
+            },
+        }
+    }
+
+    pub const fn from_top_left_size(top_left: Vec2i, width: u32, height: u32) -> Self {
+        Self {
+            min: top_left,
+            max: Vec2i {
+                x: top_left.x + width as i32,
+                y: top_left.y + height as i32,
             },
         }
     }

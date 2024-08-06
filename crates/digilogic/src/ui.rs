@@ -205,12 +205,7 @@ fn forward_hover_events(
             match event {
                 egui::Event::PointerMoved(_) => {
                     commands.trigger_targets(
-                        crate::ux::InputEvent {
-                            event: egui::Event::PointerMoved(
-                                (world_mouse_pos.x, world_mouse_pos.y).into(),
-                            ),
-                            viewport,
-                        },
+                        crate::ux::PointerMovedEvent((world_mouse_pos.x, world_mouse_pos.y).into()),
                         viewport,
                     );
                 }
@@ -221,14 +216,11 @@ fn forward_hover_events(
                     ..
                 } => {
                     commands.trigger_targets(
-                        crate::ux::InputEvent {
-                            event: egui::Event::PointerButton {
-                                pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
-                                button: *button,
-                                pressed: *pressed,
-                                modifiers: *modifiers,
-                            },
-                            viewport,
+                        crate::ux::PointerButtonEvent {
+                            pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
+                            button: *button,
+                            pressed: *pressed,
+                            modifiers: *modifiers,
                         },
                         viewport,
                     );
@@ -390,7 +382,10 @@ impl bevy_app::Plugin for UiPlugin {
         app.register_type::<ViewportCount>()
             .register_type::<Viewport>();
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
-        app.add_systems(bevy_app::Update, (draw, update_menu, add_tabs));
+        app.add_systems(
+            bevy_app::Update,
+            (draw, draw_bounding_boxes.after(draw), update_menu, add_tabs),
+        );
         app.add_systems(bevy_app::Update, update_tabs.after(draw).after(update_menu));
 
         #[cfg(feature = "inspector")]

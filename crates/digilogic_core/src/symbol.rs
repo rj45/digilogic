@@ -69,7 +69,7 @@ const KINDS: &[SymbolKind] = &[
         index: SymbolKindIndex(0),
         name: SharedStr::new_static("AND"),
         designator_prefix: SharedStr::new_static("U"),
-        bounding_box: BoundingBox::from_half_size(40, 30),
+        bounding_box: BoundingBox::from_top_left_size(Vec2i { x: 0, y: -10 }, 80, 60),
         shape: Shape::And,
         ports: GATE_PORTS_2_INPUT,
     },
@@ -77,7 +77,7 @@ const KINDS: &[SymbolKind] = &[
         index: SymbolKindIndex(0),
         name: SharedStr::new_static("OR"),
         designator_prefix: SharedStr::new_static("U"),
-        bounding_box: BoundingBox::from_half_size(40, 30),
+        bounding_box: BoundingBox::from_top_left_size(Vec2i { x: 0, y: -10 }, 80, 60),
         shape: Shape::Or,
         ports: GATE_PORTS_2_INPUT,
     },
@@ -85,7 +85,7 @@ const KINDS: &[SymbolKind] = &[
         index: SymbolKindIndex(0),
         name: SharedStr::new_static("XOR"),
         designator_prefix: SharedStr::new_static("U"),
-        bounding_box: BoundingBox::from_half_size(40, 30),
+        bounding_box: BoundingBox::from_top_left_size(Vec2i { x: 0, y: -10 }, 80, 60),
         shape: Shape::Xor,
         ports: GATE_PORTS_2_INPUT,
     },
@@ -93,7 +93,7 @@ const KINDS: &[SymbolKind] = &[
         index: SymbolKindIndex(0),
         name: SharedStr::new_static("NOT"),
         designator_prefix: SharedStr::new_static("U"),
-        bounding_box: BoundingBox::from_half_size(30, 20),
+        bounding_box: BoundingBox::from_top_left_size(Vec2i { x: 0, y: -10 }, 40, 20),
         shape: Shape::Not,
         ports: GATE_PORTS_1_INPUT,
     },
@@ -101,7 +101,7 @@ const KINDS: &[SymbolKind] = &[
         index: SymbolKindIndex(0),
         name: SharedStr::new_static("IN"),
         designator_prefix: SharedStr::new_static("J"),
-        bounding_box: BoundingBox::from_half_size(20, 10),
+        bounding_box: BoundingBox::from_top_left_size(Vec2i { x: -40, y: -20 }, 40, 40),
         shape: Shape::Input,
         ports: &[PortDef {
             name: SharedStr::new_static("Y"),
@@ -114,7 +114,7 @@ const KINDS: &[SymbolKind] = &[
         index: SymbolKindIndex(0),
         name: SharedStr::new_static("OUT"),
         designator_prefix: SharedStr::new_static("J"),
-        bounding_box: BoundingBox::from_half_size(20, 10),
+        bounding_box: BoundingBox::from_top_left_size(Vec2i { x: 0, y: -20 }, 40, 40),
         shape: Shape::Output,
         ports: &[PortDef {
             name: SharedStr::new_static("A"),
@@ -204,7 +204,7 @@ impl SymbolBuilder<'_> {
     }
 
     pub fn build(&mut self, commands: &mut Commands, circuit_id: Entity) -> Entity {
-        let kind = self.registry.kinds.get(self.kind_index as usize).unwrap();
+        let kind = self.registry.kinds.get(self.kind_index).unwrap();
 
         let symbol_id = commands
             .spawn(SymbolBundle {
@@ -220,7 +220,7 @@ impl SymbolBuilder<'_> {
                     },
                     ..Default::default()
                 },
-                symbol: Symbol::default(),
+                symbol: Symbol,
                 visibility: VisibilityBundle::default(),
                 bounds: BoundingBoxBundle {
                     bounding_box: kind.bounding_box,
@@ -267,8 +267,7 @@ impl PortDef {
                 bit_width: BitWidth(bit_width.0),
                 visibility: VisibilityBundle::default(),
                 bounds: BoundingBoxBundle {
-                    bounding_box: BoundingBox::from_center_half_size(
-                        self.position,
+                    bounding_box: BoundingBox::from_half_size(
                         PORT_HALF_WIDTH as u32,
                         PORT_HALF_WIDTH as u32,
                     ),
