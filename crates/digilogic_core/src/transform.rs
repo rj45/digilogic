@@ -1,69 +1,55 @@
+use crate::{fixed, Fixed};
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-macro_rules! const_min {
-    ($a:expr, $b:expr) => {
-        if $a < $b {
-            $a
-        } else {
-            $b
-        }
-    };
-}
-
-macro_rules! const_max {
-    ($a:expr, $b:expr) => {
-        if $a > $b {
-            $a
-        } else {
-            $b
-        }
-    };
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 #[repr(C)]
-pub struct Vec2i {
-    pub x: i32,
-    pub y: i32,
+pub struct Vec2 {
+    pub x: Fixed,
+    pub y: Fixed,
 }
 
-impl Vec2i {
-    pub const ZERO: Self = Self { x: 0, y: 0 };
+impl Vec2 {
+    pub const ZERO: Self = Self {
+        x: fixed!(0.0),
+        y: fixed!(0.0),
+    };
 
     #[inline]
     pub const fn min(self, rhs: Self) -> Self {
         Self {
-            x: const_min!(self.x, rhs.x),
-            y: const_min!(self.y, rhs.y),
+            x: self.x.min(rhs.x),
+            y: self.y.min(rhs.y),
         }
     }
 
     #[inline]
     pub const fn max(self, rhs: Self) -> Self {
         Self {
-            x: const_max!(self.x, rhs.x),
-            y: const_max!(self.y, rhs.y),
+            x: self.x.max(rhs.x),
+            y: self.y.max(rhs.y),
         }
     }
 
     #[inline]
-    pub const fn manhatten_distance_to(self, other: Self) -> u32 {
-        self.x.abs_diff(other.x) + self.y.abs_diff(other.y)
+    pub const fn manhatten_distance_to(self, other: Self) -> Fixed {
+        let diff_x = self.x.const_sub(other.x).abs();
+        let diff_y = self.y.const_sub(other.y).abs();
+        diff_x.const_add(diff_y)
     }
 }
 
-impl Default for Vec2i {
+impl Default for Vec2 {
     #[inline]
     fn default() -> Self {
         Self::ZERO
     }
 }
 
-impl Add for Vec2i {
+impl Add for Vec2 {
     type Output = Self;
 
     #[inline]
@@ -75,14 +61,14 @@ impl Add for Vec2i {
     }
 }
 
-impl AddAssign for Vec2i {
+impl AddAssign for Vec2 {
     #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
-impl Sub for Vec2i {
+impl Sub for Vec2 {
     type Output = Self;
 
     #[inline]
@@ -94,18 +80,37 @@ impl Sub for Vec2i {
     }
 }
 
-impl SubAssign for Vec2i {
+impl SubAssign for Vec2 {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl Div<i32> for Vec2i {
+impl Mul<Fixed> for Vec2 {
     type Output = Self;
 
     #[inline]
-    fn div(self, rhs: i32) -> Self::Output {
+    fn mul(self, rhs: Fixed) -> Self::Output {
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl MulAssign<Fixed> for Vec2 {
+    #[inline]
+    fn mul_assign(&mut self, rhs: Fixed) {
+        *self = *self * rhs;
+    }
+}
+
+impl Div<Fixed> for Vec2 {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, rhs: Fixed) -> Self::Output {
         Self {
             x: self.x / rhs,
             y: self.y / rhs,
@@ -113,9 +118,9 @@ impl Div<i32> for Vec2i {
     }
 }
 
-impl DivAssign<i32> for Vec2i {
+impl DivAssign<Fixed> for Vec2 {
     #[inline]
-    fn div_assign(&mut self, rhs: i32) {
+    fn div_assign(&mut self, rhs: Fixed) {
         *self = *self / rhs;
     }
 }
@@ -159,7 +164,7 @@ impl MulAssign for Rotation {
     }
 }
 
-impl Vec2i {
+impl Vec2 {
     pub fn rotate(self, rotation: Rotation) -> Self {
         match rotation {
             Rotation::Rot0 => self,
@@ -181,13 +186,13 @@ impl Vec2i {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
 pub struct Transform {
-    pub translation: Vec2i,
+    pub translation: Vec2,
     pub rotation: Rotation,
 }
 
 impl Transform {
     pub const IDENTITY: Self = Self {
-        translation: Vec2i::ZERO,
+        translation: Vec2::ZERO,
         rotation: Rotation::Rot0,
     };
 }
@@ -217,7 +222,7 @@ impl MulAssign for Transform {
     }
 }
 
-impl Vec2i {
+impl Vec2 {
     #[inline]
     pub fn transform(self, transform: Transform) -> Self {
         self.rotate(transform.rotation) + transform.translation
@@ -238,96 +243,103 @@ pub struct TransformBundle {
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
 #[repr(C)]
 pub struct BoundingBox {
-    pub min: Vec2i,
-    pub max: Vec2i,
+    pub min: Vec2,
+    pub max: Vec2,
 }
 
 impl BoundingBox {
     #[inline]
-    pub const fn from_points(a: Vec2i, b: Vec2i) -> Self {
+    pub const fn from_points(a: Vec2, b: Vec2) -> Self {
         Self {
             min: a.min(b),
             max: a.max(b),
         }
     }
 
-    pub const fn from_center_half_size(center: Vec2i, half_width: u32, half_height: u32) -> Self {
+    pub const fn from_center_half_size(
+        center: Vec2,
+        half_width: Fixed,
+        half_height: Fixed,
+    ) -> Self {
+        assert!(half_width.to_bits() >= 0);
+        assert!(half_height.to_bits() >= 0);
+
         Self {
-            min: Vec2i {
-                x: center.x - (half_width as i32),
-                y: center.y - (half_height as i32),
+            min: Vec2 {
+                x: center.x.const_sub(half_width),
+                y: center.y.const_sub(half_height),
             },
-            max: Vec2i {
-                x: center.x + (half_width as i32),
-                y: center.y + (half_height as i32),
+            max: Vec2 {
+                x: center.x.const_sub(half_width),
+                y: center.y.const_sub(half_height),
             },
         }
     }
 
-    pub const fn from_half_size(half_width: u32, half_height: u32) -> Self {
+    pub const fn from_half_size(half_width: Fixed, half_height: Fixed) -> Self {
+        assert!(half_width.to_bits() >= 0);
+        assert!(half_height.to_bits() >= 0);
+
         Self {
-            min: Vec2i {
-                x: -(half_width as i32),
-                y: -(half_height as i32),
+            min: Vec2 {
+                x: half_width.const_neg(),
+                y: half_height.const_neg(),
             },
-            max: Vec2i {
-                x: half_width as i32,
-                y: half_height as i32,
+            max: Vec2 {
+                x: half_width,
+                y: half_height,
             },
         }
     }
 
-    pub const fn from_top_left_size(top_left: Vec2i, width: u32, height: u32) -> Self {
+    pub const fn from_top_left_size(top_left: Vec2, width: Fixed, height: Fixed) -> Self {
+        assert!(width.to_bits() >= 0);
+        assert!(height.to_bits() >= 0);
+
         Self {
             min: top_left,
-            max: Vec2i {
-                x: top_left.x + width as i32,
-                y: top_left.y + height as i32,
+            max: Vec2 {
+                x: top_left.x.const_add(width),
+                y: top_left.y.const_add(height),
             },
         }
     }
 
     #[inline]
-    pub const fn min(self) -> Vec2i {
+    pub const fn min(self) -> Vec2 {
         self.min
     }
 
     #[inline]
-    pub const fn max(self) -> Vec2i {
+    pub const fn max(self) -> Vec2 {
         self.max
     }
 
     #[inline]
-    pub const fn width(self) -> u32 {
-        self.max.x.abs_diff(self.min.x)
+    pub const fn width(self) -> Fixed {
+        self.max.x.const_sub(self.min.x).abs()
     }
 
     #[inline]
-    pub const fn height(self) -> u32 {
-        self.max.y.abs_diff(self.min.y)
+    pub const fn height(self) -> Fixed {
+        self.max.y.const_sub(self.min.y).abs()
     }
 
     #[inline]
-    pub const fn contains(self, point: Vec2i) -> bool {
+    pub const fn center(self) -> Vec2 {
+        Vec2 {
+            x: self.min.x.const_add(self.max.x).const_div(fixed!(2)),
+            y: self.min.y.const_add(self.max.y).const_div(fixed!(2)),
+        }
+    }
+
+    #[inline]
+    pub fn contains(self, point: Vec2) -> bool {
         (self.min().x <= point.x)
             && (self.max().x >= point.x)
             && (self.min().y <= point.y)
             && (self.max().y >= point.y)
     }
-
-    //#[inline]
-    //pub const fn intersects_with(self, min: Vec2i, max: Vec2i) -> bool {
-    //    assert!(min.x <= max.x);
-    //    assert!(min.y <= max.y);
-
-    //    let intersects_x = ((self.min_x() >= min.x) && (self.max_x() <= max.x))
-    //        || ((self.min_x() <= min.x) && (self.max_x() >= min.x))
-    //        || ((self.min_x() <= max.x) && (self.max_x() >= max.x));
-    //    let intersects_y = ((self.min_y() >= min.y) && (self.max_y() <= max.y))
-    //        || ((self.min_y() <= min.y) && (self.max_y() >= min.y))
-    //        || ((self.min_y() <= max.y) && (self.max_y() >= max.y));
-    //    intersects_x && intersects_y
-    //}
 
     #[inline]
     pub fn intersects(self, other: Self) -> bool {
@@ -336,17 +348,12 @@ impl BoundingBox {
         let b = other.center();
 
         // this way of detecting intersections minimizes the number of branches
-        (a.x.abs_diff(b.x) * 2 < (self.width() + other.width()))
-            && (a.y.abs_diff(b.y) * 2 < (self.height() + other.height()))
+        ((a.x - b.x).abs() * fixed!(2) < (self.width() + other.width()))
+            && ((a.y - b.y).abs() * fixed!(2) < (self.height() + other.height()))
     }
 
     #[inline]
-    pub fn center(self) -> Vec2i {
-        (self.min + self.max) / 2
-    }
-
-    #[inline]
-    pub fn translate(mut self, translation: Vec2i) -> Self {
+    pub fn translate(mut self, translation: Vec2) -> Self {
         self.min += translation;
         self.max += translation;
         self
@@ -374,7 +381,7 @@ impl bvh_arena::BoundingVolume for BoundingBox {
 
     #[inline]
     fn area(&self) -> f32 {
-        (self.width() * self.height()) as f32
+        (self.width() * self.height()).to_f32()
     }
 
     #[inline]

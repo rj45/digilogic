@@ -1,4 +1,4 @@
-use digilogic_core::SharedStr;
+use digilogic_core::{Fixed, SharedStr};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -32,7 +32,7 @@ pub struct Symbol {
     pub symbol_kind_name: Option<SharedStr>,
     #[serde(rename = "symbolKindID")]
     pub symbol_kind_id: Option<Id>,
-    pub position: [f32; 2],
+    pub position: [Fixed; 2],
     pub number: u32,
 }
 
@@ -67,14 +67,14 @@ pub struct PortRef {
 #[serde(deny_unknown_fields)]
 pub struct Waypoint {
     pub id: Id,
-    pub position: [f32; 2],
+    pub position: [Fixed; 2],
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Endpoint {
     pub id: Id,
-    pub position: [f32; 2],
+    pub position: [Fixed; 2],
     pub portref: PortRef,
     pub waypoints: Vec<Waypoint>,
 }

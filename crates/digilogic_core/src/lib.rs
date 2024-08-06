@@ -12,14 +12,24 @@ extern crate static_assertions;
 mod shared_str;
 pub use shared_str::SharedStr;
 
+mod fixed;
+pub use fixed::Fixed;
+pub use fixed::FRACT_BITS as FIXED_FRACT_BITS;
+
 #[derive(Default)]
 pub struct CorePlugin;
 
 impl bevy_app::Plugin for CorePlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.register_type::<SharedStr>();
+        app.register_type::<SharedStr>().register_type::<Fixed>();
+
         #[cfg(feature = "inspector")]
-        app.register_type_data::<SharedStr, bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl>();
+        {
+            use bevy_inspector_egui::inspector_egui_impls::InspectorEguiImpl;
+
+            app.register_type_data::<SharedStr, InspectorEguiImpl>()
+                .register_type_data::<Fixed, InspectorEguiImpl>();
+        }
 
         app.register_type::<components::PortID>()
             .register_type::<components::SymbolKindIndex>()
@@ -49,7 +59,7 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<components::Endpoint>()
             .register_type::<components::Net>()
             .register_type::<components::Circuit>()
-            .register_type::<transform::Vec2i>()
+            .register_type::<transform::Vec2>()
             .register_type::<transform::Rotation>()
             .register_type::<transform::Transform>()
             .register_type::<transform::BoundingBox>()

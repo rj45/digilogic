@@ -252,24 +252,18 @@ mod inspector {
     use bevy_inspector_egui::inspector_egui_impls::InspectorPrimitive;
     use bevy_inspector_egui::reflect_inspector::InspectorUi;
 
-    fn inspector_ui(mut s: &str, ui: &mut egui::Ui) {
-        if s.contains('\n') {
-            ui.text_edit_multiline(&mut s);
-        } else {
-            ui.text_edit_singleline(&mut s);
-        }
-    }
-
     impl InspectorPrimitive for super::SharedStr {
         fn ui(
             &mut self,
             ui: &mut egui::Ui,
-            _: &dyn std::any::Any,
-            _: egui::Id,
-            _: InspectorUi<'_, '_>,
+            options: &dyn std::any::Any,
+            id: egui::Id,
+            env: InspectorUi<'_, '_>,
         ) -> bool {
-            inspector_ui(self, ui);
-            false
+            let mut value = self.as_str().to_owned();
+            let result = InspectorPrimitive::ui(&mut value, ui, options, id, env);
+            *self = value.into();
+            result
         }
 
         fn ui_readonly(
@@ -279,7 +273,11 @@ mod inspector {
             _: egui::Id,
             _: InspectorUi<'_, '_>,
         ) {
-            inspector_ui(self, ui);
+            if self.contains('\n') {
+                ui.text_edit_multiline(&mut self.as_str());
+            } else {
+                ui.text_edit_singleline(&mut self.as_str());
+            }
         }
     }
 }

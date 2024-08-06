@@ -1,14 +1,11 @@
+use super::{PointerButtonEvent, PointerMovedEvent};
 use crate::ux::states::*;
 use bevy_ecs::prelude::*;
+use digilogic_core::components::Viewport;
+use digilogic_core::spatial_index::SpatialIndex;
+use digilogic_core::transform::{BoundingBox, Vec2};
+use digilogic_core::{fixed, Fixed};
 use log::debug;
-
-use digilogic_core::{
-    components::Viewport,
-    spatial_index::SpatialIndex,
-    transform::{BoundingBox, Vec2i},
-};
-
-use super::{PointerButtonEvent, PointerMovedEvent};
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) struct MouseFSM {
@@ -41,7 +38,7 @@ fn root_fsm_system(
     );
 }
 
-const MOUSE_POS_FUDGE: u32 = 2;
+const MOUSE_POS_FUDGE: Fixed = fixed!(2);
 
 fn hover_system(
     trigger: Trigger<PointerMovedEvent>,
@@ -51,9 +48,9 @@ fn hover_system(
     let viewport = trigger.entity();
     let position = trigger.event().0;
     let bounds = BoundingBox::from_center_half_size(
-        Vec2i {
-            x: position.x as i32,
-            y: position.y as i32,
+        Vec2 {
+            x: Fixed::try_from_f32(position.x).unwrap(),
+            y: Fixed::try_from_f32(position.y).unwrap(),
         },
         MOUSE_POS_FUDGE,
         MOUSE_POS_FUDGE,

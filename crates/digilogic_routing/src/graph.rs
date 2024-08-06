@@ -5,6 +5,7 @@ use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
+use digilogic_core::Fixed;
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 
@@ -70,14 +71,14 @@ impl Default for Directions {
 #[derive(Debug, Default, Clone, Copy)]
 #[repr(C)]
 struct Anchor {
-    position: Vec2i,
+    position: Vec2,
     bounding_box: Option<usize>,
     connect_directions: Directions,
 }
 
 impl Anchor {
     #[inline]
-    const fn new(position: Vec2i) -> Self {
+    const fn new(position: Vec2) -> Self {
         Self {
             position,
             bounding_box: None,
@@ -86,11 +87,7 @@ impl Anchor {
     }
 
     #[inline]
-    const fn new_port(
-        position: Vec2i,
-        bounding_box: usize,
-        connect_directions: Directions,
-    ) -> Self {
+    const fn new_port(position: Vec2, bounding_box: usize, connect_directions: Directions) -> Self {
         Self {
             position,
             bounding_box: Some(bounding_box),
@@ -176,7 +173,7 @@ impl IndexMut<Direction> for NeighborList {
 #[repr(C)]
 pub struct Node {
     /// The position of the node.
-    pub position: Vec2i,
+    pub position: Vec2,
     /// The neighbors of the node.
     pub(crate) neighbors: NeighborList,
     /// Whether this node was created from an anchor.
@@ -223,7 +220,7 @@ impl NodeList {
     }
 
     #[inline]
-    fn push(&mut self, position: Vec2i, is_port: bool, legal_directions: Directions) -> NodeIndex {
+    fn push(&mut self, position: Vec2, is_port: bool, legal_directions: Directions) -> NodeIndex {
         let index: NodeIndex = self.0.len().try_into().expect("too many nodes");
         assert_ne!(index, INVALID_NODE_INDEX, "too many nodes");
 
@@ -257,15 +254,15 @@ impl IndexMut<NodeIndex> for NodeList {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct HorizontalBoundingBox {
     index: usize,
-    min_x: i32,
-    max_x: i32,
+    min_x: Fixed,
+    max_x: Fixed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerticalBoundingBox {
     index: usize,
-    min_y: i32,
-    max_y: i32,
+    min_y: Fixed,
+    max_y: Fixed,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -303,12 +300,12 @@ impl BoundingBoxList {
     }
 
     #[inline]
-    fn iter_containing_horizontal(&self, y: i32) -> ContainingSegmentIter<HorizontalBoundingBox> {
+    fn iter_containing_horizontal(&self, y: Fixed) -> ContainingSegmentIter<HorizontalBoundingBox> {
         self.horizontal_bounding_boxes.iter_containing(y)
     }
 
     #[inline]
-    fn iter_containing_vertical(&self, x: i32) -> ContainingSegmentIter<VerticalBoundingBox> {
+    fn iter_containing_vertical(&self, x: Fixed) -> ContainingSegmentIter<VerticalBoundingBox> {
         self.vertical_bounding_boxes.iter_containing(x)
     }
 }
@@ -316,8 +313,8 @@ impl BoundingBoxList {
 /// Determines if two horizontally aligned points have a sightline to each other.
 fn points_have_horizontal_sightline(
     bounding_boxes: ContainingSegmentIter<HorizontalBoundingBox>,
-    x1: i32,
-    x2: i32,
+    x1: Fixed,
+    x2: Fixed,
     ignore_box: Option<usize>,
 ) -> bool {
     assert!(x1 < x2);
@@ -340,8 +337,8 @@ fn points_have_horizontal_sightline(
 /// Determines if two vertically aligned points have a sightline to each other.
 fn points_have_vertical_sightline(
     bounding_boxes: ContainingSegmentIter<VerticalBoundingBox>,
-    y1: i32,
-    y2: i32,
+    y1: Fixed,
+    y2: Fixed,
     ignore_box: Option<usize>,
 ) -> bool {
     assert!(y1 < y2);
@@ -365,8 +362,8 @@ fn points_have_vertical_sightline(
 /// that shares a sightline with the given point (x2, y).
 fn find_neg_x_cutoff(
     bounding_boxes: ContainingSegmentIter<HorizontalBoundingBox>,
-    x1_coords: &[i32],
-    x2: i32,
+    x1_coords: &[Fixed],
+    x2: Fixed,
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
@@ -394,8 +391,8 @@ fn find_neg_x_cutoff(
 /// that shares a sightline with the given point (x1, y).
 fn find_pos_x_cutoff(
     bounding_boxes: ContainingSegmentIter<HorizontalBoundingBox>,
-    x1: i32,
-    x2_coords: &[i32],
+    x1: Fixed,
+    x2_coords: &[Fixed],
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
@@ -423,8 +420,8 @@ fn find_pos_x_cutoff(
 /// that shares a sightline with the given point (x, y2).
 fn find_neg_y_cutoff(
     bounding_boxes: ContainingSegmentIter<VerticalBoundingBox>,
-    y1_coords: &[i32],
-    y2: i32,
+    y1_coords: &[Fixed],
+    y2: Fixed,
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
@@ -452,8 +449,8 @@ fn find_neg_y_cutoff(
 /// that shares a sightline with the given point (x, y1).
 fn find_pos_y_cutoff(
     bounding_boxes: ContainingSegmentIter<VerticalBoundingBox>,
-    y1: i32,
-    y2_coords: &[i32],
+    y1: Fixed,
+    y2_coords: &[Fixed],
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
@@ -478,9 +475,9 @@ fn find_pos_y_cutoff(
 }
 
 fn get_or_insert_node(
-    node_map: &mut HashMap<Vec2i, NodeIndex>,
+    node_map: &mut HashMap<Vec2, NodeIndex>,
     nodes: &mut NodeList,
-    point: Vec2i,
+    point: Vec2,
 ) -> (u32, bool) {
     use std::collections::hash_map::Entry;
 
@@ -499,9 +496,9 @@ fn get_or_insert_node(
 }
 
 struct ScanXData<'a> {
-    node_map: &'a mut HashMap<Vec2i, NodeIndex>,
+    node_map: &'a mut HashMap<Vec2, NodeIndex>,
     nodes: &'a mut NodeList,
-    x_coords: &'a [i32],
+    x_coords: &'a [Fixed],
     x_index: usize,
     bounding_boxes: ContainingSegmentIter<'a, HorizontalBoundingBox>,
     anchor: Anchor,
@@ -531,7 +528,7 @@ fn scan_neg_x(
     // Create edges for all nodes between `neg_x_cutoff` and `x_index`.
     let mut prev_index = anchor_index;
     for x in x_coords[neg_x_cutoff..x_index].iter().copied().rev() {
-        let current_point = Vec2i {
+        let current_point = Vec2 {
             x,
             y: anchor.position.y,
         };
@@ -572,7 +569,7 @@ fn scan_pos_x(
     // Create edges for all nodes between `x_index` and `pos_x_cutoff`.
     let mut prev_index = anchor_index;
     for x in x_coords[(x_index + 1)..pos_x_cutoff].iter().copied() {
-        let current_point = Vec2i {
+        let current_point = Vec2 {
             x,
             y: anchor.position.y,
         };
@@ -591,9 +588,9 @@ fn scan_pos_x(
 }
 
 struct ScanYData<'a> {
-    node_map: &'a mut HashMap<Vec2i, NodeIndex>,
+    node_map: &'a mut HashMap<Vec2, NodeIndex>,
     nodes: &'a mut NodeList,
-    y_coords: &'a [i32],
+    y_coords: &'a [Fixed],
     y_index: usize,
     bounding_boxes: ContainingSegmentIter<'a, VerticalBoundingBox>,
     anchor: Anchor,
@@ -623,7 +620,7 @@ fn scan_neg_y(
     // Create edges for all nodes between `neg_y_cutoff` and `y_index`.
     let mut prev_index = anchor_index;
     for y in y_coords[neg_y_cutoff..y_index].iter().copied().rev() {
-        let current_point = Vec2i {
+        let current_point = Vec2 {
             x: anchor.position.x,
             y,
         };
@@ -664,7 +661,7 @@ fn scan_pos_y(
     // Create edges for all nodes between `y_index` and `pos_y_cutoff`.
     let mut prev_index = anchor_index;
     for y in y_coords[(y_index + 1)..pos_y_cutoff].iter().copied() {
-        let current_point = Vec2i {
+        let current_point = Vec2 {
             x: anchor.position.x,
             y,
         };
@@ -685,9 +682,9 @@ fn scan_pos_y(
 #[derive(Default, Clone)]
 pub struct GraphData {
     pub(crate) bounding_boxes: BoundingBoxList,
-    x_coords: Vec<i32>,
-    y_coords: Vec<i32>,
-    node_map: HashMap<Vec2i, NodeIndex>,
+    x_coords: Vec<Fixed>,
+    y_coords: Vec<Fixed>,
+    node_map: HashMap<Vec2, NodeIndex>,
     pub(crate) nodes: NodeList,
 }
 
@@ -939,21 +936,21 @@ impl GraphData {
 
         let corner_anchors = symbols.clone().flat_map(|(bb, _)| {
             [
-                Anchor::new(Vec2i {
-                    x: bb.min().x - 1,
-                    y: bb.min().y - 1,
+                Anchor::new(Vec2 {
+                    x: bb.min().x - Fixed::EPSILON,
+                    y: bb.min().y - Fixed::EPSILON,
                 }),
-                Anchor::new(Vec2i {
-                    x: bb.min().x - 1,
-                    y: bb.max().y + 1,
+                Anchor::new(Vec2 {
+                    x: bb.min().x - Fixed::EPSILON,
+                    y: bb.max().y + Fixed::EPSILON,
                 }),
-                Anchor::new(Vec2i {
-                    x: bb.max().x + 1,
-                    y: bb.min().y - 1,
+                Anchor::new(Vec2 {
+                    x: bb.max().x + Fixed::EPSILON,
+                    y: bb.min().y - Fixed::EPSILON,
                 }),
-                Anchor::new(Vec2i {
-                    x: bb.max().x + 1,
-                    y: bb.max().y + 1,
+                Anchor::new(Vec2 {
+                    x: bb.max().x + Fixed::EPSILON,
+                    y: bb.max().y + Fixed::EPSILON,
                 }),
             ]
         });
@@ -1035,7 +1032,7 @@ impl GraphData {
 
     /// Finds the index of the node at the given position.
     #[inline]
-    pub(crate) fn find_node(&self, position: Vec2i) -> Option<NodeIndex> {
+    pub(crate) fn find_node(&self, position: Vec2) -> Option<NodeIndex> {
         self.node_map.get(&position).copied()
     }
 }

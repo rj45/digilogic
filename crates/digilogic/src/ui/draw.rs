@@ -54,8 +54,8 @@ pub fn draw(
                 let transform = transform.copied().unwrap_or_default();
                 let transform = Affine::rotate(transform.rotation.radians())
                     .then_translate(Vec2::new(
-                        transform.translation.x as f64,
-                        transform.translation.y as f64,
+                        transform.translation.x.to_f64(),
+                        transform.translation.y.to_f64(),
                     ))
                     .then_translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
                     .then_scale(pan_zoom.zoom as f64);
@@ -105,10 +105,10 @@ pub fn draw_bounding_boxes(
                     &Brush::Solid(Color::RED),
                     None,
                     &vello::kurbo::Rect::new(
-                        bounds.min.x as f64,
-                        bounds.min.y as f64,
-                        bounds.max.x as f64,
-                        bounds.max.y as f64,
+                        bounds.min.x.to_f64(),
+                        bounds.min.y.to_f64(),
+                        bounds.max.x.to_f64(),
+                        bounds.max.y.to_f64(),
                     ),
                 );
             }

@@ -81,9 +81,9 @@ fn translate_symbol(
     let mut symbol_builder = symbol_builder.unwrap();
     symbol_builder
         .designator_number(symbol.number)
-        .position(Vec2i {
-            x: symbol.position[0] as i32,
-            y: symbol.position[1] as i32,
+        .position(Vec2 {
+            x: symbol.position[0],
+            y: symbol.position[1],
         })
         .build(commands, circuit_id);
     for port in symbol_builder.ports().iter() {
@@ -155,9 +155,9 @@ fn translate_endpoint(
     let mut endpoint_ent = commands.spawn(EndpointBundle {
         transform: TransformBundle {
             transform: Transform {
-                translation: Vec2i {
-                    x: endpoint.position[0] as i32,
-                    y: endpoint.position[1] as i32,
+                translation: Vec2 {
+                    x: endpoint.position[0],
+                    y: endpoint.position[1],
                 },
                 ..Default::default()
             },
@@ -187,9 +187,9 @@ fn translate_waypoint(
         .spawn(WaypointBundle {
             transform: TransformBundle {
                 transform: Transform {
-                    translation: Vec2i {
-                        x: waypoint.position[0] as i32,
-                        y: waypoint.position[1] as i32,
+                    translation: Vec2 {
+                        x: waypoint.position[0],
+                        y: waypoint.position[1],
                     },
                     ..Default::default()
                 },

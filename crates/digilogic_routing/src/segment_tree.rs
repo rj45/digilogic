@@ -1,15 +1,16 @@
+use digilogic_core::{fixed, Fixed};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Segment<T> {
-    pub start_inclusive: i32,
-    pub end_inclusive: i32,
+    pub start_inclusive: Fixed,
+    pub end_inclusive: Fixed,
     pub value: T,
 }
 
 impl<T> Segment<T> {
     #[inline]
-    fn len(&self) -> i32 {
+    fn len(&self) -> Fixed {
         assert!(self.end_inclusive >= self.start_inclusive);
         self.end_inclusive - self.start_inclusive
     }
@@ -18,7 +19,7 @@ impl<T> Segment<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SegmentTree<T> {
     segments: Vec<Segment<T>>,
-    max_segment_len: i32,
+    max_segment_len: Fixed,
 }
 
 impl<T> Default for SegmentTree<T> {
@@ -26,7 +27,7 @@ impl<T> Default for SegmentTree<T> {
     fn default() -> Self {
         Self {
             segments: Vec::new(),
-            max_segment_len: 0,
+            max_segment_len: fixed!(0),
         }
     }
 }
@@ -40,10 +41,15 @@ impl<T: std::fmt::Debug> SegmentTree<T> {
         self.segments.extend(segments.into_iter());
         self.segments
             .sort_unstable_by_key(|segment| segment.start_inclusive);
-        self.max_segment_len = self.segments.iter().map(Segment::len).max().unwrap_or(0);
+        self.max_segment_len = self
+            .segments
+            .iter()
+            .map(Segment::len)
+            .max()
+            .unwrap_or_default();
     }
 
-    fn find_start_index(&self, position: i32) -> usize {
+    fn find_start_index(&self, position: Fixed) -> usize {
         match self.segments.binary_search_by(|segment| {
             (segment.start_inclusive + self.max_segment_len).cmp(&position)
         }) {
@@ -62,7 +68,7 @@ impl<T: std::fmt::Debug> SegmentTree<T> {
         }
     }
 
-    fn find_end_index(&self, position: i32) -> usize {
+    fn find_end_index(&self, position: Fixed) -> usize {
         match self
             .segments
             .binary_search_by(|segment| segment.start_inclusive.cmp(&position))
@@ -82,7 +88,7 @@ impl<T: std::fmt::Debug> SegmentTree<T> {
         }
     }
 
-    pub fn iter_containing(&self, position: i32) -> ContainingSegmentIter<'_, T> {
+    pub fn iter_containing(&self, position: Fixed) -> ContainingSegmentIter<'_, T> {
         let start_index = self.find_start_index(position);
         let end_index = self.find_end_index(position);
 
@@ -116,7 +122,7 @@ impl<T: std::fmt::Debug> SegmentTree<T> {
 #[derive(Clone)]
 pub struct ContainingSegmentIter<'a, T> {
     inner: std::slice::Iter<'a, Segment<T>>,
-    position: i32,
+    position: Fixed,
 }
 
 impl<'a, T> Iterator for ContainingSegmentIter<'a, T> {
@@ -143,55 +149,55 @@ mod tests {
     fn single_outside_before() {
         let mut tree = SegmentTree::default();
         tree.build([Segment {
-            start_inclusive: -10,
-            end_inclusive: 10,
+            start_inclusive: fixed!(-10),
+            end_inclusive: fixed!(10),
             value: (),
         }]);
-        assert_eq!(tree.iter_containing(-11).count(), 0);
+        assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
     }
 
     #[test]
     fn single_outside_after() {
         let mut tree = SegmentTree::default();
         tree.build([Segment {
-            start_inclusive: -10,
-            end_inclusive: 10,
+            start_inclusive: fixed!(-10),
+            end_inclusive: fixed!(10),
             value: (),
         }]);
-        assert_eq!(tree.iter_containing(11).count(), 0);
+        assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
     }
 
     #[test]
     fn single_inside_at_start() {
         let mut tree = SegmentTree::default();
         tree.build([Segment {
-            start_inclusive: -10,
-            end_inclusive: 10,
+            start_inclusive: fixed!(-10),
+            end_inclusive: fixed!(10),
             value: (),
         }]);
-        assert_eq!(tree.iter_containing(-10).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(-10)).count(), 1);
     }
 
     #[test]
     fn single_inside_at_end() {
         let mut tree = SegmentTree::default();
         tree.build([Segment {
-            start_inclusive: -10,
-            end_inclusive: 10,
+            start_inclusive: fixed!(-10),
+            end_inclusive: fixed!(10),
             value: (),
         }]);
-        assert_eq!(tree.iter_containing(10).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(10)).count(), 1);
     }
 
     #[test]
     fn single_inside() {
         let mut tree = SegmentTree::default();
         tree.build([Segment {
-            start_inclusive: -10,
-            end_inclusive: 10,
+            start_inclusive: fixed!(-10),
+            end_inclusive: fixed!(10),
             value: (),
         }]);
-        assert_eq!(tree.iter_containing(0).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(0)).count(), 1);
     }
 
     #[test]
@@ -199,12 +205,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         tree.build(
             [Segment {
-                start_inclusive: -10,
-                end_inclusive: 10,
+                start_inclusive: fixed!(-10),
+                end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
-        assert_eq!(tree.iter_containing(-11).count(), 0);
+        assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
     }
 
     #[test]
@@ -212,12 +218,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         tree.build(
             [Segment {
-                start_inclusive: -10,
-                end_inclusive: 10,
+                start_inclusive: fixed!(-10),
+                end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
-        assert_eq!(tree.iter_containing(11).count(), 0);
+        assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
     }
 
     #[test]
@@ -225,12 +231,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         tree.build(
             [Segment {
-                start_inclusive: -10,
-                end_inclusive: 10,
+                start_inclusive: fixed!(-10),
+                end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
-        assert_eq!(tree.iter_containing(-10).count(), 100);
+        assert_eq!(tree.iter_containing(fixed!(-10)).count(), 100);
     }
 
     #[test]
@@ -238,12 +244,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         tree.build(
             [Segment {
-                start_inclusive: -10,
-                end_inclusive: 10,
+                start_inclusive: fixed!(-10),
+                end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
-        assert_eq!(tree.iter_containing(10).count(), 100);
+        assert_eq!(tree.iter_containing(fixed!(10)).count(), 100);
     }
 
     #[test]
@@ -251,12 +257,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         tree.build(
             [Segment {
-                start_inclusive: -10,
-                end_inclusive: 10,
+                start_inclusive: fixed!(-10),
+                end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
-        assert_eq!(tree.iter_containing(0).count(), 100);
+        assert_eq!(tree.iter_containing(fixed!(0)).count(), 100);
     }
 
     #[test]
@@ -264,30 +270,30 @@ mod tests {
         let mut tree = SegmentTree::default();
         tree.build([
             Segment {
-                start_inclusive: -20,
-                end_inclusive: -10,
+                start_inclusive: fixed!(-20),
+                end_inclusive: fixed!(-10),
                 value: (),
             },
             Segment {
-                start_inclusive: -10,
-                end_inclusive: 10,
+                start_inclusive: fixed!(-10),
+                end_inclusive: fixed!(10),
                 value: (),
             },
             Segment {
-                start_inclusive: 10,
-                end_inclusive: 20,
+                start_inclusive: fixed!(10),
+                end_inclusive: fixed!(20),
                 value: (),
             },
         ]);
 
-        assert_eq!(tree.iter_containing(-21).count(), 0);
-        assert_eq!(tree.iter_containing(-11).count(), 1);
-        assert_eq!(tree.iter_containing(-10).count(), 2);
-        assert_eq!(tree.iter_containing(-9).count(), 1);
-        assert_eq!(tree.iter_containing(0).count(), 1);
-        assert_eq!(tree.iter_containing(9).count(), 1);
-        assert_eq!(tree.iter_containing(10).count(), 2);
-        assert_eq!(tree.iter_containing(11).count(), 1);
-        assert_eq!(tree.iter_containing(21).count(), 0);
+        assert_eq!(tree.iter_containing(fixed!(-21)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed!(-11)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(-10)).count(), 2);
+        assert_eq!(tree.iter_containing(fixed!(-9)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(0)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(9)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(10)).count(), 2);
+        assert_eq!(tree.iter_containing(fixed!(11)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed!(21)).count(), 0);
     }
 }
