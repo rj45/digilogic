@@ -54,10 +54,14 @@ pub(crate) fn update_visibility(
                 next_parent = parent;
             }
 
-            comp_vis.0 = match vis {
+            let new_comp_vis = ComputedVisibility(match vis {
                 Visibility::Inherit => true,
                 Visibility::Visible => true,
                 Visibility::Hidden => false,
-            };
+            });
+
+            if *comp_vis != new_comp_vis {
+                *comp_vis = new_comp_vis;
+            }
         });
 }
