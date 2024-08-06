@@ -122,14 +122,14 @@ fn scale_path(mut path: BezPath, scale: f64, translate: (f64, f64)) -> BezPath {
 }
 
 const GATE_SCALE: f64 = 12.5;
-const GATE_TRANSLATE: (f64, f64) = (-32.5, -28.5);
+const GATE_TRANSLATE: (f64, f64) = (-34.5, -29.5);
 
-const NOT_SCALE: f64 = 8.0;
-const NOT_TRANSLATE: (f64, f64) = (-21.5, -22.0);
+const NOT_SCALE: f64 = 7.75;
+const NOT_TRANSLATE: (f64, f64) = (-22.0, -22.75);
 
-const INOUT_SCALE: f64 = 3.0;
-const INPUT_TRANSLATE: (f64, f64) = (-55.0, -19.5);
-const OUTPUT_TRANSLATE: (f64, f64) = (-15.0, -19.5);
+const INOUT_SCALE: f64 = 2.5;
+const INPUT_TRANSLATE: (f64, f64) = (-46.5, -17.75);
+const OUTPUT_TRANSLATE: (f64, f64) = (-12.0, -17.75);
 
 pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolShapes>) {
     symbol_svgs.0 = vec![
@@ -144,9 +144,13 @@ pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolShapes>) {
         SymbolShape {
             paths: vec![PathInfo {
                 kind: PathKind::STROKE,
-                path: vello::kurbo::Circle::new((1.5, 1.5), 1.5)
-                    .path_elements(0.01)
-                    .collect(),
+                path: scale_path(
+                    vello::kurbo::Circle::new((1.5, 1.5), 1.5)
+                        .path_elements(0.01)
+                        .collect(),
+                    1.0,
+                    (-1.5, -1.5),
+                ),
             }],
         },
         // And -- from schemalib-and2-l.svg
