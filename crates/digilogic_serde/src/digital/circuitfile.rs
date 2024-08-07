@@ -49,10 +49,23 @@ pub struct VisualElements {
     pub visual_element: Vec<VisualElement>,
 }
 
+/// NOTE: Must be kept in sync with SymbolKind!
+#[derive(Serialize, Deserialize, Copy, Clone)]
+#[serde(deny_unknown_fields)]
+pub enum ElementName {
+    And,
+    Or,
+    #[serde(rename = "XOr")]
+    Xor,
+    Not,
+    In,
+    Out,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct VisualElement {
-    pub element_name: String,
+    pub element_name: ElementName,
     pub element_attributes: Attributes,
     pub pos: Point,
 }

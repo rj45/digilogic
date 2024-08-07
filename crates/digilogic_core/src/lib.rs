@@ -34,7 +34,7 @@ impl bevy_app::Plugin for CorePlugin {
         }
 
         app.register_type::<components::PortID>()
-            .register_type::<components::SymbolKindIndex>()
+            .register_type::<components::SymbolKind>()
             .register_type::<components::SymbolID>()
             .register_type::<components::WaypointID>()
             .register_type::<components::EndpointID>()

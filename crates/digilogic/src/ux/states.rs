@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::*;
-use digilogic_core::components::{EndpointID, SymbolKindIndex};
+use digilogic_core::components::{EndpointID, SymbolKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum RootMouseState {
@@ -31,7 +31,7 @@ pub enum MoveMouseState {
 pub enum AddMouseState {
     #[default]
     None,
-    Adding(SymbolKindIndex),
+    Adding(SymbolKind),
     Added(Entity),
     Cancelled,
 }

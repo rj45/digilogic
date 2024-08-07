@@ -17,8 +17,8 @@ struct PortDef {
 }
 
 #[derive(Clone)]
-pub struct SymbolKind {
-    index: SymbolKindIndex,
+pub struct SymbolDef {
+    kind: SymbolKind,
     name: SharedStr,
     designator_prefix: SharedStr,
     ports: &'static [PortDef],
@@ -85,9 +85,9 @@ const GATE_PORTS_1_INPUT: &[PortDef] = &[
     },
 ];
 
-const KINDS: &[SymbolKind] = &[
-    SymbolKind {
-        index: SymbolKindIndex(0),
+const KINDS: &[SymbolDef] = &[
+    SymbolDef {
+        kind: SymbolKind::And,
         name: SharedStr::new_static("AND"),
         designator_prefix: SharedStr::new_static("U"),
         bounding_box: BoundingBox::from_top_left_size(
@@ -101,8 +101,8 @@ const KINDS: &[SymbolKind] = &[
         shape: Shape::And,
         ports: GATE_PORTS_2_INPUT,
     },
-    SymbolKind {
-        index: SymbolKindIndex(0),
+    SymbolDef {
+        kind: SymbolKind::Or,
         name: SharedStr::new_static("OR"),
         designator_prefix: SharedStr::new_static("U"),
         bounding_box: BoundingBox::from_top_left_size(
@@ -116,8 +116,8 @@ const KINDS: &[SymbolKind] = &[
         shape: Shape::Or,
         ports: GATE_PORTS_2_INPUT,
     },
-    SymbolKind {
-        index: SymbolKindIndex(0),
+    SymbolDef {
+        kind: SymbolKind::Xor,
         name: SharedStr::new_static("XOR"),
         designator_prefix: SharedStr::new_static("U"),
         bounding_box: BoundingBox::from_top_left_size(
@@ -131,8 +131,8 @@ const KINDS: &[SymbolKind] = &[
         shape: Shape::Xor,
         ports: GATE_PORTS_2_INPUT,
     },
-    SymbolKind {
-        index: SymbolKindIndex(0),
+    SymbolDef {
+        kind: SymbolKind::Not,
         name: SharedStr::new_static("NOT"),
         designator_prefix: SharedStr::new_static("U"),
         bounding_box: BoundingBox::from_top_left_size(
@@ -146,8 +146,8 @@ const KINDS: &[SymbolKind] = &[
         shape: Shape::Not,
         ports: GATE_PORTS_1_INPUT,
     },
-    SymbolKind {
-        index: SymbolKindIndex(0),
+    SymbolDef {
+        kind: SymbolKind::In,
         name: SharedStr::new_static("IN"),
         designator_prefix: SharedStr::new_static("J"),
         bounding_box: BoundingBox::from_top_left_size(
@@ -170,8 +170,8 @@ const KINDS: &[SymbolKind] = &[
             directions: Directions::POS_X,
         }],
     },
-    SymbolKind {
-        index: SymbolKindIndex(0),
+    SymbolDef {
+        kind: SymbolKind::Out,
         name: SharedStr::new_static("OUT"),
         designator_prefix: SharedStr::new_static("J"),
         bounding_box: BoundingBox::from_top_left_size(
@@ -203,7 +203,7 @@ pub struct PortInfo {
 
 pub struct SymbolBuilder<'a> {
     registry: &'a SymbolRegistry,
-    kind_index: usize,
+    kind: SymbolKind,
     name: Option<SharedStr>,
     designator_number: Option<u32>,
     position: Option<Vec2>,
@@ -213,37 +213,38 @@ pub struct SymbolBuilder<'a> {
 
 #[derive(Resource)]
 pub struct SymbolRegistry {
-    kinds: Vec<SymbolKind>,
+    kinds: Vec<SymbolDef>,
 }
 
 impl SymbolRegistry {
-    pub fn get(&self, name: &SharedStr) -> Option<SymbolBuilder> {
-        let kind = self.kinds.iter().position(|kind| kind.name == *name);
-        kind.map(|kind| SymbolBuilder {
+    pub fn get(&self, kind: SymbolKind) -> SymbolBuilder {
+        SymbolBuilder {
             registry: self,
-            kind_index: kind,
+            kind,
             name: None,
             designator_number: None,
             position: None,
             bit_width: None,
             ports: SmallVec::new(),
-        })
+        }
     }
 
-    pub fn get_by_index(&self, index: usize) -> Option<&SymbolKind> {
+    pub fn get_by_name(&self, name: &SharedStr) -> Option<SymbolBuilder> {
+        let def = self.kinds.iter().find(|kind| kind.name == *name);
+
+        def.map(|kind| self.get(kind.kind))
+    }
+
+    pub fn get_by_index(&self, index: usize) -> Option<&SymbolDef> {
         self.kinds.get(index)
     }
 }
 
 impl Default for SymbolRegistry {
     fn default() -> Self {
-        let mut list = Self {
+        let list = Self {
             kinds: KINDS.to_vec(),
         };
-
-        for (i, kind) in list.kinds.iter_mut().enumerate() {
-            kind.index = SymbolKindIndex(i);
-        }
 
         list
     }
@@ -275,14 +276,14 @@ impl SymbolBuilder<'_> {
     }
 
     pub fn build(&mut self, commands: &mut Commands, circuit_id: Entity) -> Entity {
-        let kind = self.registry.kinds.get(self.kind_index).unwrap();
+        let kind = self.registry.kinds.get(self.kind as usize).unwrap();
 
         let symbol_id = commands
             .spawn(SymbolBundle {
                 name: Name(self.name.as_ref().unwrap_or(&kind.name).clone()),
                 designator_prefix: DesignatorPrefix(kind.designator_prefix.clone()),
                 designator_number: DesignatorNumber(self.designator_number.unwrap_or_default()),
-                symbol_kind: SymbolKindIndex(kind.index.0),
+                symbol_kind: kind.kind,
                 shape: kind.shape,
                 transform: TransformBundle {
                     transform: Transform {

@@ -11,7 +11,14 @@ use smallvec::SmallVec;
 pub struct PortID(pub Entity);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
-pub struct SymbolKindIndex(pub usize);
+pub enum SymbolKind {
+    And,
+    Or,
+    Xor,
+    Not,
+    In,
+    Out,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct SymbolID(pub Entity);

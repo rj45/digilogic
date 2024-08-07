@@ -56,7 +56,7 @@ pub struct SymbolBundle {
     pub designator_number: DesignatorNumber,
 
     /// The SymbolKind that the Symbol is an instance of
-    pub symbol_kind: SymbolKindIndex,
+    pub symbol_kind: SymbolKind,
 
     pub shape: Shape,
     pub transform: TransformBundle,

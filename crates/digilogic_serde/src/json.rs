@@ -59,7 +59,7 @@ fn translate_symbol(
     symbols: &SymbolRegistry,
 ) -> Result<(), anyhow::Error> {
     let symbol_builder = if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
-        symbols.get(kind_name)
+        symbols.get_by_name(kind_name)
     } else if let Some(_) = symbol.symbol_kind_id.as_ref() {
         return Err(anyhow::anyhow!(
             "Symbol {} has SymbolKindID but it's not supported",
