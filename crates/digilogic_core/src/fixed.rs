@@ -238,6 +238,14 @@ macro_rules! to_float_fn {
 #[derive(Debug, Clone)]
 pub struct ToFixedError;
 
+impl fmt::Display for ToFixedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("out of range fixed point conversion attempted")
+    }
+}
+
+impl std::error::Error for ToFixedError {}
+
 from_fn!(from_u8 : u8);
 from_fn!(from_i8 : i8);
 from_fn!(from_u16 : u16);
@@ -255,6 +263,14 @@ try_from_float_fn!(try_from_f64 : f64);
 
 #[derive(Debug, Clone)]
 pub struct FromFixedError;
+
+impl fmt::Display for FromFixedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("out of range fixed point conversion attempted")
+    }
+}
+
+impl std::error::Error for FromFixedError {}
 
 try_to_u_fn!(try_to_u8 : u8);
 try_to_s_fn!(try_to_i8 : i8);
