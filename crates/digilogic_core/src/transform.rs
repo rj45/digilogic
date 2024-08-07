@@ -3,9 +3,11 @@ use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
+use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect)]
 #[repr(C)]
 pub struct Vec2 {
     pub x: Fixed,
@@ -130,7 +132,7 @@ impl DivAssign<Fixed> for Vec2 {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect)]
 #[repr(u8)]
 pub enum Rotation {
     #[default]
@@ -189,7 +191,7 @@ impl Vec2 {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Component, Reflect)]
 pub struct Transform {
     pub translation: Vec2,
     pub rotation: Rotation,
@@ -248,7 +250,9 @@ pub struct TransformBundle {
 }
 
 /// The bounding box of the entity relative to its center
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
+#[derive(
+    Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Component, Reflect,
+)]
 #[repr(C)]
 pub struct BoundingBox {
     pub min: Vec2,
@@ -422,12 +426,115 @@ impl bvh_arena::BoundingVolume for BoundingBox {
 /// The computed absolute bounding box of the entity
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Deref, Component, Reflect)]
 #[repr(transparent)]
-pub struct AbsoluteBoundingBox(pub BoundingBox);
+pub struct AbsoluteBoundingBox(BoundingBox);
 
 #[derive(Default, Bundle)]
 pub struct BoundingBoxBundle {
     pub bounding_box: BoundingBox,
     pub absolute_bounding_box: AbsoluteBoundingBox,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Component, Reflect)]
+#[repr(u8)]
+pub enum Direction {
+    PosX = 0,
+    NegY = 1,
+    NegX = 2,
+    PosY = 3,
+}
+
+impl Direction {
+    pub const ALL: [Self; 4] = [Self::PosX, Self::NegY, Self::NegX, Self::PosY];
+
+    /// Gets the opposite direction of this one.
+    #[inline]
+    pub const fn opposite(self) -> Self {
+        match self {
+            Self::PosX => Self::NegX,
+            Self::NegX => Self::PosX,
+            Self::PosY => Self::NegY,
+            Self::NegY => Self::PosY,
+        }
+    }
+
+    #[inline]
+    pub fn rotate(self, rotation: Rotation) -> Self {
+        match ((self as u8) + (rotation as u8)) % 4 {
+            0 => Self::PosX,
+            1 => Self::NegY,
+            2 => Self::NegX,
+            3 => Self::PosY,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deref, Component, Reflect)]
+#[repr(transparent)]
+pub struct AbsoluteDirection(Direction);
+
+impl Default for AbsoluteDirection {
+    #[inline]
+    fn default() -> Self {
+        Self(Direction::PosX)
+    }
+}
+
+#[derive(Bundle)]
+pub struct DirectionBundle {
+    pub direction: Direction,
+    pub absolute_direction: AbsoluteDirection,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Component, Reflect)]
+    #[repr(transparent)]
+    #[reflect_value]
+    pub struct Directions: u8 {
+        const POS_X = 0x1;
+        const NEG_Y = 0x2;
+        const NEG_X = 0x4;
+        const POS_Y = 0x8;
+
+        const X = Self::POS_X.bits() | Self::NEG_X.bits();
+        const Y = Self::POS_Y.bits() | Self::NEG_Y.bits();
+
+        const NONE = 0;
+        const ALL = Self::X.bits() | Self::Y.bits();
+    }
+}
+
+impl From<Direction> for Directions {
+    #[inline]
+    fn from(value: Direction) -> Self {
+        Self::from_bits(1 << (value as u8)).expect("invalid direction")
+    }
+}
+
+impl Default for Directions {
+    #[inline]
+    fn default() -> Self {
+        Self::ALL
+    }
+}
+
+impl Directions {
+    #[inline]
+    pub fn rotate(self, rotation: Rotation) -> Self {
+        let shifted = self.bits() << (rotation as u8);
+        let rotated = (shifted & 0xF) | (shifted >> 4);
+        Self::from_bits(rotated).expect("invalid rotation")
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Deref, Component, Reflect)]
+#[repr(transparent)]
+pub struct AbsoluteDirections(Directions);
+
+#[derive(Default, Bundle)]
+pub struct DirectionsBundle {
+    pub directions: Directions,
+    pub absolute_directions: AbsoluteDirections,
 }
 
 pub(crate) fn update_transforms(
@@ -457,12 +564,38 @@ pub(crate) fn update_transforms(
             if global_transform.0 != transform {
                 global_transform.0 = transform;
             }
-            if let Some(mut abs_bb) = abs_bb {
-                let bb = bb.copied().unwrap_or_default();
-                let new_abs_bb = bb.transform(transform);
-                if abs_bb.0 != new_abs_bb {
-                    abs_bb.0 = new_abs_bb;
-                }
-            }
         });
+}
+
+pub(crate) fn update_bounding_box(
+    mut query: Query<
+        (&BoundingBox, &mut AbsoluteBoundingBox, &GlobalTransform),
+        Changed<GlobalTransform>,
+    >,
+) {
+    for (bb, mut abs_bb, transform) in query.iter_mut() {
+        abs_bb.0 = bb.transform(**transform);
+    }
+}
+
+pub(crate) fn update_direction(
+    mut query: Query<
+        (&Direction, &mut AbsoluteDirection, &GlobalTransform),
+        Changed<GlobalTransform>,
+    >,
+) {
+    for (dir, mut abs_dir, transform) in query.iter_mut() {
+        abs_dir.0 = dir.rotate(transform.rotation);
+    }
+}
+
+pub(crate) fn update_directions(
+    mut query: Query<
+        (&Directions, &mut AbsoluteDirections, &GlobalTransform),
+        Changed<GlobalTransform>,
+    >,
+) {
+    for (dirs, mut abs_dirs, transform) in query.iter_mut() {
+        abs_dirs.0 = dirs.rotate(transform.rotation);
+    }
 }

@@ -53,28 +53,28 @@ pub enum Shape {
 }
 
 /// A Name for the entity.
-#[derive(Default, Component, Reflect)]
+#[derive(Default, Debug, Component, Reflect)]
 pub struct Name(pub SharedStr);
 
 /// The Reference Designator prefix (like U for ICs, R for resistors, etc.)
-#[derive(Default, Component, Reflect)]
+#[derive(Default, Debug, Component, Reflect)]
 pub struct DesignatorPrefix(pub SharedStr);
 
 /// The Reference Designator number (like 1, 2, 3, etc.)
-#[derive(Default, Component, Reflect)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, Reflect)]
 pub struct DesignatorNumber(pub u32);
 
 /// The Reference Designator suffix (like A, B, C, etc.) if it has one
-#[derive(Default, Component, Reflect)]
+#[derive(Default, Debug, Component, Reflect)]
 pub struct DesignatorSuffix(pub SharedStr);
 
 /// The Number of the entity (pin number, etc.)
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, Reflect)]
 pub struct Number(pub i32);
 
 // The bitwidth of a Port / Symbol / Net.
 // Can be up to 255 bits wide.
-#[derive(Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, Reflect)]
 pub struct BitWidth(pub u8);
 
 /// The list of bits that the entity uses in a Net. The order of the bits becomes

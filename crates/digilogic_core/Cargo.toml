@@ -21,5 +21,6 @@ bevy_derive.workspace = true
 bevy_app.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 smallvec.workspace = true
+bitflags.workspace = true
 static_assertions.workspace = true
 bvh-arena.workspace = true

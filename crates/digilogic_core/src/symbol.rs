@@ -13,6 +13,7 @@ struct PortDef {
     position: Vec2,
     input: bool,
     output: bool,
+    directions: Directions,
 }
 
 #[derive(Clone)]
@@ -37,6 +38,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
         },
         input: true,
         output: false,
+        directions: Directions::NEG_X,
     },
     PortDef {
         name: SharedStr::new_static("B"),
@@ -46,6 +48,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
         },
         input: true,
         output: false,
+        directions: Directions::NEG_X,
     },
     PortDef {
         name: SharedStr::new_static("Y"),
@@ -55,6 +58,7 @@ const GATE_PORTS_2_INPUT: &[PortDef] = &[
         },
         input: false,
         output: true,
+        directions: Directions::POS_X,
     },
 ];
 
@@ -67,6 +71,7 @@ const GATE_PORTS_1_INPUT: &[PortDef] = &[
         },
         input: true,
         output: false,
+        directions: Directions::NEG_X,
     },
     PortDef {
         name: SharedStr::new_static("Y"),
@@ -76,6 +81,7 @@ const GATE_PORTS_1_INPUT: &[PortDef] = &[
         },
         input: false,
         output: true,
+        directions: Directions::POS_X,
     },
 ];
 
@@ -161,6 +167,7 @@ const KINDS: &[SymbolKind] = &[
             },
             input: false,
             output: true,
+            directions: Directions::POS_X,
         }],
     },
     SymbolKind {
@@ -184,6 +191,7 @@ const KINDS: &[SymbolKind] = &[
             },
             input: true,
             output: false,
+            directions: Directions::NEG_X,
         }],
     },
 ];
@@ -297,11 +305,7 @@ impl SymbolBuilder<'_> {
             .ports
             .iter()
             .map(|port| {
-                let id = port.build(
-                    commands,
-                    symbol_id,
-                    self.bit_width.as_ref().unwrap_or(&BitWidth(1)),
-                );
+                let id = port.build(commands, symbol_id, self.bit_width.unwrap_or(BitWidth(1)));
                 PortInfo {
                     name: port.name.clone(),
                     id,
@@ -314,7 +318,7 @@ impl SymbolBuilder<'_> {
 }
 
 impl PortDef {
-    fn build(&self, commands: &mut Commands, symbol_id: Entity, bit_width: &BitWidth) -> Entity {
+    fn build(&self, commands: &mut Commands, symbol_id: Entity, bit_width: BitWidth) -> Entity {
         commands
             .spawn(PortBundle {
                 port: Port,
@@ -325,12 +329,16 @@ impl PortDef {
                         translation: self.position,
                         ..Default::default()
                     },
-                    global_transform: GlobalTransform::default(),
+                    ..Default::default()
                 },
-                bit_width: BitWidth(bit_width.0),
+                bit_width,
                 visibility: VisibilityBundle::default(),
                 bounds: BoundingBoxBundle {
                     bounding_box: BoundingBox::from_half_size(PORT_HALF_WIDTH, PORT_HALF_WIDTH),
+                    ..Default::default()
+                },
+                directions: DirectionsBundle {
+                    directions: self.directions,
                     ..Default::default()
                 },
             })

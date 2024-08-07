@@ -21,6 +21,8 @@ pub struct CorePlugin;
 
 impl bevy_app::Plugin for CorePlugin {
     fn build(&self, app: &mut bevy_app::App) {
+        use bevy_ecs::prelude::*;
+
         app.register_type::<SharedStr>().register_type::<Fixed>();
 
         #[cfg(feature = "inspector")]
@@ -77,12 +79,19 @@ impl bevy_app::Plugin for CorePlugin {
 
         app.add_systems(
             bevy_app::PostUpdate,
-            (
-                transform::update_transforms,
-                visibility::update_visibility,
-                spatial_index::update_spatial_index,
-            ),
+            (transform::update_transforms, visibility::update_visibility),
         );
+        app.add_systems(
+            bevy_app::PostUpdate,
+            (
+                transform::update_bounding_box,
+                transform::update_direction,
+                transform::update_directions,
+            )
+                .after(transform::update_transforms),
+        );
+
+        app.add_systems(bevy_app::PostUpdate, spatial_index::update_spatial_index);
         app.observe(spatial_index::on_remove_update_spatial_index);
     }
 }

@@ -39,7 +39,7 @@ pub(crate) fn update_spatial_index(
     query: Query<(Entity, &AbsoluteBoundingBox), Changed<AbsoluteBoundingBox>>,
 ) {
     query.iter().for_each(|(entity, bounds)| {
-        index.update(entity, bounds.0);
+        index.update(entity, **bounds);
     });
 }
 

@@ -41,7 +41,7 @@ fn route(
     config: Res<RoutingConfig>,
     mut circuits: Query<(&mut Graph, &Children), With<Circuit>>,
     symbols: Query<(&AbsoluteBoundingBox, &Children), With<Symbol>>,
-    ports: Query<&GlobalTransform, With<Port>>,
+    ports: Query<(&GlobalTransform, &AbsoluteDirections), With<Port>>,
     mut nets: Query<(&Net, &mut Vertices)>,
     endpoints: Query<(&Endpoint, &GlobalTransform)>,
     waypoints: Query<&GlobalTransform, With<Waypoint>>,

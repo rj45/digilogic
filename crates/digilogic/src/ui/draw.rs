@@ -4,7 +4,7 @@ use bevy_ecs::prelude::*;
 use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
 use digilogic_core::components::{CircuitID, Shape};
-use digilogic_core::transform::{AbsoluteBoundingBox, GlobalTransform};
+use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
 use vello::kurbo::{Affine, BezPath, Circle, Line, Rect, Shape as _, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
@@ -127,8 +127,6 @@ pub fn draw_routing_graph(
     mut scenes: Query<&mut Scene, RoutingGraphLayerFilter>,
     graphs: Query<Ref<digilogic_routing::Graph>>,
 ) {
-    use digilogic_routing::graph::Direction;
-
     for (circuit, layers) in viewports.iter() {
         let Ok(mut scene) = scenes.get_mut(layers.routing_graph_layer) else {
             continue;

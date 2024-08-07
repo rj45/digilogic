@@ -29,6 +29,7 @@ pub struct PortBundle {
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,
     pub bounds: BoundingBoxBundle,
+    pub directions: DirectionsBundle,
 }
 
 /// A Symbol is an instance of a SymbolKind. It has Port Children which

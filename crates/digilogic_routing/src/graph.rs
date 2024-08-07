@@ -2,7 +2,6 @@ use crate::segment_tree::*;
 use crate::HashMap;
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::prelude::*;
-use bitflags::bitflags;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
@@ -13,61 +12,6 @@ pub type NodeIndex = u32;
 pub const INVALID_NODE_INDEX: NodeIndex = u32::MAX;
 
 const BOUNDING_BOX_PADDING: Fixed = fixed!(10);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Direction {
-    PosX = 0,
-    NegX = 1,
-    PosY = 2,
-    NegY = 3,
-}
-
-impl Direction {
-    pub const ALL: [Self; 4] = [Self::PosX, Self::NegX, Self::PosY, Self::NegY];
-
-    /// Gets the opposite direction of this one.
-    #[inline]
-    pub const fn opposite(self) -> Self {
-        match self {
-            Self::PosX => Self::NegX,
-            Self::NegX => Self::PosX,
-            Self::PosY => Self::NegY,
-            Self::NegY => Self::PosY,
-        }
-    }
-}
-
-bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[repr(transparent)]
-    pub struct Directions: u8 {
-        const POS_X = 0x1;
-        const NEG_X = 0x2;
-        const POS_Y = 0x4;
-        const NEG_Y = 0x8;
-
-        const X = 0x3;
-        const Y = 0xC;
-
-        const NONE = 0x0;
-        const ALL = 0xF;
-    }
-}
-
-impl From<Direction> for Directions {
-    #[inline]
-    fn from(value: Direction) -> Self {
-        Self::from_bits(1 << (value as u8)).expect("invalid direction")
-    }
-}
-
-impl Default for Directions {
-    #[inline]
-    fn default() -> Self {
-        Self::ALL
-    }
-}
 
 #[derive(Debug, Default, Clone, Copy)]
 #[repr(C)]
@@ -912,7 +856,7 @@ impl GraphData {
         &mut self,
         circuit_children: &Children,
         symbols: &Query<(&AbsoluteBoundingBox, &Children), With<Symbol>>,
-        ports: &Query<&GlobalTransform, With<Port>>,
+        ports: &Query<(&GlobalTransform, &AbsoluteDirections), With<Port>>,
         minimal: bool,
     ) {
         use std::collections::hash_map::Entry;
@@ -928,10 +872,13 @@ impl GraphData {
             .enumerate()
             .flat_map(|(i, (_, symbol_children))| {
                 symbol_children.iter().filter_map(move |&port_id| {
-                    ports.get(port_id).ok().map(|port_transform| {
-                        // TODO: ports have to store their connect directions, and the directions need to respect the symbols rotation
-                        Anchor::new_port(port_transform.translation, i, Directions::ALL)
-                    })
+                    ports
+                        .get(port_id)
+                        .ok()
+                        .map(|(port_transform, port_directions)| {
+                            // TODO: ports have to store their connect directions, and the directions need to respect the symbols rotation
+                            Anchor::new_port(port_transform.translation, i, **port_directions)
+                        })
                 })
             });
 
