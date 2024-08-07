@@ -1,6 +1,4 @@
-mod graph;
-pub use graph::*;
-
+pub mod graph;
 mod segment_tree;
 
 use bevy_derive::Deref;
@@ -8,21 +6,23 @@ use bevy_ecs::prelude::*;
 use bevy_hierarchy::prelude::*;
 use bevy_reflect::Reflect;
 use digilogic_core::components::*;
+use digilogic_core::events::LoadedEvent;
 use digilogic_core::transform::*;
+use digilogic_core::Fixed;
 
 type HashSet<T> = ahash::AHashSet<T>;
 type HashMap<K, V> = ahash::AHashMap<K, V>;
 
 #[derive(Default, Deref, Component)]
 #[repr(transparent)]
-pub struct Graph(GraphData);
+pub struct Graph(graph::GraphData);
 
 #[derive(Default, Deref, Component, Reflect)]
 #[repr(transparent)]
-pub struct Vertices(Vec<[f32; 2]>);
+pub struct Vertices(Vec<[Fixed; 2]>);
 
 #[derive(Default, Event)]
-pub struct Route;
+pub struct RouteEvent;
 
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
@@ -37,7 +37,7 @@ impl Default for RoutingConfig {
 }
 
 fn route(
-    trigger: Trigger<Route>,
+    trigger: Trigger<RouteEvent>,
     config: Res<RoutingConfig>,
     mut circuits: Query<(&mut Graph, &Children), With<Circuit>>,
     symbols: Query<(&AbsoluteBoundingBox, &Children), With<Symbol>>,
@@ -74,6 +74,12 @@ fn inject_vertices(trigger: Trigger<OnAdd, Net>, mut commands: Commands) {
         .insert(Vertices::default());
 }
 
+fn route_on_load(mut commands: Commands, mut loaded_events: EventReader<LoadedEvent>) {
+    for loaded_event in loaded_events.read() {
+        commands.trigger_targets(RouteEvent, loaded_event.circuit.0);
+    }
+}
+
 #[derive(Default)]
 pub struct RoutingPlugin;
 
@@ -84,5 +90,6 @@ impl bevy_app::Plugin for RoutingPlugin {
         app.init_resource::<RoutingConfig>();
         app.observe(inject_graph);
         app.observe(inject_vertices);
+        app.add_systems(bevy_app::Update, route_on_load);
     }
 }

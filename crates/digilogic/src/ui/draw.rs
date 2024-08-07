@@ -5,7 +5,7 @@ use bitflags::bitflags;
 use digilogic_core::components::{CircuitID, Shape};
 use digilogic_core::transform::{AbsoluteBoundingBox, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
-use vello::kurbo::{Affine, BezPath, Shape as _, Stroke, Vec2};
+use vello::kurbo::{Affine, BezPath, Circle, Line, Rect, Shape as _, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
 
 include!("bez_path.rs");
@@ -95,11 +95,11 @@ pub fn draw_symbols(
 pub fn draw_bounding_boxes(
     mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
     children: Query<&Children>,
-    boxes: Query<(&AbsoluteBoundingBox,)>,
+    boxes: Query<&AbsoluteBoundingBox>,
 ) {
     for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
         for child in children.iter_descendants(circuit.0) {
-            if let Ok((&bounds,)) = boxes.get(child) {
+            if let Ok(&bounds) = boxes.get(child) {
                 let transform =
                     Affine::translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
                         .then_scale(pan_zoom.zoom as f64);
@@ -109,12 +109,55 @@ pub fn draw_bounding_boxes(
                     transform,
                     &Brush::Solid(Color::RED),
                     None,
-                    &vello::kurbo::Rect::new(
+                    &Rect::new(
                         bounds.min.x.to_f64(),
                         bounds.min.y.to_f64(),
                         bounds.max.x.to_f64(),
                         bounds.max.y.to_f64(),
                     ),
+                );
+            }
+        }
+    }
+}
+
+pub fn draw_routing_graph(
+    mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
+    graphs: Query<&digilogic_routing::Graph>,
+) {
+    use digilogic_routing::graph::Direction;
+
+    for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
+        if let Ok(graph) = graphs.get(circuit.0) {
+            let transform =
+                Affine::translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
+                    .then_scale(pan_zoom.zoom as f64);
+
+            for node in graph.nodes() {
+                let node_pos = (node.position.x.to_f64(), node.position.y.to_f64());
+
+                for dir in [Direction::PosX, Direction::PosY] {
+                    if let Some(neighbor_index) = node.get_neighbor(dir) {
+                        let neighbor = &graph.nodes()[neighbor_index];
+                        let neighbor_pos =
+                            (neighbor.position.x.to_f64(), neighbor.position.y.to_f64());
+
+                        scene.stroke(
+                            &Stroke::new(1.0),
+                            transform,
+                            &Brush::Solid(Color::LIGHT_SKY_BLUE),
+                            None,
+                            &Line::new(node_pos, neighbor_pos),
+                        );
+                    }
+                }
+
+                scene.fill(
+                    Fill::NonZero,
+                    transform,
+                    &Brush::Solid(Color::DEEP_SKY_BLUE),
+                    None,
+                    &Circle::new(node_pos, 1.5),
                 );
             }
         }

@@ -1026,13 +1026,13 @@ impl GraphData {
 
     /// The nodes in the graph.
     #[inline]
-    pub(crate) fn nodes(&self) -> &[Node] {
+    pub fn nodes(&self) -> &[Node] {
         &self.nodes.0
     }
 
     /// Finds the index of the node at the given position.
     #[inline]
-    pub(crate) fn find_node(&self, position: Vec2) -> Option<NodeIndex> {
+    pub fn find_node(&self, position: Vec2) -> Option<NodeIndex> {
         self.node_map.get(&position).copied()
     }
 }

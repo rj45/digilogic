@@ -111,7 +111,12 @@ fn update_main_menu(
                 egui.context.send_viewport_cmd(ViewportCommand::Close);
             }
         });
-        ui.add_space(16.0);
+        ui.add_space(8.0);
+
+        ui.menu_button("View", |ui| {
+            ui.checkbox(&mut app_state.show_routing_graph, "Routing graph");
+        });
+        ui.add_space(8.0);
 
         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             egui::widgets::global_dark_light_mode_switch(ui);
@@ -376,6 +381,10 @@ impl UiPlugin {
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 struct DrawSet;
 
+fn show_routing_graph(app_state: Res<AppState>) -> bool {
+    app_state.show_routing_graph
+}
+
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
@@ -391,6 +400,12 @@ impl bevy_app::Plugin for UiPlugin {
         app.add_systems(
             bevy_app::Update,
             (draw_symbols, draw_bounding_boxes).in_set(DrawSet),
+        );
+        app.add_systems(
+            bevy_app::Update,
+            draw_routing_graph
+                .in_set(DrawSet)
+                .run_if(show_routing_graph),
         );
         app.add_systems(bevy_app::Update, (update_menu, add_tabs));
         app.add_systems(
