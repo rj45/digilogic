@@ -19,6 +19,11 @@ impl Vec2 {
     };
 
     #[inline]
+    pub const fn splat(value: Fixed) -> Self {
+        Self { x: value, y: value }
+    }
+
+    #[inline]
     pub const fn min(self, rhs: Self) -> Self {
         Self {
             x: self.x.min(rhs.x),
@@ -334,6 +339,27 @@ impl BoundingBox {
             x: self.min.x.const_add(self.max.x).const_div(fixed!(2)),
             y: self.min.y.const_add(self.max.y).const_div(fixed!(2)),
         }
+    }
+
+    #[inline]
+    pub const fn corners(self) -> [Vec2; 4] {
+        [
+            self.min,
+            Vec2 {
+                x: self.min.x,
+                y: self.max.y,
+            },
+            self.max,
+            Vec2 {
+                x: self.max.x,
+                y: self.min.y,
+            },
+        ]
+    }
+
+    #[inline]
+    pub fn extrude(self, offset: Vec2) -> Self {
+        Self::from_points(self.min - offset, self.max + offset)
     }
 
     #[inline]

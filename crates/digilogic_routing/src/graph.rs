@@ -5,13 +5,14 @@ use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::Fixed;
+use digilogic_core::{fixed, Fixed};
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 
 pub type NodeIndex = u32;
-
 pub const INVALID_NODE_INDEX: NodeIndex = u32::MAX;
+
+const BOUNDING_BOX_PADDING: Fixed = fixed!(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -278,23 +279,23 @@ impl BoundingBoxList {
     {
         self.horizontal_bounding_boxes
             .build(symbols.clone().enumerate().map(|(i, (bb, _))| Segment {
-                start_inclusive: bb.min().y,
-                end_inclusive: bb.max().y,
+                start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
+                end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
                 value: HorizontalBoundingBox {
                     index: i,
-                    min_x: bb.min().x,
-                    max_x: bb.max().x,
+                    min_x: bb.min().x - BOUNDING_BOX_PADDING,
+                    max_x: bb.max().x + BOUNDING_BOX_PADDING,
                 },
             }));
 
         self.vertical_bounding_boxes
             .build(symbols.enumerate().map(|(i, (bb, _))| Segment {
-                start_inclusive: bb.min().x,
-                end_inclusive: bb.max().x,
+                start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
+                end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
                 value: VerticalBoundingBox {
                     index: i,
-                    min_y: bb.min().y,
-                    max_y: bb.max().y,
+                    min_y: bb.min().y - BOUNDING_BOX_PADDING,
+                    max_y: bb.max().y + BOUNDING_BOX_PADDING,
                 },
             }));
     }
@@ -935,24 +936,8 @@ impl GraphData {
             });
 
         let corner_anchors = symbols.clone().flat_map(|(bb, _)| {
-            [
-                Anchor::new(Vec2 {
-                    x: bb.min().x - Fixed::EPSILON,
-                    y: bb.min().y - Fixed::EPSILON,
-                }),
-                Anchor::new(Vec2 {
-                    x: bb.min().x - Fixed::EPSILON,
-                    y: bb.max().y + Fixed::EPSILON,
-                }),
-                Anchor::new(Vec2 {
-                    x: bb.max().x + Fixed::EPSILON,
-                    y: bb.min().y - Fixed::EPSILON,
-                }),
-                Anchor::new(Vec2 {
-                    x: bb.max().x + Fixed::EPSILON,
-                    y: bb.max().y + Fixed::EPSILON,
-                }),
-            ]
+            const PADDING: Vec2 = Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
+            bb.extrude(PADDING).corners().map(Anchor::new)
         });
 
         // Sort all X coordinates.
