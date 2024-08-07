@@ -373,6 +373,9 @@ impl UiPlugin {
     }
 }
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+struct DrawSet;
+
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
@@ -381,12 +384,19 @@ impl bevy_app::Plugin for UiPlugin {
         app.insert_resource(SymbolShapes(Vec::new()));
         app.register_type::<ViewportCount>()
             .register_type::<Viewport>();
+
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
+        app.add_systems(bevy_app::Update, prepare_scenes);
+        app.configure_sets(bevy_app::Update, DrawSet.after(prepare_scenes));
         app.add_systems(
             bevy_app::Update,
-            (draw, draw_bounding_boxes.after(draw), update_menu, add_tabs),
+            (draw_symbols, draw_bounding_boxes).in_set(DrawSet),
         );
-        app.add_systems(bevy_app::Update, update_tabs.after(draw).after(update_menu));
+        app.add_systems(bevy_app::Update, (update_menu, add_tabs));
+        app.add_systems(
+            bevy_app::Update,
+            update_tabs.after(DrawSet).after(update_menu),
+        );
 
         #[cfg(feature = "inspector")]
         {

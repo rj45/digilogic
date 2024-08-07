@@ -32,7 +32,13 @@ pub struct SymbolShapes(pub Vec<SymbolShape>);
 
 const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 
-pub fn draw(
+pub fn prepare_scenes(mut scenes: Query<&mut Scene>) {
+    for mut scene in scenes.iter_mut() {
+        scene.reset();
+    }
+}
+
+pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
     mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
     children: Query<&Children>,
@@ -43,8 +49,6 @@ pub fn draw(
     )>,
 ) {
     for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
-        scene.reset();
-
         for child in children.iter_descendants(circuit.0) {
             if let Ok((&shape, transform, vis)) = shapes.get(child) {
                 if !*vis.copied().unwrap_or_default() {
