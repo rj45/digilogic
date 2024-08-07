@@ -199,6 +199,7 @@ const KINDS: &[SymbolDef] = &[
 pub struct PortInfo {
     pub name: SharedStr,
     pub id: Entity,
+    pub position: Vec2,
 }
 
 pub struct SymbolBuilder<'a> {
@@ -310,6 +311,7 @@ impl SymbolBuilder<'_> {
                 PortInfo {
                     name: port.name.clone(),
                     id,
+                    position: port.position,
                 }
             })
             .collect();
