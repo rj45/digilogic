@@ -16,6 +16,7 @@ use digilogic_core::events::{LoadedEvent, UnloadedEvent};
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
+use smallvec::SmallVec;
 
 const MIN_LINEAR_ZOOM: f32 = 0.0;
 const MAX_LINEAR_ZOOM: f32 = 1.0;
@@ -77,13 +78,105 @@ impl Default for PanZoom {
 #[repr(transparent)]
 struct Scene(vello::Scene);
 
+#[derive(Debug, Default, Component)]
+struct SymbolLayer;
+
+#[derive(Debug, Default, Component)]
+struct WireLayer;
+
+#[derive(Debug, Default, Component)]
+struct BoundingBoxLayer;
+
+#[derive(Debug, Default, Component)]
+struct RoutingGraphLayer;
+
+mod filters {
+    use super::*;
+
+    pub type SymbolLayerFilter = (
+        Without<Viewport>,
+        With<SymbolLayer>,
+        Without<WireLayer>,
+        Without<BoundingBoxLayer>,
+        Without<RoutingGraphLayer>,
+    );
+
+    pub type WireLayerFilter = (
+        Without<Viewport>,
+        Without<SymbolLayer>,
+        With<WireLayer>,
+        Without<BoundingBoxLayer>,
+        Without<RoutingGraphLayer>,
+    );
+
+    pub type BoundingBoxLayerFilter = (
+        Without<Viewport>,
+        Without<SymbolLayer>,
+        Without<WireLayer>,
+        With<BoundingBoxLayer>,
+        Without<RoutingGraphLayer>,
+    );
+
+    pub type RoutingGraphLayerFilter = (
+        Without<Viewport>,
+        Without<SymbolLayer>,
+        Without<WireLayer>,
+        Without<BoundingBoxLayer>,
+        With<RoutingGraphLayer>,
+    );
+}
+
+#[derive(Debug, Component)]
+struct Layers {
+    symbol_layer: Entity,
+    wire_layer: Entity,
+    bounding_box_layer: Entity,
+    routing_graph_layer: Entity,
+}
+
+impl Layers {
+    fn all_in_draw_order(&self, app_state: &AppState) -> SmallVec<[Entity; 4]> {
+        let mut all = SmallVec::new();
+        all.push(self.symbol_layer);
+        if app_state.show_routing_graph {
+            all.push(self.routing_graph_layer)
+        }
+        all.push(self.wire_layer);
+        if app_state.show_bounding_boxes {
+            all.push(self.bounding_box_layer)
+        }
+        all
+    }
+}
+
 #[derive(Bundle)]
 struct ViewportBundle {
     viewport: Viewport,
     circuit: CircuitID,
     pan_zoom: PanZoom,
+    layers: Layers,
     scene: Scene,
     canvas: Canvas,
+}
+
+fn combine_scenes(
+    app_state: Res<AppState>,
+    mut viewports: Query<(&PanZoom, &Layers, &mut Scene), With<Viewport>>,
+    scenes: Query<&Scene, Without<Viewport>>,
+) {
+    for (pan_zoom, layers, mut dst_scene) in viewports.iter_mut() {
+        dst_scene.reset();
+
+        let transform =
+            vello::kurbo::Affine::translate((pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
+                .then_scale(pan_zoom.zoom as f64);
+
+        for src_scene in layers.all_in_draw_order(&app_state) {
+            if let Ok(src_scene) = scenes.get(src_scene) {
+                dst_scene.append(src_scene, Some(transform));
+            }
+        }
+    }
 }
 
 fn update_main_menu(
@@ -114,6 +207,7 @@ fn update_main_menu(
         ui.add_space(8.0);
 
         ui.menu_button("View", |ui| {
+            ui.checkbox(&mut app_state.show_bounding_boxes, "Bounding boxes");
             ui.checkbox(&mut app_state.show_routing_graph, "Routing graph");
         });
         ui.add_space(8.0);
@@ -328,11 +422,19 @@ fn add_tabs(
                 .insert(ViewportCount(1));
         }
 
+        let layers = Layers {
+            symbol_layer: commands.spawn((Scene::default(), SymbolLayer)).id(),
+            wire_layer: commands.spawn((Scene::default(), WireLayer)).id(),
+            bounding_box_layer: commands.spawn((Scene::default(), BoundingBoxLayer)).id(),
+            routing_graph_layer: commands.spawn((Scene::default(), RoutingGraphLayer)).id(),
+        };
+
         let viewport = commands
             .spawn(ViewportBundle {
                 viewport: Viewport,
                 circuit: loaded_event.circuit,
                 pan_zoom: PanZoom::default(),
+                layers,
                 scene: Scene::default(),
                 canvas: Canvas::create(&egui.render_state),
             })
@@ -381,10 +483,6 @@ impl UiPlugin {
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 struct DrawSet;
 
-fn show_routing_graph(app_state: Res<AppState>) -> bool {
-    app_state.show_routing_graph
-}
-
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
@@ -395,22 +493,24 @@ impl bevy_app::Plugin for UiPlugin {
             .register_type::<Viewport>();
 
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
-        app.add_systems(bevy_app::Update, prepare_scenes);
-        app.configure_sets(bevy_app::Update, DrawSet.after(prepare_scenes));
+        app.add_systems(bevy_app::Update, draw_symbols.in_set(DrawSet));
         app.add_systems(
             bevy_app::Update,
-            (draw_symbols, draw_bounding_boxes).in_set(DrawSet),
+            draw_bounding_boxes
+                .in_set(DrawSet)
+                .run_if(|app_state: Res<AppState>| app_state.show_bounding_boxes),
         );
         app.add_systems(
             bevy_app::Update,
             draw_routing_graph
                 .in_set(DrawSet)
-                .run_if(show_routing_graph),
+                .run_if(|app_state: Res<AppState>| app_state.show_routing_graph),
         );
+        app.add_systems(bevy_app::Update, combine_scenes.after(DrawSet));
         app.add_systems(bevy_app::Update, (update_menu, add_tabs));
         app.add_systems(
             bevy_app::Update,
-            update_tabs.after(DrawSet).after(update_menu),
+            update_tabs.after(combine_scenes).after(update_menu),
         );
 
         #[cfg(feature = "inspector")]

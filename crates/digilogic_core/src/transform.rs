@@ -384,7 +384,7 @@ impl bvh_arena::BoundingVolume for BoundingBox {
 
     #[inline]
     fn area(&self) -> f32 {
-        (self.width() * self.height()).to_f32()
+        self.width().to_f32() * self.height().to_f32()
     }
 
     #[inline]

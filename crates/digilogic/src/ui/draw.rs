@@ -1,4 +1,5 @@
-use super::{PanZoom, Scene, Viewport};
+use super::filters::*;
+use super::{Layers, Scene, Viewport};
 use bevy_ecs::prelude::*;
 use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
@@ -32,23 +33,23 @@ pub struct SymbolShapes(pub Vec<SymbolShape>);
 
 const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 
-pub fn prepare_scenes(mut scenes: Query<&mut Scene>) {
-    for mut scene in scenes.iter_mut() {
-        scene.reset();
-    }
-}
-
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
-    mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
+    viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
     children: Query<&Children>,
+    mut scenes: Query<&mut Scene, SymbolLayerFilter>,
     shapes: Query<(
         &Shape,
         Option<&GlobalTransform>,
         Option<&ComputedVisibility>,
     )>,
 ) {
-    for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
+    for (circuit, layers) in viewports.iter() {
+        let Ok(mut scene) = scenes.get_mut(layers.symbol_layer) else {
+            continue;
+        };
+        scene.reset();
+
         for child in children.iter_descendants(circuit.0) {
             if let Ok((&shape, transform, vis)) = shapes.get(child) {
                 if !*vis.copied().unwrap_or_default() {
@@ -61,9 +62,7 @@ pub fn draw_symbols(
                     .then_translate(Vec2::new(
                         transform.translation.x.to_f64(),
                         transform.translation.y.to_f64(),
-                    ))
-                    .then_translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
-                    .then_scale(pan_zoom.zoom as f64);
+                    ));
 
                 let symbol_shape = &symbol_shapes.0[shape as usize];
                 for path in symbol_shape.paths.iter() {
@@ -93,20 +92,22 @@ pub fn draw_symbols(
 }
 
 pub fn draw_bounding_boxes(
-    mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
+    viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
     children: Query<&Children>,
+    mut scenes: Query<&mut Scene, BoundingBoxLayerFilter>,
     boxes: Query<&AbsoluteBoundingBox>,
 ) {
-    for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
+    for (circuit, layers) in viewports.iter() {
+        let Ok(mut scene) = scenes.get_mut(layers.bounding_box_layer) else {
+            continue;
+        };
+        scene.reset();
+
         for child in children.iter_descendants(circuit.0) {
             if let Ok(&bounds) = boxes.get(child) {
-                let transform =
-                    Affine::translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
-                        .then_scale(pan_zoom.zoom as f64);
-
                 scene.stroke(
                     &Stroke::new(1.0),
-                    transform,
+                    Affine::IDENTITY,
                     &Brush::Solid(Color::RED),
                     None,
                     &Rect::new(
@@ -122,16 +123,19 @@ pub fn draw_bounding_boxes(
 }
 
 pub fn draw_routing_graph(
-    mut viewports: Query<(&PanZoom, &mut Scene, &CircuitID), With<Viewport>>,
-    graphs: Query<&digilogic_routing::Graph>,
+    viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
+    mut scenes: Query<&mut Scene, RoutingGraphLayerFilter>,
+    graphs: Query<Ref<digilogic_routing::Graph>>,
 ) {
     use digilogic_routing::graph::Direction;
 
-    for (pan_zoom, mut scene, circuit) in viewports.iter_mut() {
+    for (circuit, layers) in viewports.iter() {
+        let Ok(mut scene) = scenes.get_mut(layers.routing_graph_layer) else {
+            continue;
+        };
+
         if let Ok(graph) = graphs.get(circuit.0) {
-            let transform =
-                Affine::translate(Vec2::new(pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
-                    .then_scale(pan_zoom.zoom as f64);
+            scene.reset();
 
             for node in graph.nodes() {
                 let node_pos = (node.position.x.to_f64(), node.position.y.to_f64());
@@ -144,7 +148,7 @@ pub fn draw_routing_graph(
 
                         scene.stroke(
                             &Stroke::new(1.0),
-                            transform,
+                            Affine::IDENTITY,
                             &Brush::Solid(Color::LIGHT_SKY_BLUE),
                             None,
                             &Line::new(node_pos, neighbor_pos),
@@ -154,7 +158,7 @@ pub fn draw_routing_graph(
 
                 scene.fill(
                     Fill::NonZero,
-                    transform,
+                    Affine::IDENTITY,
                     &Brush::Solid(Color::DEEP_SKY_BLUE),
                     None,
                     &Circle::new(node_pos, 1.5),

@@ -1644,6 +1644,7 @@ dependencies = [
  "log",
  "rfd",
  "serde",
+ "smallvec",
  "vello",
  "vello_svg",
  "wasm-bindgen-futures",

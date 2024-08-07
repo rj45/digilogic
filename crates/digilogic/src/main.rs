@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[reflect(Resource)]
 struct AppState {
     dark_mode: bool,
+    show_bounding_boxes: bool,
     show_routing_graph: bool,
 }
 
@@ -18,6 +19,7 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             dark_mode: true,
+            show_bounding_boxes: false,
             show_routing_graph: false,
         }
     }
