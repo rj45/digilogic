@@ -97,8 +97,10 @@ pub struct RoutingPlugin;
 
 impl bevy_app::Plugin for RoutingPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.register_type::<Vertices>();
-        app.register_type::<RoutingConfig>();
+        app.register_type::<Vertices>()
+            .register_type::<RoutingConfig>()
+            .register_type::<GraphDirty>();
+
         app.init_resource::<RoutingConfig>();
         app.observe(inject_graph);
         app.observe(inject_vertices);
