@@ -126,7 +126,7 @@ fn combine_scenes(
             }
 
             let layer = layer.get_mut().unwrap();
-            scene.combined.append(&layer, Some(transform));
+            scene.combined.append(layer, Some(transform));
         }
     }
 }
@@ -165,7 +165,7 @@ fn update_main_menu(
         ui.add_space(8.0);
 
         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            egui::widgets::global_dark_light_mode_switch(ui);
+            global_dark_light_mode_switch(ui);
             app_state.dark_mode = egui.context.style().visuals.dark_mode;
         });
     });
@@ -283,6 +283,7 @@ fn forward_hover_events(
     });
 }
 
+#[allow(clippy::type_complexity)]
 #[derive(SystemParam)]
 struct TabViewer<'w, 's> {
     commands: Commands<'w, 's>,

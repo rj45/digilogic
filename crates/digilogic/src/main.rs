@@ -56,8 +56,8 @@ impl App {
         // Bevy plugins
         app.add_plugins((
             bevy_core::TaskPoolPlugin::default(),
-            bevy_core::TypeRegistrationPlugin::default(),
-            bevy_core::FrameCountPlugin::default(),
+            bevy_core::TypeRegistrationPlugin,
+            bevy_core::FrameCountPlugin,
         ));
 
         app.register_type::<AppState>();
@@ -66,9 +66,9 @@ impl App {
 
         // Digilogic plugins
         app.add_plugins((
-            digilogic_core::CorePlugin::default(),
-            digilogic_serde::LoadSavePlugin::default(),
-            digilogic_routing::RoutingPlugin::default(),
+            digilogic_core::CorePlugin,
+            digilogic_serde::LoadSavePlugin,
+            digilogic_routing::RoutingPlugin,
             ux::UxPlugin::default(),
             ui::UiPlugin::new(context, render_state),
         ));
@@ -78,8 +78,8 @@ impl App {
 }
 
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
-    type FileDialogEvents = bevy_ecs::event::Events<FileDialogEvent>;
-    type LoadEvents = bevy_ecs::event::Events<digilogic_core::events::LoadEvent>;
+    type FileDialogEvents = Events<FileDialogEvent>;
+    type LoadEvents = Events<digilogic_core::events::LoadEvent>;
 
     let file_dialog_event = {
         let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();

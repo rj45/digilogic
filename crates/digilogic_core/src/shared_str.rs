@@ -187,7 +187,7 @@ impl serde::Serialize for SharedStr {
 
 struct SharedStrVisitor;
 
-impl<'de> serde::de::Visitor<'de> for SharedStrVisitor {
+impl serde::de::Visitor<'_> for SharedStrVisitor {
     type Value = String;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

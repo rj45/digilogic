@@ -26,8 +26,8 @@ impl CanvasRenderer {
 }
 
 #[inline]
-const fn egui_to_vello_color(color: egui::Color32) -> vello::peniko::Color {
-    vello::peniko::Color {
+const fn egui_to_vello_color(color: egui::Color32) -> peniko::Color {
+    peniko::Color {
         r: color.r(),
         g: color.g(),
         b: color.b(),

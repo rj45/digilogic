@@ -22,15 +22,12 @@ egui-wgpu.workspace = true
 eframe.workspace = true
 rfd.workspace = true
 vello.workspace = true
-vello_svg.workspace = true
 bevy_core.workspace = true
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
-bevy_derive.workspace = true
 bevy_app.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 aery.workspace = true
-smallvec.workspace = true
 bitflags.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }

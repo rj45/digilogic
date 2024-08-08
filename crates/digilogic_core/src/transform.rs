@@ -243,7 +243,7 @@ impl Vec2 {
 #[repr(transparent)]
 pub struct GlobalTransform(Transform);
 
-#[derive(Default, Bundle)]
+#[derive(Default, Debug, Clone, Copy, Bundle)]
 pub struct TransformBundle {
     pub transform: Transform,
     pub global_transform: GlobalTransform,
@@ -428,7 +428,7 @@ impl bvh_arena::BoundingVolume for BoundingBox {
 #[repr(transparent)]
 pub struct AbsoluteBoundingBox(BoundingBox);
 
-#[derive(Default, Bundle)]
+#[derive(Default, Debug, Bundle)]
 pub struct BoundingBoxBundle {
     pub bounding_box: BoundingBox,
     pub absolute_bounding_box: AbsoluteBoundingBox,
@@ -480,7 +480,7 @@ impl Default for AbsoluteDirection {
     }
 }
 
-#[derive(Bundle)]
+#[derive(Debug, Bundle)]
 pub struct DirectionBundle {
     pub direction: Direction,
     pub absolute_direction: AbsoluteDirection,
@@ -531,13 +531,13 @@ impl Directions {
 #[repr(transparent)]
 pub struct AbsoluteDirections(Directions);
 
-#[derive(Default, Bundle)]
+#[derive(Default, Debug, Bundle)]
 pub struct DirectionsBundle {
     pub directions: Directions,
     pub absolute_directions: AbsoluteDirections,
 }
 
-#[derive(Relation)]
+#[derive(Debug, Relation)]
 pub struct InheritTransform;
 
 fn update_root_transform(

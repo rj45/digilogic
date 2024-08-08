@@ -1,6 +1,7 @@
 use super::{Layer, Scene, Viewport};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::lifetimeless::Read;
 use bitflags::bitflags;
 use digilogic_core::components::{Child, CircuitID, Shape};
 use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
@@ -32,17 +33,23 @@ pub struct SymbolShapes(pub Vec<SymbolShape>);
 
 const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 
+type ShapeQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        (
+            Option<Read<Shape>>,
+            Option<Read<GlobalTransform>>,
+            Option<Read<ComputedVisibility>>,
+        ),
+        Relations<Child>,
+    ),
+>;
+
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
-    shapes: Query<(
-        (
-            Option<&Shape>,
-            Option<&GlobalTransform>,
-            Option<&ComputedVisibility>,
-        ),
-        Relations<Child>,
-    )>,
+    shapes: ShapeQuery,
 ) {
     for (scene, circuit) in viewports.iter() {
         let mut scene = scene.for_layer(Layer::Symbol);
@@ -193,9 +200,7 @@ pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolShapes>) {
             paths: vec![PathInfo {
                 kind: PathKind::STROKE,
                 path: scale_path(
-                    vello::kurbo::Circle::new((1.5, 1.5), 1.5)
-                        .path_elements(0.01)
-                        .collect(),
+                    Circle::new((1.5, 1.5), 1.5).path_elements(0.01).collect(),
                     1.0,
                     (-1.5, -1.5),
                 ),

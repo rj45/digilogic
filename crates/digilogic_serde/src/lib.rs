@@ -103,7 +103,7 @@ fn handle_unloaded_events(
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LoadSavePlugin;
 
 impl bevy_app::Plugin for LoadSavePlugin {

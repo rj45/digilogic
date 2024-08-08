@@ -79,13 +79,7 @@ impl NeighborList {
             return None;
         }
 
-        for dir in Direction::ALL {
-            if self[dir] == node {
-                return Some(dir);
-            }
-        }
-
-        None
+        Direction::ALL.into_iter().find(|&dir| self[dir] == node)
     }
 }
 
@@ -211,7 +205,7 @@ struct VerticalBoundingBox {
     max_y: Fixed,
 }
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct BoundingBoxList {
     horizontal_bounding_boxes: SegmentTree<HorizontalBoundingBox>,
     vertical_bounding_boxes: SegmentTree<VerticalBoundingBox>,
@@ -298,7 +292,7 @@ fn find_neg_x_cutoff(
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
-    if x1_coords.len() == 0 {
+    if x1_coords.is_empty() {
         return offset;
     }
 
@@ -327,7 +321,7 @@ fn find_pos_x_cutoff(
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
-    if x2_coords.len() == 0 {
+    if x2_coords.is_empty() {
         return offset;
     }
 
@@ -356,7 +350,7 @@ fn find_neg_y_cutoff(
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
-    if y1_coords.len() == 0 {
+    if y1_coords.is_empty() {
         return offset;
     }
 
@@ -385,7 +379,7 @@ fn find_pos_y_cutoff(
     offset: usize,
     ignore_box: Option<usize>,
 ) -> usize {
-    if y2_coords.len() == 0 {
+    if y2_coords.is_empty() {
         return offset;
     }
 
@@ -610,7 +604,7 @@ fn scan_pos_y(
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct GraphData {
     port_anchors: Vec<Anchor>,
     corner_anchors: Vec<Anchor>,
@@ -892,8 +886,8 @@ impl GraphData {
                 index += 1;
             });
 
-        std::mem::drop(horizontal_builder);
-        std::mem::drop(vertical_builder);
+        drop(horizontal_builder);
+        drop(vertical_builder);
 
         // Sort all X coordinates.
         self.x_coords.clear();

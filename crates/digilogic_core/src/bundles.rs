@@ -13,7 +13,7 @@ use bevy_ecs::prelude::*;
 /// - Name - the name of the Port
 /// - Number - the pin number of the Port
 ///
-#[derive(Bundle)]
+#[derive(Debug, Bundle)]
 pub struct PortBundle {
     // The marker that this is a Port
     pub port: Port,
@@ -41,7 +41,7 @@ pub struct PortBundle {
 /// Symbols optionally can have some of these additional components:
 /// - DesignatorSuffix - the suffix for the Reference Designator
 /// - PartOf - if the Symbol is part of a set of Symbols (ie one gate of a chip with many)
-#[derive(Bundle)]
+#[derive(Debug, Bundle)]
 pub struct SymbolBundle {
     /// The marker that this is a Symbol
     pub symbol: Symbol,
@@ -66,7 +66,7 @@ pub struct SymbolBundle {
 
 /// A Waypoint is a point in a Net that a wire needs to route through.
 /// Which of the Net's wires depends on the Endpoint the Waypoint is attached to.
-#[derive(Bundle, Default)]
+#[derive(Debug, Bundle, Default)]
 pub struct WaypointBundle {
     /// The marker that this is a Waypoint
     pub waypoint: Waypoint,
@@ -84,7 +84,7 @@ pub struct WaypointBundle {
 ///
 /// Endpoints optionally can have some of these additional components:
 /// - PortID - the Port that the Endpoint is connected to
-#[derive(Bundle, Default)]
+#[derive(Debug, Bundle, Default)]
 pub struct EndpointBundle {
     /// The marker that this is an Endpoint
     pub endpoint: Endpoint,
@@ -100,7 +100,7 @@ pub struct EndpointBundle {
 ///
 /// Nets optionally can have some of these additional components:
 /// - ???
-#[derive(Bundle)]
+#[derive(Debug, Bundle)]
 pub struct NetBundle {
     /// The marker that this is a Net
     pub net: Net,
@@ -119,7 +119,7 @@ pub struct NetBundle {
 ///
 /// Circuits optionally can have some of these additional components:
 /// - ???
-#[derive(Bundle, Default)]
+#[derive(Debug, Bundle, Default)]
 pub struct CircuitBundle {
     /// The marker that this is a Circuit
     pub circuit: Circuit,

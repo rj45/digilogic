@@ -7,7 +7,7 @@ use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use smallvec::SmallVec;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct PortDef {
     name: SharedStr,
     position: Vec2,
@@ -16,7 +16,7 @@ struct PortDef {
     directions: Directions,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SymbolDef {
     kind: SymbolKind,
     name: SharedStr,
@@ -196,12 +196,14 @@ const KINDS: &[SymbolDef] = &[
     },
 ];
 
+#[derive(Debug)]
 pub struct PortInfo {
     pub name: SharedStr,
     pub id: Entity,
     pub position: Vec2,
 }
 
+#[derive(Debug)]
 pub struct SymbolBuilder<'a> {
     registry: &'a SymbolRegistry,
     kind: SymbolKind,
@@ -212,7 +214,7 @@ pub struct SymbolBuilder<'a> {
     ports: SmallVec<[PortInfo; 7]>,
 }
 
-#[derive(Resource)]
+#[derive(Debug, Resource)]
 pub struct SymbolRegistry {
     kinds: Vec<SymbolDef>,
 }
@@ -243,11 +245,9 @@ impl SymbolRegistry {
 
 impl Default for SymbolRegistry {
     fn default() -> Self {
-        let list = Self {
+        Self {
             kinds: KINDS.to_vec(),
-        };
-
-        list
+        }
     }
 }
 

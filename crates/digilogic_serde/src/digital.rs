@@ -8,16 +8,15 @@ use digilogic_core::components::*;
 use digilogic_core::fixed;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
-use digilogic_core::Fixed;
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::Path;
 
 struct PosEntry {
     port: Option<Entity>,
-    endpoint: std::cell::Cell<Option<Entity>>,
+    endpoint: Cell<Option<Entity>>,
     wires: Vec<[Vec2; 2]>,
 }
 

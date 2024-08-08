@@ -647,7 +647,7 @@ macro_rules! try_visit_fn {
     };
 }
 
-impl<'de> serde::de::Visitor<'de> for FixedVisitor {
+impl serde::de::Visitor<'_> for FixedVisitor {
     type Value = Fixed;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

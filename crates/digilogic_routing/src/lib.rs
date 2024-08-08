@@ -10,21 +10,20 @@ use digilogic_core::events::LoadedEvent;
 use digilogic_core::transform::*;
 use digilogic_core::Fixed;
 
-type HashSet<T> = ahash::AHashSet<T>;
 type HashMap<K, V> = ahash::AHashMap<K, V>;
 
-#[derive(Default, Deref, Component)]
+#[derive(Default, Debug, Deref, Component)]
 #[repr(transparent)]
 pub struct Graph(graph::GraphData);
 
-#[derive(Default, Deref, Component, Reflect)]
+#[derive(Default, Debug, Deref, Component, Reflect)]
 #[repr(transparent)]
 pub struct Vertices(Vec<[Fixed; 2]>);
 
-#[derive(Default, Event)]
+#[derive(Default, Debug, Event)]
 pub struct RouteEvent;
 
-#[derive(Resource, Reflect)]
+#[derive(Debug, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct RoutingConfig {
     pub minimal: bool,
@@ -82,7 +81,7 @@ fn route_on_load(mut commands: Commands, mut loaded_events: EventReader<LoadedEv
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct RoutingPlugin;
 
 impl bevy_app::Plugin for RoutingPlugin {

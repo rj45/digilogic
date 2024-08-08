@@ -1,20 +1,19 @@
 use crate::components::CircuitID;
+use bevy_ecs::prelude::*;
 use std::path::PathBuf;
 
-use bevy_ecs::prelude::*;
-
-#[derive(Event)]
+#[derive(Debug, Event)]
 pub struct LoadEvent {
     pub filename: PathBuf,
 }
 
-#[derive(Event)]
+#[derive(Debug, Event)]
 pub struct LoadedEvent {
     pub filename: PathBuf,
     pub circuit: CircuitID,
 }
 
-#[derive(Event)]
+#[derive(Debug, Event)]
 pub struct UnloadedEvent {
     pub circuit: CircuitID,
 }

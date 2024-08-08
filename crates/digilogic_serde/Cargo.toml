@@ -15,7 +15,6 @@ serde_json.workspace = true
 serde-xml-rs.workspace = true
 anyhow.workspace = true
 bevy_ecs.workspace = true
-bevy_reflect.workspace = true
 bevy_derive.workspace = true
 bevy_app.workspace = true
 aery.workspace = true

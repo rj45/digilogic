@@ -22,13 +22,13 @@ impl Default for ComputedVisibility {
     }
 }
 
-#[derive(Default, Bundle)]
+#[derive(Default, Debug, Bundle)]
 pub struct VisibilityBundle {
     pub visibility: Visibility,
     pub computed_visibility: ComputedVisibility,
 }
 
-#[derive(Relation)]
+#[derive(Debug, Relation)]
 pub struct InheritVisibility;
 
 fn update_root_visibility(

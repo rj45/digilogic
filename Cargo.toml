@@ -11,11 +11,8 @@ rust-version = "1.79"
 
 [workspace.lints.rust]
 explicit-outlives-requirements = "warn"
-fuzzy-provenance-casts = "forbid"
 impl-trait-overcaptures = "warn"
 keyword-idents-2024 = "forbid"
-lossy-provenance-casts = "forbid"
-missing-copy-implementations = "warn"
 missing-debug-implementations = "warn"
 missing-unsafe-on-extern = "forbid"
 non-ascii-idents = "forbid"
@@ -65,7 +62,6 @@ eframe = { version = "0.28.1", default-features = false, features = [
 ] }
 rfd = "0.14.1"
 vello = "0.2.1"
-vello_svg = "0.3"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 bevy_core = "0.14.0"

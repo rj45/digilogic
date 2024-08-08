@@ -13,10 +13,10 @@ mod shared_str;
 pub use shared_str::SharedStr;
 
 mod fixed;
-pub use fixed::Fixed;
 pub use fixed::FRACT_BITS as FIXED_FRACT_BITS;
+pub use fixed::{Fixed, FromFixedError, ToFixedError};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CorePlugin;
 
 impl bevy_app::Plugin for CorePlugin {

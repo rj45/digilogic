@@ -153,7 +153,7 @@ impl<'a, T> Iterator for ContainingSegmentIter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(segment) = self.inner.next() {
+        for segment in self.inner.by_ref() {
             debug_assert!(segment.start_inclusive <= self.position);
 
             if segment.end_inclusive >= self.position {
@@ -178,7 +178,7 @@ mod tests {
             end_inclusive: fixed!(10),
             value: (),
         }]);
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
     }
 
@@ -191,7 +191,7 @@ mod tests {
             end_inclusive: fixed!(10),
             value: (),
         }]);
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
     }
 
@@ -204,7 +204,7 @@ mod tests {
             end_inclusive: fixed!(10),
             value: (),
         }]);
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-10)).count(), 1);
     }
 
@@ -217,7 +217,7 @@ mod tests {
             end_inclusive: fixed!(10),
             value: (),
         }]);
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(10)).count(), 1);
     }
 
@@ -230,7 +230,7 @@ mod tests {
             end_inclusive: fixed!(10),
             value: (),
         }]);
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(0)).count(), 1);
     }
 
@@ -245,7 +245,7 @@ mod tests {
                 value: (),
             }; 100],
         );
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
     }
 
@@ -260,7 +260,7 @@ mod tests {
                 value: (),
             }; 100],
         );
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
     }
 
@@ -275,7 +275,7 @@ mod tests {
                 value: (),
             }; 100],
         );
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-10)).count(), 100);
     }
 
@@ -290,7 +290,7 @@ mod tests {
                 value: (),
             }; 100],
         );
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(10)).count(), 100);
     }
 
@@ -305,7 +305,7 @@ mod tests {
                 value: (),
             }; 100],
         );
-        std::mem::drop(builder);
+        drop(builder);
         assert_eq!(tree.iter_containing(fixed!(0)).count(), 100);
     }
 
@@ -330,7 +330,7 @@ mod tests {
                 value: (),
             },
         ]);
-        std::mem::drop(builder);
+        drop(builder);
 
         assert_eq!(tree.iter_containing(fixed!(-21)).count(), 0);
         assert_eq!(tree.iter_containing(fixed!(-11)).count(), 1);

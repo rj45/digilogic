@@ -42,7 +42,7 @@ fn translate_circuit(
         for net in module.nets.iter() {
             translate_net(net, &mut id_map, commands, circuit_id)?;
         }
-        if let None = top_id {
+        if top_id.is_none() {
             top_id = Some(circuit_id);
         }
     }
@@ -60,7 +60,7 @@ fn translate_symbol(
 ) -> Result<(), anyhow::Error> {
     let symbol_builder = if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
         symbols.get_by_name(kind_name)
-    } else if let Some(_) = symbol.symbol_kind_id.as_ref() {
+    } else if symbol.symbol_kind_id.is_some() {
         return Err(anyhow::anyhow!(
             "Symbol {} has SymbolKindID but it's not supported",
             symbol.id.0
@@ -102,7 +102,7 @@ fn translate_net(
 ) -> Result<(), anyhow::Error> {
     let net_id = commands
         .spawn(NetBundle {
-            net: digilogic_core::components::Net,
+            net: Net,
             name: Name(net.name.clone()),
             bit_width: BitWidth(1),
         })
@@ -117,7 +117,7 @@ fn translate_net(
 }
 
 fn translate_subnet(
-    subnet: &circuitfile::Subnet,
+    subnet: &Subnet,
     id_map: &mut HashMap<Id, Entity>,
     commands: &mut Commands,
     net_id: Entity,
