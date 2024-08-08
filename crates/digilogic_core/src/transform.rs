@@ -2,6 +2,7 @@ use crate::{fixed, Fixed};
 use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_reflect::Reflect;
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
@@ -540,12 +541,14 @@ pub struct DirectionsBundle {
 #[derive(Debug, Relation)]
 pub struct InheritTransform;
 
-fn update_root_transform(
-    mut roots: Query<
-        (&Transform, &mut GlobalTransform),
-        Or<(Root<InheritTransform>, Abstains<InheritTransform>)>,
-    >,
-) {
+type RootQuery<'w, 's> = Query<
+    'w,
+    's,
+    (Read<Transform>, Write<GlobalTransform>),
+    Or<(Root<InheritTransform>, Abstains<InheritTransform>)>,
+>;
+
+fn update_root_transform(mut roots: RootQuery) {
     for (&transform, mut global_transform) in roots.iter_mut() {
         if global_transform.0 != transform {
             global_transform.0 = transform;

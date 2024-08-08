@@ -1,6 +1,7 @@
 use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_reflect::Reflect;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
@@ -31,9 +32,14 @@ pub struct VisibilityBundle {
 #[derive(Debug, Relation)]
 pub struct InheritVisibility;
 
-fn update_root_visibility(
-    mut roots: Query<(&Visibility, &mut ComputedVisibility), Root<InheritVisibility>>,
-) {
+type RootQuery<'w, 's> = Query<
+    'w,
+    's,
+    (Read<Visibility>, Write<ComputedVisibility>),
+    Or<(Root<InheritVisibility>, Abstains<InheritVisibility>)>,
+>;
+
+fn update_root_visibility(mut roots: RootQuery) {
     for (visibility, mut computed_visibility) in roots.iter_mut() {
         let new_visibility = match visibility {
             Visibility::Inherit | Visibility::Visible => true,
