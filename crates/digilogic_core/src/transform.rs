@@ -541,7 +541,10 @@ pub struct DirectionsBundle {
 pub struct InheritTransform;
 
 fn update_root_transform(
-    mut roots: Query<(&Transform, &mut GlobalTransform), Root<InheritTransform>>,
+    mut roots: Query<
+        (&Transform, &mut GlobalTransform),
+        Or<(Root<InheritTransform>, Abstains<InheritTransform>)>,
+    >,
 ) {
     for (&transform, mut global_transform) in roots.iter_mut() {
         if global_transform.0 != transform {
