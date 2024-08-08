@@ -5,8 +5,6 @@ mod draw;
 use draw::*;
 
 use crate::{AppState, FileDialogEvent};
-use aery::prelude::*;
-use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
@@ -16,7 +14,7 @@ use digilogic_core::events::{LoadedEvent, UnloadedEvent};
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
-use smallvec::SmallVec;
+use std::sync::{Mutex, MutexGuard};
 
 const MIN_LINEAR_ZOOM: f32 = 0.0;
 const MAX_LINEAR_ZOOM: f32 = 1.0;
@@ -74,78 +72,26 @@ impl Default for PanZoom {
     }
 }
 
-#[derive(Default, Deref, DerefMut, Component)]
-#[repr(transparent)]
-struct Scene(vello::Scene);
-
-#[derive(Debug, Default, Component)]
-struct SymbolLayer;
-
-#[derive(Debug, Default, Component)]
-struct WireLayer;
-
-#[derive(Debug, Default, Component)]
-struct BoundingBoxLayer;
-
-#[derive(Debug, Default, Component)]
-struct RoutingGraphLayer;
-
-mod filters {
-    use super::*;
-
-    pub type SymbolLayerFilter = (
-        Without<Viewport>,
-        With<SymbolLayer>,
-        Without<WireLayer>,
-        Without<BoundingBoxLayer>,
-        Without<RoutingGraphLayer>,
-    );
-
-    pub type WireLayerFilter = (
-        Without<Viewport>,
-        Without<SymbolLayer>,
-        With<WireLayer>,
-        Without<BoundingBoxLayer>,
-        Without<RoutingGraphLayer>,
-    );
-
-    pub type BoundingBoxLayerFilter = (
-        Without<Viewport>,
-        Without<SymbolLayer>,
-        Without<WireLayer>,
-        With<BoundingBoxLayer>,
-        Without<RoutingGraphLayer>,
-    );
-
-    pub type RoutingGraphLayerFilter = (
-        Without<Viewport>,
-        Without<SymbolLayer>,
-        Without<WireLayer>,
-        Without<BoundingBoxLayer>,
-        With<RoutingGraphLayer>,
-    );
+// Variant order corresponds to draw order
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
+#[repr(u8)]
+enum Layer {
+    Symbol,
+    RoutingGraph,
+    Wire,
+    BoundingBox,
 }
 
-#[derive(Debug, Component)]
-struct Layers {
-    symbol_layer: Entity,
-    wire_layer: Entity,
-    bounding_box_layer: Entity,
-    routing_graph_layer: Entity,
+#[derive(Default, Component)]
+struct Scene {
+    layers: [Mutex<vello::Scene>; 4],
+    combined: vello::Scene,
 }
 
-impl Layers {
-    fn all_in_draw_order(&self, app_state: &AppState) -> SmallVec<[Entity; 4]> {
-        let mut all = SmallVec::new();
-        all.push(self.symbol_layer);
-        if app_state.show_routing_graph {
-            all.push(self.routing_graph_layer)
-        }
-        all.push(self.wire_layer);
-        if app_state.show_bounding_boxes {
-            all.push(self.bounding_box_layer)
-        }
-        all
+impl Scene {
+    #[inline]
+    fn for_layer(&self, layer: Layer) -> MutexGuard<vello::Scene> {
+        self.layers[layer as usize].lock().unwrap()
     }
 }
 
@@ -154,27 +100,33 @@ struct ViewportBundle {
     viewport: Viewport,
     circuit: CircuitID,
     pan_zoom: PanZoom,
-    layers: Layers,
     scene: Scene,
     canvas: Canvas,
 }
 
 fn combine_scenes(
     app_state: Res<AppState>,
-    mut viewports: Query<(&PanZoom, &Layers, &mut Scene), With<Viewport>>,
-    scenes: Query<&Scene, Without<Viewport>>,
+    mut viewports: Query<(&PanZoom, &mut Scene), With<Viewport>>,
 ) {
-    for (pan_zoom, layers, mut dst_scene) in viewports.iter_mut() {
-        dst_scene.reset();
-
+    for (pan_zoom, mut scene) in viewports.iter_mut() {
         let transform =
             vello::kurbo::Affine::translate((pan_zoom.pan.x as f64, pan_zoom.pan.y as f64))
                 .then_scale(pan_zoom.zoom as f64);
 
-        for src_scene in layers.all_in_draw_order(&app_state) {
-            if let Ok(src_scene) = scenes.get(src_scene) {
-                dst_scene.append(src_scene, Some(transform));
+        let scene = &mut *scene;
+        scene.combined.reset();
+
+        for (i, layer) in scene.layers.iter_mut().enumerate() {
+            if i == (Layer::BoundingBox as usize) && !app_state.show_bounding_boxes {
+                continue;
             }
+
+            if i == (Layer::RoutingGraph as usize) && !app_state.show_routing_graph {
+                continue;
+            }
+
+            let layer = layer.get_mut().unwrap();
+            scene.combined.append(&layer, Some(transform));
         }
     }
 }
@@ -261,7 +213,7 @@ fn update_viewport(
         canvas.render(
             renderer,
             &egui.render_state,
-            &scene.0,
+            &scene.combined,
             ui.visuals().extreme_bg_color,
         );
 
@@ -422,19 +374,11 @@ fn add_tabs(
                 .insert(ViewportCount(1));
         }
 
-        let layers = Layers {
-            symbol_layer: commands.spawn((Scene::default(), SymbolLayer)).id(),
-            wire_layer: commands.spawn((Scene::default(), WireLayer)).id(),
-            bounding_box_layer: commands.spawn((Scene::default(), BoundingBoxLayer)).id(),
-            routing_graph_layer: commands.spawn((Scene::default(), RoutingGraphLayer)).id(),
-        };
-
         let viewport = commands
             .spawn(ViewportBundle {
                 viewport: Viewport,
                 circuit: loaded_event.circuit,
                 pan_zoom: PanZoom::default(),
-                layers,
                 scene: Scene::default(),
                 canvas: Canvas::create(&egui.render_state),
             })

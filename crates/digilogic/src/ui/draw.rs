@@ -1,5 +1,4 @@
-use super::filters::*;
-use super::{Layers, Scene, Viewport};
+use super::{Layer, Scene, Viewport};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bitflags::bitflags;
@@ -35,8 +34,7 @@ const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
-    viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
-    mut scenes: Query<&mut Scene, SymbolLayerFilter>,
+    viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     shapes: Query<(
         (
             Option<&Shape>,
@@ -46,10 +44,8 @@ pub fn draw_symbols(
         Relations<Child>,
     )>,
 ) {
-    for (circuit, layers) in viewports.iter() {
-        let Ok(mut scene) = scenes.get_mut(layers.symbol_layer) else {
-            continue;
-        };
+    for (scene, circuit) in viewports.iter() {
+        let mut scene = scene.for_layer(Layer::Symbol);
         scene.reset();
 
         shapes
@@ -98,14 +94,11 @@ pub fn draw_symbols(
 }
 
 pub fn draw_bounding_boxes(
-    viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
-    mut scenes: Query<&mut Scene, BoundingBoxLayerFilter>,
+    viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     boxes: Query<(Option<&AbsoluteBoundingBox>, Relations<Child>)>,
 ) {
-    for (circuit, layers) in viewports.iter() {
-        let Ok(mut scene) = scenes.get_mut(layers.bounding_box_layer) else {
-            continue;
-        };
+    for (scene, circuit) in viewports.iter() {
+        let mut scene = scene.for_layer(Layer::BoundingBox);
         scene.reset();
 
         boxes
@@ -132,18 +125,14 @@ pub fn draw_bounding_boxes(
 }
 
 pub fn draw_routing_graph(
-    viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
-    mut scenes: Query<&mut Scene, RoutingGraphLayerFilter>,
+    viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     graphs: Query<Ref<digilogic_routing::Graph>>,
 ) {
-    for (circuit, layers) in viewports.iter() {
-        let Ok(mut scene) = scenes.get_mut(layers.routing_graph_layer) else {
-            continue;
-        };
+    for (scene, circuit) in viewports.iter() {
+        let mut scene = scene.for_layer(Layer::RoutingGraph);
+        scene.reset();
 
         if let Ok(graph) = graphs.get(circuit.0) {
-            scene.reset();
-
             for node in graph.nodes() {
                 let node_pos = (node.position.x.to_f64(), node.position.y.to_f64());
 
