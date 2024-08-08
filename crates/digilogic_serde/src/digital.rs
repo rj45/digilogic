@@ -5,8 +5,11 @@ use anyhow::{anyhow, Result};
 use bevy_ecs::prelude::*;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
+use digilogic_core::fixed;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
+use digilogic_core::Fixed;
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::{BufReader, Write};
@@ -14,7 +17,7 @@ use std::path::Path;
 
 struct PosEntry {
     port: Option<Entity>,
-    endpoint: Option<Entity>,
+    endpoint: std::cell::Cell<Option<Entity>>,
     wires: Vec<[Vec2; 2]>,
 }
 
@@ -93,7 +96,7 @@ fn translate_symbol(
             pos + port.position,
             PosEntry {
                 port: Some(port.id),
-                endpoint: None,
+                endpoint: Cell::new(None),
                 wires: vec![],
             },
         );
@@ -130,7 +133,7 @@ fn translate_wires(
                     *end,
                     PosEntry {
                         port: None,
-                        endpoint: None,
+                        endpoint: Cell::new(None),
                         wires: vec![ends],
                     },
                 );
@@ -139,12 +142,11 @@ fn translate_wires(
     }
 
     let mut visited = HashSet::<Vec2>::default();
-    let mut todo = VecDeque::<Vec2>::default();
-    let mut endpoints = HashMap::<Vec2, Entity>::default();
+    let mut todo = Vec::<Vec2>::default();
     let mut junctions = HashSet::<Vec2>::default();
 
     // do a "flood fill" to find all connected ports and assign them to nets
-    for (pos, _) in pos_map.iter() {
+    for pos in pos_map.keys() {
         if visited.contains(pos) {
             continue;
         }
@@ -159,8 +161,8 @@ fn translate_wires(
             .id();
 
         todo.clear();
-        todo.push_back(*pos);
-        while let Some(pos) = todo.pop_front() {
+        todo.push(*pos);
+        while let Some(pos) = todo.pop() {
             visited.insert(pos);
 
             if let Some(pos_entry) = pos_map.get(&pos) {
@@ -182,7 +184,7 @@ fn translate_wires(
                         .insert(PortID(port))
                         .set::<Child>(net_id)
                         .id();
-                    endpoints.insert(pos, endpoint_id);
+                    pos_entry.endpoint.set(Some(endpoint_id));
                 } else if pos_entry.wires.len() > 2 {
                     // junction here, save it for later
                     junctions.insert(pos);
@@ -191,7 +193,7 @@ fn translate_wires(
                 for wire in pos_entry.wires.iter() {
                     for end in wire.iter() {
                         if !visited.contains(end) {
-                            todo.push_back(*end);
+                            todo.push(*end);
                         }
                     }
                 }
@@ -199,10 +201,73 @@ fn translate_wires(
         }
     }
 
-    // TODO: I feel like this should not be necessary somehow. I should be able to
-    // alter the endpoint field from within the previous loop, but it won't let me.
-    for (pos, endpoint_id) in endpoints.iter() {
-        pos_map.get_mut(pos).unwrap().endpoint = Some(*endpoint_id);
+    // now that we have all the endpoints, we can attach waypoints to them near junctions
+    let mut endpoints = Vec::<Entity>::default();
+    visited.clear();
+    for junction_pos in junctions.iter() {
+        let pos_entry = pos_map.get(junction_pos).unwrap();
+        for wire in pos_entry.wires.iter() {
+            let other_end = if wire[0] == *junction_pos {
+                wire[1]
+            } else {
+                wire[0]
+            };
+
+            // waypoint is positioned at the midpoint of the wire segment going
+            // into the junction
+            let waypoint_pos = Vec2 {
+                x: (junction_pos.x + other_end.x) / fixed!(2),
+                y: (junction_pos.y + other_end.y) / fixed!(2),
+            };
+
+            // flood fill from the other end to find all connected endpoints
+            endpoints.clear();
+            todo.clear();
+            todo.push(other_end);
+            while let Some(pos) = todo.pop() {
+                visited.insert(pos);
+
+                if let Some(pos_entry) = pos_map.get(&pos) {
+                    for wire in pos_entry.wires.iter() {
+                        for end in wire.iter() {
+                            if !visited.contains(end) {
+                                todo.push(*end);
+                            }
+                        }
+                    }
+                    if let Some(endpoint) = pos_entry.endpoint.get() {
+                        endpoints.push(endpoint);
+                    }
+                }
+            }
+
+            if endpoints.len() == 1 {
+                // only one endpoint the waypoint could be attached to, so attach it
+                commands
+                    .spawn(WaypointBundle {
+                        waypoint: Waypoint,
+                        transform: TransformBundle {
+                            transform: Transform {
+                                translation: waypoint_pos,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        bounds: {
+                            BoundingBoxBundle {
+                                bounding_box: BoundingBox::from_half_size(fixed!(2.5), fixed!(2.5)),
+                                ..Default::default()
+                            }
+                        },
+                        ..Default::default()
+                    })
+                    .set::<Child>(endpoints[0]);
+            } else {
+                // multiple endpoints... in this case it's ambiguous which endpoint the waypoint
+                // should be attached to... for now, just don't create the waypoint
+                // TODO: handle this case
+            }
+        }
     }
 
     Ok(())
