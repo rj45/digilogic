@@ -35,7 +35,6 @@ impl SharedStr {
             SharedStrRepr::Static(s) => s,
             SharedStrRepr::Arc(ref s) => s,
             SharedStrRepr::Small { len, ref data } => {
-                #[allow(unsafe_code)]
                 unsafe {
                     // SAFETY: `len` and `data` originate from a valid string slice
                     std::str::from_utf8_unchecked(&data[..(len as usize)])
