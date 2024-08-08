@@ -18,7 +18,7 @@ bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_derive.workspace = true
 bevy_app.workspace = true
-bevy_hierarchy.workspace = true
+aery.workspace = true
 ahash.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }

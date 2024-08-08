@@ -32,23 +32,47 @@ impl<T> Default for SegmentTree<T> {
     }
 }
 
-impl<T: std::fmt::Debug> SegmentTree<T> {
-    pub fn build(&mut self, segments: impl IntoIterator<Item = Segment<T>>)
-    where
-        Segment<T>: Send,
-    {
+pub struct SegmentTreeBuilder<'a, T> {
+    tree: &'a mut SegmentTree<T>,
+}
+
+impl<T> SegmentTree<T> {
+    #[inline]
+    pub fn build(&mut self) -> SegmentTreeBuilder<T> {
         self.segments.clear();
-        self.segments.extend(segments.into_iter());
-        self.segments
+        SegmentTreeBuilder { tree: self }
+    }
+}
+
+impl<T> SegmentTreeBuilder<'_, T> {
+    #[inline]
+    pub fn push(&mut self, segment: Segment<T>) {
+        self.tree.segments.push(segment);
+    }
+
+    #[cfg(test)]
+    #[inline]
+    pub fn extend(&mut self, segments: impl IntoIterator<Item = Segment<T>>) {
+        self.tree.segments.extend(segments);
+    }
+}
+
+impl<T> Drop for SegmentTreeBuilder<'_, T> {
+    fn drop(&mut self) {
+        self.tree
+            .segments
             .sort_unstable_by_key(|segment| segment.start_inclusive);
-        self.max_segment_len = self
+        self.tree.max_segment_len = self
+            .tree
             .segments
             .iter()
             .map(Segment::len)
             .max()
             .unwrap_or_default();
     }
+}
 
+impl<T: std::fmt::Debug> SegmentTree<T> {
     fn find_start_index(&self, position: Fixed) -> usize {
         match self.segments.binary_search_by(|segment| {
             (segment.start_inclusive + self.max_segment_len).cmp(&position)
@@ -148,127 +172,148 @@ mod tests {
     #[test]
     fn single_outside_before() {
         let mut tree = SegmentTree::default();
-        tree.build([Segment {
+        let mut builder = tree.build();
+        builder.extend([Segment {
             start_inclusive: fixed!(-10),
             end_inclusive: fixed!(10),
             value: (),
         }]);
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
     }
 
     #[test]
     fn single_outside_after() {
         let mut tree = SegmentTree::default();
-        tree.build([Segment {
+        let mut builder = tree.build();
+        builder.extend([Segment {
             start_inclusive: fixed!(-10),
             end_inclusive: fixed!(10),
             value: (),
         }]);
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
     }
 
     #[test]
     fn single_inside_at_start() {
         let mut tree = SegmentTree::default();
-        tree.build([Segment {
+        let mut builder = tree.build();
+        builder.extend([Segment {
             start_inclusive: fixed!(-10),
             end_inclusive: fixed!(10),
             value: (),
         }]);
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-10)).count(), 1);
     }
 
     #[test]
     fn single_inside_at_end() {
         let mut tree = SegmentTree::default();
-        tree.build([Segment {
+        let mut builder = tree.build();
+        builder.extend([Segment {
             start_inclusive: fixed!(-10),
             end_inclusive: fixed!(10),
             value: (),
         }]);
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(10)).count(), 1);
     }
 
     #[test]
     fn single_inside() {
         let mut tree = SegmentTree::default();
-        tree.build([Segment {
+        let mut builder = tree.build();
+        builder.extend([Segment {
             start_inclusive: fixed!(-10),
             end_inclusive: fixed!(10),
             value: (),
         }]);
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(0)).count(), 1);
     }
 
     #[test]
     fn multiple_outside_before() {
         let mut tree = SegmentTree::default();
-        tree.build(
+        let mut builder = tree.build();
+        builder.extend(
             [Segment {
                 start_inclusive: fixed!(-10),
                 end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
     }
 
     #[test]
     fn multiple_outside_after() {
         let mut tree = SegmentTree::default();
-        tree.build(
+        let mut builder = tree.build();
+        builder.extend(
             [Segment {
                 start_inclusive: fixed!(-10),
                 end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
     }
 
     #[test]
     fn multiple_inside_at_start() {
         let mut tree = SegmentTree::default();
-        tree.build(
+        let mut builder = tree.build();
+        builder.extend(
             [Segment {
                 start_inclusive: fixed!(-10),
                 end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(-10)).count(), 100);
     }
 
     #[test]
     fn multiple_inside_at_end() {
         let mut tree = SegmentTree::default();
-        tree.build(
+        let mut builder = tree.build();
+        builder.extend(
             [Segment {
                 start_inclusive: fixed!(-10),
                 end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(10)).count(), 100);
     }
 
     #[test]
     fn multiple_inside() {
         let mut tree = SegmentTree::default();
-        tree.build(
+        let mut builder = tree.build();
+        builder.extend(
             [Segment {
                 start_inclusive: fixed!(-10),
                 end_inclusive: fixed!(10),
                 value: (),
             }; 100],
         );
+        std::mem::drop(builder);
         assert_eq!(tree.iter_containing(fixed!(0)).count(), 100);
     }
 
     #[test]
     fn mixed() {
         let mut tree = SegmentTree::default();
-        tree.build([
+        let mut builder = tree.build();
+        builder.extend([
             Segment {
                 start_inclusive: fixed!(-20),
                 end_inclusive: fixed!(-10),
@@ -285,6 +330,7 @@ mod tests {
                 value: (),
             },
         ]);
+        std::mem::drop(builder);
 
         assert_eq!(tree.iter_containing(fixed!(-21)).count(), 0);
         assert_eq!(tree.iter_containing(fixed!(-11)).count(), 1);

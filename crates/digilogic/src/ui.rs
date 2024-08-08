@@ -5,11 +5,11 @@ mod draw;
 use draw::*;
 
 use crate::{AppState, FileDialogEvent};
+use aery::prelude::*;
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
-use bevy_hierarchy::prelude::*;
 use bevy_reflect::Reflect;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
 use digilogic_core::events::{LoadedEvent, UnloadedEvent};
@@ -382,7 +382,7 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
 
                 if viewport_count.0 == 0 {
                     // TODO: show confirmation prompt if circuit contains changes
-                    self.commands.entity(circuit.0).despawn_recursive();
+                    self.commands.entity(circuit.0).despawn();
                     self.unloaded_events.send(UnloadedEvent { circuit });
                 }
             }

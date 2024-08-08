@@ -1,9 +1,9 @@
 pub mod graph;
 mod segment_tree;
 
+use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::prelude::*;
 use bevy_reflect::Reflect;
 use digilogic_core::components::*;
 use digilogic_core::events::LoadedEvent;
@@ -39,15 +39,17 @@ impl Default for RoutingConfig {
 fn route(
     trigger: Trigger<RouteEvent>,
     config: Res<RoutingConfig>,
-    mut circuits: Query<(&mut Graph, &Children), With<Circuit>>,
-    symbols: Query<(&AbsoluteBoundingBox, &Children), With<Symbol>>,
+    mut circuits: Query<(&mut Graph, Relations<Child>), With<Circuit>>,
+    symbols: Query<(&AbsoluteBoundingBox, Relations<Child>), With<Symbol>>,
     ports: Query<(&GlobalTransform, &AbsoluteDirections), With<Port>>,
-    mut nets: Query<(&Net, &mut Vertices)>,
-    endpoints: Query<(&Endpoint, &GlobalTransform)>,
-    waypoints: Query<&GlobalTransform, With<Waypoint>>,
+    //mut nets: Query<(&Net, &mut Vertices)>,
+    //endpoints: Query<(&Endpoint, &GlobalTransform)>,
+    //waypoints: Query<&GlobalTransform, With<Waypoint>>,
 ) {
-    if let Ok((mut graph, children)) = circuits.get_mut(trigger.entity()) {
-        graph.0.build(children, &symbols, &ports, config.minimal);
+    if let Ok((mut graph, circuit_children)) = circuits.get_mut(trigger.entity()) {
+        graph
+            .0
+            .build(&circuit_children, &symbols, &ports, config.minimal);
 
         //for &circuit_child in circuit_children {
         //    if let Ok((net_children, net_vertices)) = nets.get_mut(circuit_child) {

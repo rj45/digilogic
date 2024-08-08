@@ -21,7 +21,7 @@ pub struct CorePlugin;
 
 impl bevy_app::Plugin for CorePlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        use bevy_ecs::prelude::*;
+        use aery::prelude::*;
 
         app.register_type::<SharedStr>().register_type::<Fixed>();
 
@@ -32,6 +32,8 @@ impl bevy_app::Plugin for CorePlugin {
             app.register_type_data::<SharedStr, InspectorEguiImpl>()
                 .register_type_data::<Fixed, InspectorEguiImpl>();
         }
+
+        app.register_relation::<components::Child>();
 
         app.register_type::<components::PortID>()
             .register_type::<components::SymbolKind>()
@@ -60,37 +62,17 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<components::Waypoint>()
             .register_type::<components::Endpoint>()
             .register_type::<components::Net>()
-            .register_type::<components::Circuit>()
-            .register_type::<transform::Vec2>()
-            .register_type::<transform::Rotation>()
-            .register_type::<transform::Transform>()
-            .register_type::<transform::BoundingBox>()
-            .register_type::<transform::GlobalTransform>()
-            .register_type::<transform::AbsoluteBoundingBox>()
-            .register_type::<visibility::Visibility>()
-            .register_type::<visibility::ComputedVisibility>();
+            .register_type::<components::Circuit>();
 
         app.init_resource::<symbol::SymbolRegistry>();
-        app.init_resource::<spatial_index::SpatialIndex>();
 
         app.add_event::<events::LoadEvent>()
             .add_event::<events::LoadedEvent>()
             .add_event::<events::UnloadedEvent>();
 
-        app.add_systems(
-            bevy_app::PostUpdate,
-            (transform::update_transforms, visibility::update_visibility),
-        );
-        app.add_systems(
-            bevy_app::PostUpdate,
-            (
-                transform::update_bounding_box,
-                transform::update_direction,
-                transform::update_directions,
-            )
-                .after(transform::update_transforms),
-        );
+        app.add_plugins((transform::TransformPlugin, visibility::VisibilityPlugin));
 
+        app.init_resource::<spatial_index::SpatialIndex>();
         app.add_systems(bevy_app::PostUpdate, spatial_index::update_spatial_index);
         app.observe(spatial_index::on_remove_update_spatial_index);
     }

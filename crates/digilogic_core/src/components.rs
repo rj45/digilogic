@@ -1,7 +1,16 @@
 use crate::SharedStr;
+use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use smallvec::SmallVec;
+
+/////
+// Entity relations
+/////
+
+#[derive(Relation)]
+#[aery(Recursive)]
+pub struct Child;
 
 /////
 // Entity ID components

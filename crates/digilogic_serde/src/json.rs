@@ -2,8 +2,8 @@ mod circuitfile;
 use circuitfile::*;
 
 use crate::HashMap;
+use aery::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::BuildChildren;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::symbol::SymbolRegistry;
@@ -106,7 +106,7 @@ fn translate_net(
             name: Name(net.name.clone()),
             bit_width: BitWidth(1),
         })
-        .set_parent(circuit_id)
+        .set::<Child>(circuit_id)
         .id();
 
     for subnet in net.subnets.iter() {
@@ -165,7 +165,7 @@ fn translate_endpoint(
         },
         ..Default::default()
     });
-    endpoint_ent.set_parent(net_id);
+    endpoint_ent.set::<Child>(net_id);
     if let Some(port_id) = port_id {
         endpoint_ent.insert(PortID(port_id));
     }
@@ -197,7 +197,7 @@ fn translate_waypoint(
             },
             ..Default::default()
         })
-        .set_parent(endpoint_id)
+        .set::<Child>(endpoint_id)
         .id();
     id_map.insert(waypoint.id.clone(), waypoint_id);
     Ok(())

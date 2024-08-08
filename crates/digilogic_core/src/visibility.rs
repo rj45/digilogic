@@ -1,6 +1,6 @@
+use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Component, Reflect)]
@@ -28,40 +28,62 @@ pub struct VisibilityBundle {
     pub computed_visibility: ComputedVisibility,
 }
 
-pub(crate) fn update_visibility(
-    mut computed: Query<(&Visibility, &mut ComputedVisibility, Option<&Parent>)>,
-    ancestors: Query<(Option<&Visibility>, Option<&Parent>), Or<(With<Visibility>, With<Parent>)>>,
+#[derive(Relation)]
+pub struct InheritVisibility;
+
+fn update_root_visibility(
+    mut roots: Query<(&Visibility, &mut ComputedVisibility), Root<InheritVisibility>>,
 ) {
-    computed
-        .par_iter_mut()
-        .for_each(|(vis, mut comp_vis, parent)| {
-            let mut vis = *vis;
-            let mut next_parent = parent;
-            loop {
-                if vis != Visibility::Inherit {
-                    break;
+    for (visibility, mut computed_visibility) in roots.iter_mut() {
+        let new_visibility = match visibility {
+            Visibility::Inherit | Visibility::Visible => true,
+            Visibility::Hidden => false,
+        };
+
+        if computed_visibility.0 != new_visibility {
+            computed_visibility.0 = new_visibility;
+        }
+    }
+}
+
+fn update_visibility(
+    mut tree: Query<(
+        (&Visibility, &mut ComputedVisibility),
+        Relations<InheritVisibility>,
+    )>,
+    roots: Query<Entity, Root<InheritVisibility>>,
+) {
+    tree.traverse_mut::<InheritVisibility>(roots.iter())
+        .track_self()
+        .for_each(
+            |(_, parent_computed_visibility),
+             _,
+             (child_visibility, child_computed_visibility),
+             _| {
+                let new_visibility = match child_visibility {
+                    Visibility::Inherit => parent_computed_visibility.0,
+                    Visibility::Visible => true,
+                    Visibility::Hidden => false,
+                };
+
+                if child_computed_visibility.0 != new_visibility {
+                    child_computed_visibility.0 = new_visibility;
                 }
+            },
+        );
+}
 
-                let Some(parent) = next_parent else {
-                    break;
-                };
+pub(crate) struct VisibilityPlugin;
 
-                let Ok((parent_vis, parent)) = ancestors.get(parent.get()) else {
-                    break;
-                };
+impl bevy_app::Plugin for VisibilityPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.register_type::<Visibility>()
+            .register_type::<ComputedVisibility>();
 
-                vis = parent_vis.copied().unwrap_or_default();
-                next_parent = parent;
-            }
-
-            let new_comp_vis = ComputedVisibility(match vis {
-                Visibility::Inherit => true,
-                Visibility::Visible => true,
-                Visibility::Hidden => false,
-            });
-
-            if *comp_vis != new_comp_vis {
-                *comp_vis = new_comp_vis;
-            }
-        });
+        app.register_relation::<InheritVisibility>();
+        app.add_systems(
+            bevy_app::PostUpdate,
+            (update_root_visibility, update_visibility).chain(),
+        );
+    }
 }

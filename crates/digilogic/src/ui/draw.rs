@@ -1,9 +1,9 @@
 use super::filters::*;
 use super::{Layers, Scene, Viewport};
+use aery::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::prelude::*;
 use bitflags::bitflags;
-use digilogic_core::components::{CircuitID, Shape};
+use digilogic_core::components::{Child, CircuitID, Shape};
 use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
 use vello::kurbo::{Affine, BezPath, Circle, Line, Rect, Shape as _, Stroke, Vec2};
@@ -36,12 +36,14 @@ const SYMBOL_STROKE_WIDTH: f64 = 3.0;
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
     viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
-    children: Query<&Children>,
     mut scenes: Query<&mut Scene, SymbolLayerFilter>,
     shapes: Query<(
-        &Shape,
-        Option<&GlobalTransform>,
-        Option<&ComputedVisibility>,
+        (
+            Option<&Shape>,
+            Option<&GlobalTransform>,
+            Option<&ComputedVisibility>,
+        ),
+        Relations<Child>,
     )>,
 ) {
     for (circuit, layers) in viewports.iter() {
@@ -50,10 +52,15 @@ pub fn draw_symbols(
         };
         scene.reset();
 
-        for child in children.iter_descendants(circuit.0) {
-            if let Ok((&shape, transform, vis)) = shapes.get(child) {
-                if !*vis.copied().unwrap_or_default() {
-                    continue;
+        shapes
+            .traverse::<Child>(std::iter::once(circuit.0))
+            .for_each(|(shape, transform, visibility), _| {
+                let &mut Some(shape) = shape else {
+                    return;
+                };
+
+                if !*visibility.copied().unwrap_or_default() {
+                    return;
                 }
 
                 let transform = transform.copied().unwrap_or_default();
@@ -64,7 +71,7 @@ pub fn draw_symbols(
                         transform.translation.y.to_f64(),
                     ));
 
-                let symbol_shape = &symbol_shapes.0[shape as usize];
+                let symbol_shape = &symbol_shapes.0[*shape as usize];
                 for path in symbol_shape.paths.iter() {
                     if path.kind.contains(PathKind::FILL) {
                         scene.fill(
@@ -86,16 +93,14 @@ pub fn draw_symbols(
                         );
                     }
                 }
-            }
-        }
+            });
     }
 }
 
 pub fn draw_bounding_boxes(
     viewports: Query<(&CircuitID, &Layers), With<Viewport>>,
-    children: Query<&Children>,
     mut scenes: Query<&mut Scene, BoundingBoxLayerFilter>,
-    boxes: Query<&AbsoluteBoundingBox>,
+    boxes: Query<(Option<&AbsoluteBoundingBox>, Relations<Child>)>,
 ) {
     for (circuit, layers) in viewports.iter() {
         let Ok(mut scene) = scenes.get_mut(layers.bounding_box_layer) else {
@@ -103,8 +108,13 @@ pub fn draw_bounding_boxes(
         };
         scene.reset();
 
-        for child in children.iter_descendants(circuit.0) {
-            if let Ok(&bounds) = boxes.get(child) {
+        boxes
+            .traverse::<Child>(std::iter::once(circuit.0))
+            .for_each(|bounds, _| {
+                let &mut Some(bounds) = bounds else {
+                    return;
+                };
+
                 scene.stroke(
                     &Stroke::new(1.0),
                     Affine::IDENTITY,
@@ -117,8 +127,7 @@ pub fn draw_bounding_boxes(
                         bounds.max.y.to_f64(),
                     ),
                 );
-            }
-        }
+            });
     }
 }
 

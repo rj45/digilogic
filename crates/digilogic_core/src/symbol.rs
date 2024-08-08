@@ -1,10 +1,10 @@
 use crate::bundles::{PortBundle, SymbolBundle};
 use crate::components::*;
 use crate::transform::*;
-use crate::visibility::VisibilityBundle;
+use crate::visibility::*;
 use crate::{fixed, Fixed, SharedStr};
+use aery::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::BuildChildren;
 use smallvec::SmallVec;
 
 #[derive(Clone)]
@@ -300,7 +300,7 @@ impl SymbolBuilder<'_> {
                     ..Default::default()
                 },
             })
-            .set_parent(circuit_id)
+            .set::<Child>(circuit_id)
             .id();
 
         self.ports = kind
@@ -345,7 +345,9 @@ impl PortDef {
                     ..Default::default()
                 },
             })
-            .set_parent(symbol_id)
+            .set::<Child>(symbol_id)
+            .set::<InheritTransform>(symbol_id)
+            .set::<InheritVisibility>(symbol_id)
             .id()
     }
 }

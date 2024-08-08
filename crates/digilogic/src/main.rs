@@ -58,7 +58,6 @@ impl App {
             bevy_core::TaskPoolPlugin::default(),
             bevy_core::TypeRegistrationPlugin::default(),
             bevy_core::FrameCountPlugin::default(),
-            bevy_hierarchy::HierarchyPlugin::default(),
         ));
 
         app.register_type::<AppState>();

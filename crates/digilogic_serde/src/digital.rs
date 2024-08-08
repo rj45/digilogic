@@ -1,12 +1,12 @@
 mod circuitfile;
 
+use aery::prelude::*;
 use anyhow::{anyhow, Result};
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::BuildChildren as _;
-use digilogic_core::bundles::{CircuitBundle, EndpointBundle, NetBundle};
-use digilogic_core::components::{BitWidth, Endpoint, Net, PortID, SymbolKind};
+use digilogic_core::bundles::*;
+use digilogic_core::components::*;
 use digilogic_core::symbol::SymbolRegistry;
-use digilogic_core::transform::{Transform, TransformBundle, Vec2};
+use digilogic_core::transform::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::{BufReader, Write};
@@ -147,7 +147,7 @@ fn translate_wires(
                 name: Default::default(),
                 bit_width: BitWidth(1), // TODO: Get bit width from somewhere
             })
-            .set_parent(circuit_id)
+            .set::<Child>(circuit_id)
             .id();
 
         todo.clear();
@@ -172,7 +172,7 @@ fn translate_wires(
                             bounds: Default::default(),
                         })
                         .insert(PortID(port))
-                        .set_parent(net_id);
+                        .set::<Child>(net_id);
                 }
 
                 for wire in pos_entry.wires.iter() {

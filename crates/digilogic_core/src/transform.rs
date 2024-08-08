@@ -1,7 +1,7 @@
 use crate::{fixed, Fixed};
+use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::Parent;
 use bevy_reflect::Reflect;
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
@@ -537,37 +537,39 @@ pub struct DirectionsBundle {
     pub absolute_directions: AbsoluteDirections,
 }
 
-pub(crate) fn update_transforms(
-    mut absolutes: Query<(
-        &Transform,
-        &mut GlobalTransform,
-        Option<&BoundingBox>,
-        Option<&mut AbsoluteBoundingBox>,
-        Option<&Parent>,
-    )>,
-    ancestors: Query<(Option<&Transform>, Option<&Parent>), Or<(With<Transform>, With<Parent>)>>,
+#[derive(Relation)]
+pub struct InheritTransform;
+
+fn update_root_transform(
+    mut roots: Query<(&Transform, &mut GlobalTransform), Root<InheritTransform>>,
 ) {
-    absolutes
-        .par_iter_mut()
-        .for_each(|(transform, mut global_transform, bb, abs_bb, parent)| {
-            let mut transform = *transform;
-            let mut next_parent = parent;
-            while let Some(parent) = next_parent {
-                let Ok((parent_transform, parent)) = ancestors.get(parent.get()) else {
-                    break;
-                };
-
-                transform = parent_transform.copied().unwrap_or_default() * transform;
-                next_parent = parent;
-            }
-
-            if global_transform.0 != transform {
-                global_transform.0 = transform;
-            }
-        });
+    for (&transform, mut global_transform) in roots.iter_mut() {
+        if global_transform.0 != transform {
+            global_transform.0 = transform;
+        }
+    }
 }
 
-pub(crate) fn update_bounding_box(
+fn update_transform(
+    mut tree: Query<(
+        (&Transform, &mut GlobalTransform),
+        Relations<InheritTransform>,
+    )>,
+    roots: Query<Entity, Root<InheritTransform>>,
+) {
+    tree.traverse_mut::<InheritTransform>(roots.iter())
+        .track_self()
+        .for_each(
+            |(_, parent_global_transform), _, (child_transform, child_global_transform), _| {
+                let new_transform = parent_global_transform.0 * **child_transform;
+                if child_global_transform.0 != new_transform {
+                    child_global_transform.0 = new_transform;
+                }
+            },
+        );
+}
+
+fn update_bounding_box(
     mut query: Query<
         (&BoundingBox, &mut AbsoluteBoundingBox, &GlobalTransform),
         Changed<GlobalTransform>,
@@ -578,7 +580,7 @@ pub(crate) fn update_bounding_box(
     }
 }
 
-pub(crate) fn update_direction(
+fn update_direction(
     mut query: Query<
         (&Direction, &mut AbsoluteDirection, &GlobalTransform),
         Changed<GlobalTransform>,
@@ -589,7 +591,7 @@ pub(crate) fn update_direction(
     }
 }
 
-pub(crate) fn update_directions(
+fn update_directions(
     mut query: Query<
         (&Directions, &mut AbsoluteDirections, &GlobalTransform),
         Changed<GlobalTransform>,
@@ -597,5 +599,28 @@ pub(crate) fn update_directions(
 ) {
     for (dirs, mut abs_dirs, transform) in query.iter_mut() {
         abs_dirs.0 = dirs.rotate(transform.rotation);
+    }
+}
+
+pub(crate) struct TransformPlugin;
+
+impl bevy_app::Plugin for TransformPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.register_type::<Vec2>()
+            .register_type::<Rotation>()
+            .register_type::<Transform>()
+            .register_type::<BoundingBox>()
+            .register_type::<GlobalTransform>()
+            .register_type::<AbsoluteBoundingBox>();
+
+        app.register_relation::<InheritTransform>();
+        app.add_systems(
+            bevy_app::PostUpdate,
+            (update_root_transform, update_transform).chain(),
+        );
+        app.add_systems(
+            bevy_app::PostUpdate,
+            (update_bounding_box, update_direction, update_directions).after(update_transform),
+        );
     }
 }

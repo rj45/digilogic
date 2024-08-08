@@ -1,7 +1,8 @@
 use crate::segment_tree::*;
 use crate::HashMap;
+use aery::operations::utils::RelationsItem;
+use aery::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_hierarchy::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
@@ -217,31 +218,16 @@ pub(crate) struct BoundingBoxList {
 }
 
 impl BoundingBoxList {
-    fn build<'a, Iter>(&mut self, symbols: Iter)
-    where
-        Iter: Iterator<Item = (&'a AbsoluteBoundingBox, &'a Children)> + Clone,
-    {
-        self.horizontal_bounding_boxes
-            .build(symbols.clone().enumerate().map(|(i, (bb, _))| Segment {
-                start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
-                end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
-                value: HorizontalBoundingBox {
-                    index: i,
-                    min_x: bb.min().x - BOUNDING_BOX_PADDING,
-                    max_x: bb.max().x + BOUNDING_BOX_PADDING,
-                },
-            }));
-
-        self.vertical_bounding_boxes
-            .build(symbols.enumerate().map(|(i, (bb, _))| Segment {
-                start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
-                end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
-                value: VerticalBoundingBox {
-                    index: i,
-                    min_y: bb.min().y - BOUNDING_BOX_PADDING,
-                    max_y: bb.max().y + BOUNDING_BOX_PADDING,
-                },
-            }));
+    fn build(
+        &mut self,
+    ) -> (
+        SegmentTreeBuilder<HorizontalBoundingBox>,
+        SegmentTreeBuilder<VerticalBoundingBox>,
+    ) {
+        (
+            self.horizontal_bounding_boxes.build(),
+            self.vertical_bounding_boxes.build(),
+        )
     }
 
     #[inline]
@@ -446,7 +432,7 @@ struct ScanXData<'a> {
     x_coords: &'a [Fixed],
     x_index: usize,
     bounding_boxes: ContainingSegmentIter<'a, HorizontalBoundingBox>,
-    anchor: Anchor,
+    anchor: &'a Anchor,
     anchor_index: u32,
 }
 
@@ -538,7 +524,7 @@ struct ScanYData<'a> {
     y_coords: &'a [Fixed],
     y_index: usize,
     bounding_boxes: ContainingSegmentIter<'a, VerticalBoundingBox>,
-    anchor: Anchor,
+    anchor: &'a Anchor,
     anchor_index: u32,
 }
 
@@ -626,6 +612,8 @@ fn scan_pos_y(
 
 #[derive(Default, Clone)]
 pub struct GraphData {
+    port_anchors: Vec<Anchor>,
+    corner_anchors: Vec<Anchor>,
     pub(crate) bounding_boxes: BoundingBoxList,
     x_coords: Vec<Fixed>,
     y_coords: Vec<Fixed>,
@@ -634,7 +622,7 @@ pub struct GraphData {
 }
 
 impl GraphData {
-    fn scan(&mut self, anchor: Anchor, anchor_index: u32) {
+    fn scan(&mut self, anchor: &Anchor, anchor_index: u32) {
         if anchor.connect_directions.intersects(Directions::X) {
             let x_index = self
                 .x_coords
@@ -854,61 +842,81 @@ impl GraphData {
     /// If the graph had previously been built, this will reset it and reuse the resources.
     pub(crate) fn build(
         &mut self,
-        circuit_children: &Children,
-        symbols: &Query<(&AbsoluteBoundingBox, &Children), With<Symbol>>,
+        circuit_children: &RelationsItem<Child>,
+        symbols: &Query<(&AbsoluteBoundingBox, Relations<Child>), With<Symbol>>,
         ports: &Query<(&GlobalTransform, &AbsoluteDirections), With<Port>>,
         minimal: bool,
     ) {
         use std::collections::hash_map::Entry;
 
-        let symbols = circuit_children
-            .iter()
-            .filter_map(|&symbol_id| symbols.get(symbol_id).ok());
+        // Generate anchors and bounding boxes
+        let mut port_anchors = std::mem::take(&mut self.port_anchors);
+        let mut corner_anchors = std::mem::take(&mut self.corner_anchors);
+        let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
 
-        self.bounding_boxes.build(symbols.clone());
+        let mut index = 0;
+        circuit_children
+            .join::<Child>(symbols)
+            .for_each(|(bb, symbol_children)| {
+                const PADDING: Vec2 = Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
+                let anchors = bb.extrude(PADDING).corners().map(Anchor::new);
+                corner_anchors.extend(anchors);
 
-        let port_anchors = symbols
-            .clone()
-            .enumerate()
-            .flat_map(|(i, (_, symbol_children))| {
-                symbol_children.iter().filter_map(move |&port_id| {
-                    ports
-                        .get(port_id)
-                        .ok()
-                        .map(|(port_transform, port_directions)| {
-                            // TODO: ports have to store their connect directions, and the directions need to respect the symbols rotation
-                            Anchor::new_port(port_transform.translation, i, **port_directions)
-                        })
-                })
+                symbol_children
+                    .join::<Child>(ports)
+                    .for_each(|(transform, directions)| {
+                        let anchor = Anchor::new_port(transform.translation, index, **directions);
+                        port_anchors.push(anchor);
+                    });
+
+                horizontal_builder.push(Segment {
+                    start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
+                    end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
+                    value: HorizontalBoundingBox {
+                        index,
+                        min_x: bb.min().x - BOUNDING_BOX_PADDING,
+                        max_x: bb.max().x + BOUNDING_BOX_PADDING,
+                    },
+                });
+
+                vertical_builder.push(Segment {
+                    start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
+                    end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
+                    value: VerticalBoundingBox {
+                        index,
+                        min_y: bb.min().y - BOUNDING_BOX_PADDING,
+                        max_y: bb.max().y + BOUNDING_BOX_PADDING,
+                    },
+                });
+
+                index += 1;
             });
 
-        let corner_anchors = symbols.clone().flat_map(|(bb, _)| {
-            const PADDING: Vec2 = Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
-            bb.extrude(PADDING).corners().map(Anchor::new)
-        });
+        std::mem::drop(horizontal_builder);
+        std::mem::drop(vertical_builder);
 
         // Sort all X coordinates.
         self.x_coords.clear();
         self.x_coords
-            .extend(port_anchors.clone().map(|anchor| anchor.position.x));
+            .extend(port_anchors.iter().map(|anchor| anchor.position.x));
         self.x_coords
-            .extend(corner_anchors.clone().map(|anchor| anchor.position.x));
+            .extend(corner_anchors.iter().map(|anchor| anchor.position.x));
         self.x_coords.sort_unstable();
         self.x_coords.dedup();
 
         // Sort all Y coordinates.
         self.y_coords.clear();
         self.y_coords
-            .extend(port_anchors.clone().map(|anchor| anchor.position.y));
+            .extend(port_anchors.iter().map(|anchor| anchor.position.y));
         self.y_coords
-            .extend(corner_anchors.clone().map(|anchor| anchor.position.y));
+            .extend(corner_anchors.iter().map(|anchor| anchor.position.y));
         self.y_coords.sort_unstable();
         self.y_coords.dedup();
 
         self.node_map.clear();
         self.nodes.clear();
 
-        for anchor in port_anchors.clone() {
+        for anchor in &port_anchors {
             // Add graph node for this anchor point.
             match self.node_map.entry(anchor.position) {
                 Entry::Occupied(entry) => {
@@ -924,7 +932,7 @@ impl GraphData {
             }
         }
 
-        for anchor in corner_anchors.clone() {
+        for anchor in &corner_anchors {
             // Add graph node for this anchor point.
             match self.node_map.entry(anchor.position) {
                 Entry::Occupied(entry) => {
@@ -938,15 +946,18 @@ impl GraphData {
             }
         }
 
-        for anchor in port_anchors {
+        for anchor in &port_anchors {
             let anchor_index = self.node_map[&anchor.position];
             self.scan(anchor, anchor_index);
         }
 
-        for anchor in corner_anchors {
+        for anchor in &corner_anchors {
             let anchor_index = self.node_map[&anchor.position];
             self.scan(anchor, anchor_index);
         }
+
+        self.port_anchors = std::mem::take(&mut port_anchors);
+        self.corner_anchors = std::mem::take(&mut corner_anchors);
 
         self.assert_graph_is_valid();
 
