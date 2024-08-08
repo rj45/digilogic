@@ -14,6 +14,7 @@ use std::path::Path;
 
 struct PosEntry {
     port: Option<Entity>,
+    endpoint: Option<Entity>,
     wires: Vec<[Vec2; 2]>,
 }
 
@@ -92,6 +93,7 @@ fn translate_symbol(
             pos + port.position,
             PosEntry {
                 port: Some(port.id),
+                endpoint: None,
                 wires: vec![],
             },
         );
@@ -106,6 +108,8 @@ fn translate_wires(
     circuit_id: Entity,
     pos_map: &mut HashMap<Vec2, PosEntry>,
 ) -> Result<(), anyhow::Error> {
+    // at this point, pos_map contains only the ports.
+    // add the wire ends to pos_map also.
     for wire in circuit.wires.wire.iter() {
         let ends = [
             Vec2 {
@@ -126,6 +130,7 @@ fn translate_wires(
                     *end,
                     PosEntry {
                         port: None,
+                        endpoint: None,
                         wires: vec![ends],
                     },
                 );
@@ -135,7 +140,10 @@ fn translate_wires(
 
     let mut visited = HashSet::<Vec2>::default();
     let mut todo = VecDeque::<Vec2>::default();
+    let mut endpoints = HashMap::<Vec2, Entity>::default();
+    let mut junctions = HashSet::<Vec2>::default();
 
+    // do a "flood fill" to find all connected ports and assign them to nets
     for (pos, _) in pos_map.iter() {
         if visited.contains(pos) {
             continue;
@@ -158,7 +166,7 @@ fn translate_wires(
             if let Some(pos_entry) = pos_map.get(&pos) {
                 if let Some(port) = pos_entry.port {
                     // Connect port to net
-                    commands
+                    let endpoint_id = commands
                         .spawn(EndpointBundle {
                             endpoint: Endpoint,
                             transform: TransformBundle {
@@ -172,7 +180,12 @@ fn translate_wires(
                             bounds: Default::default(),
                         })
                         .insert(PortID(port))
-                        .set::<Child>(net_id);
+                        .set::<Child>(net_id)
+                        .id();
+                    endpoints.insert(pos, endpoint_id);
+                } else if pos_entry.wires.len() > 2 {
+                    // junction here, save it for later
+                    junctions.insert(pos);
                 }
 
                 for wire in pos_entry.wires.iter() {
@@ -184,6 +197,12 @@ fn translate_wires(
                 }
             }
         }
+    }
+
+    // TODO: I feel like this should not be necessary somehow. I should be able to
+    // alter the endpoint field from within the previous loop, but it won't let me.
+    for (pos, endpoint_id) in endpoints.iter() {
+        pos_map.get_mut(pos).unwrap().endpoint = Some(*endpoint_id);
     }
 
     Ok(())
