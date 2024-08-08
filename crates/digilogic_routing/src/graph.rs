@@ -846,6 +846,8 @@ impl GraphData {
         // Generate anchors and bounding boxes
         let mut port_anchors = std::mem::take(&mut self.port_anchors);
         let mut corner_anchors = std::mem::take(&mut self.corner_anchors);
+        port_anchors.clear();
+        corner_anchors.clear();
         let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
 
         let mut index = 0;
