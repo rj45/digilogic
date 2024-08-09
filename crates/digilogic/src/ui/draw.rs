@@ -6,6 +6,7 @@ use bitflags::bitflags;
 use digilogic_core::components::{Child, CircuitID, Shape};
 use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
+use digilogic_routing::{VertexKind, Vertices};
 use vello::kurbo::{Affine, BezPath, Circle, Line, Rect, Shape as _, Stroke, Vec2};
 use vello::peniko::{Brush, Color, Fill};
 
@@ -77,23 +78,70 @@ pub fn draw_symbols(
                 let symbol_shape = &symbol_shapes.0[*shape as usize];
                 for path in symbol_shape.paths.iter() {
                     if path.kind.contains(PathKind::FILL) {
-                        scene.fill(
-                            Fill::NonZero,
-                            transform,
-                            &Brush::Solid(Color::GRAY),
-                            None,
-                            &path.path,
-                        );
+                        scene.fill(Fill::NonZero, transform, Color::GRAY, None, &path.path);
                     }
 
                     if path.kind.contains(PathKind::STROKE) {
                         scene.stroke(
                             &Stroke::new(SYMBOL_STROKE_WIDTH),
                             transform,
-                            &Brush::Solid(Color::WHITE),
+                            Color::WHITE,
                             None,
                             &path.path,
                         );
+                    }
+                }
+            });
+    }
+}
+
+pub fn draw_wires(
+    viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
+    vertices: Query<(Option<&Vertices>, Relations<Child>)>,
+) {
+    for (scene, circuit) in viewports.iter() {
+        let mut scene = scene.for_layer(Layer::Wire);
+        scene.reset();
+
+        vertices
+            .traverse::<Child>(std::iter::once(circuit.0))
+            .for_each(|vertices, _| {
+                let &mut Some(vertices) = vertices else {
+                    return;
+                };
+
+                let mut path = BezPath::new();
+
+                for vertex in vertices.iter() {
+                    let pos = (vertex.position.x.to_f64(), vertex.position.y.to_f64());
+
+                    match vertex.kind {
+                        VertexKind::Normal => path.line_to(pos),
+                        VertexKind::WireStart { is_root } => {
+                            path = BezPath::new();
+                            path.move_to(pos);
+                        }
+                        VertexKind::WireEnd { is_junction } => {
+                            path.line_to(pos);
+
+                            scene.stroke(
+                                &Stroke::new(2.0),
+                                Affine::IDENTITY,
+                                Color::GREEN,
+                                None,
+                                &path,
+                            );
+
+                            if is_junction {
+                                scene.fill(
+                                    Fill::NonZero,
+                                    Affine::IDENTITY,
+                                    Color::GREEN,
+                                    None,
+                                    &Circle::new(pos, 4.0),
+                                );
+                            }
+                        }
                     }
                 }
             });
@@ -118,7 +166,7 @@ pub fn draw_bounding_boxes(
                 scene.stroke(
                     &Stroke::new(1.0),
                     Affine::IDENTITY,
-                    &Brush::Solid(Color::RED),
+                    Color::RED,
                     None,
                     &Rect::new(
                         bounds.min.x.to_f64(),
@@ -133,7 +181,7 @@ pub fn draw_bounding_boxes(
 
 pub fn draw_routing_graph(
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
-    graphs: Query<Ref<digilogic_routing::Graph>>,
+    graphs: Query<Ref<digilogic_routing::graph::Graph>>,
 ) {
     for (scene, circuit) in viewports.iter() {
         let mut scene = scene.for_layer(Layer::RoutingGraph);
@@ -152,17 +200,27 @@ pub fn draw_routing_graph(
                         scene.stroke(
                             &Stroke::new(1.0),
                             Affine::IDENTITY,
-                            &Brush::Solid(Color::LIGHT_SKY_BLUE),
+                            Color::LIGHT_SKY_BLUE,
                             None,
                             &Line::new(node_pos, neighbor_pos),
                         );
                     }
                 }
+            }
+
+            for node in graph.nodes() {
+                let node_pos = (node.position.x.to_f64(), node.position.y.to_f64());
+
+                let node_color = if node.is_explicit {
+                    Color::HOT_PINK
+                } else {
+                    Color::DEEP_SKY_BLUE
+                };
 
                 scene.fill(
                     Fill::NonZero,
                     Affine::IDENTITY,
-                    &Brush::Solid(Color::DEEP_SKY_BLUE),
+                    node_color,
                     None,
                     &Circle::new(node_pos, 1.5),
                 );

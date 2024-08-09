@@ -1,5 +1,5 @@
 use crate::segment_tree::*;
-use crate::HashMap;
+use crate::{CircuitTree, HashMap, Vertices};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
@@ -116,8 +116,8 @@ pub struct Node {
     pub position: Vec2,
     /// The neighbors of the node.
     pub(crate) neighbors: NeighborList,
-    /// Whether this node was created from an anchor.
-    pub is_port: bool,
+    /// Whether this node was created from an explicit point of interest.
+    pub is_explicit: bool,
     /// The directions this node is allowed to connect to.  
     /// A direction being legal does not mean a neighbor in that direction actually exists.
     pub legal_directions: Directions,
@@ -160,14 +160,19 @@ impl NodeList {
     }
 
     #[inline]
-    fn push(&mut self, position: Vec2, is_port: bool, legal_directions: Directions) -> NodeIndex {
+    fn push(
+        &mut self,
+        position: Vec2,
+        is_explicit: bool,
+        legal_directions: Directions,
+    ) -> NodeIndex {
         let index: NodeIndex = self.0.len().try_into().expect("too many nodes");
         assert_ne!(index, INVALID_NODE_INDEX, "too many nodes");
 
         self.0.push(Node {
             position,
             neighbors: NeighborList::new(),
-            is_port,
+            is_explicit,
             legal_directions,
         });
 
@@ -604,10 +609,11 @@ fn scan_pos_y(
     }
 }
 
-#[derive(Default, Debug, Clone)]
-pub struct GraphData {
+#[derive(Default, Debug, Clone, Component)]
+pub struct Graph {
     port_anchors: Vec<Anchor>,
     corner_anchors: Vec<Anchor>,
+    waypoint_anchors: Vec<Anchor>,
     pub(crate) bounding_boxes: BoundingBoxList,
     x_coords: Vec<Fixed>,
     y_coords: Vec<Fixed>,
@@ -615,7 +621,7 @@ pub struct GraphData {
     pub(crate) nodes: NodeList,
 }
 
-impl GraphData {
+impl Graph {
     fn scan(&mut self, anchor: &Anchor, anchor_index: u32) {
         if anchor.connect_directions.intersects(Directions::X) {
             let x_index = self
@@ -731,7 +737,7 @@ impl GraphData {
         for node_index in (0..nodes_len).rev() {
             let (node, mut head_tail) = HeadTail::new(&mut nodes[..nodes_len], node_index);
 
-            if !node.is_port {
+            if !node.is_explicit {
                 let neg_x_neighbor_index = node.neighbors[Direction::NegX];
                 let pos_x_neighbor_index = node.neighbors[Direction::PosX];
                 let neg_y_neighbor_index = node.neighbors[Direction::NegY];
@@ -837,8 +843,7 @@ impl GraphData {
     pub(crate) fn build(
         &mut self,
         circuit_children: &RelationsItem<Child>,
-        symbols: &Query<(&AbsoluteBoundingBox, Relations<Child>), With<Symbol>>,
-        ports: &Query<(&GlobalTransform, &AbsoluteDirections), With<Port>>,
+        tree: &CircuitTree,
         minimal: bool,
     ) {
         use std::collections::hash_map::Entry;
@@ -846,20 +851,23 @@ impl GraphData {
         // Generate anchors and bounding boxes
         let mut port_anchors = std::mem::take(&mut self.port_anchors);
         let mut corner_anchors = std::mem::take(&mut self.corner_anchors);
+        let mut waypoint_anchors = std::mem::take(&mut self.waypoint_anchors);
         port_anchors.clear();
         corner_anchors.clear();
+        waypoint_anchors.clear();
+
         let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
 
         let mut index = 0;
         circuit_children
-            .join::<Child>(symbols)
+            .join::<Child>(&tree.symbols)
             .for_each(|(bb, symbol_children)| {
                 const PADDING: Vec2 = Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
                 let anchors = bb.extrude(PADDING).corners().map(Anchor::new);
                 corner_anchors.extend(anchors);
 
                 symbol_children
-                    .join::<Child>(ports)
+                    .join::<Child>(&tree.ports)
                     .for_each(|(transform, directions)| {
                         let anchor = Anchor::new_port(transform.translation, index, **directions);
                         port_anchors.push(anchor);
@@ -891,28 +899,49 @@ impl GraphData {
         drop(horizontal_builder);
         drop(vertical_builder);
 
+        circuit_children
+            .join::<Child>(&tree.nets)
+            .for_each(|(_, net_children)| {
+                net_children
+                    .join::<Child>(&tree.endpoints)
+                    .for_each(|(_, endpoint_children)| {
+                        endpoint_children.join::<Child>(&tree.waypoints).for_each(
+                            |waypoint_transform| {
+                                let anchor = Anchor::new(waypoint_transform.translation);
+                                waypoint_anchors.push(anchor);
+                            },
+                        );
+                    });
+            });
+
         // Sort all X coordinates.
         self.x_coords.clear();
-        self.x_coords
-            .extend(port_anchors.iter().map(|anchor| anchor.position.x));
-        self.x_coords
-            .extend(corner_anchors.iter().map(|anchor| anchor.position.x));
+        self.x_coords.extend(
+            port_anchors
+                .iter()
+                .chain(&corner_anchors)
+                .chain(&waypoint_anchors)
+                .map(|anchor| anchor.position.x),
+        );
         self.x_coords.sort_unstable();
         self.x_coords.dedup();
 
         // Sort all Y coordinates.
         self.y_coords.clear();
-        self.y_coords
-            .extend(port_anchors.iter().map(|anchor| anchor.position.y));
-        self.y_coords
-            .extend(corner_anchors.iter().map(|anchor| anchor.position.y));
+        self.y_coords.extend(
+            port_anchors
+                .iter()
+                .chain(&corner_anchors)
+                .chain(&waypoint_anchors)
+                .map(|anchor| anchor.position.y),
+        );
         self.y_coords.sort_unstable();
         self.y_coords.dedup();
 
         self.node_map.clear();
         self.nodes.clear();
 
-        for anchor in &port_anchors {
+        for anchor in port_anchors.iter().chain(&waypoint_anchors) {
             // Add graph node for this anchor point.
             match self.node_map.entry(anchor.position) {
                 Entry::Occupied(entry) => {
@@ -947,13 +976,14 @@ impl GraphData {
             self.scan(anchor, anchor_index);
         }
 
-        for anchor in &corner_anchors {
+        for anchor in corner_anchors.iter().chain(&waypoint_anchors) {
             let anchor_index = self.node_map[&anchor.position];
             self.scan(anchor, anchor_index);
         }
 
         self.port_anchors = std::mem::take(&mut port_anchors);
         self.corner_anchors = std::mem::take(&mut corner_anchors);
+        self.waypoint_anchors = std::mem::take(&mut waypoint_anchors);
 
         self.assert_graph_is_valid();
 

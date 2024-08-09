@@ -1,67 +1,102 @@
 pub mod graph;
+mod path_finding;
+mod routing;
 mod segment_tree;
 
 use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::lifetimeless::Write;
+use bevy_ecs::system::lifetimeless::{Read, Write};
+use bevy_ecs::system::SystemParam;
 use bevy_reflect::Reflect;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::Fixed;
 
+type HashSet<T> = ahash::AHashSet<T>;
 type HashMap<K, V> = ahash::AHashMap<K, V>;
-
-#[derive(Default, Debug, Deref, Component)]
-#[repr(transparent)]
-pub struct Graph(graph::GraphData);
 
 #[derive(Default, Debug, Component, Reflect)]
 #[component(storage = "SparseSet")]
 struct GraphDirty;
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
+pub enum VertexKind {
+    #[default]
+    Normal,
+    WireStart {
+        is_root: bool,
+    },
+    WireEnd {
+        is_junction: bool,
+    },
+}
+
+#[derive(Default, Debug, Reflect)]
+pub struct Vertex {
+    pub position: Vec2,
+    pub kind: VertexKind,
+}
+
 #[derive(Default, Debug, Deref, Component, Reflect)]
 #[repr(transparent)]
-pub struct Vertices(Vec<[Fixed; 2]>);
+pub struct Vertices(Vec<Vertex>);
 
 #[derive(Debug, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct RoutingConfig {
     pub minimal: bool,
+    pub perform_centering: bool,
 }
 
 impl Default for RoutingConfig {
     fn default() -> Self {
-        Self { minimal: true }
+        Self {
+            minimal: true,
+            perform_centering: true,
+        }
     }
 }
 
-type CircuitQuery<'w, 's> =
-    Query<'w, 's, ((Entity, Write<Graph>), Relations<Child>), (With<Circuit>, With<GraphDirty>)>;
+type CircuitQuery<'w, 's> = Query<
+    'w,
+    's,
+    ((Entity, Write<graph::Graph>), Relations<Child>),
+    (With<Circuit>, With<GraphDirty>),
+>;
+
+#[allow(clippy::type_complexity)]
+#[derive(SystemParam)]
+struct CircuitTree<'w, 's> {
+    symbols: Query<'w, 's, (Read<AbsoluteBoundingBox>, Relations<Child>), With<Symbol>>,
+    ports: Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>,
+    nets: Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>,
+    endpoints: Query<'w, 's, ((Entity, Read<GlobalTransform>), Relations<Child>), With<Endpoint>>,
+    waypoints: Query<'w, 's, Read<GlobalTransform>, With<Waypoint>>,
+}
 
 fn route(
     mut commands: Commands,
     config: Res<RoutingConfig>,
     mut circuits: CircuitQuery,
-    symbols: Query<(&AbsoluteBoundingBox, Relations<Child>), With<Symbol>>,
-    ports: Query<(&GlobalTransform, &AbsoluteDirections), With<Port>>,
-    //mut nets: Query<(&Net, &mut Vertices)>,
-    //endpoints: Query<(&Endpoint, &GlobalTransform)>,
-    //waypoints: Query<&GlobalTransform, With<Waypoint>>,
+    mut tree: CircuitTree,
 ) {
     for ((circuit, mut graph), circuit_children) in circuits.iter_mut() {
         commands.entity(circuit).remove::<GraphDirty>();
-        graph
-            .0
-            .build(&circuit_children, &symbols, &ports, config.minimal);
+        graph.build(&circuit_children, &tree, config.minimal);
 
-        //for &circuit_child in circuit_children {
-        //    if let Ok((net_children, net_vertices)) = nets.get_mut(circuit_child) {
-        //        for &net_child in net_children {
-        //            if let Ok((endpoint_position, endpoint_children)) = endpoints.get(net_child) {}
-        //        }
-        //    }
-        //}
+        //circuit_children
+        //    .join::<Child>(&mut tree.nets)
+        //    .for_each(|(mut vertices, net_children)| {
+        //        routing::connect_net(
+        //            &graph,
+        //            &mut vertices.0,
+        //            &net_children,
+        //            &tree.endpoints,
+        //            &tree.waypoints,
+        //            config.perform_centering,
+        //        )
+        //        .unwrap();
+        //    });
     }
 }
 
@@ -69,7 +104,7 @@ fn inject_graph(trigger: Trigger<OnAdd, Circuit>, mut commands: Commands) {
     commands
         .get_entity(trigger.entity())
         .unwrap()
-        .insert((Graph::default(), GraphDirty));
+        .insert((graph::Graph::default(), GraphDirty));
 }
 
 fn inject_vertices(trigger: Trigger<OnAdd, Net>, mut commands: Commands) {

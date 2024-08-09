@@ -438,7 +438,7 @@ impl bevy_app::Plugin for UiPlugin {
             .register_type::<Viewport>();
 
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
-        app.add_systems(bevy_app::Update, draw_symbols.in_set(DrawSet));
+        app.add_systems(bevy_app::Update, (draw_symbols, draw_wires).in_set(DrawSet));
         app.add_systems(
             bevy_app::Update,
             draw_bounding_boxes
