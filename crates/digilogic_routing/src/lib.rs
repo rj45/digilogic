@@ -11,6 +11,7 @@ use bevy_ecs::system::SystemParam;
 use bevy_reflect::Reflect;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
+use serde::{Deserialize, Serialize};
 
 type HashSet<T> = ahash::AHashSet<T>;
 type HashMap<K, V> = ahash::AHashMap<K, V>;
@@ -41,18 +42,18 @@ pub struct Vertex {
 #[repr(transparent)]
 pub struct Vertices(Vec<Vertex>);
 
-#[derive(Debug, Resource, Reflect)]
+#[derive(Debug, Resource, Reflect, Serialize, Deserialize)]
 #[reflect(Resource)]
 pub struct RoutingConfig {
-    pub minimal: bool,
-    pub perform_centering: bool,
+    pub prune_graph: bool,
+    pub center_wires: bool,
 }
 
 impl Default for RoutingConfig {
     fn default() -> Self {
         Self {
-            minimal: true,
-            perform_centering: true,
+            prune_graph: true,
+            center_wires: true,
         }
     }
 }
@@ -86,7 +87,7 @@ fn route(
 ) {
     for ((circuit, mut graph), circuit_children) in circuits.iter_mut() {
         commands.entity(circuit).remove::<GraphDirty>();
-        graph.build(&circuit_children, &tree, config.minimal);
+        graph.build(&circuit_children, &tree, config.prune_graph);
 
         circuit_children
             .join::<Child>(&mut tree.nets)
@@ -97,7 +98,7 @@ fn route(
                     &net_children,
                     &tree.endpoints,
                     &tree.waypoints,
-                    config.perform_centering,
+                    config.center_wires,
                 )
                 .unwrap();
             });
@@ -116,6 +117,18 @@ fn inject_vertices(trigger: Trigger<OnAdd, Net>, mut commands: Commands) {
         .get_entity(trigger.entity())
         .unwrap()
         .insert(Vertices::default());
+}
+
+fn route_on_config_change(
+    mut commands: Commands,
+    config: Res<RoutingConfig>,
+    circuits: Query<Entity, With<Circuit>>,
+) {
+    if config.is_changed() {
+        for circuit in circuits.iter() {
+            commands.entity(circuit).insert(GraphDirty);
+        }
+    }
 }
 
 #[allow(clippy::type_complexity)]
@@ -144,6 +157,9 @@ impl bevy_app::Plugin for RoutingPlugin {
         app.observe(inject_graph);
         app.observe(inject_vertices);
         app.add_systems(bevy_app::PreUpdate, route);
-        app.add_systems(bevy_app::Update, route_on_symbol_change);
+        app.add_systems(
+            bevy_app::Update,
+            (route_on_config_change, route_on_symbol_change),
+        );
     }
 }

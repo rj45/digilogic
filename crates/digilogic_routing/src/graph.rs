@@ -846,7 +846,7 @@ impl Graph {
         &mut self,
         circuit_children: &RelationsItem<Child>,
         tree: &CircuitTree,
-        minimal: bool,
+        prune: bool,
     ) {
         use std::collections::hash_map::Entry;
 
@@ -989,7 +989,7 @@ impl Graph {
 
             self.assert_graph_is_valid();
 
-            if minimal {
+            if prune {
                 self.remove_redundant_nodes();
                 self.assert_graph_is_valid();
             }

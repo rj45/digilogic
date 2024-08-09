@@ -945,7 +945,7 @@ pub(crate) fn connect_net(
     net_children: &RelationsItem<Child>,
     endpoints: &EndpointQuery,
     waypoints: &WaypointQuery,
-    perform_centering: bool,
+    center_wires: bool,
 ) -> Result<(), RoutingError> {
     thread_local! {
         static THREAD_LOCAL_DATA: RefCell<ThreadLocalData> = RefCell::default();
@@ -980,8 +980,8 @@ pub(crate) fn connect_net(
             thread_local_data,
         )?;
 
-        if perform_centering {
-            center_wires(graph, vertices, thread_local_data);
+        if center_wires {
+            self::center_wires(graph, vertices, thread_local_data);
         }
 
         Ok(())

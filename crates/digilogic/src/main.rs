@@ -5,7 +5,10 @@ mod ux;
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
+use digilogic_routing::RoutingConfig;
 use serde::{Deserialize, Serialize};
+
+const ROUTING_CONFIG_KEY: &str = "routing";
 
 #[derive(Serialize, Deserialize, Resource, Reflect)]
 #[reflect(Resource)]
@@ -65,6 +68,14 @@ impl App {
         app.register_type::<AppState>();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
+
+        // TODO: find a way to have plugins register what they want to save and restore.
+        if let Some(routing_config) = cc
+            .storage
+            .and_then(|storage| eframe::get_value::<RoutingConfig>(storage, ROUTING_CONFIG_KEY))
+        {
+            app.insert_resource(routing_config);
+        }
 
         // Digilogic plugins
         app.add_plugins((
@@ -129,8 +140,14 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
 
 impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        let app_state = self.0.world().get_resource::<AppState>().unwrap();
-        eframe::set_value(storage, eframe::APP_KEY, app_state);
+        if let Some(app_state) = self.0.world().get_resource::<AppState>() {
+            eframe::set_value(storage, eframe::APP_KEY, app_state);
+        }
+
+        // TODO: find a way to have plugins register what they want to save and restore.
+        if let Some(routing_config) = self.0.world().get_resource::<RoutingConfig>() {
+            eframe::set_value(storage, ROUTING_CONFIG_KEY, routing_config);
+        }
     }
 
     fn update(&mut self, context: &egui::Context, frame: &mut eframe::Frame) {
