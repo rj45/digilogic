@@ -3,7 +3,7 @@ use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::Read;
 use bitflags::bitflags;
-use digilogic_core::components::{Child, CircuitID, Shape};
+use digilogic_core::components::{Child, CircuitID, Hovered, Shape};
 use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
 use digilogic_routing::{VertexKind, Vertices};
@@ -33,6 +33,7 @@ pub struct SymbolShape {
 pub struct SymbolShapes(pub Vec<SymbolShape>);
 
 const SYMBOL_STROKE_WIDTH: f64 = 3.0;
+const SYMBOL_HOVERED_WIDTH: f64 = 8.0;
 
 type ShapeQuery<'w, 's> = Query<
     'w,
@@ -42,6 +43,7 @@ type ShapeQuery<'w, 's> = Query<
             Option<Read<Shape>>,
             Option<Read<GlobalTransform>>,
             Option<Read<ComputedVisibility>>,
+            Option<Read<Hovered>>,
         ),
         Relations<Child>,
     ),
@@ -58,7 +60,7 @@ pub fn draw_symbols(
 
         shapes
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|(shape, transform, visibility), _| {
+            .for_each(|(shape, transform, visibility, hovered), _| {
                 let &mut Some(shape) = shape else {
                     return;
                 };
@@ -66,6 +68,8 @@ pub fn draw_symbols(
                 if !*visibility.copied().unwrap_or_default() {
                     return;
                 }
+
+                let hovered = hovered.is_some();
 
                 let transform = transform.copied().unwrap_or_default();
                 let transform = Affine::scale(transform.scale.to_f64())
@@ -82,6 +86,15 @@ pub fn draw_symbols(
                     }
 
                     if path.kind.contains(PathKind::STROKE) {
+                        if hovered {
+                            scene.stroke(
+                                &Stroke::new(SYMBOL_HOVERED_WIDTH),
+                                transform,
+                                &Brush::Solid(Color::GRAY),
+                                None,
+                                &path.path,
+                            );
+                        }
                         scene.stroke(
                             &Stroke::new(SYMBOL_STROKE_WIDTH),
                             transform,
