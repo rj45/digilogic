@@ -1,7 +1,7 @@
 use super::{PointerButtonEvent, PointerMovedEvent};
 use crate::ux::states::*;
 use bevy_ecs::prelude::*;
-use digilogic_core::components::Viewport;
+use digilogic_core::components::{CircuitID, Hovered, Viewport};
 use digilogic_core::spatial_index::SpatialIndex;
 use digilogic_core::transform::{BoundingBox, Vec2};
 use digilogic_core::{fixed, Fixed};
@@ -42,10 +42,11 @@ const MOUSE_POS_FUDGE: Fixed = fixed!(2);
 
 fn hover_system(
     trigger: Trigger<PointerMovedEvent>,
-    commands: Commands,
+    mut commands: Commands,
     spatial_index: Res<SpatialIndex>,
+    hover_query: Query<Entity, With<Hovered>>,
+    mut found_hovered: Local<Vec<Entity>>,
 ) {
-    let viewport = trigger.entity();
     let position = trigger.event().0;
     let bounds = BoundingBox::from_center_half_size(
         Vec2 {
@@ -55,7 +56,14 @@ fn hover_system(
         MOUSE_POS_FUDGE,
         MOUSE_POS_FUDGE,
     );
+    found_hovered.clear();
     spatial_index.query(bounds, |entity| {
-        debug!("Hovering over entity: {} at {:?}", entity, bounds);
+        found_hovered.push(*entity);
+        commands.entity(*entity).insert(Hovered);
     });
+    for item in hover_query.iter() {
+        if !found_hovered.contains(&item) {
+            commands.entity(item).remove::<Hovered>();
+        }
+    }
 }
