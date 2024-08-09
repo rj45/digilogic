@@ -64,7 +64,10 @@ vello = "0.2.1"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 bevy_core = "0.14.1"
-bevy_ecs = "0.14.1"
+bevy_ecs = { version = "0.14.1", features = [
+    "multi_threaded",
+    "serialize",
+] }
 bevy_reflect = "0.14.1"
 bevy_derive = "0.14.1"
 bevy_app = "0.14.1"
