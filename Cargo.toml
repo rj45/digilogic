@@ -68,6 +68,7 @@ bevy_ecs = "0.14.1"
 bevy_reflect = "0.14.1"
 bevy_derive = "0.14.1"
 bevy_app = "0.14.1"
+bevy_log = "0.14.1"
 bevy-inspector-egui = { version = "0.25.1", default-features = false, features = [
     "highlight_changes",
 ] }

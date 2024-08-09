@@ -11,6 +11,7 @@ workspace = true
 [features]
 default = ["inspector"]
 inspector = ["dep:bevy-inspector-egui", "digilogic_core/inspector"]
+trace = ["bevy_ecs/trace", "bevy_app/trace", "bevy_log/trace", "bevy_log/tracing-tracy"]
 
 [dependencies]
 log.workspace = true
@@ -26,6 +27,7 @@ bevy_core.workspace = true
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_app.workspace = true
+bevy_log.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 aery.workspace = true
 bitflags.workspace = true
