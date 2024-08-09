@@ -64,14 +64,18 @@ type CircuitQuery<'w, 's> = Query<
     (With<Circuit>, With<GraphDirty>),
 >;
 
+type EndpointQuery<'w, 's> =
+    Query<'w, 's, ((Entity, Read<GlobalTransform>), Relations<Child>), With<Endpoint>>;
+type WaypointQuery<'w, 's> = Query<'w, 's, Read<GlobalTransform>, With<Waypoint>>;
+
 #[allow(clippy::type_complexity)]
 #[derive(SystemParam)]
 struct CircuitTree<'w, 's> {
     symbols: Query<'w, 's, (Read<AbsoluteBoundingBox>, Relations<Child>), With<Symbol>>,
     ports: Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>,
     nets: Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>,
-    endpoints: Query<'w, 's, ((Entity, Read<GlobalTransform>), Relations<Child>), With<Endpoint>>,
-    waypoints: Query<'w, 's, Read<GlobalTransform>, With<Waypoint>>,
+    endpoints: EndpointQuery<'w, 's>,
+    waypoints: WaypointQuery<'w, 's>,
 }
 
 fn route(
@@ -84,19 +88,19 @@ fn route(
         commands.entity(circuit).remove::<GraphDirty>();
         graph.build(&circuit_children, &tree, config.minimal);
 
-        //circuit_children
-        //    .join::<Child>(&mut tree.nets)
-        //    .for_each(|(mut vertices, net_children)| {
-        //        routing::connect_net(
-        //            &graph,
-        //            &mut vertices.0,
-        //            &net_children,
-        //            &tree.endpoints,
-        //            &tree.waypoints,
-        //            config.perform_centering,
-        //        )
-        //        .unwrap();
-        //    });
+        circuit_children
+            .join::<Child>(&mut tree.nets)
+            .for_each(|(mut vertices, net_children)| {
+                routing::connect_net(
+                    &graph,
+                    &mut vertices.0,
+                    &net_children,
+                    &tree.endpoints,
+                    &tree.waypoints,
+                    config.perform_centering,
+                )
+                .unwrap();
+            });
     }
 }
 

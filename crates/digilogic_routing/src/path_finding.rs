@@ -1,33 +1,20 @@
 use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
-use crate::{HashMap, HashSet};
+use crate::{EndpointQuery, HashMap, HashSet, WaypointQuery};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
-use std::borrow::Borrow;
 use std::cmp::Reverse;
 
 type PriorityQueue<I, P> = priority_queue::PriorityQueue<I, P, ahash::RandomState>;
 
-#[derive(Debug, Clone, Copy)]
-pub enum PathFindResult<T> {
-    Found(T),
+#[derive(Debug, Clone)]
+pub enum PathFindResult {
+    Found(Path),
     NotFound,
     InvalidStartPoint,
     InvalidEndPoint,
-}
-
-impl<T> PathFindResult<T> {
-    #[inline]
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> PathFindResult<U> {
-        match self {
-            Self::Found(value) => PathFindResult::Found(f(value)),
-            Self::NotFound => PathFindResult::NotFound,
-            Self::InvalidStartPoint => PathFindResult::InvalidStartPoint,
-            Self::InvalidEndPoint => PathFindResult::InvalidEndPoint,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,18 +32,13 @@ pub struct PathNode {
     pub bend_direction: Option<Direction>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 #[repr(transparent)]
 pub struct Path {
     nodes: Vec<PathNode>,
 }
 
 impl Path {
-    #[inline]
-    fn clear(&mut self) {
-        self.nodes.clear();
-    }
-
     #[inline]
     pub fn nodes(&self) -> &[PathNode] {
         &self.nodes
@@ -204,7 +186,7 @@ impl PathFinder {
         mut total_neighbor_count: usize,
         start_straight_dir: Option<Direction>,
         visit_all: bool,
-    ) -> PathFindResult<Path> {
+    ) -> PathFindResult {
         let mut path = Path::default();
 
         self.g_score.clear();
@@ -352,7 +334,7 @@ impl PathFinder {
         start: Vec2,
         start_straight_dir: Option<Direction>,
         end: Vec2,
-    ) -> PathFindResult<Path> {
+    ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
             eprintln!(
                 "Start point ({}, {}) does not exist in the graph",
@@ -390,7 +372,7 @@ impl PathFinder {
         start: Vec2,
         start_straight_dir: Option<Direction>,
         ends: &[Vec2],
-    ) -> PathFindResult<Path> {
+    ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
             eprintln!(
                 "Start point ({}, {}) does not exist in the graph",
@@ -401,9 +383,7 @@ impl PathFinder {
 
         self.end_indices.clear();
         let mut total_neighbor_count = 0;
-        for end in ends {
-            let end = *end.borrow();
-
+        for &end in ends {
             let Some(end_index) = graph.find_node(end) else {
                 eprintln!(
                     "End point ({}, {}) does not exist in the graph",
@@ -439,9 +419,9 @@ impl PathFinder {
         graph: &Graph,
         start: Vec2,
         waypoint_sources: &[Entity],
-        endpoints: &Query<((Entity, &GlobalTransform), Relations<Child>), With<Endpoint>>,
-        waypoints: &Query<&GlobalTransform, With<Waypoint>>,
-    ) -> PathFindResult<Path> {
+        endpoints: &EndpointQuery,
+        waypoints: &WaypointQuery,
+    ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
             eprintln!(
                 "Start point ({}, {}) does not exist in the graph",

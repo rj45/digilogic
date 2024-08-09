@@ -147,7 +147,7 @@ pub fn draw_wires(
                             };
 
                             scene.stroke(
-                                &Stroke::new(2.0),
+                                &Stroke::new(2.5),
                                 Affine::IDENTITY,
                                 path_color,
                                 None,

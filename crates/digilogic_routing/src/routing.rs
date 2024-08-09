@@ -1,6 +1,6 @@
 use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
 use crate::path_finding::*;
-use crate::{HashMap, Vertex, VertexKind};
+use crate::{EndpointQuery, HashMap, Vertex, VertexKind, WaypointQuery};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
@@ -19,7 +19,7 @@ struct ThreadLocalData {
 
 fn pick_root_path(
     net_children: &RelationsItem<Child>,
-    endpoints: &Query<((Entity, &GlobalTransform), Relations<Child>), With<Endpoint>>,
+    endpoints: &EndpointQuery,
 ) -> Option<(Entity, Entity)> {
     let mut max_dist = fixed!(0);
     let mut max_pair: Option<(Entity, Entity)> = None;
@@ -58,6 +58,7 @@ fn push_vertices(
     ends: &mut Vec<Vec2>,
     centering_candidates: &mut Vec<CenteringCandidate>,
     is_root: bool,
+    is_junction: bool,
 ) {
     ends.reserve(path.nodes().len());
     for node in path.nodes() {
@@ -102,7 +103,7 @@ fn push_vertices(
     if let Some(prev_node) = prev_node {
         vertices.push(Vertex {
             position: prev_node.position,
-            kind: VertexKind::WireEnd { is_junction: false },
+            kind: VertexKind::WireEnd { is_junction },
         });
     }
 }
@@ -128,6 +129,7 @@ fn push_fallback_vertices(
     start_dirs: Directions,
     vertices: &mut Vec<Vertex>,
     is_root: bool,
+    is_junction: bool,
 ) -> Direction {
     vertices.push(Vertex {
         position: start,
@@ -171,7 +173,7 @@ fn push_fallback_vertices(
 
     vertices.push(Vertex {
         position: end,
-        kind: VertexKind::WireEnd { is_junction: false },
+        kind: VertexKind::WireEnd { is_junction },
     });
 
     dir
@@ -188,8 +190,8 @@ fn route_root_wire(
     vertices: &mut Vec<Vertex>,
     root_start: Entity,
     root_end: Entity,
-    endpoints: &Query<((Entity, &GlobalTransform), Relations<Child>), With<Endpoint>>,
-    waypoints: &Query<&GlobalTransform, With<Waypoint>>,
+    endpoints: &EndpointQuery,
+    waypoints: &WaypointQuery,
     thread_local_data: &mut ThreadLocalData,
 ) -> Result<(), RoutingError> {
     let ((_, root_start_transform), _) = endpoints.get(root_start).unwrap();
@@ -215,7 +217,15 @@ fn route_root_wire(
             if path.nodes().len() < 2 {
                 (root_start_pos, None)
             } else {
-                push_vertices(&path, graph, vertices, ends, centering_candidates, true);
+                push_vertices(
+                    &path,
+                    graph,
+                    vertices,
+                    ends,
+                    centering_candidates,
+                    true,
+                    false,
+                );
                 let (last, head) = path.nodes().split_last().unwrap();
                 let prev_last = head.last().unwrap();
                 (last.position, prev_last.bend_direction)
@@ -229,7 +239,15 @@ fn route_root_wire(
 
     match path_finder.find_path(graph, last_waypoint, last_waypoint_dir, root_end_pos) {
         PathFindResult::Found(path) => {
-            push_vertices(&path, graph, vertices, ends, centering_candidates, true);
+            push_vertices(
+                &path,
+                graph,
+                vertices,
+                ends,
+                centering_candidates,
+                true,
+                false,
+            );
         }
         PathFindResult::NotFound => {
             println!(
@@ -244,6 +262,7 @@ fn route_root_wire(
                 root_end_node.legal_directions,
                 vertices,
                 true,
+                false,
             );
 
             ends.push(root_end_pos);
@@ -354,10 +373,10 @@ fn insert_junction(
 fn route_branch_wires(
     graph: &Graph,
     vertices: &mut Vec<Vertex>,
-    root_start: Entity,
-    root_end: Entity,
-    endpoints: &Query<((Entity, &GlobalTransform), Relations<Child>), With<Endpoint>>,
-    waypoints: &Query<&GlobalTransform, With<Waypoint>>,
+    roots: [Entity; 2],
+    net_children: &RelationsItem<Child>,
+    endpoints: &EndpointQuery,
+    waypoints: &WaypointQuery,
     thread_local_data: &mut ThreadLocalData,
 ) -> Result<(), RoutingError> {
     let ThreadLocalData {
@@ -367,93 +386,119 @@ fn route_branch_wires(
         junctions,
     } = thread_local_data;
 
-    for ((endpoint, endpoint_transform), _) in endpoints.iter() {
-        if (endpoint == root_start) || (endpoint == root_end) {
-            continue;
-        }
+    let mut result = Ok(());
 
-        let endpoint_pos = endpoint_transform.translation;
-        let end_count = ends.len();
+    net_children
+        .join::<Child>(endpoints)
+        .for_each(|((endpoint, endpoint_transform), _)| {
+            if roots.contains(&endpoint) {
+                return JCF::Continue;
+            }
 
-        let (last_waypoint, last_waypoint_dir) = match path_finder.find_path_waypoints(
-            graph,
-            endpoint_pos,
-            &[endpoint],
-            endpoints,
-            waypoints,
-        ) {
-            PathFindResult::Found(path) => {
-                if path.nodes().len() < 2 {
-                    (endpoint_pos, None)
-                } else {
-                    push_vertices(&path, graph, vertices, ends, centering_candidates, false);
-                    let (last, head) = path.nodes().split_last().unwrap();
-                    let prev_last = head.last().unwrap();
-                    (last.position, prev_last.bend_direction)
+            let endpoint_pos = endpoint_transform.translation;
+            let end_count = ends.len();
+
+            let (last_waypoint, last_waypoint_dir) = match path_finder.find_path_waypoints(
+                graph,
+                endpoint_pos,
+                &[endpoint],
+                endpoints,
+                waypoints,
+            ) {
+                PathFindResult::Found(path) => {
+                    if path.nodes().len() < 2 {
+                        (endpoint_pos, None)
+                    } else {
+                        push_vertices(
+                            &path,
+                            graph,
+                            vertices,
+                            ends,
+                            centering_candidates,
+                            false,
+                            false,
+                        );
+                        let (last, head) = path.nodes().split_last().unwrap();
+                        let prev_last = head.last().unwrap();
+                        (last.position, prev_last.bend_direction)
+                    }
                 }
-            }
-            PathFindResult::NotFound => (endpoint_pos, None),
-            PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
-                return Err(RoutingError::InvalidPoint);
-            }
-        };
+                PathFindResult::NotFound => (endpoint_pos, None),
+                PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
+                    result = Err(RoutingError::InvalidPoint);
+                    return JCF::Exit;
+                }
+            };
 
-        match path_finder.find_path_multi(
-            graph,
-            last_waypoint,
-            last_waypoint_dir,
-            &ends[..end_count],
-        ) {
-            PathFindResult::Found(path) => {
-                if path.nodes().len() < 2 {
-                    if last_waypoint_dir.is_some() {
-                        let Some(Vertex {
-                            kind: VertexKind::WireEnd { is_junction },
-                            ..
-                        }) = vertices.last_mut()
-                        else {
-                            panic!("invalid last vertex");
-                        };
-                        *is_junction = true;
+            match path_finder.find_path_multi(
+                graph,
+                last_waypoint,
+                last_waypoint_dir,
+                &ends[..end_count],
+            ) {
+                PathFindResult::Found(path) => {
+                    if path.nodes().len() < 2 {
+                        // The final wire segment is degenerate, therefore the previous one actually ends in a junction.
+                        if last_waypoint_dir.is_some() {
+                            let Some(Vertex {
+                                kind: VertexKind::WireEnd { is_junction },
+                                ..
+                            }) = vertices.last_mut()
+                            else {
+                                panic!("invalid last vertex");
+                            };
+                            *is_junction = true;
+                        }
+
+                        return JCF::Continue;
                     }
 
-                    continue;
+                    push_vertices(
+                        &path,
+                        graph,
+                        vertices,
+                        ends,
+                        centering_candidates,
+                        false,
+                        true,
+                    );
+                    let (last, head) = path.nodes().split_last().unwrap();
+                    let prev_last = head.last().unwrap();
+                    insert_junction(
+                        junctions,
+                        last.position,
+                        vertices.len(),
+                        prev_last.bend_direction.unwrap(),
+                    );
                 }
+                PathFindResult::NotFound => {
+                    println!(
+                        "no path between ({}, {}) and root net found, generating fallback wire",
+                        last_waypoint.x, last_waypoint.y
+                    );
 
-                push_vertices(&path, graph, vertices, ends, centering_candidates, false);
-                let (last, head) = path.nodes().split_last().unwrap();
-                let prev_last = head.last().unwrap();
-                insert_junction(
-                    junctions,
-                    last.position,
-                    vertices.len(),
-                    prev_last.bend_direction.unwrap(),
-                );
-            }
-            PathFindResult::NotFound => {
-                println!(
-                    "no path between ({}, {}) and root net found, generating fallback wire",
-                    last_waypoint.x, last_waypoint.y
-                );
+                    let junction_pos = find_fallback_junction(endpoint_pos, ends);
+                    let endpoint_node = &graph.nodes[graph.find_node(endpoint_pos).unwrap()];
+                    let junction_dir = push_fallback_vertices(
+                        endpoint_pos,
+                        junction_pos,
+                        endpoint_node.legal_directions,
+                        vertices,
+                        false,
+                        true,
+                    );
 
-                let junction_pos = find_fallback_junction(endpoint_pos, ends);
-                let endpoint_node = &graph.nodes[graph.find_node(endpoint_pos).unwrap()];
-                let junction_dir = push_fallback_vertices(
-                    endpoint_pos,
-                    junction_pos,
-                    endpoint_node.legal_directions,
-                    vertices,
-                    false,
-                );
+                    insert_junction(junctions, junction_pos, vertices.len(), junction_dir);
+                    ends.push(endpoint_pos);
+                }
+                PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
+                    result = Err(RoutingError::InvalidPoint);
+                    return JCF::Exit;
+                }
+            }
 
-                insert_junction(junctions, junction_pos, vertices.len(), junction_dir);
-                ends.push(endpoint_pos);
-            }
-            PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
-                return Err(RoutingError::InvalidPoint);
-            }
-        };
-    }
+            JCF::Continue
+        });
 
     Ok(())
 }
@@ -575,7 +620,7 @@ fn center_in_alley(
     node_a_index: NodeIndex,
     node_b_index: NodeIndex,
     vertex_index: usize,
-    vertices: &mut Vec<Vertex>,
+    vertices: &mut [Vertex],
     junctions: &JunctionMap,
 ) -> NudgeOffset {
     let node_a = &graph.nodes[node_a_index];
@@ -800,7 +845,7 @@ fn center_in_alley(
     }
 }
 
-fn center_wires(graph: &Graph, vertices: &mut Vec<Vertex>, thread_local_data: &ThreadLocalData) {
+fn center_wires(graph: &Graph, vertices: &mut [Vertex], thread_local_data: &ThreadLocalData) {
     let ThreadLocalData {
         centering_candidates,
         junctions,
@@ -898,8 +943,8 @@ pub(crate) fn connect_net(
     graph: &Graph,
     vertices: &mut Vec<Vertex>,
     net_children: &RelationsItem<Child>,
-    endpoints: &Query<((Entity, &GlobalTransform), Relations<Child>), With<Endpoint>>,
-    waypoints: &Query<&GlobalTransform, With<Waypoint>>,
+    endpoints: &EndpointQuery,
+    waypoints: &WaypointQuery,
     perform_centering: bool,
 ) -> Result<(), RoutingError> {
     thread_local! {
@@ -928,8 +973,8 @@ pub(crate) fn connect_net(
         route_branch_wires(
             graph,
             vertices,
-            root_start,
-            root_end,
+            [root_start, root_end],
+            net_children,
             endpoints,
             waypoints,
             thread_local_data,
