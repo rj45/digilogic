@@ -161,6 +161,7 @@ fn update_main_menu(
         ui.menu_button("View", |ui| {
             ui.checkbox(&mut app_state.show_bounding_boxes, "Bounding boxes");
             ui.checkbox(&mut app_state.show_routing_graph, "Routing graph");
+            ui.checkbox(&mut app_state.show_root_wires, "Root wires");
         });
         ui.add_space(8.0);
 

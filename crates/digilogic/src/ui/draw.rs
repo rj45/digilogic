@@ -109,6 +109,7 @@ pub fn draw_symbols(
 }
 
 pub fn draw_wires(
+    app_state: Res<crate::AppState>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     vertices: Query<(Option<&Vertices>, Relations<Child>)>,
 ) {
@@ -124,6 +125,7 @@ pub fn draw_wires(
                 };
 
                 let mut path = BezPath::new();
+                let mut is_root_path = false;
 
                 for vertex in vertices.iter() {
                     let pos = (vertex.position.x.to_f64(), vertex.position.y.to_f64());
@@ -133,14 +135,21 @@ pub fn draw_wires(
                         VertexKind::WireStart { is_root } => {
                             path = BezPath::new();
                             path.move_to(pos);
+                            is_root_path = is_root;
                         }
                         VertexKind::WireEnd { is_junction } => {
                             path.line_to(pos);
 
+                            let path_color = if is_root_path && app_state.show_root_wires {
+                                Color::ORANGE
+                            } else {
+                                Color::GREEN
+                            };
+
                             scene.stroke(
                                 &Stroke::new(2.0),
                                 Affine::IDENTITY,
-                                Color::GREEN,
+                                path_color,
                                 None,
                                 &path,
                             );
@@ -149,7 +158,7 @@ pub fn draw_wires(
                                 scene.fill(
                                     Fill::NonZero,
                                     Affine::IDENTITY,
-                                    Color::GREEN,
+                                    path_color,
                                     None,
                                     &Circle::new(pos, 4.0),
                                 );

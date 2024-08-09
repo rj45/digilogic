@@ -13,6 +13,7 @@ struct AppState {
     dark_mode: bool,
     show_bounding_boxes: bool,
     show_routing_graph: bool,
+    show_root_wires: bool,
 }
 
 impl Default for AppState {
@@ -21,6 +22,7 @@ impl Default for AppState {
             dark_mode: true,
             show_bounding_boxes: false,
             show_routing_graph: false,
+            show_root_wires: false,
         }
     }
 }
