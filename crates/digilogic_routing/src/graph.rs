@@ -1,5 +1,5 @@
 use crate::segment_tree::*;
-use crate::{CircuitTree, HashMap, Vertices};
+use crate::{CircuitTree, HashMap};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
@@ -7,6 +7,7 @@ use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::ops::{Index, IndexMut};
 
 pub type NodeIndex = u32;
@@ -609,23 +610,25 @@ fn scan_pos_y(
     }
 }
 
-#[derive(Default, Debug, Clone, Component)]
-pub struct Graph {
-    port_anchors: Vec<Anchor>,
-    corner_anchors: Vec<Anchor>,
-    waypoint_anchors: Vec<Anchor>,
-    pub(crate) bounding_boxes: BoundingBoxList,
+#[derive(Default, Debug)]
+struct ThreadLocalData {
+    explicit_anchors: Vec<Anchor>,
+    implicit_anchors: Vec<Anchor>,
     x_coords: Vec<Fixed>,
     y_coords: Vec<Fixed>,
+}
+
+#[derive(Default, Debug, Clone, Component)]
+pub struct Graph {
+    pub(crate) bounding_boxes: BoundingBoxList,
     node_map: HashMap<Vec2, NodeIndex>,
     pub(crate) nodes: NodeList,
 }
 
 impl Graph {
-    fn scan(&mut self, anchor: &Anchor, anchor_index: u32) {
+    fn scan(&mut self, anchor: &Anchor, anchor_index: u32, x_coords: &[Fixed], y_coords: &[Fixed]) {
         if anchor.connect_directions.intersects(Directions::X) {
-            let x_index = self
-                .x_coords
+            let x_index = x_coords
                 .binary_search(&anchor.position.x)
                 .expect("invalid anchor point");
 
@@ -637,7 +640,7 @@ impl Graph {
                 scan_neg_x(ScanXData {
                     node_map: &mut self.node_map,
                     nodes: &mut self.nodes,
-                    x_coords: &self.x_coords,
+                    x_coords,
                     x_index,
                     bounding_boxes: bounding_boxes.clone(),
                     anchor,
@@ -649,7 +652,7 @@ impl Graph {
                 scan_pos_x(ScanXData {
                     node_map: &mut self.node_map,
                     nodes: &mut self.nodes,
-                    x_coords: &self.x_coords,
+                    x_coords,
                     x_index,
                     bounding_boxes,
                     anchor,
@@ -659,8 +662,7 @@ impl Graph {
         }
 
         if anchor.connect_directions.intersects(Directions::Y) {
-            let y_index = self
-                .y_coords
+            let y_index = y_coords
                 .binary_search(&anchor.position.y)
                 .expect("invalid anchor point");
 
@@ -672,7 +674,7 @@ impl Graph {
                 scan_neg_y(ScanYData {
                     node_map: &mut self.node_map,
                     nodes: &mut self.nodes,
-                    y_coords: &self.y_coords,
+                    y_coords,
                     y_index,
                     bounding_boxes: bounding_boxes.clone(),
                     anchor,
@@ -684,7 +686,7 @@ impl Graph {
                 scan_pos_y(ScanYData {
                     node_map: &mut self.node_map,
                     nodes: &mut self.nodes,
-                    y_coords: &self.y_coords,
+                    y_coords,
                     y_index,
                     bounding_boxes,
                     anchor,
@@ -848,149 +850,150 @@ impl Graph {
     ) {
         use std::collections::hash_map::Entry;
 
-        // Generate anchors and bounding boxes
-        let mut port_anchors = std::mem::take(&mut self.port_anchors);
-        let mut corner_anchors = std::mem::take(&mut self.corner_anchors);
-        let mut waypoint_anchors = std::mem::take(&mut self.waypoint_anchors);
-        port_anchors.clear();
-        corner_anchors.clear();
-        waypoint_anchors.clear();
+        thread_local! {
+            static THREAD_LOCAL_DATA: RefCell<ThreadLocalData> = RefCell::default();
+        }
 
-        let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
+        THREAD_LOCAL_DATA.with_borrow_mut(|thread_local_data| {
+            let ThreadLocalData {
+                explicit_anchors,
+                implicit_anchors,
+                x_coords,
+                y_coords,
+            } = thread_local_data;
 
-        let mut index = 0;
-        circuit_children
-            .join::<Child>(&tree.symbols)
-            .for_each(|(bb, symbol_children)| {
-                const PADDING: Vec2 = Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
-                let anchors = bb.extrude(PADDING).corners().map(Anchor::new);
-                corner_anchors.extend(anchors);
+            // Generate anchors and bounding boxes
+            explicit_anchors.clear();
+            implicit_anchors.clear();
 
-                symbol_children
-                    .join::<Child>(&tree.ports)
-                    .for_each(|(transform, directions)| {
-                        let anchor = Anchor::new_port(transform.translation, index, **directions);
-                        port_anchors.push(anchor);
+            let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
+
+            let mut index = 0;
+            circuit_children
+                .join::<Child>(&tree.symbols)
+                .for_each(|(bb, symbol_children)| {
+                    const PADDING: Vec2 =
+                        Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
+                    let anchors = bb.extrude(PADDING).corners().map(Anchor::new);
+                    implicit_anchors.extend(anchors);
+
+                    symbol_children.join::<Child>(&tree.ports).for_each(
+                        |(transform, directions)| {
+                            let anchor =
+                                Anchor::new_port(transform.translation, index, **directions);
+                            explicit_anchors.push(anchor);
+                        },
+                    );
+
+                    horizontal_builder.push(Segment {
+                        start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
+                        end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
+                        value: HorizontalBoundingBox {
+                            index,
+                            min_x: bb.min().x - BOUNDING_BOX_PADDING,
+                            max_x: bb.max().x + BOUNDING_BOX_PADDING,
+                        },
                     });
 
-                horizontal_builder.push(Segment {
-                    start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
-                    end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
-                    value: HorizontalBoundingBox {
-                        index,
-                        min_x: bb.min().x - BOUNDING_BOX_PADDING,
-                        max_x: bb.max().x + BOUNDING_BOX_PADDING,
-                    },
-                });
-
-                vertical_builder.push(Segment {
-                    start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
-                    end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
-                    value: VerticalBoundingBox {
-                        index,
-                        min_y: bb.min().y - BOUNDING_BOX_PADDING,
-                        max_y: bb.max().y + BOUNDING_BOX_PADDING,
-                    },
-                });
-
-                index += 1;
-            });
-
-        drop(horizontal_builder);
-        drop(vertical_builder);
-
-        circuit_children
-            .join::<Child>(&tree.nets)
-            .for_each(|(_, net_children)| {
-                net_children
-                    .join::<Child>(&tree.endpoints)
-                    .for_each(|(_, endpoint_children)| {
-                        endpoint_children.join::<Child>(&tree.waypoints).for_each(
-                            |waypoint_transform| {
-                                let anchor = Anchor::new(waypoint_transform.translation);
-                                waypoint_anchors.push(anchor);
-                            },
-                        );
+                    vertical_builder.push(Segment {
+                        start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
+                        end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
+                        value: VerticalBoundingBox {
+                            index,
+                            min_y: bb.min().y - BOUNDING_BOX_PADDING,
+                            max_y: bb.max().y + BOUNDING_BOX_PADDING,
+                        },
                     });
-            });
 
-        // Sort all X coordinates.
-        self.x_coords.clear();
-        self.x_coords.extend(
-            port_anchors
-                .iter()
-                .chain(&corner_anchors)
-                .chain(&waypoint_anchors)
-                .map(|anchor| anchor.position.x),
-        );
-        self.x_coords.sort_unstable();
-        self.x_coords.dedup();
+                    index += 1;
+                });
 
-        // Sort all Y coordinates.
-        self.y_coords.clear();
-        self.y_coords.extend(
-            port_anchors
-                .iter()
-                .chain(&corner_anchors)
-                .chain(&waypoint_anchors)
-                .map(|anchor| anchor.position.y),
-        );
-        self.y_coords.sort_unstable();
-        self.y_coords.dedup();
+            drop(horizontal_builder);
+            drop(vertical_builder);
 
-        self.node_map.clear();
-        self.nodes.clear();
+            circuit_children
+                .join::<Child>(&tree.nets)
+                .for_each(|(_, net_children)| {
+                    net_children.join::<Child>(&tree.endpoints).for_each(
+                        |(_, endpoint_children)| {
+                            endpoint_children.join::<Child>(&tree.waypoints).for_each(
+                                |waypoint_transform| {
+                                    let anchor = Anchor::new(waypoint_transform.translation);
+                                    explicit_anchors.push(anchor);
+                                },
+                            );
+                        },
+                    );
+                });
 
-        for anchor in port_anchors.iter().chain(&waypoint_anchors) {
-            // Add graph node for this anchor point.
-            match self.node_map.entry(anchor.position) {
-                Entry::Occupied(entry) => {
-                    let index = *entry.get();
-                    self.nodes[index].legal_directions |= anchor.connect_directions;
-                }
-                Entry::Vacant(entry) => {
-                    let index = self
-                        .nodes
-                        .push(anchor.position, true, anchor.connect_directions);
-                    entry.insert(index);
+            // Sort all X coordinates.
+            x_coords.clear();
+            x_coords.extend(
+                explicit_anchors
+                    .iter()
+                    .chain(implicit_anchors.iter())
+                    .map(|anchor| anchor.position.x),
+            );
+            x_coords.sort_unstable();
+            x_coords.dedup();
+
+            // Sort all Y coordinates.
+            y_coords.clear();
+            y_coords.extend(
+                explicit_anchors
+                    .iter()
+                    .chain(implicit_anchors.iter())
+                    .map(|anchor| anchor.position.y),
+            );
+            y_coords.sort_unstable();
+            y_coords.dedup();
+
+            self.node_map.clear();
+            self.nodes.clear();
+
+            // Add graph nodes for explicit anchors.
+            for anchor in explicit_anchors.iter() {
+                match self.node_map.entry(anchor.position) {
+                    Entry::Occupied(entry) => {
+                        let index = *entry.get();
+                        self.nodes[index].legal_directions |= anchor.connect_directions;
+                    }
+                    Entry::Vacant(entry) => {
+                        let index =
+                            self.nodes
+                                .push(anchor.position, true, anchor.connect_directions);
+                        entry.insert(index);
+                    }
                 }
             }
-        }
 
-        for anchor in &corner_anchors {
-            // Add graph node for this anchor point.
-            match self.node_map.entry(anchor.position) {
-                Entry::Occupied(entry) => {
-                    let index = *entry.get();
-                    self.nodes[index].legal_directions = Directions::ALL;
-                }
-                Entry::Vacant(entry) => {
-                    let index = self.nodes.push(anchor.position, false, Directions::ALL);
-                    entry.insert(index);
+            // Add graph nodes for implicit anchors.
+            for anchor in implicit_anchors.iter() {
+                match self.node_map.entry(anchor.position) {
+                    Entry::Occupied(entry) => {
+                        let index = *entry.get();
+                        self.nodes[index].legal_directions = Directions::ALL;
+                    }
+                    Entry::Vacant(entry) => {
+                        let index = self.nodes.push(anchor.position, false, Directions::ALL);
+                        entry.insert(index);
+                    }
                 }
             }
-        }
 
-        for anchor in &port_anchors {
-            let anchor_index = self.node_map[&anchor.position];
-            self.scan(anchor, anchor_index);
-        }
+            // Scan all anchors.
+            for anchor in explicit_anchors.iter().chain(implicit_anchors.iter()) {
+                let anchor_index = self.node_map[&anchor.position];
+                self.scan(anchor, anchor_index, x_coords, y_coords);
+            }
 
-        for anchor in corner_anchors.iter().chain(&waypoint_anchors) {
-            let anchor_index = self.node_map[&anchor.position];
-            self.scan(anchor, anchor_index);
-        }
-
-        self.port_anchors = std::mem::take(&mut port_anchors);
-        self.corner_anchors = std::mem::take(&mut corner_anchors);
-        self.waypoint_anchors = std::mem::take(&mut waypoint_anchors);
-
-        self.assert_graph_is_valid();
-
-        if minimal {
-            self.remove_redundant_nodes();
             self.assert_graph_is_valid();
-        }
+
+            if minimal {
+                self.remove_redundant_nodes();
+                self.assert_graph_is_valid();
+            }
+        });
     }
 
     /// The nodes in the graph.

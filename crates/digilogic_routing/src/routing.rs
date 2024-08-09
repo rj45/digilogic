@@ -903,7 +903,7 @@ pub(crate) fn connect_net(
     perform_centering: bool,
 ) -> Result<(), RoutingError> {
     thread_local! {
-        static THREAD_LOCAL_DATA: RefCell<ThreadLocalData> = RefCell::new(ThreadLocalData::default());
+        static THREAD_LOCAL_DATA: RefCell<ThreadLocalData> = RefCell::default();
     }
 
     THREAD_LOCAL_DATA.with_borrow_mut(|thread_local_data| {
