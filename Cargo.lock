@@ -1715,6 +1715,8 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "bevy_reflect",
+ "bevy_tasks",
+ "bevy_utils",
  "digilogic_core",
  "priority-queue",
  "serde",

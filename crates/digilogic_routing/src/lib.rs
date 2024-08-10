@@ -3,12 +3,16 @@ mod path_finding;
 mod routing;
 mod segment_tree;
 
+use aery::edges::{EdgeInfo, Edges};
 use aery::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
+use bevy_log::info_span;
 use bevy_reflect::Reflect;
+use bevy_tasks::prelude::*;
+use bevy_utils::tracing::Instrument;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use serde::{Deserialize, Serialize};
@@ -61,7 +65,10 @@ impl Default for RoutingConfig {
 type CircuitQuery<'w, 's> = Query<
     'w,
     's,
-    ((Entity, Write<graph::Graph>), Relations<Child>),
+    (
+        (Entity, Write<graph::Graph>, Edges<Child>),
+        Relations<Child>,
+    ),
     (With<Circuit>, With<GraphDirty>),
 >;
 
@@ -83,25 +90,42 @@ fn route(
     mut commands: Commands,
     config: Res<RoutingConfig>,
     mut circuits: CircuitQuery,
-    mut tree: CircuitTree,
+    tree: CircuitTree,
 ) {
-    for ((circuit, mut graph), circuit_children) in circuits.iter_mut() {
+    for ((circuit, mut graph, circuit_edges), circuit_children) in circuits.iter_mut() {
         commands.entity(circuit).remove::<GraphDirty>();
         graph.build(&circuit_children, &tree, config.prune_graph);
 
-        circuit_children
-            .join::<Child>(&mut tree.nets)
-            .for_each(|(mut vertices, net_children)| {
-                routing::connect_net(
-                    &graph,
-                    &mut vertices.0,
-                    &net_children,
-                    &tree.endpoints,
-                    &tree.waypoints,
-                    config.center_wires,
-                )
-                .unwrap();
-            });
+        ComputeTaskPool::get().scope(|scope| {
+            for &child in circuit_edges.hosts() {
+                let child = unsafe {
+                    // SAFETY: `hosts()` never returns the same entity more than once.
+                    tree.nets.get_unchecked(child)
+                };
+
+                if let Ok((vertices, net_children)) = child {
+                    scope.spawn({
+                        let span = info_span!("route_wire");
+
+                        async {
+                            let mut vertices = vertices;
+                            let net_children = net_children;
+
+                            routing::connect_net(
+                                &graph,
+                                &mut vertices.0,
+                                &net_children,
+                                &tree.endpoints,
+                                &tree.waypoints,
+                                config.center_wires,
+                            )
+                            .unwrap();
+                        }
+                        .instrument(span)
+                    });
+                }
+            }
+        });
     }
 }
 
