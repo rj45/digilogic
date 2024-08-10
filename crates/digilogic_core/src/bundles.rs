@@ -110,6 +110,8 @@ pub struct NetBundle {
 
     /// The bit width of the Net
     pub bit_width: BitWidth,
+
+    pub visibility: VisibilityBundle,
 }
 
 /// A Circuit is a set of Symbols and Nets forming an Electronic Circuit.

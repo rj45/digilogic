@@ -1,5 +1,6 @@
 mod circuitfile;
 use circuitfile::*;
+use digilogic_core::visibility::VisibilityBundle;
 
 use crate::HashMap;
 use aery::prelude::*;
@@ -108,6 +109,7 @@ fn translate_net(
             net: Net,
             name: Name(net.name.clone()),
             bit_width: BitWidth(1),
+            visibility: VisibilityBundle::default(),
         })
         .set::<Child>(circuit_id)
         .id();

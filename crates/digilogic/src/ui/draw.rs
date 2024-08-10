@@ -108,10 +108,19 @@ pub fn draw_symbols(
     }
 }
 
+type VertexQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        (Option<Read<Vertices>>, Option<Read<ComputedVisibility>>),
+        Relations<Child>,
+    ),
+>;
+
 pub fn draw_wires(
     app_state: Res<crate::AppState>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
-    vertices: Query<(Option<&Vertices>, Relations<Child>)>,
+    vertices: VertexQuery,
 ) {
     for (scene, circuit) in viewports.iter() {
         let mut scene = scene.for_layer(Layer::Wire);
@@ -119,10 +128,14 @@ pub fn draw_wires(
 
         vertices
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|vertices, _| {
+            .for_each(|(vertices, visibility), _| {
                 let &mut Some(vertices) = vertices else {
                     return;
                 };
+
+                if !*visibility.copied().unwrap_or_default() {
+                    return;
+                }
 
                 let mut path = BezPath::new();
                 let mut is_root_path = false;

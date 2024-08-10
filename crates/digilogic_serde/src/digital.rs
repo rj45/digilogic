@@ -9,6 +9,7 @@ use digilogic_core::components::*;
 use digilogic_core::fixed;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
+use digilogic_core::visibility::VisibilityBundle;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -156,6 +157,7 @@ fn translate_wires(
                 net: Net,
                 name: Default::default(),
                 bit_width: BitWidth(1), // TODO: Get bit width from somewhere
+                visibility: VisibilityBundle::default(),
             })
             .set::<Child>(circuit_id)
             .id();
