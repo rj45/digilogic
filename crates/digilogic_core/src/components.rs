@@ -117,13 +117,12 @@ pub struct PartOf {
 }
 
 /// Whether the entity is selected
-// TODO: should be sparse?
 #[derive(Default, Debug, Component, Reflect)]
 pub struct Selected;
 
 /// Whether the entity is hovered
-// TODO: should be sparse?
 #[derive(Default, Debug, Component, Reflect)]
+#[component(storage = "SparseSet")]
 pub struct Hovered;
 
 // Entity type tags
