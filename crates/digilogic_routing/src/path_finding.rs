@@ -2,6 +2,7 @@ use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
 use crate::{EndpointQuery, HashMap, HashSet, WaypointQuery};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_log::{debug, error};
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
@@ -306,16 +307,20 @@ impl PathFinder {
 
             #[cfg(debug_assertions)]
             {
-                print!("Unable to find path to remaining waypoints [");
+                use std::fmt::Write;
+
+                let mut msg = String::new();
+                write!(msg, "unable to find path to remaining waypoints [").unwrap();
                 for (i, &end_index) in self.end_indices.iter().enumerate() {
                     if i > 0 {
-                        print!(", ");
+                        write!(msg, ", ").unwrap();
                     }
 
                     let end_node = &graph.nodes[end_index];
-                    print!("({}, {})", end_node.position.x, end_node.position.y);
+                    write!(msg, "({}, {})", end_node.position.x, end_node.position.y).unwrap();
                 }
-                println!("]");
+                write!(msg, "]").unwrap();
+                debug!("{}", msg);
             }
 
             break 'outer;
@@ -336,7 +341,7 @@ impl PathFinder {
         end: Vec2,
     ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
-            eprintln!(
+            error!(
                 "Start point ({}, {}) does not exist in the graph",
                 start.x, start.y
             );
@@ -344,7 +349,7 @@ impl PathFinder {
         };
 
         let Some(end_index) = graph.find_node(end) else {
-            eprintln!(
+            error!(
                 "End point ({}, {}) does not exist in the graph",
                 end.x, end.y
             );
@@ -374,7 +379,7 @@ impl PathFinder {
         ends: &[Vec2],
     ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
-            eprintln!(
+            error!(
                 "Start point ({}, {}) does not exist in the graph",
                 start.x, start.y
             );
@@ -385,7 +390,7 @@ impl PathFinder {
         let mut total_neighbor_count = 0;
         for &end in ends {
             let Some(end_index) = graph.find_node(end) else {
-                eprintln!(
+                error!(
                     "End point ({}, {}) does not exist in the graph",
                     end.x, end.y
                 );
@@ -401,7 +406,7 @@ impl PathFinder {
                 }
             } else {
                 #[cfg(debug_assertions)]
-                println!("Endpoint ({}, {}) unreachable, skipping", end.x, end.y);
+                debug!("End point ({}, {}) unreachable, skipping", end.x, end.y);
             }
         }
 
@@ -423,7 +428,7 @@ impl PathFinder {
         waypoints: &WaypointQuery,
     ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
-            eprintln!(
+            error!(
                 "Start point ({}, {}) does not exist in the graph",
                 start.x, start.y
             );
@@ -442,7 +447,7 @@ impl PathFinder {
                     let waypoint = waypoint_transform.translation;
 
                     let Some(waypoint_index) = graph.find_node(waypoint) else {
-                        eprintln!(
+                        error!(
                             "Waypoint ({}, {}) does not exist in the graph",
                             waypoint.x, waypoint.y
                         );
@@ -460,9 +465,9 @@ impl PathFinder {
                         }
                     } else {
                         #[cfg(debug_assertions)]
-                        println!(
+                        debug!(
                             "Waypoint ({}, {}) unreachable, skipping",
-                            waypoint.x, waypoint.y
+                            waypoint.x, waypoint.y,
                         );
                     }
 

@@ -63,7 +63,13 @@ impl App {
             bevy_core::TaskPoolPlugin::default(),
             bevy_core::TypeRegistrationPlugin,
             bevy_core::FrameCountPlugin,
-            bevy_log::LogPlugin::default(),
+            bevy_log::LogPlugin {
+                #[cfg(debug_assertions)]
+                level: bevy_log::Level::DEBUG,
+                #[cfg(not(debug_assertions))]
+                level: bevy_log::Level::INFO,
+                ..Default::default()
+            },
         ));
 
         app.register_type::<AppState>();

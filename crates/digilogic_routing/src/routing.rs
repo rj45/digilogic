@@ -4,6 +4,7 @@ use crate::{EndpointQuery, HashMap, Vertex, VertexKind, WaypointQuery};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_log::debug;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
@@ -250,7 +251,7 @@ fn route_root_wire(
             );
         }
         PathFindResult::NotFound => {
-            println!(
+            debug!(
                 "no path between ({}, {}) and ({}, {}) found, generating fallback wire",
                 last_waypoint.x, last_waypoint.y, root_end_pos.x, root_end_pos.y
             );
@@ -472,7 +473,7 @@ fn route_branch_wires(
                     );
                 }
                 PathFindResult::NotFound => {
-                    println!(
+                    debug!(
                         "no path between ({}, {}) and root net found, generating fallback wire",
                         last_waypoint.x, last_waypoint.y
                     );

@@ -4,6 +4,7 @@ mod json;
 use anyhow::{anyhow, bail, Result};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
+use bevy_log::error;
 use digilogic_core::components::CircuitID;
 use digilogic_core::events::*;
 use digilogic_core::symbol::SymbolRegistry;
@@ -88,7 +89,7 @@ fn handle_load_events(
             }
             Err(e) => {
                 // TODO: instead of this, send an ErrorEvent
-                eprintln!("Error loading circuit {}: {:?}", ev.filename.display(), e);
+                error!("error loading circuit {}: {:?}", ev.filename.display(), e);
             }
         }
     }

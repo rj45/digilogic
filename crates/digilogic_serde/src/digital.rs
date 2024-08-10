@@ -3,6 +3,7 @@ mod circuitfile;
 use aery::prelude::*;
 use anyhow::{anyhow, Result};
 use bevy_ecs::prelude::*;
+use bevy_log::info;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::fixed;
@@ -25,7 +26,7 @@ pub fn load_digital(
     filename: &Path,
     symbols: &SymbolRegistry,
 ) -> Result<Entity> {
-    println!("Loading digital circuit {}", filename.display());
+    info!("loading Digital circuit {}", filename.display());
 
     let basedir = filename.parent().ok_or(anyhow!(
         "error getting parent directory of {}",

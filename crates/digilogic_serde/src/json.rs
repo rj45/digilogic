@@ -4,6 +4,7 @@ use circuitfile::*;
 use crate::HashMap;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_log::info;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::symbol::SymbolRegistry;
@@ -15,6 +16,8 @@ pub fn load_json(
     filename: &Path,
     symbols: &SymbolRegistry,
 ) -> anyhow::Result<Entity> {
+    info!("loading Digilogic circuit {}", filename.display());
+
     let circuit = CircuitFile::load(filename)?;
     translate_circuit(commands, &circuit, symbols)
 }
