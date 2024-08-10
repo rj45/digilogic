@@ -322,32 +322,41 @@ impl SymbolBuilder<'_> {
 
 impl PortDef {
     fn build(&self, commands: &mut Commands, symbol_id: Entity, bit_width: BitWidth) -> Entity {
-        commands
-            .spawn(PortBundle {
-                port: Port,
-                name: Name(self.name.clone()),
-                shape: PORT_SHAPE,
-                transform: TransformBundle {
-                    transform: Transform {
-                        translation: self.position,
-                        ..Default::default()
-                    },
+        let mut port_commands = commands.spawn(PortBundle {
+            port: Port,
+            name: Name(self.name.clone()),
+            shape: PORT_SHAPE,
+            transform: TransformBundle {
+                transform: Transform {
+                    translation: self.position,
                     ..Default::default()
                 },
-                bit_width,
-                visibility: VisibilityBundle::default(),
-                bounds: BoundingBoxBundle {
-                    bounding_box: BoundingBox::from_half_size(PORT_HALF_WIDTH, PORT_HALF_WIDTH),
-                    ..Default::default()
-                },
-                directions: DirectionsBundle {
-                    directions: self.directions,
-                    ..Default::default()
-                },
-            })
+                ..Default::default()
+            },
+            bit_width,
+            visibility: VisibilityBundle::default(),
+            bounds: BoundingBoxBundle {
+                bounding_box: BoundingBox::from_half_size(PORT_HALF_WIDTH, PORT_HALF_WIDTH),
+                ..Default::default()
+            },
+            directions: DirectionsBundle {
+                directions: self.directions,
+                ..Default::default()
+            },
+        });
+
+        port_commands
             .set::<Child>(symbol_id)
             .set::<InheritTransform>(symbol_id)
-            .set::<InheritVisibility>(symbol_id)
-            .id()
+            .set::<InheritVisibility>(symbol_id);
+
+        if self.input {
+            port_commands.insert(Input);
+        }
+        if self.output {
+            port_commands.insert(Output);
+        }
+
+        port_commands.id()
     }
 }
