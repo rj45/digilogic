@@ -14,7 +14,6 @@ inspector = ["dep:bevy-inspector-egui", "digilogic_core/inspector"]
 trace = ["bevy_ecs/trace", "bevy_app/trace", "bevy_log/trace", "bevy_log/tracing-tracy"]
 
 [dependencies]
-log.workspace = true
 serde.workspace = true
 wgpu.workspace = true
 egui.workspace = true
@@ -35,9 +34,6 @@ bitflags.workspace = true
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }
 digilogic_serde = { path = "../digilogic_serde" }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true

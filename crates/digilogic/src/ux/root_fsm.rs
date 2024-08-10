@@ -1,11 +1,11 @@
 use super::{PointerButtonEvent, PointerMovedEvent};
 use crate::ux::states::*;
 use bevy_ecs::prelude::*;
+use bevy_log::debug;
 use digilogic_core::components::{CircuitID, Hovered, Viewport};
 use digilogic_core::spatial_index::SpatialIndex;
 use digilogic_core::transform::{BoundingBox, Vec2};
 use digilogic_core::{fixed, Fixed};
-use log::debug;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) struct MouseFSM {

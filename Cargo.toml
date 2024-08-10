@@ -11,14 +11,12 @@ rust-version = "1.79"
 
 [workspace.lints.rust]
 explicit-outlives-requirements = "warn"
-impl-trait-overcaptures = "warn"
 keyword-idents-2024 = "forbid"
 missing-debug-implementations = "warn"
-missing-unsafe-on-extern = "forbid"
 non-ascii-idents = "forbid"
 non-local-definitions = "forbid"
 redundant-lifetimes = "warn"
-rust_2024_incompatible_pat = "forbid"
+rust_2024_compatibility = "forbid"
 single-use-lifetimes = "warn"
 unit-bindings = "warn"
 unnameable-types = "warn"
@@ -43,8 +41,6 @@ opt-level = 2
 
 [workspace.dependencies]
 anyhow = "1.0"
-log = "0.4"
-env_logger = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wgpu = "0.20.1"
