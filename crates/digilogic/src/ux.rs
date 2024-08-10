@@ -1,11 +1,11 @@
-mod root_fsm;
-use root_fsm::*;
-
 mod states;
 use states::*;
 
 mod events;
 pub use events::*;
+
+mod systems;
+pub use systems::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct UxPlugin {}

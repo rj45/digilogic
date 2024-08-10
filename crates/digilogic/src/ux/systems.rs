@@ -1,41 +1,63 @@
+use std::ops::Sub;
+
 use super::{PointerButtonEvent, PointerMovedEvent};
-use crate::ux::states::*;
 use bevy_ecs::prelude::*;
-use bevy_log::debug;
-use digilogic_core::components::{CircuitID, Hovered, Viewport};
+use digilogic_core::components::{Endpoint, Hovered, Port, Symbol, Viewport, Waypoint};
 use digilogic_core::spatial_index::SpatialIndex;
 use digilogic_core::transform::{BoundingBox, Vec2};
 use digilogic_core::{fixed, Fixed};
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
-pub(crate) struct MouseFSM {
-    pub state: RootMouseState,
-}
-
+/// Called when a new viewport is added to the world.
 pub(crate) fn on_add_viewport_augment_with_fsm(
     trigger: Trigger<OnAdd, Viewport>,
     mut commands: Commands,
 ) {
-    debug!("on_add_viewport_augment_with_fsm: {:?}", trigger.entity());
     commands
         .entity(trigger.entity())
-        .insert(MouseFSM::default())
-        .observe(root_fsm_system)
-        .observe(hover_system);
+        .observe(hover_system)
+        .observe(mouse_fsm_system);
 }
 
-fn root_fsm_system(
-    trigger: Trigger<PointerButtonEvent>,
-    mut mouse_fsm: Query<(Entity, &mut MouseFSM)>,
-) {
-    let viewport = trigger.entity();
-    let mut mouse_fsm = mouse_fsm.get_mut(viewport).unwrap();
+#[derive(Debug, Clone)]
+pub enum Subject {
+    Symbol(Entity),
+    Port(Entity),
+    Endpoint(Entity),
+    Waypoint(Entity),
+}
 
-    debug!(
-        "MouseFSM: {:?} InputEvent: {:?}",
-        mouse_fsm.1.state,
-        trigger.event()
-    );
+pub enum Verb {
+    LeftPress,
+    LeftRelease,
+    RightClick,
+}
+
+type HoverQuery<'w, 's, 'a> =
+    Query<'w, 's, (Entity, Has<Symbol>, Has<Port>, Has<Endpoint>, Has<Waypoint>), With<Hovered>>;
+
+fn mouse_fsm_system(trigger: Trigger<PointerButtonEvent>, hover_query: HoverQuery) {
+    let viewport = trigger.entity();
+
+    let mut subject = None;
+    for (entity, symbol, port, endpoint, waypoint) in hover_query.iter() {
+        subject = if symbol {
+            Some(Subject::Symbol(entity))
+        } else if port {
+            Some(Subject::Port(entity))
+        } else if endpoint {
+            Some(Subject::Endpoint(entity))
+        } else if waypoint {
+            Some(Subject::Waypoint(entity))
+        } else {
+            continue;
+        };
+        break;
+    }
+
+    if let None = subject {
+        return;
+    }
+    let subject = subject.unwrap();
 }
 
 const MOUSE_POS_FUDGE: Fixed = fixed!(2);
