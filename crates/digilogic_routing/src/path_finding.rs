@@ -2,7 +2,7 @@ use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
 use crate::{EndpointQuery, HashMap, HashSet, WaypointQuery};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_log::{debug, error};
+use bevy_log::{debug, error, info_span};
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed};
@@ -81,6 +81,7 @@ pub(crate) struct PathFinder {
 
 impl PathFinder {
     #[cfg(debug_assertions)]
+    #[tracing::instrument(skip_all)]
     fn assert_data_is_valid(&self, graph: &Graph) {
         for (&node_index, &pred_index) in &self.predecessor {
             assert_ne!(node_index, INVALID_NODE_INDEX);
@@ -180,6 +181,7 @@ impl PathFinder {
         }
     }
 
+    #[tracing::instrument(skip_all, name = "find_path")]
     fn find_path_impl(
         &mut self,
         graph: &Graph,
@@ -202,6 +204,9 @@ impl PathFinder {
                 // There cannot possibly be a path, abort.
                 break 'outer;
             }
+
+            let scope = info_span!("find_path_segment");
+            let scope = scope.enter();
 
             while let Some((current_index, _)) = self.open_queue.pop() {
                 let current_node = &graph.nodes[current_index];
@@ -229,8 +234,10 @@ impl PathFinder {
                             self.predecessor.insert(start_index, pred_index);
                         }
 
+                        drop(scope);
                         continue 'outer;
                     } else {
+                        drop(scope);
                         break 'outer;
                     }
                 }
@@ -305,9 +312,14 @@ impl PathFinder {
                 }
             }
 
+            drop(scope);
+
             #[cfg(debug_assertions)]
             {
                 use std::fmt::Write;
+
+                let scope = info_span!("print_debug_log");
+                let scope = scope.enter();
 
                 let mut msg = String::new();
                 write!(msg, "unable to find path to remaining waypoints [").unwrap();
@@ -321,6 +333,8 @@ impl PathFinder {
                 }
                 write!(msg, "]").unwrap();
                 debug!("{}", msg);
+
+                drop(scope);
             }
 
             break 'outer;

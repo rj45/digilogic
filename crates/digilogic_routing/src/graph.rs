@@ -696,6 +696,7 @@ impl Graph {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     fn remove_redundant_nodes(&mut self) {
         struct HeadTail<'a> {
             node_index: usize,
@@ -801,6 +802,7 @@ impl Graph {
     }
 
     #[cfg(debug_assertions)]
+    #[tracing::instrument(skip_all)]
     fn assert_graph_is_valid(&self) {
         for (node_index, node) in self.nodes.0.iter().enumerate() {
             for dir in Direction::ALL {
@@ -842,6 +844,7 @@ impl Graph {
     /// Builds the graph.
     ///
     /// If the graph had previously been built, this will reset it and reuse the resources.
+    #[tracing::instrument(skip_all, name = "build_graph")]
     pub(crate) fn build(
         &mut self,
         circuit_children: &RelationsItem<Child>,

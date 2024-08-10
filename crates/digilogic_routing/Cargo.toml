@@ -9,9 +9,9 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+tracing.workspace = true
 serde.workspace = true
 bevy_tasks.workspace = true
-bevy_utils.workspace = true
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_derive.workspace = true

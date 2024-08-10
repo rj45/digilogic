@@ -12,10 +12,10 @@ use bevy_ecs::system::SystemParam;
 use bevy_log::info_span;
 use bevy_reflect::Reflect;
 use bevy_tasks::prelude::*;
-use bevy_utils::tracing::Instrument;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use serde::{Deserialize, Serialize};
+use tracing::Instrument;
 
 type HashSet<T> = ahash::AHashSet<T>;
 type HashMap<K, V> = ahash::AHashMap<K, V>;
@@ -105,7 +105,7 @@ fn route(
 
                 if let Ok((vertices, net_children)) = child {
                     scope.spawn({
-                        let span = info_span!("route_wire");
+                        let span = info_span!("route_net");
 
                         async {
                             let mut vertices = vertices;
