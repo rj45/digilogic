@@ -15,11 +15,11 @@ pub const INVALID_NODE_INDEX: NodeIndex = u32::MAX;
 
 const BOUNDING_BOX_PADDING: Fixed = fixed!(10);
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 struct Anchor {
     position: Vec2,
-    bounding_box: Option<usize>,
+    bounding_box: Entity,
     connect_directions: Directions,
 }
 
@@ -28,16 +28,20 @@ impl Anchor {
     const fn new(position: Vec2) -> Self {
         Self {
             position,
-            bounding_box: None,
+            bounding_box: Entity::PLACEHOLDER,
             connect_directions: Directions::ALL,
         }
     }
 
     #[inline]
-    const fn new_port(position: Vec2, bounding_box: usize, connect_directions: Directions) -> Self {
+    const fn new_port(
+        position: Vec2,
+        bounding_box: Entity,
+        connect_directions: Directions,
+    ) -> Self {
         Self {
             position,
-            bounding_box: Some(bounding_box),
+            bounding_box,
             connect_directions,
         }
     }
@@ -199,14 +203,14 @@ impl IndexMut<NodeIndex> for NodeList {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct HorizontalBoundingBox {
-    index: usize,
+    id: Entity,
     min_x: Fixed,
     max_x: Fixed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerticalBoundingBox {
-    index: usize,
+    id: Entity,
     min_y: Fixed,
     max_y: Fixed,
 }
@@ -246,12 +250,12 @@ fn points_have_horizontal_sightline(
     bounding_boxes: ContainingSegmentIter<HorizontalBoundingBox>,
     x1: Fixed,
     x2: Fixed,
-    ignore_box: Option<usize>,
+    ignore_box: Entity,
 ) -> bool {
     assert!(x1 < x2);
 
     for bb in bounding_boxes {
-        if Some(bb.index) == ignore_box {
+        if (ignore_box != Entity::PLACEHOLDER) && (bb.id == ignore_box) {
             continue;
         }
 
@@ -270,12 +274,12 @@ fn points_have_vertical_sightline(
     bounding_boxes: ContainingSegmentIter<VerticalBoundingBox>,
     y1: Fixed,
     y2: Fixed,
-    ignore_box: Option<usize>,
+    ignore_box: Entity,
 ) -> bool {
     assert!(y1 < y2);
 
     for bb in bounding_boxes {
-        if Some(bb.index) == ignore_box {
+        if (ignore_box != Entity::PLACEHOLDER) && (bb.id == ignore_box) {
             continue;
         }
 
@@ -296,7 +300,7 @@ fn find_neg_x_cutoff(
     x1_coords: &[Fixed],
     x2: Fixed,
     offset: usize,
-    ignore_box: Option<usize>,
+    ignore_box: Entity,
 ) -> usize {
     if x1_coords.is_empty() {
         return offset;
@@ -325,7 +329,7 @@ fn find_pos_x_cutoff(
     x1: Fixed,
     x2_coords: &[Fixed],
     offset: usize,
-    ignore_box: Option<usize>,
+    ignore_box: Entity,
 ) -> usize {
     if x2_coords.is_empty() {
         return offset;
@@ -354,7 +358,7 @@ fn find_neg_y_cutoff(
     y1_coords: &[Fixed],
     y2: Fixed,
     offset: usize,
-    ignore_box: Option<usize>,
+    ignore_box: Entity,
 ) -> usize {
     if y1_coords.is_empty() {
         return offset;
@@ -383,7 +387,7 @@ fn find_pos_y_cutoff(
     y1: Fixed,
     y2_coords: &[Fixed],
     offset: usize,
-    ignore_box: Option<usize>,
+    ignore_box: Entity,
 ) -> usize {
     if y2_coords.is_empty() {
         return offset;
@@ -871,10 +875,8 @@ impl Graph {
 
             let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
 
-            let mut index = 0;
-            circuit_children
-                .join::<Child>(&tree.symbols)
-                .for_each(|(bb, symbol_children)| {
+            circuit_children.join::<Child>(&tree.symbols).for_each(
+                |((id, bb), symbol_children)| {
                     const PADDING: Vec2 =
                         Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
                     let anchors = bb.extrude(PADDING).corners().map(Anchor::new);
@@ -882,8 +884,7 @@ impl Graph {
 
                     symbol_children.join::<Child>(&tree.ports).for_each(
                         |(transform, directions)| {
-                            let anchor =
-                                Anchor::new_port(transform.translation, index, **directions);
+                            let anchor = Anchor::new_port(transform.translation, id, **directions);
                             explicit_anchors.push(anchor);
                         },
                     );
@@ -892,7 +893,7 @@ impl Graph {
                         start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
                         end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
                         value: HorizontalBoundingBox {
-                            index,
+                            id,
                             min_x: bb.min().x - BOUNDING_BOX_PADDING,
                             max_x: bb.max().x + BOUNDING_BOX_PADDING,
                         },
@@ -902,14 +903,13 @@ impl Graph {
                         start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
                         end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
                         value: VerticalBoundingBox {
-                            index,
+                            id,
                             min_y: bb.min().y - BOUNDING_BOX_PADDING,
                             max_y: bb.max().y + BOUNDING_BOX_PADDING,
                         },
                     });
-
-                    index += 1;
-                });
+                },
+            );
 
             drop(horizontal_builder);
             drop(vertical_builder);

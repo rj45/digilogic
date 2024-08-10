@@ -72,16 +72,20 @@ type CircuitQuery<'w, 's> = Query<
     (With<Circuit>, With<GraphDirty>),
 >;
 
+type SymbolQuery<'w, 's> =
+    Query<'w, 's, ((Entity, Read<AbsoluteBoundingBox>), Relations<Child>), With<Symbol>>;
+type PortQuery<'w, 's> =
+    Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>;
+type NetQuery<'w, 's> = Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>;
 type EndpointQuery<'w, 's> =
     Query<'w, 's, ((Entity, Read<GlobalTransform>), Relations<Child>), With<Endpoint>>;
 type WaypointQuery<'w, 's> = Query<'w, 's, Read<GlobalTransform>, With<Waypoint>>;
 
-#[allow(clippy::type_complexity)]
 #[derive(SystemParam)]
 struct CircuitTree<'w, 's> {
-    symbols: Query<'w, 's, (Read<AbsoluteBoundingBox>, Relations<Child>), With<Symbol>>,
-    ports: Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>,
-    nets: Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>,
+    symbols: SymbolQuery<'w, 's>,
+    ports: PortQuery<'w, 's>,
+    nets: NetQuery<'w, 's>,
     endpoints: EndpointQuery<'w, 's>,
     waypoints: WaypointQuery<'w, 's>,
 }
