@@ -73,7 +73,7 @@ impl bevy_app::Plugin for CorePlugin {
         app.add_plugins((transform::TransformPlugin, visibility::VisibilityPlugin));
 
         app.init_resource::<spatial_index::SpatialIndex>();
-        app.add_systems(bevy_app::PostUpdate, spatial_index::update_spatial_index);
+        app.add_systems(bevy_app::PreUpdate, spatial_index::update_spatial_index);
         app.observe(spatial_index::on_remove_update_spatial_index);
     }
 }

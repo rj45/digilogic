@@ -608,6 +608,9 @@ fn update_directions(
     }
 }
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TransformSet;
+
 pub(crate) struct TransformPlugin;
 
 impl bevy_app::Plugin for TransformPlugin {
@@ -622,11 +625,13 @@ impl bevy_app::Plugin for TransformPlugin {
         app.register_relation::<InheritTransform>();
         app.add_systems(
             bevy_app::PostUpdate,
-            (update_root_transform, update_transform).chain(),
+            (update_root_transform, update_transform)
+                .chain()
+                .in_set(TransformSet),
         );
         app.add_systems(
             bevy_app::PostUpdate,
-            (update_bounding_box, update_direction, update_directions).after(update_transform),
+            (update_bounding_box, update_direction, update_directions).after(TransformSet),
         );
     }
 }

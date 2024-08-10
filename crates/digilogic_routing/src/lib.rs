@@ -181,9 +181,10 @@ impl bevy_app::Plugin for RoutingPlugin {
         app.observe(inject_graph);
         app.observe(inject_vertices);
         app.add_systems(bevy_app::PreUpdate, route);
+        app.add_systems(bevy_app::PostUpdate, route_on_config_change);
         app.add_systems(
-            bevy_app::Update,
-            (route_on_config_change, route_on_symbol_change),
+            bevy_app::PostUpdate,
+            route_on_symbol_change.after(TransformSet),
         );
     }
 }
