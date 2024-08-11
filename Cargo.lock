@@ -1667,6 +1667,7 @@ dependencies = [
  "bevy-inspector-egui",
  "bevy_app",
  "bevy_core",
+ "bevy_derive",
  "bevy_ecs",
  "bevy_log",
  "bevy_reflect",
