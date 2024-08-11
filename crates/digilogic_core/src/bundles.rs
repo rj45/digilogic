@@ -25,7 +25,6 @@ pub struct PortBundle {
     /// connected subnet.
     pub bit_width: BitWidth,
 
-    pub shape: Shape,
     pub transform: TransformBundle,
     pub visibility: VisibilityBundle,
     pub bounds: BoundingBoxBundle,

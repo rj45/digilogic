@@ -59,7 +59,6 @@ pub struct CircuitID(pub Entity);
 pub enum Shape {
     #[default]
     Chip,
-    Port,
     And,
     Or,
     Xor,

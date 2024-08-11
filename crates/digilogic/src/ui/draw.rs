@@ -3,11 +3,11 @@ use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::Read;
 use bitflags::bitflags;
-use digilogic_core::components::{Child, CircuitID, Hovered, Shape};
-use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
+use digilogic_core::components::*;
+use digilogic_core::transform::*;
 use digilogic_core::visibility::ComputedVisibility;
 use digilogic_routing::{VertexKind, Vertices};
-use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Line, Rect, Shape as _, Stroke, Vec2};
+use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Line, Rect, Stroke, Vec2};
 use vello::peniko::{Color, Fill};
 
 include!("bez_path.rs");
@@ -32,41 +32,27 @@ pub struct SymbolShape {
 #[derive(Default, Resource)]
 pub struct SymbolShapes(pub Vec<SymbolShape>);
 
-type ShapeQuery<'w, 's> = Query<
-    'w,
-    's,
-    (
-        (
-            Option<Read<Shape>>,
-            Option<Read<GlobalTransform>>,
-            Option<Read<ComputedVisibility>>,
-            Has<Hovered>,
-        ),
-        Relations<Child>,
-    ),
->;
-
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
-    shapes: ShapeQuery,
+    children: Query<(Entity, Relations<Child>)>,
+    symbols: Query<(&Shape, &GlobalTransform, &ComputedVisibility, Has<Hovered>), With<Symbol>>,
 ) {
     for (scene, circuit) in viewports.iter() {
         let mut scene = scene.for_layer(Layer::Symbol);
         scene.reset();
 
-        shapes
+        children
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|&mut (shape, transform, visibility, hovered), _| {
-                let Some(shape) = shape else {
+            .for_each(|&mut entity, _| {
+                let Ok((shape, transform, &visibility, hovered)) = symbols.get(entity) else {
                     return;
                 };
 
-                if !*visibility.copied().unwrap_or_default() {
+                if !*visibility {
                     return;
                 }
 
-                let transform = transform.copied().unwrap_or_default();
                 let transform = Affine::scale(transform.scale.to_f64())
                     .then_rotate(transform.rotation.radians())
                     .then_translate(Vec2::new(
@@ -105,6 +91,68 @@ pub fn draw_symbols(
                         );
                     }
                 }
+            });
+    }
+}
+
+type PortQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Read<GlobalTransform>,
+        Read<ComputedVisibility>,
+        Has<Input>,
+        Has<Output>,
+        Has<Hovered>,
+    ),
+    With<Port>,
+>;
+
+pub fn draw_ports(
+    viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
+    children: Query<(Entity, Relations<Child>)>,
+    ports: PortQuery,
+) {
+    for (scene, circuit) in viewports.iter() {
+        let mut scene = scene.for_layer(Layer::Port);
+        scene.reset();
+
+        children
+            .traverse::<Child>(std::iter::once(circuit.0))
+            .for_each(|&mut entity, _| {
+                let Ok(entity) = ports.get(entity) else {
+                    return;
+                };
+
+                let (transform, &visibility, is_input, is_output, hovered) = entity;
+
+                if !*visibility {
+                    return;
+                }
+
+                let transform = Affine::scale(transform.scale.to_f64())
+                    .then_rotate(transform.rotation.radians())
+                    .then_translate(Vec2::new(
+                        transform.translation.x.to_f64(),
+                        transform.translation.y.to_f64(),
+                    ));
+
+                let color = match (is_input, is_output) {
+                    (true, true) => Color::rgb8(232, 225, 40),
+                    (true, false) => Color::rgb8(40, 110, 228),
+                    (false, true) => Color::rgb8(240, 13, 13),
+                    (false, false) => Color::rgb8(140, 140, 140),
+                };
+
+                let radius = if hovered { 6.0 } else { 4.0 };
+
+                scene.fill(
+                    Fill::NonZero,
+                    transform,
+                    color,
+                    None,
+                    &Circle::new((0.0, 0.0), radius),
+                );
             });
     }
 }
@@ -293,17 +341,6 @@ pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolShapes>) {
             paths: vec![PathInfo {
                 kind: PathKind::FILL,
                 path: bez_path!(),
-            }],
-        },
-        // Port
-        SymbolShape {
-            paths: vec![PathInfo {
-                kind: PathKind::STROKE,
-                path: scale_path(
-                    Circle::new((1.5, 1.5), 1.5).path_elements(0.01).collect(),
-                    1.0,
-                    (-1.5, -1.5),
-                ),
             }],
         },
         // And -- from schemalib-and2-l.svg

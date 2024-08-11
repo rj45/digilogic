@@ -26,8 +26,7 @@ pub struct SymbolDef {
     shape: Shape,
 }
 
-const PORT_HALF_WIDTH: Fixed = fixed!(2);
-const PORT_SHAPE: Shape = Shape::Port; // todo: fixme
+const PORT_HALF_WIDTH: Fixed = fixed!(4);
 
 const GATE_PORTS_2_INPUT: &[PortDef] = &[
     PortDef {
@@ -325,7 +324,6 @@ impl PortDef {
         let mut port_commands = commands.spawn(PortBundle {
             port: Port,
             name: Name(self.name.clone()),
-            shape: PORT_SHAPE,
             transform: TransformBundle {
                 transform: Transform {
                     translation: self.position,

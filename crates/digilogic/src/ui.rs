@@ -79,12 +79,13 @@ enum Layer {
     Symbol,
     RoutingGraph,
     Wire,
+    Port,
     BoundingBox,
 }
 
 #[derive(Default, Component)]
 struct Scene {
-    layers: [Mutex<vello::Scene>; 4],
+    layers: [Mutex<vello::Scene>; 5],
     combined: vello::Scene,
 }
 
@@ -464,7 +465,10 @@ impl bevy_app::Plugin for UiPlugin {
             .register_type::<Viewport>();
 
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
-        app.add_systems(bevy_app::Update, (draw_symbols, draw_wires).in_set(DrawSet));
+        app.add_systems(
+            bevy_app::Update,
+            (draw_symbols, draw_ports, draw_wires).in_set(DrawSet),
+        );
         app.add_systems(
             bevy_app::Update,
             draw_bounding_boxes
