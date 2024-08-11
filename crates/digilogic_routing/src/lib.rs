@@ -17,9 +17,6 @@ use digilogic_core::transform::*;
 use serde::{Deserialize, Serialize};
 use tracing::Instrument;
 
-type HashSet<T> = ahash::AHashSet<T>;
-type HashMap<K, V> = ahash::AHashMap<K, V>;
-
 #[derive(Default, Debug, Component, Reflect)]
 #[component(storage = "SparseSet")]
 struct GraphDirty;

@@ -16,6 +16,9 @@ mod fixed;
 pub use fixed::FRACT_BITS as FIXED_FRACT_BITS;
 pub use fixed::{Fixed, FromFixedError, ToFixedError};
 
+pub type HashSet<T> = ahash::AHashSet<T>;
+pub type HashMap<K, V> = ahash::AHashMap<K, V>;
+
 #[derive(Default, Debug)]
 pub struct CorePlugin;
 

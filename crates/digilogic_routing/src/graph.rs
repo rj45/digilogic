@@ -1,11 +1,11 @@
 use crate::segment_tree::*;
-use crate::{CircuitTree, HashMap};
+use crate::CircuitTree;
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::{fixed, Fixed};
+use digilogic_core::{fixed, Fixed, HashMap};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::ops::{Index, IndexMut};

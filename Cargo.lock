@@ -1691,6 +1691,7 @@ name = "digilogic_core"
 version = "0.1.0"
 dependencies = [
  "aery",
+ "ahash",
  "bevy-inspector-egui",
  "bevy_app",
  "bevy_derive",
@@ -1727,7 +1728,6 @@ name = "digilogic_serde"
 version = "0.1.0"
 dependencies = [
  "aery",
- "ahash",
  "anyhow",
  "bevy_app",
  "bevy_derive",

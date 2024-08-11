@@ -1,8 +1,6 @@
 mod circuitfile;
 use circuitfile::*;
-use digilogic_core::visibility::VisibilityBundle;
 
-use crate::HashMap;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_log::info;
@@ -10,6 +8,8 @@ use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
+use digilogic_core::visibility::VisibilityBundle;
+use digilogic_core::HashMap;
 use std::path::Path;
 
 pub fn load_json(

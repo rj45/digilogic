@@ -1,11 +1,11 @@
 use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
-use crate::{EndpointQuery, HashMap, HashSet, WaypointQuery};
+use crate::{EndpointQuery, WaypointQuery};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_log::{debug, error, info_span};
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::{fixed, Fixed};
+use digilogic_core::{fixed, Fixed, HashMap, HashSet};
 use std::cmp::Reverse;
 
 type PriorityQueue<I, P> = priority_queue::PriorityQueue<I, P, ahash::RandomState>;

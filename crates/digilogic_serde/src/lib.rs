@@ -8,9 +8,8 @@ use bevy_log::error;
 use digilogic_core::components::CircuitID;
 use digilogic_core::events::*;
 use digilogic_core::symbol::SymbolRegistry;
+use digilogic_core::HashMap;
 use std::path::{Path, PathBuf};
-
-type HashMap<K, V> = ahash::AHashMap<K, V>;
 
 #[cfg(target_family = "unix")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

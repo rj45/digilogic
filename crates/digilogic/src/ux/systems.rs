@@ -1,11 +1,10 @@
-use std::ops::Sub;
-
 use super::{PointerButtonEvent, PointerMovedEvent};
 use bevy_ecs::prelude::*;
 use digilogic_core::components::{Endpoint, Hovered, Port, Symbol, Viewport, Waypoint};
 use digilogic_core::spatial_index::SpatialIndex;
 use digilogic_core::transform::{BoundingBox, Vec2};
 use digilogic_core::{fixed, Fixed};
+use std::ops::Sub;
 
 /// Called when a new viewport is added to the world.
 pub(crate) fn on_add_viewport_augment_with_fsm(

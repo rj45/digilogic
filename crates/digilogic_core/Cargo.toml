@@ -23,4 +23,5 @@ aery.workspace = true
 smallvec.workspace = true
 bitflags.workspace = true
 static_assertions.workspace = true
+ahash.workspace = true
 bvh-arena.workspace = true

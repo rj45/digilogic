@@ -1,7 +1,7 @@
 use crate::transform::{AbsoluteBoundingBox, BoundingBox};
+use crate::HashMap;
 use bevy_ecs::prelude::*;
 use bvh_arena::{Bvh, VolumeHandle};
-use std::collections::HashMap;
 
 #[allow(missing_debug_implementations)]
 #[derive(Resource, Default)]

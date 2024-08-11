@@ -1,13 +1,13 @@
 use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
 use crate::path_finding::*;
-use crate::{EndpointQuery, HashMap, Vertex, VertexKind, WaypointQuery};
+use crate::{EndpointQuery, Vertex, VertexKind, WaypointQuery};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_log::debug;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::{fixed, Fixed};
+use digilogic_core::{fixed, Fixed, HashMap};
 use std::cell::RefCell;
 
 #[derive(Default)]
