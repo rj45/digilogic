@@ -79,6 +79,9 @@ fn update_visibility(
         );
 }
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct VisibilitySet;
+
 pub(crate) struct VisibilityPlugin;
 
 impl bevy_app::Plugin for VisibilityPlugin {
@@ -89,7 +92,9 @@ impl bevy_app::Plugin for VisibilityPlugin {
         app.register_relation::<InheritVisibility>();
         app.add_systems(
             bevy_app::PostUpdate,
-            (update_root_visibility, update_visibility).chain(),
+            (update_root_visibility, update_visibility)
+                .chain()
+                .in_set(VisibilitySet),
         );
     }
 }
