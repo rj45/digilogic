@@ -283,8 +283,8 @@ impl BoundingBox {
                 y: center.y.const_sub(half_height),
             },
             max: Vec2 {
-                x: center.x.const_sub(half_width),
-                y: center.y.const_sub(half_height),
+                x: center.x.const_add(half_width),
+                y: center.y.const_add(half_height),
             },
         }
     }
