@@ -171,20 +171,11 @@ fn translate_wires(
                 if let Some(port) = pos_entry.port {
                     // Connect port to net
                     let endpoint_id = commands
-                        .spawn(EndpointBundle {
-                            endpoint: Endpoint,
-                            transform: TransformBundle {
-                                transform: Transform {
-                                    translation: pos,
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            },
-                            visibility: Default::default(),
-                            bounds: Default::default(),
-                        })
+                        .spawn(EndpointBundle::default())
                         .insert(PortID(port))
                         .set::<Child>(net_id)
+                        // Remember to disconnect this when disconnecting from the port.
+                        .set::<InheritTransform>(port)
                         .id();
                     pos_entry.endpoint.set(Some(endpoint_id));
                 } else if pos_entry.wires.len() > 2 {

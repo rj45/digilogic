@@ -173,6 +173,9 @@ fn translate_endpoint(
     endpoint_ent.set::<Child>(net_id);
     if let Some(port_id) = port_id {
         endpoint_ent.insert(PortID(port_id));
+        endpoint_ent.insert(Transform::default());
+        // Remember to disconnect this when disconnecting from the port.
+        endpoint_ent.set::<InheritTransform>(port_id);
     }
     let endpoint_id = endpoint_ent.id();
 
