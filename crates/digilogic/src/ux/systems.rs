@@ -1,9 +1,9 @@
 use super::{
-    EntityOffset, HoveredList, MouseIdle, MouseMoving, MouseState, PointerButtonEvent,
+    EntityOffset, HoveredEntity, MouseIdle, MouseMoving, MouseState, PointerButtonEvent,
     PointerMovedEvent,
 };
 use bevy_ecs::prelude::*;
-use digilogic_core::components::{Hovered, Viewport};
+use digilogic_core::components::*;
 use digilogic_core::spatial_index::SpatialIndex;
 use digilogic_core::transform::{BoundingBox, Transform, Vec2};
 use digilogic_core::{fixed, Fixed};
@@ -15,7 +15,7 @@ pub(crate) fn on_add_viewport_augment_with_fsm(
 ) {
     commands
         .entity(trigger.entity())
-        .insert(HoveredList(Vec::new()))
+        .insert(HoveredEntity::default())
         .insert(MouseState::Idle)
         .observe(hover_system)
         .observe(mouse_state_transition_system)
@@ -24,37 +24,34 @@ pub(crate) fn on_add_viewport_augment_with_fsm(
 
 fn mouse_state_transition_system(
     trigger: Trigger<PointerButtonEvent>,
-    hover_query: Query<&HoveredList>,
+    hover_query: Query<&HoveredEntity>,
     mut mouse_state_query: Query<&mut MouseState>,
     transform_query: Query<&Transform>,
     mut commands: Commands,
 ) {
     let viewport = trigger.entity();
     let event = trigger.event();
-    let hover_list = hover_query.get(viewport).unwrap();
+    let hovered_entity = hover_query.get(viewport).unwrap();
     let mut mouse_state = mouse_state_query.get_mut(viewport).unwrap();
     match (mouse_state.as_ref(), event.pressed) {
         (MouseState::Idle, true) => {
-            if hover_list.len() > 0 {
+            if let Some(hovered_entity) = hovered_entity.0 {
                 let mouse_pos = Vec2 {
                     x: Fixed::try_from_f32(event.pos.x).unwrap(),
                     y: Fixed::try_from_f32(event.pos.y).unwrap(),
                 };
+
                 let mut offset_list = Vec::new();
-                for entity in hover_list.0.iter() {
-                    if let Ok(transform) = transform_query.get(*entity) {
-                        offset_list.push(EntityOffset {
-                            entity: *entity,
-                            offset: transform.translation - mouse_pos,
-                        });
-                    }
+                if let Ok(transform) = transform_query.get(hovered_entity) {
+                    offset_list.push(EntityOffset {
+                        entity: hovered_entity,
+                        offset: transform.translation - mouse_pos,
+                    });
                 }
 
                 *mouse_state = MouseState::Moving(offset_list.clone());
                 commands.entity(viewport).remove::<MouseIdle>();
-                commands
-                    .entity(viewport)
-                    .insert(MouseMoving(offset_list.clone()));
+                commands.entity(viewport).insert(MouseMoving(offset_list));
             }
         }
         (MouseState::Moving(..), false) => {
@@ -66,15 +63,24 @@ fn mouse_state_transition_system(
     }
 }
 
-const MOUSE_POS_FUDGE: Fixed = fixed!(2);
+const MOUSE_POS_FUDGE: Fixed = fixed!(1);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+enum HoveredEntityKind {
+    #[default]
+    Other,
+    Waypoint,
+    Endpoint,
+    Port,
+}
 
 fn hover_system(
     trigger: Trigger<PointerMovedEvent>,
     mut commands: Commands,
     spatial_index: Res<SpatialIndex>,
-    hover_query: Query<Entity, With<Hovered>>,
-    mut found_hovered: Local<Vec<Entity>>,
-    mut hovered_list: Query<&mut HoveredList>,
+    entity_kind_query: Query<(Has<Port>, Has<Endpoint>, Has<Waypoint>)>,
+    mut current_hovered_entity: Query<&mut HoveredEntity>,
 ) {
     let position = trigger.event().0;
     let viewport = trigger.entity();
@@ -86,22 +92,35 @@ fn hover_system(
         MOUSE_POS_FUDGE,
         MOUSE_POS_FUDGE,
     );
-    found_hovered.clear();
-    let mut list = hovered_list.get_mut(viewport).unwrap();
-    spatial_index.query(bounds, |entity| {
-        found_hovered.push(*entity);
-        commands.entity(*entity).insert(Hovered);
 
-        if !list.iter().any(|subject| *subject == *entity) {
-            list.push(*entity);
+    let mut new_hovered_entity = None;
+    let mut new_hovered_entity_kind = HoveredEntityKind::default();
+    spatial_index.query(bounds, |&entity| {
+        let (is_port, is_endpoint, is_waypoint) = entity_kind_query.get(entity).unwrap_or_default();
+        let kind = match (is_port, is_endpoint, is_waypoint) {
+            (true, _, _) => HoveredEntityKind::Port,
+            (_, true, _) => HoveredEntityKind::Endpoint,
+            (_, _, true) => HoveredEntityKind::Waypoint,
+            _ => HoveredEntityKind::Other,
+        };
+
+        if kind >= new_hovered_entity_kind {
+            new_hovered_entity = Some(entity);
+            new_hovered_entity_kind = kind;
         }
     });
-    for item in hover_query.iter() {
-        if !found_hovered.contains(&item) {
-            commands.entity(item).remove::<Hovered>();
+
+    let mut current_hovered_entity = current_hovered_entity.get_mut(viewport).unwrap();
+    if new_hovered_entity != current_hovered_entity.0 {
+        if let Some(current_hovered_entity) = current_hovered_entity.0 {
+            commands.entity(current_hovered_entity).remove::<Hovered>();
         }
+        if let Some(new_hovered_entity) = new_hovered_entity {
+            commands.entity(new_hovered_entity).insert(Hovered);
+        }
+
+        current_hovered_entity.0 = new_hovered_entity;
     }
-    list.retain(|item| found_hovered.contains(item));
 }
 
 fn mover_system(

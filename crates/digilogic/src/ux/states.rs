@@ -1,24 +1,25 @@
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
+use bevy_reflect::Reflect;
 use digilogic_core::transform::Vec2;
 
-#[derive(Component, Deref, DerefMut)]
-pub struct HoveredList(pub Vec<Entity>);
+#[derive(Debug, Default, Component, Deref, DerefMut, Reflect)]
+pub struct HoveredEntity(pub Option<Entity>);
 
-#[derive(Component, Copy, Clone)]
+#[derive(Debug, Component, Copy, Clone, Reflect)]
 pub struct EntityOffset {
     pub entity: Entity,
     pub offset: Vec2,
 }
 
-#[derive(Component)]
+#[derive(Debug, Component, Reflect)]
 pub enum MouseState {
     Idle,
     Moving(Vec<EntityOffset>),
 }
 
-#[derive(Component)]
+#[derive(Debug, Component, Reflect)]
 pub struct MouseIdle;
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Debug, Component, Deref, DerefMut, Reflect)]
 pub struct MouseMoving(pub Vec<EntityOffset>);

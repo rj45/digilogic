@@ -170,7 +170,13 @@ fn translate_wires(
                 if let Some(port) = pos_entry.port {
                     // Connect port to net
                     let endpoint_id = commands
-                        .spawn(EndpointBundle::default())
+                        .spawn(EndpointBundle {
+                            bounds: BoundingBoxBundle {
+                                bounding_box: BoundingBox::from_half_size(fixed!(2.5), fixed!(2.5)),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
                         .insert(PortID(port))
                         .set::<Child>(net_id)
                         // Remember to disconnect this when disconnecting from the port.
@@ -245,11 +251,9 @@ fn translate_wires(
                             },
                             ..Default::default()
                         },
-                        bounds: {
-                            BoundingBoxBundle {
-                                bounding_box: BoundingBox::from_half_size(fixed!(2.5), fixed!(2.5)),
-                                ..Default::default()
-                            }
+                        bounds: BoundingBoxBundle {
+                            bounding_box: BoundingBox::from_half_size(fixed!(2.5), fixed!(2.5)),
+                            ..Default::default()
                         },
                         ..Default::default()
                     })
