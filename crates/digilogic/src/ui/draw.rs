@@ -7,8 +7,8 @@ use digilogic_core::components::{Child, CircuitID, Hovered, Shape};
 use digilogic_core::transform::{AbsoluteBoundingBox, Direction, GlobalTransform};
 use digilogic_core::visibility::ComputedVisibility;
 use digilogic_routing::{VertexKind, Vertices};
-use vello::kurbo::{Affine, BezPath, Circle, Line, Rect, Shape as _, Stroke, Vec2};
-use vello::peniko::{Brush, Color, Fill};
+use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Line, Rect, Shape as _, Stroke, Vec2};
+use vello::peniko::{Color, Fill};
 
 include!("bez_path.rs");
 
@@ -32,9 +32,6 @@ pub struct SymbolShape {
 #[derive(Default, Resource)]
 pub struct SymbolShapes(pub Vec<SymbolShape>);
 
-const SYMBOL_STROKE_WIDTH: f64 = 3.0;
-const SYMBOL_HOVERED_WIDTH: f64 = 8.0;
-
 type ShapeQuery<'w, 's> = Query<
     'w,
     's,
@@ -43,7 +40,7 @@ type ShapeQuery<'w, 's> = Query<
             Option<Read<Shape>>,
             Option<Read<GlobalTransform>>,
             Option<Read<ComputedVisibility>>,
-            Option<Read<Hovered>>,
+            Has<Hovered>,
         ),
         Relations<Child>,
     ),
@@ -60,16 +57,14 @@ pub fn draw_symbols(
 
         shapes
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|(shape, transform, visibility, hovered), _| {
-                let &mut Some(shape) = shape else {
+            .for_each(|&mut (shape, transform, visibility, hovered), _| {
+                let Some(shape) = shape else {
                     return;
                 };
 
                 if !*visibility.copied().unwrap_or_default() {
                     return;
                 }
-
-                let hovered = hovered.is_some();
 
                 let transform = transform.copied().unwrap_or_default();
                 let transform = Affine::scale(transform.scale.to_f64())
@@ -82,23 +77,29 @@ pub fn draw_symbols(
                 let symbol_shape = &symbol_shapes.0[*shape as usize];
                 for path in symbol_shape.paths.iter() {
                     if path.kind.contains(PathKind::FILL) {
-                        scene.fill(Fill::NonZero, transform, Color::GRAY, None, &path.path);
+                        scene.fill(
+                            Fill::NonZero,
+                            transform,
+                            Color::rgb8(3, 3, 3),
+                            None,
+                            &path.path,
+                        );
                     }
 
                     if path.kind.contains(PathKind::STROKE) {
-                        if hovered {
-                            scene.stroke(
-                                &Stroke::new(SYMBOL_HOVERED_WIDTH),
-                                transform,
-                                &Brush::Solid(Color::GRAY),
-                                None,
-                                &path.path,
-                            );
-                        }
+                        let (width, color) = if hovered {
+                            (3.5, Color::WHITE)
+                        } else {
+                            (3.0, Color::rgb8(140, 140, 140))
+                        };
+
                         scene.stroke(
-                            &Stroke::new(SYMBOL_STROKE_WIDTH),
+                            &Stroke::new(width)
+                                .with_join(Join::Miter)
+                                .with_caps(Cap::Butt)
+                                .with_miter_limit(2.2),
                             transform,
-                            Color::WHITE,
+                            color,
                             None,
                             &path.path,
                         );
@@ -112,7 +113,11 @@ type VertexQuery<'w, 's> = Query<
     'w,
     's,
     (
-        (Option<Read<Vertices>>, Option<Read<ComputedVisibility>>),
+        (
+            Option<Read<Vertices>>,
+            Option<Read<ComputedVisibility>>,
+            Has<Hovered>,
+        ),
         Relations<Child>,
     ),
 >;
@@ -128,8 +133,8 @@ pub fn draw_wires(
 
         vertices
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|(vertices, visibility), _| {
-                let &mut Some(vertices) = vertices else {
+            .for_each(|&mut (vertices, visibility, hovered), _| {
+                let Some(vertices) = vertices else {
                     return;
                 };
 
@@ -153,10 +158,12 @@ pub fn draw_wires(
                         VertexKind::WireEnd { is_junction } => {
                             path.line_to(pos);
 
-                            let path_color = if is_root_path && app_state.show_root_wires {
-                                Color::ORANGE
-                            } else {
-                                Color::GREEN
+                            let is_root = is_root_path && app_state.show_root_wires;
+                            let path_color = match (is_root, hovered) {
+                                (true, true) => Color::rgb8(230, 192, 35),
+                                (true, false) => Color::rgb8(212, 172, 16),
+                                (false, true) => Color::rgb8(35, 230, 72),
+                                (false, false) => Color::rgb8(8, 190, 42),
                             };
 
                             scene.stroke(
@@ -193,8 +200,8 @@ pub fn draw_bounding_boxes(
 
         boxes
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|bounds, _| {
-                let &mut Some(bounds) = bounds else {
+            .for_each(|&mut bounds, _| {
+                let Some(bounds) = bounds else {
                     return;
                 };
 

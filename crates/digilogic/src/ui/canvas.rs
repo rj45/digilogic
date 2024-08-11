@@ -25,16 +25,6 @@ impl CanvasRenderer {
     }
 }
 
-#[inline]
-const fn egui_to_vello_color(color: egui::Color32) -> peniko::Color {
-    peniko::Color {
-        r: color.r(),
-        g: color.g(),
-        b: color.b(),
-        a: color.a(),
-    }
-}
-
 #[derive(bevy_ecs::component::Component)]
 pub struct Canvas {
     texture: Texture,
@@ -125,7 +115,7 @@ impl Canvas {
         renderer: &mut CanvasRenderer,
         render_state: &egui_wgpu::RenderState,
         scene: &Scene,
-        background: egui::Color32,
+        background: peniko::Color,
     ) {
         renderer
             .0
@@ -135,7 +125,7 @@ impl Canvas {
                 scene,
                 &self.texture_view,
                 &RenderParams {
-                    base_color: egui_to_vello_color(background),
+                    base_color: background,
                     width: self.width(),
                     height: self.height(),
                     antialiasing_method: ANTIALIASING_METHOD,

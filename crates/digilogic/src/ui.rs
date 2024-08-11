@@ -240,7 +240,7 @@ fn update_viewport(
             renderer,
             &egui.render_state,
             &scene.combined,
-            ui.visuals().extreme_bg_color,
+            vello::peniko::Color::rgb8(6, 6, 6),
         );
 
         let response = Image::new((canvas.texture_id(), canvas_size))
