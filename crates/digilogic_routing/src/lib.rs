@@ -77,8 +77,15 @@ type SymbolQuery<'w, 's> =
 type PortQuery<'w, 's> =
     Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>;
 type NetQuery<'w, 's> = Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>;
-type EndpointQuery<'w, 's> =
-    Query<'w, 's, ((Entity, Read<GlobalTransform>), Relations<Child>), With<Endpoint>>;
+type EndpointQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        (Entity, Read<GlobalTransform>, Has<PortID>),
+        Relations<Child>,
+    ),
+    With<Endpoint>,
+>;
 type WaypointQuery<'w, 's> = Query<'w, 's, Read<GlobalTransform>, With<Waypoint>>;
 
 #[derive(SystemParam)]

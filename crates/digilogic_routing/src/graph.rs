@@ -918,7 +918,12 @@ impl Graph {
                 .join::<Child>(&tree.nets)
                 .for_each(|(_, net_children)| {
                     net_children.join::<Child>(&tree.endpoints).for_each(
-                        |(_, endpoint_children)| {
+                        |((_, endpoint_transform, has_port), endpoint_children)| {
+                            if !has_port {
+                                let anchor = Anchor::new(endpoint_transform.translation);
+                                explicit_anchors.push(anchor);
+                            }
+
                             endpoint_children.join::<Child>(&tree.waypoints).for_each(
                                 |waypoint_transform| {
                                     let anchor = Anchor::new(waypoint_transform.translation);

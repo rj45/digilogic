@@ -27,12 +27,12 @@ fn pick_root_path(
 
     net_children
         .join::<Child>(endpoints)
-        .for_each(|((a, transform_a), _)| {
+        .for_each(|((a, transform_a, _), _)| {
             let pos_a = transform_a.translation;
 
             net_children
                 .join::<Child>(endpoints)
-                .for_each(|((b, transform_b), _)| {
+                .for_each(|((b, transform_b, _), _)| {
                     let pos_b = transform_b.translation;
 
                     let dist = pos_a.manhatten_distance_to(pos_b);
@@ -195,8 +195,8 @@ fn route_root_wire(
     waypoints: &WaypointQuery,
     thread_local_data: &mut ThreadLocalData,
 ) -> Result<(), RoutingError> {
-    let ((_, root_start_transform), _) = endpoints.get(root_start).unwrap();
-    let ((_, root_end_transform), _) = endpoints.get(root_end).unwrap();
+    let ((_, root_start_transform, _), _) = endpoints.get(root_start).unwrap();
+    let ((_, root_end_transform, _), _) = endpoints.get(root_end).unwrap();
     let root_start_pos = root_start_transform.translation;
     let root_end_pos = root_end_transform.translation;
 
@@ -391,7 +391,7 @@ fn route_branch_wires(
 
     net_children
         .join::<Child>(endpoints)
-        .for_each(|((endpoint, endpoint_transform), _)| {
+        .for_each(|((endpoint, endpoint_transform, _), _)| {
             if roots.contains(&endpoint) {
                 return JCF::Continue;
             }
