@@ -9,6 +9,7 @@ use digilogic_core::components::*;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
 use digilogic_core::visibility::VisibilityBundle;
+use digilogic_core::Fixed;
 use digilogic_core::{fixed, HashMap, HashSet};
 use std::cell::Cell;
 use std::fs::File;
@@ -143,7 +144,8 @@ fn translate_wires(
 
     let mut visited = HashSet::<Vec2>::default();
     let mut todo = Vec::<Vec2>::default();
-    let mut junctions = HashSet::<Vec2>::default();
+    let mut junctions = HashSet::<(Entity, Vec2)>::default();
+    let mut net_endpoints = HashMap::<Entity, Vec<Vec2>>::default();
 
     // do a "flood fill" to find all connected ports and assign them to nets
     for pos in pos_map.keys() {
@@ -183,9 +185,14 @@ fn translate_wires(
                         .set::<InheritTransform>(port)
                         .id();
                     pos_entry.endpoint.set(Some(endpoint_id));
+                    if let Some(endpoints) = net_endpoints.get_mut(&net_id) {
+                        endpoints.push(pos);
+                    } else {
+                        net_endpoints.insert(net_id, vec![pos]);
+                    }
                 } else if pos_entry.wires.len() > 2 {
                     // junction here, save it for later
-                    junctions.insert(pos);
+                    junctions.insert((net_id, pos));
                 }
 
                 for wire in pos_entry.wires.iter() {
@@ -200,9 +207,9 @@ fn translate_wires(
     }
 
     // now that we have all the endpoints, we can attach waypoints to them near junctions
-    let mut endpoints = Vec::<Entity>::default();
+    let mut endpoints = Vec::<(Entity, Vec2)>::default();
     visited.clear();
-    for junction_pos in junctions.iter() {
+    for (net_id, junction_pos) in junctions.iter() {
         let pos_entry = pos_map.get(junction_pos).unwrap();
         for wire in pos_entry.wires.iter() {
             let other_end = if wire[0] == *junction_pos {
@@ -234,13 +241,58 @@ fn translate_wires(
                         }
                     }
                     if let Some(endpoint) = pos_entry.endpoint.get() {
-                        endpoints.push(endpoint);
+                        endpoints.push((endpoint, pos));
                     }
                 }
             }
 
+            let mut best_endpoint = None;
+            let mut best_distance = Fixed::MAX;
             if endpoints.len() == 1 {
                 // only one endpoint the waypoint could be attached to, so attach it
+                best_endpoint = Some(endpoints[0].0);
+            } else {
+                // multiple endpoints, so do some sleuthing to figure out which one to attach to
+
+                // find the two endpoints that are furthest apart, those will be the root wire endpoints
+                let nets_endpoints = net_endpoints.get(net_id).unwrap();
+                let mut furthest_endpoints = None;
+                let mut furthest_distance = fixed!(0);
+                for endpoint_pos1 in nets_endpoints.iter() {
+                    for endpoint_pos2 in nets_endpoints.iter() {
+                        let distance = endpoint_pos1.manhatten_distance_to(*endpoint_pos2);
+                        if distance > furthest_distance {
+                            furthest_distance = distance;
+                            furthest_endpoints = Some((*endpoint_pos1, *endpoint_pos2));
+                        }
+                    }
+                }
+
+                // check if the root wire endpoints are in the list of endpoints and pick the closest one
+                for (endpoint, endpoint_pos) in endpoints.iter() {
+                    if *endpoint_pos == furthest_endpoints.unwrap().0
+                        || *endpoint_pos == furthest_endpoints.unwrap().1
+                    {
+                        let distance = waypoint_pos.manhatten_distance_to(*endpoint_pos);
+                        if distance < best_distance {
+                            best_distance = distance;
+                            best_endpoint = Some(*endpoint);
+                        }
+                    }
+                }
+
+                if best_endpoint.is_none() {
+                    // no root endpoints found, just attach to the closest endpoint
+                    for (endpoint, endpoint_pos) in endpoints.iter() {
+                        let distance = waypoint_pos.manhatten_distance_to(*endpoint_pos);
+                        if distance < best_distance {
+                            best_distance = distance;
+                            best_endpoint = Some(*endpoint);
+                        }
+                    }
+                }
+            }
+            if let Some(best_endpoint) = best_endpoint {
                 commands
                     .spawn(WaypointBundle {
                         waypoint: Waypoint,
@@ -257,11 +309,7 @@ fn translate_wires(
                         },
                         ..Default::default()
                     })
-                    .set::<Child>(endpoints[0]);
-            } else {
-                // multiple endpoints... in this case it's ambiguous which endpoint the waypoint
-                // should be attached to... for now, just don't create the waypoint
-                // TODO: handle this case
+                    .set::<Child>(best_endpoint);
             }
         }
     }
