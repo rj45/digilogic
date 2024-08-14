@@ -176,6 +176,25 @@ fn route_on_symbol_change(
     }
 }
 
+#[allow(clippy::type_complexity)]
+fn route_on_waypoint_change(
+    mut commands: Commands,
+    circuits: Query<Entity, With<Circuit>>,
+    nets: Query<((), Relations<Child>), With<Net>>,
+    endpoints: Query<((), Relations<Child>), With<Endpoint>>,
+    waypoints: Query<((), Relations<Child>), (With<Waypoint>, Changed<GlobalTransform>)>,
+) {
+    for (_, edges) in waypoints.iter() {
+        edges.join::<Up<Child>>(&endpoints).for_each(|(_, edges)| {
+            edges.join::<Up<Child>>(&nets).for_each(|(_, edges)| {
+                edges.join::<Up<Child>>(&circuits).for_each(|circuit| {
+                    commands.entity(circuit).insert(GraphDirty);
+                });
+            });
+        });
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct RoutingPlugin;
 
@@ -192,7 +211,7 @@ impl bevy_app::Plugin for RoutingPlugin {
         app.add_systems(bevy_app::PostUpdate, route_on_config_change);
         app.add_systems(
             bevy_app::PostUpdate,
-            route_on_symbol_change.after(TransformSet),
+            (route_on_symbol_change, route_on_waypoint_change).after(TransformSet),
         );
     }
 }
