@@ -1,0 +1,4737 @@
+{
+  "creator": "Yosys 0.29+21 (git sha1 147cceb51, clang 14.0.3 -fPIC -Os)",
+  "modules": {
+    "alu_1bit_2inpgate": {
+      "attributes": {
+        "top": "00000000000000000000000000000001",
+        "src": "stackmachine/alu_1bit_2inpgate.v:6.1-25.10"
+      },
+      "ports": {
+        "Op_0": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "A": {
+          "direction": "input",
+          "bits": [ 3 ]
+        },
+        "B": {
+          "direction": "input",
+          "bits": [ 4 ]
+        },
+        "Cin": {
+          "direction": "input",
+          "bits": [ 5 ]
+        },
+        "Op_1": {
+          "direction": "input",
+          "bits": [ 6 ]
+        },
+        "Bsel_1": {
+          "direction": "input",
+          "bits": [ 7 ]
+        },
+        "Bsel_0": {
+          "direction": "input",
+          "bits": [ 8 ]
+        },
+        "Y": {
+          "direction": "output",
+          "bits": [ 9 ]
+        },
+        "Cout": {
+          "direction": "output",
+          "bits": [ 10 ]
+        }
+      },
+      "cells": {
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$10": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.17-23.68"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 11 ],
+            "B": [ 12 ],
+            "Y": [ 13 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$100": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.691-23.703"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 14 ],
+            "B": [ 8 ],
+            "Y": [ 15 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$102": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.708-23.723"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "B": [ 16 ],
+            "Y": [ 17 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$103": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.690-23.724"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 15 ],
+            "B": [ 17 ],
+            "Y": [ 18 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$104": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.730-23.736"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 19 ],
+            "Y": [ 20 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$106": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.741-23.756"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "B": [ 21 ],
+            "Y": [ 22 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$107": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.729-23.757"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 20 ],
+            "B": [ 22 ],
+            "Y": [ 23 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$110": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.767-23.777"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 8 ],
+            "Y": [ 24 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$112": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.782-23.797"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "B": [ 25 ],
+            "Y": [ 26 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$113": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.766-23.798"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 24 ],
+            "B": [ 26 ],
+            "Y": [ 27 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$115": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.804-23.812"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 28 ],
+            "B": [ 29 ],
+            "Y": [ 30 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$117": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.817-23.832"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 31 ],
+            "Y": [ 32 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$118": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.803-23.833"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 30 ],
+            "B": [ 32 ],
+            "Y": [ 33 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$12": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.76-23.84"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 34 ],
+            "B": [ 19 ],
+            "Y": [ 35 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$120": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.841-23.847"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 29 ],
+            "Y": [ 36 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$122": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.852-23.863"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 37 ],
+            "Y": [ 38 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$123": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.840-23.864"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 36 ],
+            "B": [ 38 ],
+            "Y": [ 39 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$124": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.870-23.876"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 29 ],
+            "Y": [ 40 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$126": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.881-23.896"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 41 ],
+            "Y": [ 42 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$127": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.869-23.897"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 40 ],
+            "B": [ 42 ],
+            "Y": [ 43 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$13": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.90-23.102"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "B": [ 5 ],
+            "Y": [ 44 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$14": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.107-23.118"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "B": [ 6 ],
+            "Y": [ 45 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$15": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.89-23.119"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 44 ],
+            "B": [ 45 ],
+            "Y": [ 46 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$16": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.75-23.120"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 35 ],
+            "B": [ 46 ],
+            "Y": [ 47 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$17": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.126-23.131"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 4 ],
+            "Y": [ 48 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$18": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.137-23.144"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 49 ],
+            "Y": [ 50 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$19": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.149-23.159"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "B": [ 2 ],
+            "Y": [ 51 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$20": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.136-23.160"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 50 ],
+            "B": [ 51 ],
+            "Y": [ 52 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$21": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.125-23.161"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 48 ],
+            "B": [ 52 ],
+            "Y": [ 53 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$24": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.169-23.176"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 54 ],
+            "B": [ 4 ],
+            "Y": [ 55 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$25": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.182-23.189"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 49 ],
+            "Y": [ 56 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$27": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.194-23.206"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 57 ],
+            "B": [ 6 ],
+            "Y": [ 58 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$28": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.181-23.207"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 56 ],
+            "B": [ 58 ],
+            "Y": [ 59 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$29": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.168-23.208"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 55 ],
+            "B": [ 59 ],
+            "Y": [ 60 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$30": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.214-23.219"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 4 ],
+            "Y": [ 61 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$31": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.225-23.236"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 49 ],
+            "Y": [ 62 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$33": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.241-23.253"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 63 ],
+            "B": [ 6 ],
+            "Y": [ 64 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$34": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.224-23.254"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 62 ],
+            "B": [ 64 ],
+            "Y": [ 65 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$35": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.213-23.255"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 61 ],
+            "B": [ 65 ],
+            "Y": [ 66 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$40": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.268-23.276"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 67 ],
+            "B": [ 29 ],
+            "Y": [ 68 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$41": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.282-23.290"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 5 ],
+            "Y": [ 69 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$42": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.295-23.306"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "B": [ 6 ],
+            "Y": [ 70 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$43": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.281-23.307"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 69 ],
+            "B": [ 70 ],
+            "Y": [ 71 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$44": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.267-23.308"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 68 ],
+            "B": [ 71 ],
+            "Y": [ 72 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$45": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.319-23.334"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 7 ],
+            "Y": [ 73 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$46": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.339-23.349"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "B": [ 2 ],
+            "Y": [ 74 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$47": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.318-23.350"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 73 ],
+            "B": [ 74 ],
+            "Y": [ 75 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$48": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.313-23.351"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 75 ],
+            "Y": [ 76 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$5": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.25-23.35"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "B": [ 8 ],
+            "Y": [ 77 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$51": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.366-23.372"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "B": [ 19 ],
+            "Y": [ 78 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$53": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.377-23.388"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 49 ],
+            "B": [ 79 ],
+            "Y": [ 80 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$54": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.365-23.389"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 78 ],
+            "B": [ 80 ],
+            "Y": [ 81 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$55": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.358-23.390"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 82 ],
+            "B": [ 81 ],
+            "Y": [ 83 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$56": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.401-23.411"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "B": [ 8 ],
+            "Y": [ 84 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$58": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.416-23.427"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 49 ],
+            "B": [ 85 ],
+            "Y": [ 86 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$59": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.400-23.428"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 84 ],
+            "B": [ 86 ],
+            "Y": [ 87 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$6": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.18-23.36"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 88 ],
+            "B": [ 77 ],
+            "Y": [ 11 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$60": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.395-23.429"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 87 ],
+            "Y": [ 89 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$64": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.446-23.461"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 7 ],
+            "Y": [ 90 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$66": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.466-23.478"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 91 ],
+            "B": [ 6 ],
+            "Y": [ 92 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$67": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.445-23.479"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 90 ],
+            "B": [ 92 ],
+            "Y": [ 93 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$68": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.438-23.480"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 94 ],
+            "B": [ 93 ],
+            "Y": [ 95 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$69": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.491-23.502"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 7 ],
+            "Y": [ 96 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$7": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.42-23.50"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 49 ],
+            "B": [ 5 ],
+            "Y": [ 97 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$71": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.507-23.519"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 98 ],
+            "B": [ 6 ],
+            "Y": [ 99 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$72": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.490-23.520"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 96 ],
+            "B": [ 99 ],
+            "Y": [ 100 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$73": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.485-23.521"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 100 ],
+            "Y": [ 101 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$75": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.534-23.540"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "B": [ 19 ],
+            "Y": [ 102 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$77": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.545-23.556"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 49 ],
+            "B": [ 103 ],
+            "Y": [ 104 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$78": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.533-23.557"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 102 ],
+            "B": [ 104 ],
+            "Y": [ 105 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$79": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.528-23.558"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 105 ],
+            "Y": [ 106 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$8": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.55-23.66"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "B": [ 6 ],
+            "Y": [ 107 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$80": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.569-23.580"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 8 ],
+            "Y": [ 108 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$81": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.585-23.595"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "B": [ 2 ],
+            "Y": [ 109 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$82": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.568-23.596"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 108 ],
+            "B": [ 109 ],
+            "Y": [ 110 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$83": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.563-23.597"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 110 ],
+            "Y": [ 111 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$88": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.616-23.627"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 8 ],
+            "Y": [ 112 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$9": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.41-23.67"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 97 ],
+            "B": [ 107 ],
+            "Y": [ 12 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$90": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.632-23.644"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 113 ],
+            "B": [ 6 ],
+            "Y": [ 114 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$91": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.615-23.645"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 112 ],
+            "B": [ 114 ],
+            "Y": [ 115 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$92": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.608-23.646"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 116 ],
+            "B": [ 115 ],
+            "Y": [ 117 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$93": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.657-23.664"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 19 ],
+            "Y": [ 118 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$95": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.669-23.681"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 119 ],
+            "B": [ 6 ],
+            "Y": [ 120 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$96": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.656-23.682"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 118 ],
+            "B": [ 120 ],
+            "Y": [ 121 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$97": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.651-23.683"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 121 ],
+            "Y": [ 122 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$133": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.21-24.26"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 4 ],
+            "Y": [ 123 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$134": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.31-24.38"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 49 ],
+            "Y": [ 124 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$135": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.20-24.39"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 123 ],
+            "B": [ 124 ],
+            "Y": [ 125 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$136": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.50-24.65"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 7 ],
+            "Y": [ 126 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$137": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.45-24.66"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 126 ],
+            "Y": [ 127 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$138": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.76-24.87"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 8 ],
+            "Y": [ 128 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$139": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.71-24.88"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 128 ],
+            "Y": [ 129 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$142": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.97-24.104"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 5 ],
+            "Y": [ 130 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$143": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.110-24.116"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "B": [ 19 ],
+            "Y": [ 131 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$144": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.121-24.129"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 49 ],
+            "B": [ 5 ],
+            "Y": [ 132 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$145": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.109-24.130"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 131 ],
+            "B": [ 132 ],
+            "Y": [ 133 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$147": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.143-24.155"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 5 ],
+            "Y": [ 134 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$148": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.137-24.156"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 134 ],
+            "Y": [ 135 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$149": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.171-24.183"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "B": [ 5 ],
+            "Y": [ 136 ]
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$150": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.161-24.184"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 136 ],
+            "Y": [ 137 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:20$1": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:20.15-20.18"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "Y": [ 29 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:21$2": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:21.15-21.23"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "Y": [ 49 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:22$3": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:22.15-22.23"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "Y": [ 19 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$101": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.717-23.723"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "Y": [ 16 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$105": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.750-23.756"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "Y": [ 21 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$11": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.76-23.79"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 34 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$111": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.791-23.797"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 6 ],
+            "Y": [ 25 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$114": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.804-23.807"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 28 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$116": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.826-23.832"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "Y": [ 31 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$121": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.857-23.863"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "Y": [ 37 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$125": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.890-23.896"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 6 ],
+            "Y": [ 41 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$23": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.169-23.172"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 54 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$26": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.194-23.199"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 57 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$32": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.241-23.246"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 63 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$39": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.268-23.271"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 67 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$4": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.18-23.21"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 88 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$50": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.358-23.361"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 82 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$52": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.382-23.388"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "Y": [ 79 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$57": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.421-23.427"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "Y": [ 85 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$63": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.438-23.441"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 94 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$65": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.466-23.471"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 91 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$70": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.507-23.512"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 98 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$76": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.550-23.556"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 6 ],
+            "Y": [ 103 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$87": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.608-23.611"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 116 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$89": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.632-23.637"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 113 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$94": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.669-23.674"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 119 ]
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$99": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.691-23.694"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "Y": [ 14 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$108": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.689-23.758"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 18 ],
+            "B": [ 23 ],
+            "Y": [ 138 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$109": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.606-23.759"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 139 ],
+            "B": [ 138 ],
+            "Y": [ 140 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$119": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.765-23.834"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 27 ],
+            "B": [ 33 ],
+            "Y": [ 141 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$128": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.839-23.898"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 39 ],
+            "B": [ 43 ],
+            "Y": [ 142 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$129": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.764-23.899"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 141 ],
+            "B": [ 142 ],
+            "Y": [ 143 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$130": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.605-23.900"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 140 ],
+            "B": [ 143 ],
+            "Y": [ 144 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$131": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.263-23.901"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 145 ],
+            "B": [ 144 ],
+            "Y": [ 146 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$132": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.15-23.902"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 147 ],
+            "B": [ 146 ],
+            "Y": [ 9 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$22": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.74-23.162"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 47 ],
+            "B": [ 53 ],
+            "Y": [ 148 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$36": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.167-23.256"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 60 ],
+            "B": [ 66 ],
+            "Y": [ 149 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$37": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.73-23.257"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 148 ],
+            "B": [ 149 ],
+            "Y": [ 150 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$38": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.16-23.258"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 13 ],
+            "B": [ 150 ],
+            "Y": [ 147 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$49": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.266-23.352"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 72 ],
+            "B": [ 76 ],
+            "Y": [ 151 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$61": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.357-23.430"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 83 ],
+            "B": [ 89 ],
+            "Y": [ 152 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$62": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.265-23.431"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 151 ],
+            "B": [ 152 ],
+            "Y": [ 153 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$74": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.437-23.522"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 95 ],
+            "B": [ 101 ],
+            "Y": [ 154 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$84": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.527-23.598"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 106 ],
+            "B": [ 111 ],
+            "Y": [ 155 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$85": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.436-23.599"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 154 ],
+            "B": [ 155 ],
+            "Y": [ 156 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$86": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.264-23.600"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 153 ],
+            "B": [ 156 ],
+            "Y": [ 145 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$98": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.607-23.684"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 117 ],
+            "B": [ 122 ],
+            "Y": [ 139 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$140": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.44-24.89"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 127 ],
+            "B": [ 129 ],
+            "Y": [ 157 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$141": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.19-24.90"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 125 ],
+            "B": [ 157 ],
+            "Y": [ 158 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$146": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.96-24.131"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 130 ],
+            "B": [ 133 ],
+            "Y": [ 159 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$151": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.136-24.185"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 135 ],
+            "B": [ 137 ],
+            "Y": [ 160 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$152": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.95-24.186"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 159 ],
+            "B": [ 160 ],
+            "Y": [ 161 ]
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$153": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.18-24.187"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 158 ],
+            "B": [ 161 ],
+            "Y": [ 10 ]
+          }
+        }
+      },
+      "netnames": {
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$100_Y": {
+          "hide_name": 1,
+          "bits": [ 15 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.691-23.703"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$102_Y": {
+          "hide_name": 1,
+          "bits": [ 17 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.708-23.723"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$103_Y": {
+          "hide_name": 1,
+          "bits": [ 18 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.690-23.724"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$104_Y": {
+          "hide_name": 1,
+          "bits": [ 20 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.730-23.736"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$106_Y": {
+          "hide_name": 1,
+          "bits": [ 22 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.741-23.756"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$107_Y": {
+          "hide_name": 1,
+          "bits": [ 23 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.729-23.757"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$10_Y": {
+          "hide_name": 1,
+          "bits": [ 13 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.17-23.68"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$110_Y": {
+          "hide_name": 1,
+          "bits": [ 24 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.767-23.777"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$112_Y": {
+          "hide_name": 1,
+          "bits": [ 26 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.782-23.797"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$113_Y": {
+          "hide_name": 1,
+          "bits": [ 27 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.766-23.798"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$115_Y": {
+          "hide_name": 1,
+          "bits": [ 30 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.804-23.812"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$117_Y": {
+          "hide_name": 1,
+          "bits": [ 32 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.817-23.832"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$118_Y": {
+          "hide_name": 1,
+          "bits": [ 33 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.803-23.833"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$120_Y": {
+          "hide_name": 1,
+          "bits": [ 36 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.841-23.847"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$122_Y": {
+          "hide_name": 1,
+          "bits": [ 38 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.852-23.863"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$123_Y": {
+          "hide_name": 1,
+          "bits": [ 39 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.840-23.864"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$124_Y": {
+          "hide_name": 1,
+          "bits": [ 40 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.870-23.876"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$126_Y": {
+          "hide_name": 1,
+          "bits": [ 42 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.881-23.896"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$127_Y": {
+          "hide_name": 1,
+          "bits": [ 43 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.869-23.897"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$12_Y": {
+          "hide_name": 1,
+          "bits": [ 35 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.76-23.84"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$13_Y": {
+          "hide_name": 1,
+          "bits": [ 44 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.90-23.102"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$14_Y": {
+          "hide_name": 1,
+          "bits": [ 45 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.107-23.118"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$15_Y": {
+          "hide_name": 1,
+          "bits": [ 46 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.89-23.119"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$16_Y": {
+          "hide_name": 1,
+          "bits": [ 47 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.75-23.120"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$17_Y": {
+          "hide_name": 1,
+          "bits": [ 48 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.126-23.131"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$18_Y": {
+          "hide_name": 1,
+          "bits": [ 50 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.137-23.144"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$19_Y": {
+          "hide_name": 1,
+          "bits": [ 51 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.149-23.159"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$20_Y": {
+          "hide_name": 1,
+          "bits": [ 52 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.136-23.160"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$21_Y": {
+          "hide_name": 1,
+          "bits": [ 53 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.125-23.161"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$24_Y": {
+          "hide_name": 1,
+          "bits": [ 55 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.169-23.176"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$25_Y": {
+          "hide_name": 1,
+          "bits": [ 56 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.182-23.189"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$27_Y": {
+          "hide_name": 1,
+          "bits": [ 58 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.194-23.206"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$28_Y": {
+          "hide_name": 1,
+          "bits": [ 59 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.181-23.207"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$29_Y": {
+          "hide_name": 1,
+          "bits": [ 60 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.168-23.208"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$30_Y": {
+          "hide_name": 1,
+          "bits": [ 61 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.214-23.219"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$31_Y": {
+          "hide_name": 1,
+          "bits": [ 62 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.225-23.236"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$33_Y": {
+          "hide_name": 1,
+          "bits": [ 64 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.241-23.253"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$34_Y": {
+          "hide_name": 1,
+          "bits": [ 65 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.224-23.254"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$35_Y": {
+          "hide_name": 1,
+          "bits": [ 66 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.213-23.255"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$40_Y": {
+          "hide_name": 1,
+          "bits": [ 68 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.268-23.276"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$41_Y": {
+          "hide_name": 1,
+          "bits": [ 69 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.282-23.290"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$42_Y": {
+          "hide_name": 1,
+          "bits": [ 70 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.295-23.306"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$43_Y": {
+          "hide_name": 1,
+          "bits": [ 71 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.281-23.307"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$44_Y": {
+          "hide_name": 1,
+          "bits": [ 72 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.267-23.308"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$45_Y": {
+          "hide_name": 1,
+          "bits": [ 73 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.319-23.334"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$46_Y": {
+          "hide_name": 1,
+          "bits": [ 74 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.339-23.349"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$47_Y": {
+          "hide_name": 1,
+          "bits": [ 75 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.318-23.350"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$48_Y": {
+          "hide_name": 1,
+          "bits": [ 76 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.313-23.351"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$51_Y": {
+          "hide_name": 1,
+          "bits": [ 78 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.366-23.372"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$53_Y": {
+          "hide_name": 1,
+          "bits": [ 80 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.377-23.388"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$54_Y": {
+          "hide_name": 1,
+          "bits": [ 81 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.365-23.389"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$55_Y": {
+          "hide_name": 1,
+          "bits": [ 83 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.358-23.390"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$56_Y": {
+          "hide_name": 1,
+          "bits": [ 84 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.401-23.411"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$58_Y": {
+          "hide_name": 1,
+          "bits": [ 86 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.416-23.427"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$59_Y": {
+          "hide_name": 1,
+          "bits": [ 87 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.400-23.428"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$5_Y": {
+          "hide_name": 1,
+          "bits": [ 77 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.25-23.35"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$60_Y": {
+          "hide_name": 1,
+          "bits": [ 89 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.395-23.429"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$64_Y": {
+          "hide_name": 1,
+          "bits": [ 90 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.446-23.461"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$66_Y": {
+          "hide_name": 1,
+          "bits": [ 92 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.466-23.478"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$67_Y": {
+          "hide_name": 1,
+          "bits": [ 93 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.445-23.479"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$68_Y": {
+          "hide_name": 1,
+          "bits": [ 95 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.438-23.480"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$69_Y": {
+          "hide_name": 1,
+          "bits": [ 96 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.491-23.502"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$6_Y": {
+          "hide_name": 1,
+          "bits": [ 11 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.18-23.36"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$71_Y": {
+          "hide_name": 1,
+          "bits": [ 99 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.507-23.519"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$72_Y": {
+          "hide_name": 1,
+          "bits": [ 100 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.490-23.520"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$73_Y": {
+          "hide_name": 1,
+          "bits": [ 101 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.485-23.521"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$75_Y": {
+          "hide_name": 1,
+          "bits": [ 102 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.534-23.540"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$77_Y": {
+          "hide_name": 1,
+          "bits": [ 104 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.545-23.556"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$78_Y": {
+          "hide_name": 1,
+          "bits": [ 105 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.533-23.557"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$79_Y": {
+          "hide_name": 1,
+          "bits": [ 106 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.528-23.558"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$7_Y": {
+          "hide_name": 1,
+          "bits": [ 97 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.42-23.50"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$80_Y": {
+          "hide_name": 1,
+          "bits": [ 108 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.569-23.580"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$81_Y": {
+          "hide_name": 1,
+          "bits": [ 109 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.585-23.595"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$82_Y": {
+          "hide_name": 1,
+          "bits": [ 110 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.568-23.596"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$83_Y": {
+          "hide_name": 1,
+          "bits": [ 111 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.563-23.597"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$88_Y": {
+          "hide_name": 1,
+          "bits": [ 112 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.616-23.627"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$8_Y": {
+          "hide_name": 1,
+          "bits": [ 107 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.55-23.66"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$90_Y": {
+          "hide_name": 1,
+          "bits": [ 114 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.632-23.644"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$91_Y": {
+          "hide_name": 1,
+          "bits": [ 115 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.615-23.645"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$92_Y": {
+          "hide_name": 1,
+          "bits": [ 117 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.608-23.646"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$93_Y": {
+          "hide_name": 1,
+          "bits": [ 118 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.657-23.664"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$95_Y": {
+          "hide_name": 1,
+          "bits": [ 120 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.669-23.681"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$96_Y": {
+          "hide_name": 1,
+          "bits": [ 121 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.656-23.682"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$97_Y": {
+          "hide_name": 1,
+          "bits": [ 122 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.651-23.683"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:23$9_Y": {
+          "hide_name": 1,
+          "bits": [ 12 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.41-23.67"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$133_Y": {
+          "hide_name": 1,
+          "bits": [ 123 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.21-24.26"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$134_Y": {
+          "hide_name": 1,
+          "bits": [ 124 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.31-24.38"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$135_Y": {
+          "hide_name": 1,
+          "bits": [ 125 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.20-24.39"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$136_Y": {
+          "hide_name": 1,
+          "bits": [ 126 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.50-24.65"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$137_Y": {
+          "hide_name": 1,
+          "bits": [ 127 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.45-24.66"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$138_Y": {
+          "hide_name": 1,
+          "bits": [ 128 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.76-24.87"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$139_Y": {
+          "hide_name": 1,
+          "bits": [ 129 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.71-24.88"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$142_Y": {
+          "hide_name": 1,
+          "bits": [ 130 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.97-24.104"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$143_Y": {
+          "hide_name": 1,
+          "bits": [ 131 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.110-24.116"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$144_Y": {
+          "hide_name": 1,
+          "bits": [ 132 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.121-24.129"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$145_Y": {
+          "hide_name": 1,
+          "bits": [ 133 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.109-24.130"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$147_Y": {
+          "hide_name": 1,
+          "bits": [ 134 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.143-24.155"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$148_Y": {
+          "hide_name": 1,
+          "bits": [ 135 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.137-24.156"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$149_Y": {
+          "hide_name": 1,
+          "bits": [ 136 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.171-24.183"
+          }
+        },
+        "$and$stackmachine/alu_1bit_2inpgate.v:24$150_Y": {
+          "hide_name": 1,
+          "bits": [ 137 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.161-24.184"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$101_Y": {
+          "hide_name": 1,
+          "bits": [ 16 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.717-23.723"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$105_Y": {
+          "hide_name": 1,
+          "bits": [ 21 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.750-23.756"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$111_Y": {
+          "hide_name": 1,
+          "bits": [ 25 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.791-23.797"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$114_Y": {
+          "hide_name": 1,
+          "bits": [ 28 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.804-23.807"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$116_Y": {
+          "hide_name": 1,
+          "bits": [ 31 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.826-23.832"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$11_Y": {
+          "hide_name": 1,
+          "bits": [ 34 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.76-23.79"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$121_Y": {
+          "hide_name": 1,
+          "bits": [ 37 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.857-23.863"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$125_Y": {
+          "hide_name": 1,
+          "bits": [ 41 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.890-23.896"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$23_Y": {
+          "hide_name": 1,
+          "bits": [ 54 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.169-23.172"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$26_Y": {
+          "hide_name": 1,
+          "bits": [ 57 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.194-23.199"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$32_Y": {
+          "hide_name": 1,
+          "bits": [ 63 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.241-23.246"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$39_Y": {
+          "hide_name": 1,
+          "bits": [ 67 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.268-23.271"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$4_Y": {
+          "hide_name": 1,
+          "bits": [ 88 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.18-23.21"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$50_Y": {
+          "hide_name": 1,
+          "bits": [ 82 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.358-23.361"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$52_Y": {
+          "hide_name": 1,
+          "bits": [ 79 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.382-23.388"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$57_Y": {
+          "hide_name": 1,
+          "bits": [ 85 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.421-23.427"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$63_Y": {
+          "hide_name": 1,
+          "bits": [ 94 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.438-23.441"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$65_Y": {
+          "hide_name": 1,
+          "bits": [ 91 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.466-23.471"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$70_Y": {
+          "hide_name": 1,
+          "bits": [ 98 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.507-23.512"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$76_Y": {
+          "hide_name": 1,
+          "bits": [ 103 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.550-23.556"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$87_Y": {
+          "hide_name": 1,
+          "bits": [ 116 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.608-23.611"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$89_Y": {
+          "hide_name": 1,
+          "bits": [ 113 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.632-23.637"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$94_Y": {
+          "hide_name": 1,
+          "bits": [ 119 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.669-23.674"
+          }
+        },
+        "$not$stackmachine/alu_1bit_2inpgate.v:23$99_Y": {
+          "hide_name": 1,
+          "bits": [ 14 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.691-23.694"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$108_Y": {
+          "hide_name": 1,
+          "bits": [ 138 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.689-23.758"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$109_Y": {
+          "hide_name": 1,
+          "bits": [ 140 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.606-23.759"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$119_Y": {
+          "hide_name": 1,
+          "bits": [ 141 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.765-23.834"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$128_Y": {
+          "hide_name": 1,
+          "bits": [ 142 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.839-23.898"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$129_Y": {
+          "hide_name": 1,
+          "bits": [ 143 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.764-23.899"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$130_Y": {
+          "hide_name": 1,
+          "bits": [ 144 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.605-23.900"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$131_Y": {
+          "hide_name": 1,
+          "bits": [ 146 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.263-23.901"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$22_Y": {
+          "hide_name": 1,
+          "bits": [ 148 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.74-23.162"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$36_Y": {
+          "hide_name": 1,
+          "bits": [ 149 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.167-23.256"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$37_Y": {
+          "hide_name": 1,
+          "bits": [ 150 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.73-23.257"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$38_Y": {
+          "hide_name": 1,
+          "bits": [ 147 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.16-23.258"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$49_Y": {
+          "hide_name": 1,
+          "bits": [ 151 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.266-23.352"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$61_Y": {
+          "hide_name": 1,
+          "bits": [ 152 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.357-23.430"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$62_Y": {
+          "hide_name": 1,
+          "bits": [ 153 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.265-23.431"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$74_Y": {
+          "hide_name": 1,
+          "bits": [ 154 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.437-23.522"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$84_Y": {
+          "hide_name": 1,
+          "bits": [ 155 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.527-23.598"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$85_Y": {
+          "hide_name": 1,
+          "bits": [ 156 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.436-23.599"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$86_Y": {
+          "hide_name": 1,
+          "bits": [ 145 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.264-23.600"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:23$98_Y": {
+          "hide_name": 1,
+          "bits": [ 139 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:23.607-23.684"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$140_Y": {
+          "hide_name": 1,
+          "bits": [ 157 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.44-24.89"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$141_Y": {
+          "hide_name": 1,
+          "bits": [ 158 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.19-24.90"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$146_Y": {
+          "hide_name": 1,
+          "bits": [ 159 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.96-24.131"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$151_Y": {
+          "hide_name": 1,
+          "bits": [ 160 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.136-24.185"
+          }
+        },
+        "$or$stackmachine/alu_1bit_2inpgate.v:24$152_Y": {
+          "hide_name": 1,
+          "bits": [ 161 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:24.95-24.186"
+          }
+        },
+        "A": {
+          "hide_name": 0,
+          "bits": [ 3 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:8.9-8.10"
+          }
+        },
+        "B": {
+          "hide_name": 0,
+          "bits": [ 4 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:9.9-9.10"
+          }
+        },
+        "Bsel_0": {
+          "hide_name": 0,
+          "bits": [ 8 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:13.9-13.15"
+          }
+        },
+        "Bsel_1": {
+          "hide_name": 0,
+          "bits": [ 7 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:12.9-12.15"
+          }
+        },
+        "Cin": {
+          "hide_name": 0,
+          "bits": [ 5 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:10.9-10.12"
+          }
+        },
+        "Cout": {
+          "hide_name": 0,
+          "bits": [ 10 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:15.10-15.14"
+          }
+        },
+        "Op_0": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:7.9-7.13"
+          }
+        },
+        "Op_1": {
+          "hide_name": 0,
+          "bits": [ 6 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:11.9-11.13"
+          }
+        },
+        "Y": {
+          "hide_name": 0,
+          "bits": [ 9 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:14.10-14.11"
+          }
+        },
+        "s0": {
+          "hide_name": 0,
+          "bits": [ 49 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:17.8-17.10"
+          }
+        },
+        "s1": {
+          "hide_name": 0,
+          "bits": [ 19 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:18.8-18.10"
+          }
+        },
+        "s2": {
+          "hide_name": 0,
+          "bits": [ 29 ],
+          "attributes": {
+            "src": "stackmachine/alu_1bit_2inpgate.v:19.8-19.10"
+          }
+        }
+      }
+    }
+  }
+}

@@ -119,7 +119,8 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
         {
             let dialog = rfd::FileDialog::new()
                 .add_filter("Digilogic Circuit", &["dlc"])
-                .add_filter("Digital Circuit", &["dig"]);
+                .add_filter("Digital Circuit", &["dig"])
+                .add_filter("Yosys JSON", &["yosys", "json"]);
             #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
             let dialog = dialog.set_parent(frame);
 

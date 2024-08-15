@@ -1,5 +1,6 @@
 mod digital;
 mod json;
+mod yosys;
 
 use anyhow::{anyhow, bail, Result};
 use bevy_derive::{Deref, DerefMut};
@@ -54,6 +55,11 @@ fn load_file(
             json::load_json(commands, &ev.filename, symbols)
         } else if ext == "dig" {
             digital::load_digital(commands, &ev.filename, symbols)
+        } else if ext == "yosys" {
+            yosys::load_yosys(commands, &ev.filename, symbols)
+        } else if ext == "json" {
+            yosys::load_yosys(commands, &ev.filename, symbols)
+                .or_else(|_| json::load_json(commands, &ev.filename, symbols))
         } else {
             Err(anyhow!(
                 "unsupported file extension '{}'",
