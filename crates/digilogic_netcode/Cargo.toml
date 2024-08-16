@@ -1,0 +1,22 @@
+[package]
+name = "digilogic_netcode"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+client = ["dep:bevy_ecs", "dep:bevy_app", "dep:bevy_time", "renet/bevy"]
+server = []
+
+[dependencies]
+bevy_ecs = { workspace = true, optional = true }
+bevy_app = { workspace = true, optional = true }
+bevy_time = { workspace = true, optional = true }
+renet.workspace = true
+
+digilogic_core = { path = "../digilogic_core" }

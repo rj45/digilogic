@@ -63,6 +63,7 @@ impl App {
             bevy_core::TaskPoolPlugin::default(),
             bevy_core::TypeRegistrationPlugin,
             bevy_core::FrameCountPlugin,
+            bevy_time::TimePlugin,
             bevy_log::LogPlugin {
                 #[cfg(debug_assertions)]
                 level: bevy_log::Level::DEBUG,
@@ -89,6 +90,7 @@ impl App {
             digilogic_core::CorePlugin,
             digilogic_serde::LoadSavePlugin,
             digilogic_routing::RoutingPlugin,
+            digilogic_netcode::ClientPlugin,
             ux::UxPlugin::default(),
             ui::UiPlugin::new(context, render_state),
         ));

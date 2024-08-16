@@ -1,8 +1,9 @@
 [package]
 name = "digilogic"
 version.workspace = true
-authors.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
 rust-version.workspace = true
 
 [lints]
@@ -28,6 +29,7 @@ bevy_reflect.workspace = true
 bevy_derive.workspace = true
 bevy_app.workspace = true
 bevy_log.workspace = true
+bevy_time.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 aery.workspace = true
 bitflags.workspace = true
@@ -35,6 +37,7 @@ bitflags.workspace = true
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }
 digilogic_serde = { path = "../digilogic_serde" }
+digilogic_netcode = { path = "../digilogic_netcode", features = ["client"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true

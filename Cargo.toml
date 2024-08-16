@@ -70,6 +70,7 @@ bevy_reflect = "0.14.1"
 bevy_derive = "0.14.1"
 bevy_app = "0.14.1"
 bevy_log = "0.14.1"
+bevy_time = "0.14.1"
 bevy-inspector-egui = { version = "0.25.1", default-features = false, features = [
     "highlight_changes",
 ] }
@@ -81,3 +82,4 @@ ahash = "0.8.11"
 serde-xml-rs = "0.6"
 bvh-arena = "1.1"
 priority-queue = "2.0.3"
+renet = { version = "0.0.16", features = ["serde"] }
