@@ -1,6 +1,6 @@
-use renet::*;
 use digilogic_core::components::Circuit;
 use digilogic_core::HashMap;
+use renet::*;
 
 #[derive(Default)]
 #[cfg_attr(feature = "client", derive(bevy_ecs::prelude::Component))]

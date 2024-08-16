@@ -30,6 +30,7 @@ bevy_derive.workspace = true
 bevy_app.workspace = true
 bevy_log.workspace = true
 bevy_time.workspace = true
+bevy_state.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 aery.workspace = true
 bitflags.workspace = true

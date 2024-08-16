@@ -171,7 +171,7 @@ type VertexQuery<'w, 's> = Query<
 >;
 
 pub fn draw_wires(
-    app_state: Res<crate::AppState>,
+    app_state: Res<crate::AppSettings>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     vertices: VertexQuery,
 ) {

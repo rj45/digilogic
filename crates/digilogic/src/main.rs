@@ -5,6 +5,7 @@ mod ux;
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
+use bevy_state::prelude::*;
 use digilogic_routing::RoutingConfig;
 use serde::{Deserialize, Serialize};
 
@@ -12,14 +13,14 @@ const ROUTING_CONFIG_KEY: &str = "routing";
 
 #[derive(Serialize, Deserialize, Resource, Reflect)]
 #[reflect(Resource)]
-struct AppState {
+struct AppSettings {
     dark_mode: bool,
     show_bounding_boxes: bool,
     show_routing_graph: bool,
     show_root_wires: bool,
 }
 
-impl Default for AppState {
+impl Default for AppSettings {
     fn default() -> Self {
         Self {
             dark_mode: true,
@@ -28,6 +29,13 @@ impl Default for AppState {
             show_root_wires: false,
         }
     }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, States)]
+enum AppState {
+    #[default]
+    Normal,
+    Simulating,
 }
 
 #[derive(Event)]
@@ -44,7 +52,7 @@ impl App {
         let context = &cc.egui_ctx;
         let render_state = cc.wgpu_render_state.as_ref().unwrap();
 
-        let app_state: AppState = cc
+        let app_state: AppSettings = cc
             .storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
@@ -64,6 +72,7 @@ impl App {
             bevy_core::TypeRegistrationPlugin,
             bevy_core::FrameCountPlugin,
             bevy_time::TimePlugin,
+            bevy_state::app::StatesPlugin,
             bevy_log::LogPlugin {
                 #[cfg(debug_assertions)]
                 level: bevy_log::Level::DEBUG,
@@ -73,7 +82,8 @@ impl App {
             },
         ));
 
-        app.register_type::<AppState>();
+        app.register_type::<AppSettings>();
+        app.init_state::<AppState>();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
 
@@ -150,7 +160,7 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
 
 impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        if let Some(app_state) = self.0.world().get_resource::<AppState>() {
+        if let Some(app_state) = self.0.world().get_resource::<AppSettings>() {
             eframe::set_value(storage, eframe::APP_KEY, app_state);
         }
 

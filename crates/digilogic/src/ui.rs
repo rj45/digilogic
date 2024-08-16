@@ -4,7 +4,7 @@ use canvas::*;
 mod draw;
 use draw::*;
 
-use crate::{AppState, FileDialogEvent};
+use crate::{AppSettings, AppState, FileDialogEvent};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
@@ -106,7 +106,7 @@ struct ViewportBundle {
 }
 
 fn combine_scenes(
-    app_state: Res<AppState>,
+    app_state: Res<AppSettings>,
     mut viewports: Query<(&PanZoom, &mut Scene), With<Viewport>>,
 ) {
     for (pan_zoom, mut scene) in viewports.iter_mut() {
@@ -135,7 +135,7 @@ fn combine_scenes(
 fn update_main_menu(
     egui: &Egui,
     ui: &mut Ui,
-    app_state: &mut AppState,
+    app_state: &mut AppSettings,
     mut routing_config: ResMut<digilogic_routing::RoutingConfig>,
     file_dialog_events: &mut EventWriter<FileDialogEvent>,
 ) {
@@ -193,7 +193,7 @@ fn update_main_menu(
 
 fn update_menu(
     egui: Res<Egui>,
-    mut app_state: ResMut<AppState>,
+    mut app_state: ResMut<AppSettings>,
     routing_config: ResMut<digilogic_routing::RoutingConfig>,
     mut file_dialog_events: EventWriter<FileDialogEvent>,
 ) {
@@ -438,6 +438,11 @@ fn inspect(world: &mut World) {
     });
 }
 
+fn repaint(egui: Res<Egui>) {
+    const TARGET_FPS: f32 = 30.0;
+    egui.context.request_repaint_after_secs(1.0 / TARGET_FPS);
+}
+
 pub struct UiPlugin {
     context: Context,
     render_state: RenderState,
@@ -473,19 +478,24 @@ impl bevy_app::Plugin for UiPlugin {
             bevy_app::Update,
             draw_bounding_boxes
                 .in_set(DrawSet)
-                .run_if(|app_state: Res<AppState>| app_state.show_bounding_boxes),
+                .run_if(|app_state: Res<AppSettings>| app_state.show_bounding_boxes),
         );
         app.add_systems(
             bevy_app::Update,
             draw_routing_graph
                 .in_set(DrawSet)
-                .run_if(|app_state: Res<AppState>| app_state.show_routing_graph),
+                .run_if(|app_state: Res<AppSettings>| app_state.show_routing_graph),
         );
         app.add_systems(bevy_app::Update, combine_scenes.after(DrawSet));
         app.add_systems(bevy_app::Update, (update_menu, add_tabs));
         app.add_systems(
             bevy_app::Update,
             update_tabs.after(combine_scenes).after(update_menu),
+        );
+
+        app.add_systems(
+            bevy_app::PreUpdate,
+            repaint.run_if(bevy_state::condition::in_state(AppState::Simulating)),
         );
 
         #[cfg(feature = "inspector")]
