@@ -109,6 +109,19 @@ impl App {
     }
 }
 
+fn handle_exit_events(world: &mut World, context: &egui::Context) {
+    type AppExitEvents = Events<bevy_app::AppExit>;
+
+    let mut exit_events = world.get_resource_mut::<AppExitEvents>().unwrap();
+    let close_requested = context.input(|i| i.viewport().close_requested());
+
+    if !exit_events.is_empty() && !close_requested {
+        context.send_viewport_cmd(egui::ViewportCommand::Close);
+    } else if close_requested {
+        exit_events.send(bevy_app::AppExit::Success);
+    }
+}
+
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = Events<FileDialogEvent>;
     type LoadEvents = Events<digilogic_core::events::LoadEvent>;
@@ -184,6 +197,7 @@ impl eframe::App for App {
                 context.request_repaint();
             }
             bevy_app::PluginsState::Cleaned => {
+                handle_exit_events(self.0.world_mut(), context);
                 self.0.update();
                 handle_file_dialog(self.0.world_mut(), frame);
             }

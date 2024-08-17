@@ -10,13 +10,17 @@ rust-version.workspace = true
 workspace = true
 
 [features]
-client = ["dep:bevy_ecs", "dep:bevy_app", "dep:bevy_time", "renet/bevy"]
-server = []
+client = ["dep:bevy_ecs", "dep:bevy_app", "dep:bevy_time", "dep:digilogic_core", "renet/bevy"]
+server = ["dep:spin_sleep"]
 
 [dependencies]
+serde.workspace = true
+rmp-serde.workspace = true
 bevy_ecs = { workspace = true, optional = true }
 bevy_app = { workspace = true, optional = true }
 bevy_time = { workspace = true, optional = true }
+ahash.workspace = true
 renet.workspace = true
+spin_sleep = { workspace = true, optional = true }
 
-digilogic_core = { path = "../digilogic_core" }
+digilogic_core = { path = "../digilogic_core", optional = true }
