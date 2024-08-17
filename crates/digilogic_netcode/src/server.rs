@@ -12,7 +12,7 @@ pub trait SimServer {
     fn client_connected(&mut self, client_id: ClientId);
     fn client_disconnected(&mut self, client_id: ClientId);
 
-    fn sim_state(&mut self, client_id: ClientId) -> &mut SimState;
+    fn sim_state(&mut self, client_id: ClientId) -> Option<&mut SimState>;
 }
 
 fn server_config(max_clients: usize, server_addr: SocketAddr) -> ServerConfig {
@@ -71,10 +71,11 @@ pub fn run_server(port: u16, mut sim_server: impl SimServer) -> Result<(), Netco
                 }
             }
 
-            let sim_state = sim_server.sim_state(client_id);
-            for message in sim_state.data_messages(&mut message_order) {
-                let message = rmp_serde::to_vec(&message).unwrap();
-                server.send_message(client_id, DATA_CHANNEL_ID, message);
+            if let Some(sim_state) = sim_server.sim_state(client_id) {
+                for message in sim_state.data_messages(&mut message_order) {
+                    let message = rmp_serde::to_vec(&message).unwrap();
+                    server.send_message(client_id, DATA_CHANNEL_ID, message);
+                }
             }
         }
 

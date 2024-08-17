@@ -68,10 +68,12 @@ pub struct SimState {
     // TODO: these are just placeholders
     nets: Vec<u32>,
     components: ahash::AHashMap<u32, u32>,
+    #[cfg(feature = "client")]
     dirty_net_list: Vec<usize>,
 }
 
 impl SimState {
+    #[cfg(feature = "client")]
     fn data_messages<'a>(
         &'a mut self,
         message_order: &'a mut u64,
