@@ -1860,6 +1860,8 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "digilogic_core",
+ "petgraph",
+ "rust-sugiyama",
  "serde",
  "serde-xml-rs",
  "serde_json",
@@ -4091,6 +4093,16 @@ dependencies = [
  "bitflags 2.6.0",
  "serde",
  "serde_derive",
+]
+
+[[package]]
+name = "rust-sugiyama"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23006bb38952f8710533662b61dc757da3876fac48644810df800ac660771e77"
+dependencies = [
+ "log",
+ "petgraph",
 ]
 
 [[package]]

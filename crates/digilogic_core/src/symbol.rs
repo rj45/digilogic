@@ -195,11 +195,13 @@ const KINDS: &[SymbolDef] = &[
     },
 ];
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortInfo {
+    pub symbol: Entity,
     pub name: SharedStr,
     pub id: Entity,
     pub position: Vec2,
+    pub direction: Directions,
 }
 
 #[derive(Debug)]
@@ -308,9 +310,11 @@ impl SymbolBuilder<'_> {
             .map(|port| {
                 let id = port.build(commands, symbol_id, self.bit_width.unwrap_or(BitWidth(1)));
                 PortInfo {
+                    symbol: symbol_id,
                     name: port.name.clone(),
                     id,
                     position: port.position,
+                    direction: port.directions,
                 }
             })
             .collect();
