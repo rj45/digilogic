@@ -39,7 +39,6 @@ pub fn run_server(port: u16, mut sim_server: impl SimServer) -> Result<(), Netco
 
     let mut prev_time = Instant::now();
     let mut client_ids = Vec::new();
-    let mut message_order = 0;
     loop {
         let current_time = Instant::now();
         let delta = prev_time - current_time;
@@ -72,10 +71,8 @@ pub fn run_server(port: u16, mut sim_server: impl SimServer) -> Result<(), Netco
             }
 
             if let Some(sim_state) = sim_server.sim_state(client_id) {
-                for message in sim_state.data_messages(&mut message_order) {
-                    let message = rmp_serde::to_vec(&message).unwrap();
-                    server.send_message(client_id, DATA_CHANNEL_ID, message);
-                }
+                let message = rmp_serde::to_vec(sim_state).unwrap();
+                server.send_message(client_id, DATA_CHANNEL_ID, message);
             }
         }
 

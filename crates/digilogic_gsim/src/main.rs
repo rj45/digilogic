@@ -19,6 +19,11 @@ impl Default for ClientState {
     }
 }
 
+fn update_sim_state(simulator: &Simulator, sim_state: &mut SimState) {
+    sim_state.reset();
+    // TODO
+}
+
 #[derive(Default)]
 struct GsimServer {
     clients: ahash::AHashMap<ClientId, ClientState>,
@@ -42,7 +47,13 @@ impl SimServer for GsimServer {
             .get_mut(&client_id)
             .and_then(|state| match state {
                 ClientState::Building { .. } => None,
-                ClientState::Simulating { sim_state, .. } => Some(sim_state),
+                ClientState::Simulating {
+                    simulator,
+                    sim_state,
+                } => {
+                    update_sim_state(simulator, sim_state);
+                    Some(sim_state)
+                }
             })
     }
 }

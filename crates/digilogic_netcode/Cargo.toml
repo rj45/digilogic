@@ -16,6 +16,7 @@ server = ["dep:spin_sleep"]
 [dependencies]
 serde.workspace = true
 rmp-serde.workspace = true
+serde_bytes.workspace = true
 bevy_ecs = { workspace = true, optional = true }
 bevy_app = { workspace = true, optional = true }
 bevy_time = { workspace = true, optional = true }

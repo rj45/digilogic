@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, UdpSocket};
 use std::time::{Duration, SystemTime};
 
+pub type HashMap<K, V> = ahash::AHashMap<K, V>;
+
 pub const PROTOCOL_MAJOR_VERSION: u32 = 1;
 pub const PROTOCOL_MINOR_VERSION: u32 = 0;
 const PROTOCOL_VERSION: u64 =
@@ -49,39 +51,28 @@ enum ClientCommandMessage {
     Placeholder,
 }
 
-#[derive(Serialize, Deserialize)]
-enum DataMessageKind {
-    // TODO
-    Placeholder,
-}
-
-#[derive(Serialize, Deserialize)]
-struct DataMessage {
-    order: u64, // To detect if message order gets messed up
-    kind: DataMessageKind,
-}
-
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "client", derive(bevy_ecs::prelude::Component))]
 #[allow(missing_debug_implementations)]
 pub struct SimState {
-    // TODO: these are just placeholders
-    nets: Vec<u32>,
-    components: ahash::AHashMap<u32, u32>,
-    #[cfg(feature = "client")]
-    dirty_net_list: Vec<usize>,
+    order: u64, // To detect if message order gets messed up
+    bit_len: usize,
+    #[serde(with = "serde_bytes")]
+    state: Vec<u8>,
+    #[serde(with = "serde_bytes")]
+    valid: Vec<u8>,
 }
 
 impl SimState {
-    #[cfg(feature = "client")]
-    fn data_messages<'a>(
-        &'a mut self,
-        message_order: &'a mut u64,
-    ) -> impl Iterator<Item = DataMessage> + 'a {
-        self.dirty_net_list.drain(..).map(|net_index| DataMessage {
-            order: *message_order,
-            kind: DataMessageKind::Placeholder,
-        })
+    pub fn reset(&mut self) {
+        self.order += 1;
+        self.bit_len = 0;
+        self.state.clear();
+        self.valid.clear();
+    }
+
+    pub fn push_net(&mut self, bit_width: u8, state: &[u8], valid: &[u8]) {
+        // TODO
     }
 }
 
