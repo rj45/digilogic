@@ -5,17 +5,39 @@ use bevy_ecs::prelude::*;
 use bevy_log::info;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
+use digilogic_core::symbol::PortInfo;
 use digilogic_core::symbol::SymbolRegistry;
 
+use digilogic_core::transform::Directions;
 use digilogic_core::transform::InheritTransform;
+use digilogic_core::transform::Transform;
+use digilogic_core::transform::TransformBundle;
+use digilogic_core::transform::Vec2;
 use digilogic_core::visibility::VisibilityBundle;
+use digilogic_core::Fixed;
 use digilogic_core::HashMap;
 use digilogic_core::HashSet;
 use digilogic_core::SharedStr;
+use petgraph::graph::NodeIndex;
+use petgraph::stable_graph::StableDiGraph;
 use std::path::Path;
 
 struct NetBit {
-    ports: Vec<Entity>,
+    ports: Vec<PortInfo>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Node {
+    Port(Entity),
+    Symbol(Entity),
+    DriverJunction(Entity),
+    ListenerJunction(Entity),
+}
+
+#[derive(Debug, Default)]
+struct Graph {
+    graph: StableDiGraph<Node, (Node, Node)>,
+    entity_ids: HashMap<Node, NodeIndex>,
 }
 
 pub fn load_yosys(
@@ -46,6 +68,8 @@ fn translate_netlist(
             .insert(Name(name.clone()))
             .id();
 
+        let mut graph = Graph::default();
+
         for (name, port) in module.ports.iter() {
             translate_module_port(name, port, &mut bit_map, commands, circuit_id, symbols)?;
         }
@@ -55,8 +79,17 @@ fn translate_netlist(
         }
 
         for (name, net_info) in module.net_names.iter() {
-            translate_net(name, net_info, &mut bit_map, commands, circuit_id)?;
+            translate_net(
+                name,
+                net_info,
+                &mut bit_map,
+                commands,
+                circuit_id,
+                &mut graph,
+            )?;
         }
+
+        layout_circuit(commands, &graph)?;
 
         // TODO: the top module is not necessarily the last one... need to figure out
         // how to determine the top module
@@ -88,7 +121,7 @@ fn translate_module_port(
         for signal in port.bits.iter() {
             if let netlist::Signal::Net(bit) = signal {
                 let net_bit = bit_map.entry(*bit).or_insert(NetBit { ports: Vec::new() });
-                net_bit.ports.push(port_info.id);
+                net_bit.ports.push(port_info.clone());
             } else {
                 // figure out how to hard code a bit to a specific value
                 todo!();
@@ -173,7 +206,7 @@ fn translate_cell(
             for signal in signals.iter() {
                 if let netlist::Signal::Net(bit) = signal {
                     let net_bit = bit_map.entry(*bit).or_insert(NetBit { ports: Vec::new() });
-                    net_bit.ports.push(port_info.id);
+                    net_bit.ports.push(port_info.clone());
                 } else {
                     // figure out how to hard code a bit to a specific value
                     todo!();
@@ -194,6 +227,7 @@ fn translate_net(
     bit_map: &mut HashMap<usize, NetBit>,
     commands: &mut Commands,
     circuit_id: Entity,
+    graph: &mut Graph,
 ) -> anyhow::Result<()> {
     let net_id = commands
         .spawn(NetBundle {
@@ -206,12 +240,16 @@ fn translate_net(
         .id();
 
     let mut ports = HashSet::new();
+    let mut port_infos = Vec::new();
 
     for signal in net_info.bits.iter() {
         if let netlist::Signal::Net(bit) = signal {
             if let Some(bit_info) = bit_map.get(bit) {
                 for port in bit_info.ports.iter() {
-                    ports.insert(*port);
+                    if !ports.contains(&port.id) {
+                        port_infos.push(port.clone());
+                    }
+                    ports.insert(port.id);
                 }
             } else {
                 // bit not found in the bit map
@@ -235,15 +273,188 @@ fn translate_net(
         }
     }
 
-    for port in ports.iter() {
+    let mut listeners: Vec<PortInfo> = Vec::new();
+    let mut drivers: Vec<PortInfo> = Vec::new();
+
+    for port in port_infos.iter() {
         commands
             .spawn(EndpointBundle {
                 endpoint: Endpoint,
                 ..Default::default()
             })
-            .insert(PortID(*port))
+            .insert(PortID(port.id))
             .set::<Child>(net_id)
-            .set::<InheritTransform>(*port);
+            .set::<InheritTransform>(port.id);
+
+        if !graph.entity_ids.contains_key(&Node::Symbol(port.symbol)) {
+            let id = graph.graph.add_node(Node::Symbol(port.symbol));
+            graph.entity_ids.insert(Node::Symbol(port.symbol), id);
+        }
+        if !graph.entity_ids.contains_key(&Node::Port(port.id)) {
+            let id = graph.graph.add_node(Node::Port(port.id));
+            graph.entity_ids.insert(Node::Port(port.id), id);
+        }
+
+        match port.direction {
+            Directions::NEG_X => {
+                listeners.push(port.clone());
+            }
+            Directions::POS_X => {
+                drivers.push(port.clone());
+            }
+            _ => {
+                // figure out how to handle in/out/top/bottom ports
+                todo!();
+            }
+        }
+    }
+
+    let driver_junction = if drivers.len() > 1 {
+        let junction = Node::DriverJunction(net_id);
+        let junction_id = graph.graph.add_node(junction);
+        graph.entity_ids.insert(junction, junction_id);
+        Some(junction)
+    } else {
+        None
+    };
+
+    let listener_junction = if listeners.len() > 1 {
+        let junction = Node::ListenerJunction(net_id);
+        let junction_id = graph.graph.add_node(junction);
+        graph.entity_ids.insert(junction, junction_id);
+        Some(junction)
+    } else {
+        None
+    };
+
+    // add a single edge between the junctions if they both exist
+    if let (Some(driver_junction), Some(listener_junction)) = (driver_junction, listener_junction) {
+        graph.graph.add_edge(
+            *graph.entity_ids.get(&driver_junction).unwrap(),
+            *graph.entity_ids.get(&listener_junction).unwrap(),
+            (driver_junction, listener_junction),
+        );
+    }
+
+    // Set up a graph from each driver's symbol to the driver's port, then optionally to the
+    // driver junction, then optionally to the listener junction, then to each listener's port,
+    // then to the listener's symbol.
+    for driver in drivers.iter() {
+        let driver_symbol_id = graph.entity_ids.get(&Node::Symbol(driver.symbol)).unwrap();
+        let mut driver_node = Node::Port(driver.id);
+        let mut driver_id = graph.entity_ids.get(&driver_node).unwrap();
+
+        // driver's symbol -> driver's port
+        graph.graph.add_edge(
+            *driver_symbol_id,
+            *driver_id,
+            (Node::Symbol(driver.symbol), driver_node),
+        );
+
+        if let Some(junction) = driver_junction {
+            let junction_id = graph.entity_ids.get(&junction).unwrap();
+            // driver's port -> driver junction
+            graph
+                .graph
+                .add_edge(*driver_id, *junction_id, (driver_node, junction));
+            driver_id = junction_id;
+            driver_node = junction;
+        }
+
+        if let Some(junction) = listener_junction {
+            let junction_id = graph.entity_ids.get(&junction).unwrap();
+            if driver_junction.is_none() {
+                // only add an edge here if there is no driver junction
+                // driver port -> listener junction
+                graph
+                    .graph
+                    .add_edge(*driver_id, *junction_id, (driver_node, junction));
+            }
+            driver_node = junction;
+            driver_id = junction_id;
+        }
+
+        for listener in listeners.iter() {
+            let listener_node = Node::Port(listener.id);
+            let listener_id = graph.entity_ids.get(&listener_node).unwrap();
+            // listener's port / listener junction / driver junction -> listener's port
+            graph
+                .graph
+                .add_edge(*driver_id, *listener_id, (driver_node, listener_node));
+
+            let listener_symbol_node = Node::Symbol(listener.symbol);
+            let listener_symbol_id = graph.entity_ids.get(&listener_symbol_node).unwrap();
+            // listener's port -> listener's symbol
+            graph.graph.add_edge(
+                *listener_id,
+                *listener_symbol_id,
+                (listener_node, listener_symbol_node),
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn layout_circuit(commands: &mut Commands, graph: &Graph) -> anyhow::Result<()> {
+    use rust_sugiyama::configure::{CrossingMinimization, RankingType};
+
+    // std::fs::write(
+    //     "graph.dot",
+    //     format!(
+    //         "{:?}",
+    //         petgraph::dot::Dot::with_config(&graph.graph, &[petgraph::dot::Config::EdgeNoLabel])
+    //     ),
+    // )?;
+
+    let builder = rust_sugiyama::from_graph(&graph.graph)
+        .layering_type(RankingType::Original)
+        .crossing_minimization(CrossingMinimization::Median)
+        .transpose(true);
+    let coords = builder.build();
+
+    let mut max_x: isize = 0;
+    let mut max_y: isize = 0;
+
+    for (layout, _, _) in coords.iter() {
+        for (_node_id, (y, x)) in layout.iter() {
+            if *x > max_x {
+                max_x = *x;
+            }
+            if *y > max_y {
+                max_y = *y;
+            }
+        }
+    }
+
+    for (layout, _, _) in coords.iter() {
+        for (node_id, (y, x)) in layout.iter() {
+            let node = graph.graph[*node_id];
+            match node {
+                Node::Port(_port_id) => {
+                    // ignore
+                }
+                Node::Symbol(symbol_id) => {
+                    let transform = TransformBundle {
+                        transform: Transform {
+                            translation: Vec2 {
+                                x: Fixed::try_from((max_x - *x) * 10).unwrap(),
+                                y: Fixed::try_from((max_y - *y) * 8).unwrap(),
+                            },
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+                    commands.entity(symbol_id).insert(transform);
+                }
+                Node::DriverJunction(_net_id) => {
+                    // TODO: place waypoints?
+                }
+                Node::ListenerJunction(_net_id) => {
+                    // TODO: place waypoints?
+                }
+            }
+        }
     }
 
     Ok(())

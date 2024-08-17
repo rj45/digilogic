@@ -1,0 +1,757 @@
+{
+  "creator": "Yosys 0.29+21 (git sha1 147cceb51, clang 14.0.3 -fPIC -Os)",
+  "modules": {
+    "alu_1bit_2gatemux": {
+      "attributes": {
+        "top": "00000000000000000000000000000001",
+        "src": "../stackmachine/alu_1bit_2gatemux.v:6.1-24.10"
+      },
+      "ports": {
+        "A": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "B": {
+          "direction": "input",
+          "bits": [ 3 ]
+        },
+        "Cin": {
+          "direction": "input",
+          "bits": [ 4 ]
+        },
+        "Op_0": {
+          "direction": "input",
+          "bits": [ 5 ]
+        },
+        "B_inv": {
+          "direction": "input",
+          "bits": [ 6 ]
+        },
+        "Op_1": {
+          "direction": "input",
+          "bits": [ 7 ]
+        },
+        "Cout": {
+          "direction": "output",
+          "bits": [ 8 ]
+        },
+        "Y": {
+          "direction": "output",
+          "bits": [ 9 ]
+        }
+      },
+      "cells": {
+        "$and$../stackmachine/alu_1bit_2gatemux.v:20$2": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:20.16-20.22"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "B": [ 10 ],
+            "Y": [ 11 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:22$4": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:22.19-22.27"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 12 ],
+            "B": [ 4 ],
+            "Y": [ 13 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$10": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.17-23.45"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 14 ],
+            "B": [ 15 ],
+            "Y": [ 16 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$12": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.56-23.69"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "B": [ 17 ],
+            "Y": [ 18 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$13": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.50-23.70"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 11 ],
+            "B": [ 18 ],
+            "Y": [ 19 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$16": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.83-23.96"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 20 ],
+            "B": [ 7 ],
+            "Y": [ 21 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$17": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.77-23.97"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 12 ],
+            "B": [ 21 ],
+            "Y": [ 22 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$19": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.116-23.127"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "B": [ 7 ],
+            "Y": [ 23 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$20": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.102-23.128"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 24 ],
+            "B": [ 23 ],
+            "Y": [ 25 ]
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$9": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.29-23.44"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 26 ],
+            "B": [ 27 ],
+            "Y": [ 15 ]
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$11": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.63-23.69"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "Y": [ 17 ]
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$15": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.83-23.89"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 20 ]
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$7": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.29-23.35"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 26 ]
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$8": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.38-23.44"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 7 ],
+            "Y": [ 27 ]
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:22$5": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:22.18-22.33"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 13 ],
+            "B": [ 11 ],
+            "Y": [ 8 ]
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$14": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.16-23.71"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 16 ],
+            "B": [ 19 ],
+            "Y": [ 28 ]
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$21": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.76-23.129"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 22 ],
+            "B": [ 25 ],
+            "Y": [ 29 ]
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$22": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.15-23.130"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 28 ],
+            "B": [ 29 ],
+            "Y": [ 9 ]
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$6": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.18-23.24"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "B": [ 10 ],
+            "Y": [ 14 ]
+          }
+        },
+        "$xor$../stackmachine/alu_1bit_2gatemux.v:19$1": {
+          "hide_name": 1,
+          "type": "$xor",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:19.16-19.25"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3 ],
+            "B": [ 6 ],
+            "Y": [ 10 ]
+          }
+        },
+        "$xor$../stackmachine/alu_1bit_2gatemux.v:21$3": {
+          "hide_name": 1,
+          "type": "$xor",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:21.16-21.22"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 2 ],
+            "B": [ 10 ],
+            "Y": [ 12 ]
+          }
+        },
+        "$xor$../stackmachine/alu_1bit_2gatemux.v:23$18": {
+          "hide_name": 1,
+          "type": "$xor",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.103-23.111"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 12 ],
+            "B": [ 4 ],
+            "Y": [ 24 ]
+          }
+        }
+      },
+      "netnames": {
+        "$and$../stackmachine/alu_1bit_2gatemux.v:22$4_Y": {
+          "hide_name": 1,
+          "bits": [ 13 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:22.19-22.27"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$10_Y": {
+          "hide_name": 1,
+          "bits": [ 16 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.17-23.45"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$12_Y": {
+          "hide_name": 1,
+          "bits": [ 18 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.56-23.69"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$13_Y": {
+          "hide_name": 1,
+          "bits": [ 19 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.50-23.70"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$16_Y": {
+          "hide_name": 1,
+          "bits": [ 21 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.83-23.96"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$17_Y": {
+          "hide_name": 1,
+          "bits": [ 22 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.77-23.97"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$19_Y": {
+          "hide_name": 1,
+          "bits": [ 23 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.116-23.127"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$20_Y": {
+          "hide_name": 1,
+          "bits": [ 25 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.102-23.128"
+          }
+        },
+        "$and$../stackmachine/alu_1bit_2gatemux.v:23$9_Y": {
+          "hide_name": 1,
+          "bits": [ 15 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.29-23.44"
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$11_Y": {
+          "hide_name": 1,
+          "bits": [ 17 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.63-23.69"
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$15_Y": {
+          "hide_name": 1,
+          "bits": [ 20 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.83-23.89"
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$7_Y": {
+          "hide_name": 1,
+          "bits": [ 26 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.29-23.35"
+          }
+        },
+        "$not$../stackmachine/alu_1bit_2gatemux.v:23$8_Y": {
+          "hide_name": 1,
+          "bits": [ 27 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.38-23.44"
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$14_Y": {
+          "hide_name": 1,
+          "bits": [ 28 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.16-23.71"
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$21_Y": {
+          "hide_name": 1,
+          "bits": [ 29 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.76-23.129"
+          }
+        },
+        "$or$../stackmachine/alu_1bit_2gatemux.v:23$6_Y": {
+          "hide_name": 1,
+          "bits": [ 14 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.18-23.24"
+          }
+        },
+        "$xor$../stackmachine/alu_1bit_2gatemux.v:23$18_Y": {
+          "hide_name": 1,
+          "bits": [ 24 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:23.103-23.111"
+          }
+        },
+        "A": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:7.9-7.10"
+          }
+        },
+        "B": {
+          "hide_name": 0,
+          "bits": [ 3 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:8.9-8.10"
+          }
+        },
+        "B_inv": {
+          "hide_name": 0,
+          "bits": [ 6 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:11.9-11.14"
+          }
+        },
+        "Cin": {
+          "hide_name": 0,
+          "bits": [ 4 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:9.9-9.12"
+          }
+        },
+        "Cout": {
+          "hide_name": 0,
+          "bits": [ 8 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:13.10-13.14"
+          }
+        },
+        "Op_0": {
+          "hide_name": 0,
+          "bits": [ 5 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:10.9-10.13"
+          }
+        },
+        "Op_1": {
+          "hide_name": 0,
+          "bits": [ 7 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:12.9-12.13"
+          }
+        },
+        "Y": {
+          "hide_name": 0,
+          "bits": [ 9 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:14.10-14.11"
+          }
+        },
+        "s0": {
+          "hide_name": 0,
+          "bits": [ 10 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:16.8-16.10"
+          }
+        },
+        "s1": {
+          "hide_name": 0,
+          "bits": [ 11 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:17.8-17.10"
+          }
+        },
+        "s2": {
+          "hide_name": 0,
+          "bits": [ 12 ],
+          "attributes": {
+            "src": "../stackmachine/alu_1bit_2gatemux.v:18.8-18.10"
+          }
+        }
+      }
+    }
+  }
+}
