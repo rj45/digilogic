@@ -206,23 +206,76 @@ impl eframe::App for App {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn main() -> eframe::Result {
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1024.0, 768.0])
-            .with_min_inner_size([640.0, 480.0])
-            .with_icon(
-                eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon-256.png"))
-                    .expect("Failed to load icon"),
-            ),
-        ..Default::default()
-    };
+mod native_main {
+    use clap::{Parser, Subcommand, ValueEnum};
 
-    eframe::run_native(
-        "digilogic",
-        native_options,
-        Box::new(|cc| Ok(Box::new(App::new(cc)))),
-    )
+    #[derive(Default, Clone, Copy, PartialEq, Eq, ValueEnum)]
+    enum SimulationEngine {
+        #[default]
+        /// 4-state lockstep simulation
+        Gsim,
+        /// 4-state lockstep simulation using GPU compute
+        GsimCompute,
+    }
+
+    #[derive(Subcommand)]
+    enum Commands {
+        /// Starts a simulation server
+        Server {
+            /// The simulation engine to use
+            #[arg(short, long)]
+            engine: Option<SimulationEngine>,
+            /// The port to listen on
+            #[arg(short, long)]
+            port: Option<u16>,
+        },
+    }
+
+    #[derive(Parser)]
+    #[command(name = "Digilogic", version, about, long_about = None, propagate_version = true)]
+    struct Args {
+        #[command(subcommand)]
+        pub command: Option<Commands>,
+    }
+
+    fn run_gui() {
+        let native_options = eframe::NativeOptions {
+            viewport: egui::ViewportBuilder::default()
+                .with_inner_size([1024.0, 768.0])
+                .with_min_inner_size([640.0, 480.0])
+                .with_icon(
+                    eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon-256.png"))
+                        .expect("Failed to load icon"),
+                ),
+            ..Default::default()
+        };
+
+        eframe::run_native(
+            "digilogic",
+            native_options,
+            Box::new(|cc| Ok(Box::new(crate::App::new(cc)))),
+        )
+        .unwrap();
+    }
+
+    pub fn run() {
+        let args = Args::parse();
+        match args.command {
+            None => run_gui(),
+            Some(Commands::Server { engine, port }) => match engine.unwrap_or_default() {
+                SimulationEngine::Gsim => {
+                    digilogic_netcode::run_server(port, digilogic_gsim::GsimServer::default())
+                        .unwrap()
+                }
+                SimulationEngine::GsimCompute => todo!(),
+            },
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn main() {
+    native_main::run();
 }
 
 #[cfg(target_arch = "wasm32")]

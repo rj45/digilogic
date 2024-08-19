@@ -12,6 +12,10 @@ pub const PROTOCOL_MINOR_VERSION: u32 = 0;
 const PROTOCOL_VERSION: u64 =
     ((PROTOCOL_MAJOR_VERSION as u64) << 32) | (PROTOCOL_MINOR_VERSION as u64);
 
+// Generated on random.org and checked to be unassigned on
+// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+pub const DEFAULT_PORT: u16 = 14123;
+
 pub const TARGET_TICK_RATE: usize = 30; // ticks/second
 const TARGET_DATA_RATE: usize = 10_000_000; // bits/second
 const BYTES_PER_TICK: usize = (TARGET_DATA_RATE / TARGET_TICK_RATE / 8).next_power_of_two();

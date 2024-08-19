@@ -25,7 +25,8 @@ fn update_sim_state(simulator: &Simulator, sim_state: &mut SimState) {
 }
 
 #[derive(Default)]
-struct GsimServer {
+#[allow(missing_debug_implementations)]
+pub struct GsimServer {
     clients: ahash::AHashMap<ClientId, ClientState>,
 }
 
@@ -56,8 +57,4 @@ impl SimServer for GsimServer {
                 }
             })
     }
-}
-
-fn main() {
-    run_server(42069, GsimServer::default()).unwrap()
 }

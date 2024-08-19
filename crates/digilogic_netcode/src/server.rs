@@ -29,10 +29,13 @@ fn server_config(max_clients: usize, server_addr: SocketAddr) -> ServerConfig {
     }
 }
 
-pub fn run_server(port: u16, mut sim_server: impl SimServer) -> Result<(), NetcodeTransportError> {
+pub fn run_server(
+    port: Option<u16>,
+    mut sim_server: impl SimServer,
+) -> Result<(), NetcodeTransportError> {
     let mut server = RenetServer::new(common_config());
 
-    let server_addr: SocketAddr = (Ipv4Addr::UNSPECIFIED, port).into();
+    let server_addr: SocketAddr = (Ipv4Addr::UNSPECIFIED, port.unwrap_or(DEFAULT_PORT)).into();
     let socket = UdpSocket::bind(server_addr)?;
     let config = server_config(sim_server.max_clients(), server_addr);
     let mut transport = NetcodeServerTransport::new(config, socket)?;
