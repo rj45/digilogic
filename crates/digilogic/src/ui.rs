@@ -439,8 +439,7 @@ fn inspect(world: &mut World) {
 }
 
 fn repaint(egui: Res<Egui>) {
-    egui.context
-        .request_repaint_after_secs(1.0 / (digilogic_netcode::TARGET_TICK_RATE as f32));
+    egui.context.request_repaint_after_secs(1.0 / 30.0);
 }
 
 pub struct UiPlugin {

@@ -89,7 +89,6 @@ serde-xml-rs = "0.6"
 bvh-arena = "1.1"
 priority-queue = "2.0.3"
 renet = { version = "0.0.16", features = ["serde"] }
-spin_sleep = "1.2.1"
 petgraph = "0.6.5"
 rust-sugiyama = "0.3.0"
 clap = { version = "4.5.16", features = ["derive"] }

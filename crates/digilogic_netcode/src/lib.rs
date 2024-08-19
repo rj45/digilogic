@@ -16,14 +16,10 @@ const PROTOCOL_VERSION: u64 =
 // https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
 pub const DEFAULT_PORT: u16 = 14123;
 
-pub const TARGET_TICK_RATE: usize = 30; // ticks/second
-const TARGET_DATA_RATE: usize = 10_000_000; // bits/second
-const BYTES_PER_TICK: usize = (TARGET_DATA_RATE / TARGET_TICK_RATE / 8).next_power_of_two();
-
 const COMMAND_CHANNEL_ID: u8 = 0;
 const COMMAND_CHANNEL: ChannelConfig = ChannelConfig {
     channel_id: COMMAND_CHANNEL_ID,
-    max_memory_usage_bytes: BYTES_PER_TICK / 8,
+    max_memory_usage_bytes: 64 * 1024 * 1024,
     send_type: SendType::ReliableOrdered {
         resend_time: Duration::from_millis(200),
     },
@@ -32,13 +28,13 @@ const COMMAND_CHANNEL: ChannelConfig = ChannelConfig {
 const DATA_CHANNEL_ID: u8 = 1;
 const DATA_CHANNEL: ChannelConfig = ChannelConfig {
     channel_id: DATA_CHANNEL_ID,
-    max_memory_usage_bytes: BYTES_PER_TICK,
+    max_memory_usage_bytes: 1024 * 1024 * 1024,
     send_type: SendType::Unreliable,
 };
 
 fn common_config() -> ConnectionConfig {
     ConnectionConfig {
-        available_bytes_per_tick: BYTES_PER_TICK as u64,
+        available_bytes_per_tick: 1024 * 1024 * 1024,
         server_channels_config: vec![COMMAND_CHANNEL, DATA_CHANNEL],
         client_channels_config: vec![COMMAND_CHANNEL],
     }
@@ -118,6 +114,8 @@ enum ClientMessageKind {
         input: NetId,
         output: NetId,
     },
+
+    QuerySimState,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -160,6 +160,12 @@ fn process_message(
                 },
             );
         }
+
+        ClientMessageKind::QuerySimState => {
+            if let Some(sim_state) = sim_server.sim_state(client_id)? {
+                server.send_sim_state(client_id, sim_state);
+            }
+        }
     }
 
     Ok(())
@@ -221,28 +227,9 @@ pub fn run_server(
                     );
                 }
             }
-
-            match sim_server.sim_state(client_id) {
-                Ok(Some(sim_state)) => server.send_sim_state(client_id, sim_state),
-                Ok(None) => (),
-                Err(err) => {
-                    server.send_command_message(
-                        client_id,
-                        ServerMessage {
-                            id: ServerMessageId::Status,
-                            kind: ServerMessageKind::Error(err),
-                        },
-                    );
-                }
-            }
         }
 
         transport.send_packets(&mut server);
-
-        let current_time = Instant::now();
-        let delta = prev_time - current_time;
-        let target_delta = Duration::from_secs_f64(1.0 / (TARGET_TICK_RATE as f64));
-        let wait_time = target_delta.saturating_sub(delta);
-        spin_sleep::sleep(wait_time);
+        std::thread::yield_now();
     }
 }
