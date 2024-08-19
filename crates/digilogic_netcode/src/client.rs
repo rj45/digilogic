@@ -16,6 +16,9 @@ pub struct Connect {
     pub server_addr: SocketAddr,
 }
 
+#[derive(Debug, Clone, Event)]
+pub struct Disconnect;
+
 fn connect(
     trigger: Trigger<Connect>,
     mut commands: Commands,
@@ -49,7 +52,21 @@ fn connect(
         }
     };
 
+    commands.insert_resource(RenetClient::new(common_config()));
     commands.insert_resource(transport);
+}
+
+fn disconnect(
+    _trigger: Trigger<Disconnect>,
+    mut commands: Commands,
+    transport: Option<ResMut<NetcodeClientTransport>>,
+) {
+    if let Some(mut transport) = transport {
+        transport.disconnect();
+    }
+
+    commands.remove_resource::<RenetClient>();
+    commands.remove_resource::<NetcodeClientTransport>();
 }
 
 fn update(
@@ -75,11 +92,14 @@ fn send_packets(
 }
 
 fn disconnect_on_exit(
+    mut commands: Commands,
     exit_events: EventReader<AppExit>,
     mut transport: ResMut<NetcodeClientTransport>,
 ) {
     if !exit_events.is_empty() {
         transport.disconnect();
+        commands.remove_resource::<RenetClient>();
+        commands.remove_resource::<NetcodeClientTransport>();
     }
 }
 
@@ -89,9 +109,9 @@ pub struct ClientPlugin;
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<NetcodeTransportError>()
-            .insert_resource(RenetClient::new(common_config()))
             .observe(inject_sim_state)
-            .observe(connect);
+            .observe(connect)
+            .observe(disconnect);
 
         app.add_systems(
             PreUpdate,
