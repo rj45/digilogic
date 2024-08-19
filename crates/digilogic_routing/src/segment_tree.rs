@@ -169,17 +169,23 @@ impl<'a, T> Iterator for ContainingSegmentIter<'a, T> {
 mod tests {
     use super::*;
 
+    macro_rules! fixed_epsilon {
+        ($v:literal) => {
+            fixed!($v) * Fixed::EPSILON
+        };
+    }
+
     #[test]
     fn single_outside_before() {
         let mut tree = SegmentTree::default();
         let mut builder = tree.build();
         builder.extend([Segment {
-            start_inclusive: fixed!(-10),
-            end_inclusive: fixed!(10),
+            start_inclusive: fixed_epsilon!(-10),
+            end_inclusive: fixed_epsilon!(10),
             value: (),
         }]);
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-11)).count(), 0);
     }
 
     #[test]
@@ -187,12 +193,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         let mut builder = tree.build();
         builder.extend([Segment {
-            start_inclusive: fixed!(-10),
-            end_inclusive: fixed!(10),
+            start_inclusive: fixed_epsilon!(-10),
+            end_inclusive: fixed_epsilon!(10),
             value: (),
         }]);
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(11)).count(), 0);
     }
 
     #[test]
@@ -200,12 +206,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         let mut builder = tree.build();
         builder.extend([Segment {
-            start_inclusive: fixed!(-10),
-            end_inclusive: fixed!(10),
+            start_inclusive: fixed_epsilon!(-10),
+            end_inclusive: fixed_epsilon!(10),
             value: (),
         }]);
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(-10)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-10)).count(), 1);
     }
 
     #[test]
@@ -213,12 +219,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         let mut builder = tree.build();
         builder.extend([Segment {
-            start_inclusive: fixed!(-10),
-            end_inclusive: fixed!(10),
+            start_inclusive: fixed_epsilon!(-10),
+            end_inclusive: fixed_epsilon!(10),
             value: (),
         }]);
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(10)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(10)).count(), 1);
     }
 
     #[test]
@@ -226,12 +232,12 @@ mod tests {
         let mut tree = SegmentTree::default();
         let mut builder = tree.build();
         builder.extend([Segment {
-            start_inclusive: fixed!(-10),
-            end_inclusive: fixed!(10),
+            start_inclusive: fixed_epsilon!(-10),
+            end_inclusive: fixed_epsilon!(10),
             value: (),
         }]);
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(0)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(0)).count(), 1);
     }
 
     #[test]
@@ -240,13 +246,13 @@ mod tests {
         let mut builder = tree.build();
         builder.extend(
             [Segment {
-                start_inclusive: fixed!(-10),
-                end_inclusive: fixed!(10),
+                start_inclusive: fixed_epsilon!(-10),
+                end_inclusive: fixed_epsilon!(10),
                 value: (),
             }; 100],
         );
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(-11)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-11)).count(), 0);
     }
 
     #[test]
@@ -255,13 +261,13 @@ mod tests {
         let mut builder = tree.build();
         builder.extend(
             [Segment {
-                start_inclusive: fixed!(-10),
-                end_inclusive: fixed!(10),
+                start_inclusive: fixed_epsilon!(-10),
+                end_inclusive: fixed_epsilon!(10),
                 value: (),
             }; 100],
         );
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(11)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(11)).count(), 0);
     }
 
     #[test]
@@ -270,13 +276,13 @@ mod tests {
         let mut builder = tree.build();
         builder.extend(
             [Segment {
-                start_inclusive: fixed!(-10),
-                end_inclusive: fixed!(10),
+                start_inclusive: fixed_epsilon!(-10),
+                end_inclusive: fixed_epsilon!(10),
                 value: (),
             }; 100],
         );
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(-10)).count(), 100);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-10)).count(), 100);
     }
 
     #[test]
@@ -285,13 +291,13 @@ mod tests {
         let mut builder = tree.build();
         builder.extend(
             [Segment {
-                start_inclusive: fixed!(-10),
-                end_inclusive: fixed!(10),
+                start_inclusive: fixed_epsilon!(-10),
+                end_inclusive: fixed_epsilon!(10),
                 value: (),
             }; 100],
         );
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(10)).count(), 100);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(10)).count(), 100);
     }
 
     #[test]
@@ -300,13 +306,13 @@ mod tests {
         let mut builder = tree.build();
         builder.extend(
             [Segment {
-                start_inclusive: fixed!(-10),
-                end_inclusive: fixed!(10),
+                start_inclusive: fixed_epsilon!(-10),
+                end_inclusive: fixed_epsilon!(10),
                 value: (),
             }; 100],
         );
         drop(builder);
-        assert_eq!(tree.iter_containing(fixed!(0)).count(), 100);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(0)).count(), 100);
     }
 
     #[test]
@@ -315,31 +321,31 @@ mod tests {
         let mut builder = tree.build();
         builder.extend([
             Segment {
-                start_inclusive: fixed!(-20),
-                end_inclusive: fixed!(-10),
+                start_inclusive: fixed_epsilon!(-20),
+                end_inclusive: fixed_epsilon!(-10),
                 value: (),
             },
             Segment {
-                start_inclusive: fixed!(-10),
-                end_inclusive: fixed!(10),
+                start_inclusive: fixed_epsilon!(-10),
+                end_inclusive: fixed_epsilon!(10),
                 value: (),
             },
             Segment {
-                start_inclusive: fixed!(10),
-                end_inclusive: fixed!(20),
+                start_inclusive: fixed_epsilon!(10),
+                end_inclusive: fixed_epsilon!(20),
                 value: (),
             },
         ]);
         drop(builder);
 
-        assert_eq!(tree.iter_containing(fixed!(-21)).count(), 0);
-        assert_eq!(tree.iter_containing(fixed!(-11)).count(), 1);
-        assert_eq!(tree.iter_containing(fixed!(-10)).count(), 2);
-        assert_eq!(tree.iter_containing(fixed!(-9)).count(), 1);
-        assert_eq!(tree.iter_containing(fixed!(0)).count(), 1);
-        assert_eq!(tree.iter_containing(fixed!(9)).count(), 1);
-        assert_eq!(tree.iter_containing(fixed!(10)).count(), 2);
-        assert_eq!(tree.iter_containing(fixed!(11)).count(), 1);
-        assert_eq!(tree.iter_containing(fixed!(21)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-21)).count(), 0);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-11)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-10)).count(), 2);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(-9)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(0)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(9)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(10)).count(), 2);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(11)).count(), 1);
+        assert_eq!(tree.iter_containing(fixed_epsilon!(21)).count(), 0);
     }
 }
