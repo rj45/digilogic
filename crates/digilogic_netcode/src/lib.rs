@@ -205,7 +205,7 @@ pub use client::*;
 
 #[cfg(feature = "server")]
 mod server;
-#[cfg(feature = "client")]
+#[cfg(feature = "server")]
 pub use server::*;
 
 #[cfg(test)]
