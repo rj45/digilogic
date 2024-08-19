@@ -2,7 +2,7 @@ use renet::transport::*;
 use renet::*;
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, UdpSocket};
-use std::num::NonZeroU8;
+use std::num::{NonZeroU64, NonZeroU8};
 use std::time::{Duration, SystemTime};
 
 pub type HashMap<K, V> = ahash::AHashMap<K, V>;
@@ -44,16 +44,86 @@ fn common_config() -> ConnectionConfig {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-enum ServerCommandMessage {
-    // TODO
-    Placeholder,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct NetId(u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CellId(u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+enum ServerMessageId {
+    Status,
+    Response(NonZeroU64),
 }
 
-#[derive(Serialize, Deserialize)]
-enum ClientCommandMessage {
-    // TODO
-    Placeholder,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServerError {
+    Unsupported,
+    InvalidState,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum ServerMessageKind {
+    Error(ServerError),
+    NetAdded { id: NetId },
+    CellAdded { id: CellId },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ServerMessage {
+    id: ServerMessageId,
+    kind: ServerMessageKind,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum ClientMessageKind {
+    BeginBuild,
+    EndBuild,
+
+    AddNet {
+        width: NonZeroU8,
+    },
+    AddAndGate {
+        width: NonZeroU8,
+        inputs: Vec<NetId>,
+        output: NetId,
+    },
+    AddOrGate {
+        width: NonZeroU8,
+        inputs: Vec<NetId>,
+        output: NetId,
+    },
+    AddXorGate {
+        width: NonZeroU8,
+        inputs: Vec<NetId>,
+        output: NetId,
+    },
+    AddNandGate {
+        width: NonZeroU8,
+        inputs: Vec<NetId>,
+        output: NetId,
+    },
+    AddNorGate {
+        width: NonZeroU8,
+        inputs: Vec<NetId>,
+        output: NetId,
+    },
+    AddXnorGate {
+        width: NonZeroU8,
+        inputs: Vec<NetId>,
+        output: NetId,
+    },
+    AddNotGate {
+        width: NonZeroU8,
+        input: NetId,
+        output: NetId,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ClientMessage {
+    id: NonZeroU64,
+    kind: ClientMessageKind,
 }
 
 // Invariant for this struct: `state_bits` and `valid_bits` vectors need to contain at least one unused bit at any time

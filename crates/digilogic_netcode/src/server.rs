@@ -4,6 +4,39 @@ use std::time::Instant;
 
 pub use renet::ClientId;
 
+trait RenetServerExt {
+    fn send_command_message(&mut self, client_id: ClientId, message: ServerMessage);
+    fn send_sim_state(&mut self, client_id: ClientId, sim_state: &SimState);
+}
+
+impl RenetServerExt for RenetServer {
+    fn send_command_message(&mut self, client_id: ClientId, message: ServerMessage) {
+        let message = rmp_serde::to_vec(&message).unwrap();
+        self.send_message(client_id, COMMAND_CHANNEL_ID, message);
+    }
+
+    fn send_sim_state(&mut self, client_id: ClientId, sim_state: &SimState) {
+        let message = rmp_serde::to_vec(sim_state).unwrap();
+        self.send_message(client_id, DATA_CHANNEL_ID, message);
+    }
+}
+
+pub type ServerResult<T> = Result<T, ServerError>;
+
+macro_rules! gate_stub {
+    ($name:ident) => {
+        fn $name(
+            &mut self,
+            width: NonZeroU8,
+            inputs: &[NetId],
+            output: NetId,
+        ) -> ServerResult<CellId> {
+            let _ = (width, inputs, output);
+            Err(ServerError::Unsupported)
+        }
+    };
+}
+
 pub trait SimServer {
     fn max_clients(&mut self) -> usize {
         1
@@ -12,7 +45,27 @@ pub trait SimServer {
     fn client_connected(&mut self, client_id: ClientId);
     fn client_disconnected(&mut self, client_id: ClientId);
 
-    fn sim_state(&mut self, client_id: ClientId) -> Option<&mut SimState>;
+    fn begin_build(&mut self, client_id: ClientId) -> ServerResult<()>;
+    fn end_build(&mut self, client_id: ClientId) -> ServerResult<()>;
+
+    fn add_net(&mut self, width: NonZeroU8) -> ServerResult<NetId>;
+    gate_stub!(add_and_gate);
+    gate_stub!(add_or_gate);
+    gate_stub!(add_xor_gate);
+    gate_stub!(add_nand_gate);
+    gate_stub!(add_nor_gate);
+    gate_stub!(add_xnor_gate);
+    fn add_not_gate(
+        &mut self,
+        width: NonZeroU8,
+        input: NetId,
+        output: NetId,
+    ) -> ServerResult<CellId> {
+        let _ = (width, input, output);
+        Err(ServerError::Unsupported)
+    }
+
+    fn sim_state(&mut self, client_id: ClientId) -> ServerResult<Option<&SimState>>;
 }
 
 fn server_config(max_clients: usize, server_addr: SocketAddr) -> ServerConfig {
@@ -27,6 +80,89 @@ fn server_config(max_clients: usize, server_addr: SocketAddr) -> ServerConfig {
         public_addresses: vec![server_addr],
         authentication: ServerAuthentication::Unsecure, // TODO: use secure authentication
     }
+}
+
+fn process_message(
+    server: &mut RenetServer,
+    sim_server: &mut impl SimServer,
+    client_id: ClientId,
+    response_id: ServerMessageId,
+    message_kind: ClientMessageKind,
+) -> ServerResult<()> {
+    macro_rules! add_gate {
+        ($add_fn:ident, $width:ident, $inputs:ident, $output:ident) => {{
+            let id = sim_server.$add_fn($width, &$inputs, $output)?;
+            server.send_command_message(
+                client_id,
+                ServerMessage {
+                    id: response_id,
+                    kind: ServerMessageKind::CellAdded { id },
+                },
+            );
+        }};
+    }
+
+    match message_kind {
+        ClientMessageKind::BeginBuild => sim_server.begin_build(client_id)?,
+        ClientMessageKind::EndBuild => sim_server.end_build(client_id)?,
+
+        ClientMessageKind::AddNet { width } => {
+            let id = sim_server.add_net(width)?;
+            server.send_command_message(
+                client_id,
+                ServerMessage {
+                    id: response_id,
+                    kind: ServerMessageKind::NetAdded { id },
+                },
+            );
+        }
+        ClientMessageKind::AddAndGate {
+            width,
+            inputs,
+            output,
+        } => add_gate!(add_and_gate, width, inputs, output),
+        ClientMessageKind::AddOrGate {
+            width,
+            inputs,
+            output,
+        } => add_gate!(add_or_gate, width, inputs, output),
+        ClientMessageKind::AddXorGate {
+            width,
+            inputs,
+            output,
+        } => add_gate!(add_xor_gate, width, inputs, output),
+        ClientMessageKind::AddNandGate {
+            width,
+            inputs,
+            output,
+        } => add_gate!(add_nand_gate, width, inputs, output),
+        ClientMessageKind::AddNorGate {
+            width,
+            inputs,
+            output,
+        } => add_gate!(add_nor_gate, width, inputs, output),
+        ClientMessageKind::AddXnorGate {
+            width,
+            inputs,
+            output,
+        } => add_gate!(add_xnor_gate, width, inputs, output),
+        ClientMessageKind::AddNotGate {
+            width,
+            input,
+            output,
+        } => {
+            let id = sim_server.add_not_gate(width, input, output)?;
+            server.send_command_message(
+                client_id,
+                ServerMessage {
+                    id: response_id,
+                    kind: ServerMessageKind::CellAdded { id },
+                },
+            );
+        }
+    }
+
+    Ok(())
 }
 
 pub fn run_server(
@@ -65,17 +201,39 @@ pub fn run_server(
         client_ids.extend(server.clients_id_iter());
         for &client_id in &client_ids {
             while let Some(message) = server.receive_message(client_id, COMMAND_CHANNEL_ID) {
-                let message: ClientCommandMessage =
+                let message: ClientMessage =
                     rmp_serde::from_slice(&message).expect("invalid client message");
 
-                match message {
-                    ClientCommandMessage::Placeholder => (),
+                let response_id = ServerMessageId::Response(message.id);
+                if let Err(err) = process_message(
+                    &mut server,
+                    &mut sim_server,
+                    client_id,
+                    response_id,
+                    message.kind,
+                ) {
+                    server.send_command_message(
+                        client_id,
+                        ServerMessage {
+                            id: response_id,
+                            kind: ServerMessageKind::Error(err),
+                        },
+                    );
                 }
             }
 
-            if let Some(sim_state) = sim_server.sim_state(client_id) {
-                let message = rmp_serde::to_vec(sim_state).unwrap();
-                server.send_message(client_id, DATA_CHANNEL_ID, message);
+            match sim_server.sim_state(client_id) {
+                Ok(Some(sim_state)) => server.send_sim_state(client_id, sim_state),
+                Ok(None) => (),
+                Err(err) => {
+                    server.send_command_message(
+                        client_id,
+                        ServerMessage {
+                            id: ServerMessageId::Status,
+                            kind: ServerMessageKind::Error(err),
+                        },
+                    );
+                }
             }
         }
 
