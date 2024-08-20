@@ -493,7 +493,7 @@ impl bevy_app::Plugin for UiPlugin {
         );
 
         app.add_systems(
-            bevy_app::PreUpdate,
+            bevy_app::PostUpdate,
             repaint.run_if(bevy_state::condition::in_state(AppState::Simulating)),
         );
 
