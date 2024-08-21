@@ -177,10 +177,35 @@ fn assign_ranks(graph: &mut Graph) {
         }
     }
 
-    // Assign ranks to nodes with adjacent constraints
+    // Adjust ranks for adjacency constraints
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for node in graph.node_indices() {
+            if let Some(adjacent_to) = graph[node].adjacent_to {
+                if graph[node].rank != graph[adjacent_to].rank {
+                    graph[node].rank = graph[adjacent_to].rank;
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    // Compact ranks
+    let mut rank_map = HashMap::new();
+    let mut current_rank = 0;
+
+    for rank in 0..=max_rank {
+        if graph.node_indices().any(|n| graph[n].rank == Some(rank)) {
+            rank_map.insert(rank, current_rank);
+            current_rank += 1;
+        }
+    }
+
+    // Update ranks based on the new mapping
     for node in graph.node_indices() {
-        if let Some(adjacent_to) = graph[node].adjacent_to {
-            graph[node].rank = Some(graph[adjacent_to].rank.unwrap());
+        if let Some(old_rank) = graph[node].rank {
+            graph[node].rank = Some(*rank_map.get(&old_rank).unwrap());
         }
     }
 }
@@ -229,26 +254,6 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
                 weighted_chains.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
 
                 // Assign orders, handling cases where all nodes have the same calculated position, as well as adjacent constraints
-                // let mut current_order = 0;
-                // let mut prev_position = f64::NEG_INFINITY;
-                // let mut prev_node: Option<NodeIndex> = None;
-                // for (chain, position) in weighted_chains {
-                //     for node in chain {
-                //         if position > prev_position {
-                //             current_order = graph[node].order.unwrap_or(0);
-                //         }
-                //         if let Some(adjacent_to) = graph[node].adjacent_to {
-                //             if Some(adjacent_to) != prev_node {
-                //                 // If the node should be adjacent but isn't, adjust its position
-                //                 current_order = graph[adjacent_to].order.unwrap_or(0) + 1;
-                //             }
-                //         }
-                //         graph[node].order = Some(current_order);
-                //         current_order += 1;
-                //         prev_node = Some(node);
-                //         prev_position = position;
-                //     }
-                // }
                 let mut current_order = 0;
                 for (chain, _) in weighted_chains {
                     for &node in &chain {
@@ -553,14 +558,26 @@ mod tests {
             .unwrap_or(0);
 
         (0..=max_rank).all(|rank| {
-            let nodes_at_rank: Vec<NodeIndex> = graph
+            let mut nodes_at_rank: Vec<NodeIndex> = graph
                 .node_indices()
                 .filter(|&n| graph[n].rank == Some(rank))
                 .collect();
 
-            nodes_at_rank
-                .windows(2)
-                .all(|w| graph[w[0]].order.unwrap() < graph[w[1]].order.unwrap())
+            if nodes_at_rank.is_empty() {
+                return true;
+            }
+
+            nodes_at_rank.sort_by_key(|&n| graph[n].order.unwrap());
+
+            let min_order = graph[nodes_at_rank[0]].order.unwrap();
+            let max_order = graph[nodes_at_rank[nodes_at_rank.len() - 1]].order.unwrap();
+
+            // Check if orders are consecutive integers
+            (min_order..=max_order).all(|expected_order| {
+                nodes_at_rank
+                    .iter()
+                    .any(|&n| graph[n].order == Some(expected_order))
+            })
         })
     }
 
@@ -932,5 +949,128 @@ mod tests {
             .collect();
         assert_eq!(rank_2_nodes.len(), 2);
         assert!(graph[rank_2_nodes[0]].order.unwrap() < graph[rank_2_nodes[1]].order.unwrap());
+    }
+
+    #[test]
+    fn test_simple_adjacency() {
+        let mut graph = DiGraph::new();
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+
+        graph.add_edge(n0, n1, ());
+        graph.add_edge(n1, n2, ());
+        graph.add_edge(n2, n3, ());
+
+        graph[n1].adjacent_to = Some(n0);
+        graph[n2].adjacent_to = Some(n1);
+
+        layout_graph(&mut graph).unwrap();
+        assert!(validate_layout(&graph));
+
+        // Check adjacency constraints
+        assert_eq!(graph[n0].rank, graph[n1].rank);
+        assert_eq!(graph[n1].rank, graph[n2].rank);
+        assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
+        assert_eq!(graph[n1].order.unwrap() + 1, graph[n2].order.unwrap());
+    }
+
+    #[test]
+    fn test_adjacency_with_crossing() {
+        let mut graph = DiGraph::new();
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+
+        graph.add_edge(n0, n2, ());
+        graph.add_edge(n1, n3, ());
+
+        graph[n1].adjacent_to = Some(n0);
+
+        layout_graph(&mut graph).unwrap();
+        assert!(validate_layout(&graph));
+
+        // Check adjacency constraint
+        assert_eq!(graph[n0].rank, graph[n1].rank);
+        assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
+
+        // Check for edge crossings
+        let crossings = count_edge_crossings(&graph);
+        assert_eq!(
+            crossings, 0,
+            "Expected 0 crossings, but found {}",
+            crossings
+        );
+    }
+
+    #[test]
+    fn test_multiple_adjacency_constraints() {
+        let mut graph = DiGraph::new();
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+
+        graph.add_edge(n0, n3, ());
+        graph.add_edge(n1, n4, ());
+        graph.add_edge(n2, n4, ());
+
+        graph[n1].adjacent_to = Some(n0);
+        graph[n2].adjacent_to = Some(n1);
+
+        layout_graph(&mut graph).unwrap();
+        assert!(validate_layout(&graph));
+
+        // Check adjacency constraints
+        assert_eq!(graph[n0].rank, graph[n1].rank);
+        assert_eq!(graph[n1].rank, graph[n2].rank);
+        assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
+        assert_eq!(graph[n1].order.unwrap() + 1, graph[n2].order.unwrap());
+
+        // Check for edge crossings
+        let crossings = count_edge_crossings(&graph);
+        assert_eq!(
+            crossings, 0,
+            "Expected 0 crossings, but found {}",
+            crossings
+        );
+    }
+
+    #[test]
+    fn test_adjacency_with_complex_crossing() {
+        let mut graph = DiGraph::new();
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        let n5 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+
+        graph.add_edge(n0, n3, ());
+        graph.add_edge(n1, n4, ());
+        graph.add_edge(n2, n5, ());
+
+        graph[n1].adjacent_to = Some(n0);
+        graph[n2].adjacent_to = Some(n1);
+
+        layout_graph(&mut graph).unwrap();
+        assert!(validate_layout(&graph));
+
+        // Check adjacency constraints
+        assert_eq!(graph[n0].rank, graph[n1].rank);
+        assert_eq!(graph[n1].rank, graph[n2].rank);
+        assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
+        assert_eq!(graph[n1].order.unwrap() + 1, graph[n2].order.unwrap());
+
+        // Check for edge crossings
+        let crossings = count_edge_crossings(&graph);
+        assert_eq!(
+            crossings, 0,
+            "Expected 0 crossings, but found {}",
+            crossings
+        );
     }
 }
