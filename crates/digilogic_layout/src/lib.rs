@@ -18,6 +18,10 @@ pub enum NodeEntity {
 pub struct Node {
     pub entity: NodeEntity,
     pub size: (u32, u32),
+
+    // constraint that this node must be ordered immediately after this node, and in the same layer
+    pub adjacent_to: Option<NodeIndex>,
+
     pub rank: Option<u32>,
     pub order: Option<u32>,
     pub x: Option<f64>,
@@ -29,6 +33,7 @@ impl Node {
         Node {
             entity,
             size,
+            adjacent_to: None,
             rank: None,
             order: None,
             x: None,
@@ -171,6 +176,13 @@ fn assign_ranks(graph: &mut Graph) {
             graph[node].rank = Some(max_rank + 1);
         }
     }
+
+    // Assign ranks to nodes with adjacent constraints
+    for node in graph.node_indices() {
+        if let Some(adjacent_to) = graph[node].adjacent_to {
+            graph[node].rank = Some(graph[adjacent_to].rank.unwrap());
+        }
+    }
 }
 
 fn order_nodes_within_ranks(graph: &mut Graph) {
@@ -191,23 +203,58 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
                     .filter(|&n| graph[n].rank == Some(rank))
                     .collect();
 
-                let mut weighted_nodes: Vec<(NodeIndex, f64)> = nodes_at_rank
-                    .iter()
-                    .map(|&n| (n, calculate_median_position(graph, n, *direction)))
+                // Collapse chains of adjacent nodes
+                let mut chains: Vec<Vec<NodeIndex>> = Vec::new();
+                for &node in &nodes_at_rank {
+                    if !chains.iter().any(|chain| chain.contains(&node)) {
+                        let chain = get_adjacent_chain(graph, node);
+                        chains.push(chain);
+                    }
+                }
+
+                // Calculate median position for each chain
+                let mut weighted_chains: Vec<(Vec<NodeIndex>, f64)> = chains
+                    .into_iter()
+                    .map(|chain| {
+                        let median = chain
+                            .iter()
+                            .map(|&n| calculate_median_position(graph, n, *direction))
+                            .sum::<f64>()
+                            / chain.len() as f64;
+                        (chain, median)
+                    })
                     .collect();
 
-                weighted_nodes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
+                // Sort chains
+                weighted_chains.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
 
-                // Assign orders, handling cases where all nodes have the same calculated position
+                // Assign orders, handling cases where all nodes have the same calculated position, as well as adjacent constraints
+                // let mut current_order = 0;
+                // let mut prev_position = f64::NEG_INFINITY;
+                // let mut prev_node: Option<NodeIndex> = None;
+                // for (chain, position) in weighted_chains {
+                //     for node in chain {
+                //         if position > prev_position {
+                //             current_order = graph[node].order.unwrap_or(0);
+                //         }
+                //         if let Some(adjacent_to) = graph[node].adjacent_to {
+                //             if Some(adjacent_to) != prev_node {
+                //                 // If the node should be adjacent but isn't, adjust its position
+                //                 current_order = graph[adjacent_to].order.unwrap_or(0) + 1;
+                //             }
+                //         }
+                //         graph[node].order = Some(current_order);
+                //         current_order += 1;
+                //         prev_node = Some(node);
+                //         prev_position = position;
+                //     }
+                // }
                 let mut current_order = 0;
-                let mut prev_position = f64::NEG_INFINITY;
-                for (node, position) in weighted_nodes {
-                    if position > prev_position {
-                        current_order = graph[node].order.unwrap_or(0);
+                for (chain, _) in weighted_chains {
+                    for &node in &chain {
+                        graph[node].order = Some(current_order);
+                        current_order += 1;
                     }
-                    graph[node].order = Some(current_order);
-                    current_order += 1;
-                    prev_position = position;
                 }
             }
         }
@@ -260,19 +307,35 @@ fn minimize_crossings(graph: &mut Graph) {
 
             for i in 0..nodes_at_rank.len() - 1 {
                 let (n1, n2) = (nodes_at_rank[i], nodes_at_rank[i + 1]);
-                if count_crossings(graph, n1, n2) > count_crossings(graph, n2, n1) {
-                    if exchanged
-                        .iter()
-                        .any(|&(a, b)| a == n2 && b == n1 || a == n1 && b == n2)
-                    {
-                        // don't exchange nodes that were already recently exchanged
+
+                // Check if these nodes can be exchanged
+                if !can_exchange(graph, n1, n2) {
+                    continue;
+                }
+
+                let chain1 = get_adjacent_chain(graph, n1);
+                let chain2 = get_adjacent_chain(graph, n2);
+
+                // Only consider exchanging if the end of chain1 is adjacent to the start of chain2
+                if graph[*chain1.last().unwrap()].order.unwrap() + 1
+                    != graph[*chain2.first().unwrap()].order.unwrap()
+                {
+                    continue;
+                }
+
+                if count_crossings_for_chains(graph, &chain1, &chain2)
+                    > count_crossings_for_chains(graph, &chain2, &chain1)
+                {
+                    if exchanged.iter().any(|&(a, b)| {
+                        chain2.contains(&a) && chain1.contains(&b)
+                            || chain1.contains(&a) && chain2.contains(&b)
+                    }) {
+                        // don't exchange chains that were already recently exchanged
                         continue;
                     }
 
-                    let order1 = graph[n1].order.unwrap();
-                    let order2 = graph[n2].order.unwrap();
-                    graph[n1].order = Some(order2);
-                    graph[n2].order = Some(order1);
+                    exchange_chains(graph, &chain1, &chain2);
+
                     improved = true;
                     exchanged.push_back((n1, n2));
                     if exchanged.len() > 6 {
@@ -282,6 +345,79 @@ fn minimize_crossings(graph: &mut Graph) {
             }
         }
     }
+}
+
+fn can_exchange(graph: &Graph, n1: NodeIndex, n2: NodeIndex) -> bool {
+    // Nodes can be exchanged if they are not adjacent to each other
+    graph[n1].adjacent_to != Some(n2) && graph[n2].adjacent_to != Some(n1)
+}
+
+fn get_adjacent_chain(graph: &Graph, start: NodeIndex) -> Vec<NodeIndex> {
+    let mut chain = vec![start];
+    let mut current = start;
+
+    // Follow the chain forward
+    while let Some(next) = graph[current].adjacent_to {
+        chain.push(next);
+        current = next;
+    }
+
+    // Follow the chain backward
+    current = start;
+    while let Some(prev) = graph
+        .node_indices()
+        .find(|&n| graph[n].adjacent_to == Some(current))
+    {
+        chain.insert(0, prev);
+        current = prev;
+    }
+
+    chain
+}
+
+fn exchange_chains(graph: &mut Graph, chain1: &[NodeIndex], chain2: &[NodeIndex]) {
+    let start_order = chain1
+        .iter()
+        .map(|&n| graph[n].order.unwrap())
+        .min()
+        .unwrap()
+        .min(
+            chain2
+                .iter()
+                .map(|&n| graph[n].order.unwrap())
+                .min()
+                .unwrap(),
+        );
+
+    // Assign new orders to chain2
+    for (i, &node) in chain2.iter().enumerate() {
+        graph[node].order = Some(start_order + i as u32);
+    }
+
+    // Assign new orders to chain1, continuing from where chain2 ended
+    for (i, &node) in chain1.iter().enumerate() {
+        graph[node].order = Some(start_order + (chain2.len() + i) as u32);
+    }
+
+    // Adjust orders of nodes between the two chains if necessary
+    let end_order = start_order + (chain1.len() + chain2.len() - 1) as u32;
+    for node in graph.node_indices() {
+        let order = graph[node].order.unwrap();
+        if order > end_order {
+            graph[node].order =
+                Some(order + (chain1.len() as i32 - chain2.len() as i32).unsigned_abs());
+        }
+    }
+}
+
+fn count_crossings_for_chains(graph: &Graph, chain1: &[NodeIndex], chain2: &[NodeIndex]) -> usize {
+    let mut crossings = 0;
+    for &n1 in chain1 {
+        for &n2 in chain2 {
+            crossings += count_crossings(graph, n1, n2);
+        }
+    }
+    crossings
 }
 
 fn count_crossings(graph: &Graph, left: NodeIndex, right: NodeIndex) -> usize {
@@ -384,6 +520,7 @@ mod tests {
             .map(|_| Node {
                 entity: NodeEntity::Port(Entity::PLACEHOLDER),
                 size: (50, 30),
+                adjacent_to: None,
                 rank: None,
                 order: None,
                 x: None,
@@ -526,6 +663,20 @@ mod tests {
                         println!("Nodes are too close: distance = {}", distance);
                         return false;
                     }
+                }
+            }
+        }
+
+        // Check adjacency constraints
+        for node in graph.node_indices() {
+            if let Some(adjacent_to) = graph[node].adjacent_to {
+                if graph[node].rank != graph[adjacent_to].rank {
+                    println!("Adjacency constraint violated: nodes not in same rank");
+                    return false;
+                }
+                if graph[node].order.unwrap() != graph[adjacent_to].order.unwrap() + 1 {
+                    println!("Adjacency constraint violated: nodes not adjacent");
+                    return false;
                 }
             }
         }

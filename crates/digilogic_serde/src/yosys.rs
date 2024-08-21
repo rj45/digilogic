@@ -268,6 +268,9 @@ fn translate_net(
     let mut listeners: Vec<PortInfo> = Vec::new();
     let mut drivers: Vec<PortInfo> = Vec::new();
 
+    let mut prev_listener: Option<NodeIndex> = None;
+    let mut prev_driver: Option<NodeIndex> = None;
+
     for port in port_infos.iter() {
         commands
             .spawn(EndpointBundle {
@@ -288,8 +291,35 @@ fn translate_net(
         }
         if !graph.entity_ids.contains_key(&NodeEntity::Port(port.id)) {
             let ne = NodeEntity::Port(port.id);
-            let id = graph.graph.add_node(Node::new(ne, (5, 5)));
+            let mut node = Node::new(ne, (5, 5));
+            match port.direction {
+                Directions::NEG_X => {
+                    node.adjacent_to = prev_listener;
+                }
+                Directions::POS_X => {
+                    node.adjacent_to = prev_driver;
+                }
+                _ => {
+                    // figure out how to handle in-out/top/bottom ports
+                    todo!();
+                }
+            }
+
+            let id = graph.graph.add_node(node);
             graph.entity_ids.insert(ne, id);
+
+            match port.direction {
+                Directions::NEG_X => {
+                    prev_listener = Some(id);
+                }
+                Directions::POS_X => {
+                    prev_driver = Some(id);
+                }
+                _ => {
+                    // figure out how to handle in/out/top/bottom ports
+                    todo!();
+                }
+            }
         }
 
         match port.direction {
