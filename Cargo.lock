@@ -1908,6 +1908,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "digilogic_layout"
+version = "0.1.0"
+dependencies = [
+ "petgraph",
+]
+
+[[package]]
 name = "digilogic_netcode"
 version = "0.1.0"
 dependencies = [

@@ -418,8 +418,8 @@ fn layout_circuit(commands: &mut Commands, graph: &Graph) -> anyhow::Result<()> 
 
     for (layout, _, _) in coords.iter() {
         for (_node_id, (y, x)) in layout.iter() {
-            if *x > max_x {
-                max_x = *x;
+            if (-*x) > max_x {
+                max_x = -*x;
             }
             if *y > max_y {
                 max_y = *y;
@@ -438,7 +438,7 @@ fn layout_circuit(commands: &mut Commands, graph: &Graph) -> anyhow::Result<()> 
                     let transform = TransformBundle {
                         transform: Transform {
                             translation: Vec2 {
-                                x: Fixed::try_from((max_x - *x) * 10).unwrap(),
+                                x: Fixed::try_from((-*x) * 10).unwrap(),
                                 y: Fixed::try_from((max_y - *y) * 8).unwrap(),
                             },
                             ..Default::default()
