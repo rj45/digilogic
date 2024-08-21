@@ -165,7 +165,7 @@ fn assign_ranks(graph: &mut Graph) {
         }
     }
 
-    // Assign ranks to any remaining unranked nodes (should not happen if cycles are properly broken)
+    // Assign ranks to any remaining unranked nodes
     let max_rank = graph
         .node_weights()
         .filter_map(|n| n.rank)
@@ -177,18 +177,38 @@ fn assign_ranks(graph: &mut Graph) {
         }
     }
 
+    println!("Initial rank assignment:");
+    for node in graph.node_indices() {
+        println!("Node {:?}: rank {:?}", node, graph[node].rank);
+    }
+
     // Adjust ranks for adjacency constraints
-    let mut changed = true;
-    while changed {
-        changed = false;
+    loop {
+        let mut nodes_to_update = Vec::new();
         for node in graph.node_indices() {
             if let Some(adjacent_to) = graph[node].adjacent_to {
                 if graph[node].rank != graph[adjacent_to].rank {
-                    graph[node].rank = graph[adjacent_to].rank;
-                    changed = true;
+                    nodes_to_update.push((node, graph[adjacent_to].rank));
                 }
             }
         }
+
+        if nodes_to_update.is_empty() {
+            break;
+        }
+
+        for (node, new_rank) in nodes_to_update {
+            println!(
+                "Updating node {:?} rank from {:?} to {:?}",
+                node, graph[node].rank, new_rank
+            );
+            graph[node].rank = new_rank;
+        }
+    }
+
+    println!("Final rank assignment:");
+    for node in graph.node_indices() {
+        println!("Node {:?}: rank {:?}", node, graph[node].rank);
     }
 
     // Compact ranks
