@@ -1,3 +1,4 @@
+use bevy_ecs::prelude::Entity;
 use petgraph::algo::kosaraju_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::Direction;
@@ -5,8 +6,17 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NodeEntity {
+    Port(Entity),
+    Symbol(Entity),
+    DriverJunction(Entity),
+    ListenerJunction(Entity),
+}
+
 #[derive(Debug, Clone)]
 pub struct Node {
+    pub entity: NodeEntity,
     pub size: (u32, u32),
     pub rank: Option<u32>,
     pub order: Option<u32>,
@@ -14,19 +24,47 @@ pub struct Node {
     pub y: Option<f64>,
 }
 
-pub fn layout_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<DiGraph<Node, ()>, String> {
-    let mut graph = create_graph(edges, nodes)?;
-
-    break_cycles(&mut graph);
-    assign_ranks(&mut graph);
-    order_nodes_within_ranks(&mut graph);
-    assign_x_coordinates(&mut graph);
-    assign_y_coordinates(&mut graph);
-
-    Ok(graph)
+impl Node {
+    pub fn new(entity: NodeEntity, size: (u32, u32)) -> Self {
+        Node {
+            entity,
+            size,
+            rank: None,
+            order: None,
+            x: None,
+            y: None,
+        }
+    }
 }
 
-fn create_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<DiGraph<Node, ()>, String> {
+pub type Graph = DiGraph<Node, ()>;
+
+pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
+    bevy_log::debug!(
+        "Layout graph with {} nodes and {} edges",
+        graph.node_count(),
+        graph.edge_count()
+    );
+
+    bevy_log::debug!("Breaking cycles");
+    break_cycles(graph);
+
+    bevy_log::debug!("Assigning ranks");
+    assign_ranks(graph);
+
+    bevy_log::debug!("Ordering nodes within ranks");
+    order_nodes_within_ranks(graph);
+
+    bevy_log::debug!("Assigning X coords");
+    assign_x_coordinates(graph);
+
+    bevy_log::debug!("Assigning Y coords");
+    assign_y_coordinates(graph);
+
+    Ok(())
+}
+
+pub fn create_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<Graph, String> {
     let mut graph = DiGraph::new();
     let mut node_indices = HashMap::new();
 
@@ -50,14 +88,14 @@ fn create_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<DiGraph<Node
     Ok(graph)
 }
 
-fn break_cycles(graph: &mut DiGraph<Node, ()>) {
+fn break_cycles(graph: &mut Graph) {
     // Remove self-loops first
     graph.retain_edges(|graph, edge| {
         let (source, target) = graph.edge_endpoints(edge).unwrap();
         source != target
     });
 
-    let sccs = kosaraju_scc(graph as &DiGraph<Node, ()>);
+    let sccs = kosaraju_scc(graph as &Graph);
 
     for scc in sccs {
         if scc.len() > 1 {
@@ -72,7 +110,7 @@ fn break_cycles(graph: &mut DiGraph<Node, ()>) {
                 if visited.insert(node) {
                     for &neighbor in &scc {
                         if neighbor != node && !visited.contains(&neighbor) {
-                            if let Some(edge) = graph.find_edge(node, neighbor) {
+                            if let Some(_edge) = graph.find_edge(node, neighbor) {
                                 edges_to_reverse.push((node, neighbor));
                                 stack.push(neighbor);
                             }
@@ -90,7 +128,7 @@ fn break_cycles(graph: &mut DiGraph<Node, ()>) {
     }
 }
 
-fn assign_ranks(graph: &mut DiGraph<Node, ()>) {
+fn assign_ranks(graph: &mut Graph) {
     let mut in_degree = HashMap::new();
     let mut queue = VecDeque::new();
 
@@ -135,15 +173,17 @@ fn assign_ranks(graph: &mut DiGraph<Node, ()>) {
     }
 }
 
-fn order_nodes_within_ranks(graph: &mut DiGraph<Node, ()>) {
+fn order_nodes_within_ranks(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()
         .filter_map(|n| n.rank)
         .max()
         .unwrap_or(0);
 
-    for _ in 0..4 {
-        // Perform a few iterations to improve the ordering
+    // Perform a few iterations to improve the ordering
+    for pass in 0..4 {
+        bevy_log::debug!("Ordering pass {}", pass);
+
         for direction in &[Direction::Outgoing, Direction::Incoming] {
             for rank in 0..=max_rank {
                 let nodes_at_rank: Vec<NodeIndex> = graph
@@ -176,11 +216,7 @@ fn order_nodes_within_ranks(graph: &mut DiGraph<Node, ()>) {
     }
 }
 
-fn calculate_median_position(
-    graph: &DiGraph<Node, ()>,
-    node: NodeIndex,
-    direction: Direction,
-) -> f64 {
+fn calculate_median_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
     let adjacent_nodes: Vec<NodeIndex> = graph.neighbors_directed(node, direction).collect();
 
     let positions: Vec<f64> = adjacent_nodes
@@ -201,17 +237,22 @@ fn calculate_median_position(
     }
 }
 
-fn minimize_crossings(graph: &mut DiGraph<Node, ()>) {
+fn minimize_crossings(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()
         .filter_map(|n| n.rank)
         .max()
         .unwrap_or(0);
 
+    let mut exchanged = VecDeque::new();
+
     for rank in 0..max_rank {
         let mut improved = true;
-        while improved {
+        let mut tries = 1000; // fail safe in case the exchanged history is too short
+        while improved && tries > 0 {
             improved = false;
+            tries -= 1;
+
             let nodes_at_rank: Vec<NodeIndex> = graph
                 .node_indices()
                 .filter(|&n| graph[n].rank == Some(rank))
@@ -220,19 +261,30 @@ fn minimize_crossings(graph: &mut DiGraph<Node, ()>) {
             for i in 0..nodes_at_rank.len() - 1 {
                 let (n1, n2) = (nodes_at_rank[i], nodes_at_rank[i + 1]);
                 if count_crossings(graph, n1, n2) > count_crossings(graph, n2, n1) {
+                    if exchanged
+                        .iter()
+                        .any(|&(a, b)| a == n2 && b == n1 || a == n1 && b == n2)
+                    {
+                        // don't exchange nodes that were already recently exchanged
+                        continue;
+                    }
+
                     let order1 = graph[n1].order.unwrap();
                     let order2 = graph[n2].order.unwrap();
                     graph[n1].order = Some(order2);
                     graph[n2].order = Some(order1);
                     improved = true;
+                    exchanged.push_back((n1, n2));
+                    if exchanged.len() > 6 {
+                        exchanged.pop_front();
+                    }
                 }
             }
         }
     }
 }
 
-// TODO: verify this is correct, seems sus
-fn count_crossings(graph: &DiGraph<Node, ()>, left: NodeIndex, right: NodeIndex) -> usize {
+fn count_crossings(graph: &Graph, left: NodeIndex, right: NodeIndex) -> usize {
     let left_edges: Vec<NodeIndex> = graph
         .neighbors_directed(left, Direction::Outgoing)
         .collect();
@@ -243,7 +295,7 @@ fn count_crossings(graph: &DiGraph<Node, ()>, left: NodeIndex, right: NodeIndex)
     let mut crossings = 0;
     for &l in &left_edges {
         for &r in &right_edges {
-            if (graph[l].order.unwrap_or(0) > graph[r].order.unwrap_or(0)) {
+            if graph[l].order.unwrap_or(0) > graph[r].order.unwrap_or(0) {
                 crossings += 1;
             }
         }
@@ -251,7 +303,7 @@ fn count_crossings(graph: &DiGraph<Node, ()>, left: NodeIndex, right: NodeIndex)
     crossings
 }
 
-fn assign_x_coordinates(graph: &mut DiGraph<Node, ()>) {
+fn assign_x_coordinates(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()
         .filter_map(|n| n.rank)
@@ -301,7 +353,7 @@ fn assign_x_coordinates(graph: &mut DiGraph<Node, ()>) {
     }
 }
 
-fn assign_y_coordinates(graph: &mut DiGraph<Node, ()>) {
+fn assign_y_coordinates(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()
         .filter_map(|n| n.rank)
@@ -327,9 +379,10 @@ mod tests {
     use petgraph::graph::NodeIndex;
     use std::collections::HashSet;
 
-    fn create_test_graph(edges: Vec<(u32, u32)>, node_count: usize) -> DiGraph<Node, ()> {
+    fn create_test_graph(edges: Vec<(u32, u32)>, node_count: usize) -> Graph {
         let nodes = (0..node_count)
             .map(|_| Node {
+                entity: NodeEntity::Port(Entity::PLACEHOLDER),
                 size: (50, 30),
                 rank: None,
                 order: None,
@@ -338,21 +391,24 @@ mod tests {
             })
             .collect();
 
-        layout_graph(edges, nodes).unwrap()
+        let mut graph = create_graph(edges, nodes).unwrap();
+        layout_graph(&mut graph).unwrap();
+
+        graph
     }
 
-    fn check_acyclic(graph: &DiGraph<Node, ()>) -> bool {
+    fn check_acyclic(graph: &Graph) -> bool {
         !petgraph::algo::is_cyclic_directed(graph)
     }
 
-    fn check_ranks(graph: &DiGraph<Node, ()>) -> bool {
+    fn check_ranks(graph: &Graph) -> bool {
         graph.edge_indices().all(|e| {
             let (source, target) = graph.edge_endpoints(e).unwrap();
             graph[source].rank.unwrap() < graph[target].rank.unwrap()
         })
     }
 
-    fn check_order_consistency(graph: &DiGraph<Node, ()>) -> bool {
+    fn check_order_consistency(graph: &Graph) -> bool {
         let max_rank = graph
             .node_weights()
             .filter_map(|n| n.rank)
@@ -371,7 +427,7 @@ mod tests {
         })
     }
 
-    fn check_x_coordinates(graph: &DiGraph<Node, ()>) -> bool {
+    fn check_x_coordinates(graph: &Graph) -> bool {
         let max_rank = graph
             .node_weights()
             .filter_map(|n| n.rank)
@@ -390,13 +446,13 @@ mod tests {
         })
     }
 
-    fn check_y_coordinates(graph: &DiGraph<Node, ()>) -> bool {
+    fn check_y_coordinates(graph: &Graph) -> bool {
         graph
             .node_indices()
             .all(|n| graph[n].y.unwrap() == graph[n].rank.unwrap() as f64 * 100.0)
     }
 
-    fn validate_layout(graph: &DiGraph<Node, ()>) -> bool {
+    fn validate_layout(graph: &Graph) -> bool {
         // Check if the graph is acyclic
         if !check_acyclic(graph) {
             println!("Graph contains cycles");
@@ -477,7 +533,7 @@ mod tests {
         true
     }
 
-    fn count_edge_crossings(graph: &DiGraph<Node, ()>) -> usize {
+    fn count_edge_crossings(graph: &Graph) -> usize {
         let mut crossings = 0;
         let edges: Vec<_> = graph.edge_indices().collect();
         for (i, &e1) in edges.iter().enumerate() {
@@ -493,7 +549,7 @@ mod tests {
     }
 
     fn do_edges_cross(
-        graph: &DiGraph<Node, ()>,
+        graph: &Graph,
         s1: NodeIndex,
         t1: NodeIndex,
         s2: NodeIndex,
