@@ -177,11 +177,6 @@ fn assign_ranks(graph: &mut Graph) {
         }
     }
 
-    println!("Initial rank assignment:");
-    for node in graph.node_indices() {
-        println!("Node {:?}: rank {:?}", node, graph[node].rank);
-    }
-
     // Adjust ranks for adjacency constraints
     loop {
         let mut nodes_to_update = Vec::new();
@@ -198,17 +193,8 @@ fn assign_ranks(graph: &mut Graph) {
         }
 
         for (node, new_rank) in nodes_to_update {
-            println!(
-                "Updating node {:?} rank from {:?} to {:?}",
-                node, graph[node].rank, new_rank
-            );
             graph[node].rank = new_rank;
         }
-    }
-
-    println!("Final rank assignment:");
-    for node in graph.node_indices() {
-        println!("Node {:?}: rank {:?}", node, graph[node].rank);
     }
 
     // Compact ranks
@@ -276,7 +262,7 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
                 // Assign orders, handling cases where all nodes have the same calculated position, as well as adjacent constraints
                 let mut current_order = 0;
                 for (chain, _) in weighted_chains {
-                    for &node in &chain {
+                    for &node in chain.iter() {
                         graph[node].order = Some(current_order);
                         current_order += 1;
                     }
@@ -339,6 +325,12 @@ fn minimize_crossings(graph: &mut Graph) {
                 }
 
                 let chain1 = get_adjacent_chain(graph, n1);
+
+                // Only consider exchanging if the end of chain1 is n1
+                if *chain1.last().unwrap() != n1 {
+                    continue;
+                }
+
                 let chain2 = get_adjacent_chain(graph, n2);
 
                 // Only consider exchanging if the end of chain1 is adjacent to the start of chain2
@@ -381,27 +373,28 @@ fn get_adjacent_chain(graph: &Graph, start: NodeIndex) -> Vec<NodeIndex> {
     let mut chain = vec![start];
     let mut current = start;
 
-    // Follow the chain forward
-    while let Some(next) = graph[current].adjacent_to {
-        chain.push(next);
-        current = next;
+    // Follow the chain backward
+    while let Some(prev) = graph[current].adjacent_to {
+        chain.insert(0, prev);
+
+        current = prev;
     }
 
-    // Follow the chain backward
+    // Follow the chain forward
     current = start;
-    while let Some(prev) = graph
+    while let Some(next) = graph
         .node_indices()
         .find(|&n| graph[n].adjacent_to == Some(current))
     {
-        chain.insert(0, prev);
-        current = prev;
+        chain.push(next);
+        current = next;
     }
 
     chain
 }
 
 fn exchange_chains(graph: &mut Graph, chain1: &[NodeIndex], chain2: &[NodeIndex]) {
-    let start_order = chain1
+    let mut start_order = chain1
         .iter()
         .map(|&n| graph[n].order.unwrap())
         .min()
@@ -419,19 +412,11 @@ fn exchange_chains(graph: &mut Graph, chain1: &[NodeIndex], chain2: &[NodeIndex]
         graph[node].order = Some(start_order + i as u32);
     }
 
+    start_order += chain2.len() as u32;
+
     // Assign new orders to chain1, continuing from where chain2 ended
     for (i, &node) in chain1.iter().enumerate() {
-        graph[node].order = Some(start_order + (chain2.len() + i) as u32);
-    }
-
-    // Adjust orders of nodes between the two chains if necessary
-    let end_order = start_order + (chain1.len() + chain2.len() - 1) as u32;
-    for node in graph.node_indices() {
-        let order = graph[node].order.unwrap();
-        if order > end_order {
-            graph[node].order =
-                Some(order + (chain1.len() as i32 - chain2.len() as i32).unsigned_abs());
-        }
+        graph[node].order = Some(start_order + i as u32);
     }
 }
 
@@ -609,14 +594,20 @@ mod tests {
             .unwrap_or(0);
 
         (0..=max_rank).all(|rank| {
-            let nodes_at_rank: Vec<NodeIndex> = graph
+            let mut nodes_at_rank: Vec<NodeIndex> = graph
                 .node_indices()
                 .filter(|&n| graph[n].rank == Some(rank))
                 .collect();
 
-            nodes_at_rank
-                .windows(2)
-                .all(|w| graph[w[0]].x.unwrap() < graph[w[1]].x.unwrap())
+            // Sort nodes by their order
+            nodes_at_rank.sort_by_key(|&n| graph[n].order.unwrap());
+
+            // Check x-coordinates
+            nodes_at_rank.windows(2).all(|w| {
+                let (n1, n2) = (w[0], w[1]);
+
+                graph[n1].x.unwrap() < graph[n2].x.unwrap()
+            })
         })
     }
 
@@ -974,47 +965,66 @@ mod tests {
     #[test]
     fn test_simple_adjacency() {
         let mut graph = DiGraph::new();
-        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        // Component 1
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 2
 
-        graph.add_edge(n0, n1, ());
-        graph.add_edge(n1, n2, ());
-        graph.add_edge(n2, n3, ());
+        // Component 2
+        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n5 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
 
-        graph[n1].adjacent_to = Some(n0);
-        graph[n2].adjacent_to = Some(n1);
+        // Connections between components
+        graph.add_edge(n2, n4, ()); // Component 1 output to Component 2 input
+        graph.add_edge(n3, n5, ()); // Component 1 output to Component 2 output
+
+        // Set adjacency for pins within components
+        graph[n1].adjacent_to = Some(n0); // Input pins adjacent
+        graph[n3].adjacent_to = Some(n2); // Output pins adjacent
 
         layout_graph(&mut graph).unwrap();
         assert!(validate_layout(&graph));
 
         // Check adjacency constraints
         assert_eq!(graph[n0].rank, graph[n1].rank);
-        assert_eq!(graph[n1].rank, graph[n2].rank);
+        assert_eq!(graph[n2].rank, graph[n3].rank);
         assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
-        assert_eq!(graph[n1].order.unwrap() + 1, graph[n2].order.unwrap());
+        assert_eq!(graph[n2].order.unwrap() + 1, graph[n3].order.unwrap());
     }
 
     #[test]
     fn test_adjacency_with_crossing() {
         let mut graph = DiGraph::new();
-        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        // Component 1
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 2
 
-        graph.add_edge(n0, n2, ());
-        graph.add_edge(n1, n3, ());
+        // Component 2
+        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n5 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
 
-        graph[n1].adjacent_to = Some(n0);
+        // Connections between components (creating a potential crossing)
+        graph.add_edge(n2, n5, ());
+        graph.add_edge(n3, n4, ());
+
+        // Set adjacency for pins within components
+        graph[n1].adjacent_to = Some(n0); // Input pins adjacent
+        graph[n3].adjacent_to = Some(n2); // Output pins adjacent
+        graph[n5].adjacent_to = Some(n4); // Input pins of component 2 adjacent
 
         layout_graph(&mut graph).unwrap();
         assert!(validate_layout(&graph));
 
-        // Check adjacency constraint
+        // Check adjacency constraints
         assert_eq!(graph[n0].rank, graph[n1].rank);
+        assert_eq!(graph[n2].rank, graph[n3].rank);
+        assert_eq!(graph[n4].rank, graph[n5].rank);
         assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
+        assert_eq!(graph[n2].order.unwrap() + 1, graph[n3].order.unwrap());
+        assert_eq!(graph[n4].order.unwrap() + 1, graph[n5].order.unwrap());
 
         // Check for edge crossings
         let crossings = count_edge_crossings(&graph);
@@ -1028,18 +1038,25 @@ mod tests {
     #[test]
     fn test_multiple_adjacency_constraints() {
         let mut graph = DiGraph::new();
-        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        // Component 1
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 3
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
+        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 2
 
-        graph.add_edge(n0, n3, ());
-        graph.add_edge(n1, n4, ());
-        graph.add_edge(n2, n4, ());
+        // Component 2
+        let n5 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n6 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
 
+        // Connections between components
+        graph.add_edge(n3, n5, ());
+        graph.add_edge(n4, n6, ());
+
+        // Set adjacency for pins within components
         graph[n1].adjacent_to = Some(n0);
         graph[n2].adjacent_to = Some(n1);
+        graph[n4].adjacent_to = Some(n3);
 
         layout_graph(&mut graph).unwrap();
         assert!(validate_layout(&graph));
@@ -1047,8 +1064,10 @@ mod tests {
         // Check adjacency constraints
         assert_eq!(graph[n0].rank, graph[n1].rank);
         assert_eq!(graph[n1].rank, graph[n2].rank);
+        assert_eq!(graph[n3].rank, graph[n4].rank);
         assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
         assert_eq!(graph[n1].order.unwrap() + 1, graph[n2].order.unwrap());
+        assert_eq!(graph[n3].order.unwrap() + 1, graph[n4].order.unwrap());
 
         // Check for edge crossings
         let crossings = count_edge_crossings(&graph);
@@ -1062,28 +1081,41 @@ mod tests {
     #[test]
     fn test_adjacency_with_complex_crossing() {
         let mut graph = DiGraph::new();
-        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
-        let n5 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30)));
+        // Component 1
+        let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
+        let n2 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
+        let n3 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 2
+        let n4 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 3
 
-        graph.add_edge(n0, n3, ());
-        graph.add_edge(n1, n4, ());
-        graph.add_edge(n2, n5, ());
+        // Component 2
+        let n5 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
+        let n6 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
+        let n7 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Output pin 1
 
+        // Connections between components (creating a potential complex crossing)
+        graph.add_edge(n2, n6, ());
+        graph.add_edge(n3, n5, ());
+        graph.add_edge(n4, n7, ());
+
+        // Set adjacency for pins within components
         graph[n1].adjacent_to = Some(n0);
-        graph[n2].adjacent_to = Some(n1);
+        graph[n3].adjacent_to = Some(n2);
+        graph[n4].adjacent_to = Some(n3);
+        graph[n6].adjacent_to = Some(n5);
 
         layout_graph(&mut graph).unwrap();
         assert!(validate_layout(&graph));
 
         // Check adjacency constraints
         assert_eq!(graph[n0].rank, graph[n1].rank);
-        assert_eq!(graph[n1].rank, graph[n2].rank);
+        assert_eq!(graph[n2].rank, graph[n3].rank);
+        assert_eq!(graph[n3].rank, graph[n4].rank);
+        assert_eq!(graph[n5].rank, graph[n6].rank);
         assert_eq!(graph[n0].order.unwrap() + 1, graph[n1].order.unwrap());
-        assert_eq!(graph[n1].order.unwrap() + 1, graph[n2].order.unwrap());
+        assert_eq!(graph[n2].order.unwrap() + 1, graph[n3].order.unwrap());
+        assert_eq!(graph[n3].order.unwrap() + 1, graph[n4].order.unwrap());
+        assert_eq!(graph[n5].order.unwrap() + 1, graph[n6].order.unwrap());
 
         // Check for edge crossings
         let crossings = count_edge_crossings(&graph);
