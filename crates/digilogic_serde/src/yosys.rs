@@ -421,7 +421,7 @@ fn layout_circuit(commands: &mut Commands, graph: &mut MetaGraph) -> anyhow::Res
     //     ),
     // )?;
 
-    digilogic_layout::layout_graph(&mut graph.graph);
+    digilogic_layout::layout_graph(&mut graph.graph).map_err(anyhow::Error::msg)?;
 
     let mut max_x: f64 = 0.;
     let mut max_y: f64 = 0.;
