@@ -20,7 +20,7 @@ pub struct Node {
     pub entity: NodeEntity,
     pub size: (u32, u32),
 
-    // constraint that this node must be ordered immediately after this node, and in the same layer
+    // constraint that this node must be ordered immediately after the adjacent node, and in the same layer
     pub adjacent_to: Option<NodeIndex>,
 
     pub rank: Option<u32>,
@@ -52,19 +52,10 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
         graph.edge_count()
     );
 
-    bevy_log::debug!("Breaking cycles");
     break_cycles(graph);
-
-    bevy_log::debug!("Assigning ranks");
     assign_ranks(graph);
-
-    bevy_log::debug!("Ordering nodes within ranks");
     order_nodes_within_ranks(graph);
-
-    bevy_log::debug!("Assigning X coords");
     assign_x_coordinates(graph);
-
-    bevy_log::debug!("Assigning Y coords");
     assign_y_coordinates(graph);
 
     Ok(())
