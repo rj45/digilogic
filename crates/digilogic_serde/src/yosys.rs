@@ -81,7 +81,7 @@ fn translate_netlist(
             )?;
         }
 
-        layout_circuit(commands, &mut graph)?;
+        layout_circuit(commands, &mut graph, &bit_map)?;
 
         // TODO: the top module is not necessarily the last one... need to figure out
         // how to determine the top module
@@ -268,9 +268,6 @@ fn translate_net(
     let mut listeners: Vec<PortInfo> = Vec::new();
     let mut drivers: Vec<PortInfo> = Vec::new();
 
-    let mut prev_listener: Option<NodeIndex> = None;
-    let mut prev_driver: Option<NodeIndex> = None;
-
     for port in port_infos.iter() {
         commands
             .spawn(EndpointBundle {
@@ -291,35 +288,10 @@ fn translate_net(
         }
         if !graph.entity_ids.contains_key(&NodeEntity::Port(port.id)) {
             let ne = NodeEntity::Port(port.id);
-            let mut node = Node::new(ne, (5, 5));
-            match port.direction {
-                Directions::NEG_X => {
-                    node.adjacent_to = prev_listener;
-                }
-                Directions::POS_X => {
-                    node.adjacent_to = prev_driver;
-                }
-                _ => {
-                    // figure out how to handle in-out/top/bottom ports
-                    todo!();
-                }
-            }
+            let node = Node::new(ne, (5, 5));
 
             let id = graph.graph.add_node(node);
             graph.entity_ids.insert(ne, id);
-
-            match port.direction {
-                Directions::NEG_X => {
-                    prev_listener = Some(id);
-                }
-                Directions::POS_X => {
-                    prev_driver = Some(id);
-                }
-                _ => {
-                    // figure out how to handle in/out/top/bottom ports
-                    todo!();
-                }
-            }
         }
 
         match port.direction {
@@ -412,14 +384,61 @@ fn translate_net(
     Ok(())
 }
 
-fn layout_circuit(commands: &mut Commands, graph: &mut MetaGraph) -> anyhow::Result<()> {
-    // std::fs::write(
-    //     "graph.dot",
-    //     format!(
-    //         "{:?}",
-    //         petgraph::dot::Dot::with_config(&graph.graph, &[petgraph::dot::Config::EdgeNoLabel])
-    //     ),
-    // )?;
+fn layout_circuit(
+    commands: &mut Commands,
+    graph: &mut MetaGraph,
+    bit_map: &HashMap<usize, NetBit>,
+) -> anyhow::Result<()> {
+    std::fs::write(
+        "graph.dot",
+        format!(
+            "{:?}",
+            petgraph::dot::Dot::with_config(&graph.graph, &[petgraph::dot::Config::EdgeNoLabel])
+        ),
+    )?;
+
+    // add adjacency constraints
+    let node_indices = graph.graph.node_indices().collect::<Vec<_>>();
+    for index in node_indices.iter() {
+        let node = graph.graph.node_weight_mut(*index).unwrap();
+        if let NodeEntity::Symbol(symbol) = node.entity {
+            // TODO: kind of hacky
+            let mut ports = bit_map
+                .values()
+                .flat_map(|net_bit| net_bit.ports.iter())
+                .filter(|port| port.symbol == symbol)
+                .collect::<Vec<_>>();
+            ports.sort_by(|a, b| a.position.y.cmp(&b.position.y));
+            let mut prev_listener: Option<NodeIndex> = None;
+            let mut prev_driver: Option<NodeIndex> = None;
+            for port in ports.iter() {
+                let port_index = *graph.entity_ids.get(&NodeEntity::Port(port.id)).unwrap();
+                if port.direction == Directions::NEG_X {
+                    if prev_listener.is_some() {
+                        bevy_log::debug!(
+                            "{}  adjacent_to: {}",
+                            port_index.index(),
+                            prev_listener.unwrap().index()
+                        );
+                    }
+                    graph.graph[port_index].adjacent_to = prev_listener;
+                    prev_listener = Some(port_index);
+                } else if port.direction == Directions::POS_X {
+                    if prev_driver.is_some() {
+                        bevy_log::debug!(
+                            "{}  adjacent_to: {}",
+                            port_index.index(),
+                            prev_driver.unwrap().index()
+                        );
+                    }
+                    graph.graph[port_index].adjacent_to = prev_driver;
+                    prev_driver = Some(port_index);
+                }
+            }
+
+            continue;
+        }
+    }
 
     digilogic_layout::layout_graph(&mut graph.graph).map_err(anyhow::Error::msg)?;
 
@@ -427,8 +446,10 @@ fn layout_circuit(commands: &mut Commands, graph: &mut MetaGraph) -> anyhow::Res
     let mut max_y: f64 = 0.;
 
     for node in graph.graph.node_weights() {
-        let x = node.x.unwrap();
-        let y = node.y.unwrap();
+        // swap x and y
+        let x = node.y.unwrap();
+        let y = node.x.unwrap();
+
         if x > max_x {
             max_x = x;
         }
@@ -449,8 +470,8 @@ fn layout_circuit(commands: &mut Commands, graph: &mut MetaGraph) -> anyhow::Res
                 let transform = TransformBundle {
                     transform: Transform {
                         translation: Vec2 {
-                            x: Fixed::try_from(x * 1.).unwrap(),
-                            y: Fixed::try_from(y * 1.).unwrap(),
+                            x: Fixed::try_from(x).unwrap(),
+                            y: Fixed::try_from(max_y - y).unwrap(), // need to flip y
                         },
                         ..Default::default()
                     },
