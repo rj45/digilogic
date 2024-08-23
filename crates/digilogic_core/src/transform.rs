@@ -256,8 +256,8 @@ pub struct TransformBundle {
 )]
 #[repr(C)]
 pub struct BoundingBox {
-    pub min: Vec2,
-    pub max: Vec2,
+    min: Vec2,
+    max: Vec2,
 }
 
 impl BoundingBox {

@@ -259,10 +259,10 @@ pub fn draw_bounding_boxes(
                     Color::RED,
                     None,
                     &Rect::new(
-                        bounds.min.x.to_f64(),
-                        bounds.min.y.to_f64(),
-                        bounds.max.x.to_f64(),
-                        bounds.max.y.to_f64(),
+                        bounds.min().x.to_f64(),
+                        bounds.min().y.to_f64(),
+                        bounds.max().x.to_f64(),
+                        bounds.max().y.to_f64(),
                     ),
                 );
             });
