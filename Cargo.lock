@@ -1908,6 +1908,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "digilogic_layout"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_log",
+ "petgraph",
+]
+
+[[package]]
 name = "digilogic_netcode"
 version = "0.1.0"
 dependencies = [
@@ -1951,6 +1960,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "digilogic_core",
+ "digilogic_layout",
  "petgraph",
  "rust-sugiyama",
  "serde",

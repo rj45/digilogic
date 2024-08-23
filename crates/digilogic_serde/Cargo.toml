@@ -23,3 +23,4 @@ petgraph.workspace = true
 rust-sugiyama.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }
+digilogic_layout = { path = "../digilogic_layout" }
