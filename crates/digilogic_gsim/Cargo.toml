@@ -11,6 +11,6 @@ workspace = true
 
 [dependencies]
 ahash.workspace = true
-gsim = "1.1.1"
+gsim = "1.1.2"
 
 digilogic_netcode = { path = "../digilogic_netcode", features = ["server"] }

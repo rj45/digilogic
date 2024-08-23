@@ -2679,9 +2679,9 @@ dependencies = [
 
 [[package]]
 name = "gsim"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3366bbc572fe6c092017aa5cbc87308a39bea6eaa009371c2a7107f01e557877"
+checksum = "2edcaa200aaf052d4dd169fb6e5975cd9e632fb7badfc649436d540293912a86"
 dependencies = [
  "ahash",
  "bounded-integer",
