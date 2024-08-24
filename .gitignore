@@ -17,3 +17,4 @@ target_wasm
 
 # for testing
 test.json
+graph.dot
