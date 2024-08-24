@@ -4,7 +4,7 @@ use crate::{CircuitTree, SymbolQuery};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
-use digilogic_core::components::*;
+use digilogic_core::components::Child;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed, HashMap};
 use serde::{Deserialize, Serialize};

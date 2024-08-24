@@ -1,4 +1,5 @@
 mod bit_grid;
+mod fixup;
 pub mod graph;
 mod path_finding;
 mod routing;
@@ -70,7 +71,7 @@ type SymbolQuery<'w, 's> =
     Query<'w, 's, ((Entity, Read<AbsoluteBoundingBox>), Relations<Child>), With<Symbol>>;
 type PortQuery<'w, 's> =
     Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>;
-type NetQuery<'w, 's> = Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>;
+type NetQuery<'w, 's> = Query<'w, 's, ((Entity, Write<Vertices>), Relations<Child>), With<Net>>;
 type EndpointQuery<'w, 's> =
     Query<'w, 's, (Entity, Read<GlobalTransform>, Has<PortID>), With<Endpoint>>;
 
@@ -86,7 +87,7 @@ fn route(
     mut commands: Commands,
     config: Res<RoutingConfig>,
     mut circuits: CircuitQuery,
-    tree: CircuitTree,
+    mut tree: CircuitTree,
 ) {
     for ((circuit, mut graph, circuit_edges), circuit_children) in circuits.iter_mut() {
         commands.entity(circuit).remove::<GraphDirty>();
@@ -99,7 +100,7 @@ fn route(
                     tree.nets.get_unchecked(child)
                 };
 
-                if let Ok((vertices, net_children)) = child {
+                if let Ok(((_, vertices), net_children)) = child {
                     scope.spawn({
                         let span = info_span!("route_net");
 
@@ -120,6 +121,8 @@ fn route(
                 }
             }
         });
+
+        fixup::separate_wires(&circuit_children, &mut tree.nets);
     }
 }
 
