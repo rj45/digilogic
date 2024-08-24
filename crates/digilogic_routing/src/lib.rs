@@ -1,3 +1,4 @@
+mod bit_grid;
 pub mod graph;
 mod path_finding;
 mod routing;
@@ -47,15 +48,11 @@ pub struct Vertices(Vec<Vertex>);
 #[reflect(Resource)]
 pub struct RoutingConfig {
     pub prune_graph: bool,
-    pub center_wires: bool,
 }
 
 impl Default for RoutingConfig {
     fn default() -> Self {
-        Self {
-            prune_graph: true,
-            center_wires: true,
-        }
+        Self { prune_graph: true }
     }
 }
 
@@ -74,16 +71,8 @@ type SymbolQuery<'w, 's> =
 type PortQuery<'w, 's> =
     Query<'w, 's, (Read<GlobalTransform>, Read<AbsoluteDirections>), With<Port>>;
 type NetQuery<'w, 's> = Query<'w, 's, (Write<Vertices>, Relations<Child>), With<Net>>;
-type EndpointQuery<'w, 's> = Query<
-    'w,
-    's,
-    (
-        (Entity, Read<GlobalTransform>, Has<PortID>),
-        Relations<Child>,
-    ),
-    With<Endpoint>,
->;
-type WaypointQuery<'w, 's> = Query<'w, 's, Read<GlobalTransform>, With<Waypoint>>;
+type EndpointQuery<'w, 's> =
+    Query<'w, 's, (Entity, Read<GlobalTransform>, Has<PortID>), With<Endpoint>>;
 
 #[derive(SystemParam)]
 struct CircuitTree<'w, 's> {
@@ -91,7 +80,6 @@ struct CircuitTree<'w, 's> {
     ports: PortQuery<'w, 's>,
     nets: NetQuery<'w, 's>,
     endpoints: EndpointQuery<'w, 's>,
-    waypoints: WaypointQuery<'w, 's>,
 }
 
 fn route(
@@ -124,8 +112,6 @@ fn route(
                                 &mut vertices.0,
                                 &net_children,
                                 &tree.endpoints,
-                                &tree.waypoints,
-                                config.center_wires,
                             )
                             .unwrap();
                         }

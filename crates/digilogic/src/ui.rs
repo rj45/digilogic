@@ -169,17 +169,11 @@ fn update_main_menu(
 
         ui.menu_button("Routing", |ui| {
             let mut prune_graph = routing_config.prune_graph;
-            let mut center_wires = routing_config.center_wires;
-
             ui.checkbox(&mut prune_graph, "Prune graph");
-            ui.checkbox(&mut center_wires, "Center wires");
 
             // Don't trigger change detection if nothing changed.
             if prune_graph != routing_config.prune_graph {
                 routing_config.prune_graph = prune_graph;
-            }
-            if center_wires != routing_config.center_wires {
-                routing_config.center_wires = center_wires;
             }
         });
         ui.add_space(8.0);

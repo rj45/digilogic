@@ -1,5 +1,6 @@
+use crate::bit_grid::*;
 use crate::segment_tree::*;
-use crate::CircuitTree;
+use crate::{CircuitTree, SymbolQuery};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
@@ -25,19 +26,19 @@ struct Anchor {
 
 impl Anchor {
     #[inline]
-    const fn new(position: Vec2) -> Self {
+    const fn new(position: Vec2, connect_directions: Directions) -> Self {
         Self {
             position,
             bounding_box: Entity::PLACEHOLDER,
-            connect_directions: Directions::ALL,
+            connect_directions,
         }
     }
 
     #[inline]
     const fn new_port(
         position: Vec2,
-        bounding_box: Entity,
         connect_directions: Directions,
+        bounding_box: Entity,
     ) -> Self {
         Self {
             position,
@@ -620,6 +621,223 @@ struct ThreadLocalData {
     implicit_anchors: Vec<Anchor>,
     x_coords: Vec<Fixed>,
     y_coords: Vec<Fixed>,
+    horizontal_grid: BitGrid,
+    vertical_grid: BitGrid,
+    empty_ranges: Vec<EmptyRanges>,
+}
+
+fn generate_explicit_anchors(
+    circuit_children: &RelationsItem<Child>,
+    tree: &CircuitTree,
+    bounding_boxes: &mut BoundingBoxList,
+    explicit_anchors: &mut Vec<Anchor>,
+) {
+    explicit_anchors.clear();
+
+    let (mut horizontal_builder, mut vertical_builder) = bounding_boxes.build();
+    circuit_children
+        .join::<Child>(&tree.symbols)
+        .for_each(|((id, bb), symbol_children)| {
+            symbol_children
+                .join::<Child>(&tree.ports)
+                .for_each(|(transform, directions)| {
+                    let anchor = Anchor::new_port(transform.translation, **directions, id);
+                    explicit_anchors.push(anchor);
+                });
+
+            horizontal_builder.push(Segment {
+                start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
+                end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
+                value: HorizontalBoundingBox {
+                    id,
+                    min_x: bb.min().x - BOUNDING_BOX_PADDING,
+                    max_x: bb.max().x + BOUNDING_BOX_PADDING,
+                },
+            });
+
+            vertical_builder.push(Segment {
+                start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
+                end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
+                value: VerticalBoundingBox {
+                    id,
+                    min_y: bb.min().y - BOUNDING_BOX_PADDING,
+                    max_y: bb.max().y + BOUNDING_BOX_PADDING,
+                },
+            });
+        });
+
+    drop(horizontal_builder);
+    drop(vertical_builder);
+
+    circuit_children
+        .join::<Child>(&tree.nets)
+        .for_each(|(_, net_children)| {
+            net_children.join::<Child>(&tree.endpoints).for_each(
+                |(_, endpoint_transform, has_port)| {
+                    if !has_port {
+                        let anchor = Anchor::new(endpoint_transform.translation, Directions::ALL);
+                        explicit_anchors.push(anchor);
+                    }
+                },
+            );
+        });
+}
+
+fn generate_implicit_anchors(
+    circuit_children: &RelationsItem<Child>,
+    symbols: &SymbolQuery,
+    thread_local_data: &mut ThreadLocalData,
+) {
+    const PADDING: Vec2 = Vec2::splat(BOUNDING_BOX_PADDING);
+
+    let ThreadLocalData {
+        implicit_anchors,
+        x_coords,
+        y_coords,
+        horizontal_grid,
+        vertical_grid,
+        empty_ranges,
+        ..
+    } = thread_local_data;
+
+    implicit_anchors.clear();
+    x_coords.clear();
+    y_coords.clear();
+
+    circuit_children
+        .join::<Child>(symbols)
+        .for_each(|((_, bb), _)| {
+            for corner in bb.extrude(PADDING).corners() {
+                x_coords.push(corner.x);
+                y_coords.push(corner.y);
+            }
+        });
+
+    x_coords.sort_unstable();
+    x_coords.dedup();
+    y_coords.sort_unstable();
+    y_coords.dedup();
+
+    let x_grid_cells = x_coords.len().saturating_sub(1) as u32;
+    let y_grid_cells = y_coords.len().saturating_sub(1) as u32;
+    horizontal_grid.reset(x_grid_cells, y_grid_cells);
+    vertical_grid.reset(y_grid_cells, x_grid_cells);
+
+    circuit_children
+        .join::<Child>(symbols)
+        .for_each(|((_, bb), _)| {
+            let bb = bb.extrude(PADDING);
+
+            let min_x_index = x_coords.binary_search(&bb.min().x).unwrap() as u32;
+            let min_y_index = y_coords.binary_search(&bb.min().y).unwrap() as u32;
+            let max_x_index = x_coords.binary_search(&bb.max().x).unwrap() as u32;
+            let max_y_index = y_coords.binary_search(&bb.max().y).unwrap() as u32;
+
+            horizontal_grid.fill_rect(min_x_index, min_y_index, max_x_index, max_y_index);
+            vertical_grid.fill_rect(min_y_index, min_x_index, max_y_index, max_x_index);
+        });
+
+    empty_ranges.clear();
+    for y in 0..y_grid_cells {
+        empty_ranges.push(horizontal_grid.find_empty_ranges(y));
+    }
+
+    for i in 0..empty_ranges.len() {
+        let empty_ranges = &mut empty_ranges[i..];
+        let (current_ranges, following_ranges) = empty_ranges.split_first_mut().unwrap();
+
+        for range in current_ranges.iter() {
+            let mut height = 1;
+            for following_ranges in following_ranges.iter_mut() {
+                if let Some(following_index) = following_ranges
+                    .iter()
+                    .position(|following_range| following_range == range)
+                {
+                    height += 1;
+                    following_ranges.swap_remove(following_index);
+                } else {
+                    break;
+                }
+            }
+
+            let corridor_min_x = x_coords[range.start as usize] + Fixed::EPSILON;
+            let corridor_max_x = x_coords[range.end as usize] - Fixed::EPSILON;
+            let corridor_min_y = y_coords[i];
+            let corridor_max_y = y_coords[i + height];
+
+            if (corridor_max_y - corridor_min_y) >= (corridor_max_x - corridor_min_x) {
+                continue;
+            }
+
+            let corridor_y = (corridor_min_y + corridor_max_y) * fixed!(0.5);
+
+            implicit_anchors.push(Anchor::new(
+                Vec2 {
+                    x: corridor_min_x,
+                    y: corridor_y,
+                },
+                Directions::X,
+            ));
+            implicit_anchors.push(Anchor::new(
+                Vec2 {
+                    x: corridor_max_x,
+                    y: corridor_y,
+                },
+                Directions::X,
+            ));
+        }
+    }
+
+    empty_ranges.clear();
+    for x in 0..x_grid_cells {
+        empty_ranges.push(vertical_grid.find_empty_ranges(x));
+    }
+
+    for i in 0..empty_ranges.len() {
+        let empty_ranges = &mut empty_ranges[i..];
+        let (current_ranges, following_ranges) = empty_ranges.split_first_mut().unwrap();
+
+        for range in current_ranges.iter() {
+            let mut width = 1;
+            for following_ranges in following_ranges.iter_mut() {
+                if let Some(following_index) = following_ranges
+                    .iter()
+                    .position(|following_range| following_range == range)
+                {
+                    width += 1;
+                    following_ranges.swap_remove(following_index);
+                } else {
+                    break;
+                }
+            }
+
+            let corridor_min_y = y_coords[range.start as usize] + Fixed::EPSILON;
+            let corridor_max_y = y_coords[range.end as usize] - Fixed::EPSILON;
+            let corridor_min_x = x_coords[i];
+            let corridor_max_x = x_coords[i + width];
+
+            if (corridor_max_x - corridor_min_x) >= (corridor_max_y - corridor_min_y) {
+                continue;
+            }
+
+            let corridor_x = (corridor_min_x + corridor_max_x) * fixed!(0.5);
+
+            implicit_anchors.push(Anchor::new(
+                Vec2 {
+                    x: corridor_x,
+                    y: corridor_min_y,
+                },
+                Directions::Y,
+            ));
+            implicit_anchors.push(Anchor::new(
+                Vec2 {
+                    x: corridor_x,
+                    y: corridor_max_y,
+                },
+                Directions::Y,
+            ));
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Component)]
@@ -862,104 +1080,37 @@ impl Graph {
         }
 
         THREAD_LOCAL_DATA.with_borrow_mut(|thread_local_data| {
+            generate_explicit_anchors(
+                circuit_children,
+                tree,
+                &mut self.bounding_boxes,
+                &mut thread_local_data.explicit_anchors,
+            );
+            generate_implicit_anchors(circuit_children, &tree.symbols, thread_local_data);
+
             let ThreadLocalData {
                 explicit_anchors,
                 implicit_anchors,
                 x_coords,
                 y_coords,
+                ..
             } = thread_local_data;
 
-            // Generate anchors and bounding boxes
-            explicit_anchors.clear();
-            implicit_anchors.clear();
-
-            let (mut horizontal_builder, mut vertical_builder) = self.bounding_boxes.build();
-
-            circuit_children.join::<Child>(&tree.symbols).for_each(
-                |((id, bb), symbol_children)| {
-                    const PADDING: Vec2 =
-                        Vec2::splat(BOUNDING_BOX_PADDING.const_add(Fixed::EPSILON));
-                    let anchors = bb.extrude(PADDING).corners().map(Anchor::new);
-                    implicit_anchors.extend(anchors);
-
-                    symbol_children.join::<Child>(&tree.ports).for_each(
-                        |(transform, directions)| {
-                            let anchor = Anchor::new_port(transform.translation, id, **directions);
-                            explicit_anchors.push(anchor);
-                        },
-                    );
-
-                    horizontal_builder.push(Segment {
-                        start_inclusive: bb.min().y - BOUNDING_BOX_PADDING,
-                        end_inclusive: bb.max().y + BOUNDING_BOX_PADDING,
-                        value: HorizontalBoundingBox {
-                            id,
-                            min_x: bb.min().x - BOUNDING_BOX_PADDING,
-                            max_x: bb.max().x + BOUNDING_BOX_PADDING,
-                        },
-                    });
-
-                    vertical_builder.push(Segment {
-                        start_inclusive: bb.min().x - BOUNDING_BOX_PADDING,
-                        end_inclusive: bb.max().x + BOUNDING_BOX_PADDING,
-                        value: VerticalBoundingBox {
-                            id,
-                            min_y: bb.min().y - BOUNDING_BOX_PADDING,
-                            max_y: bb.max().y + BOUNDING_BOX_PADDING,
-                        },
-                    });
-                },
-            );
-
-            drop(horizontal_builder);
-            drop(vertical_builder);
-
-            circuit_children
-                .join::<Child>(&tree.nets)
-                .for_each(|(_, net_children)| {
-                    net_children.join::<Child>(&tree.endpoints).for_each(
-                        |((_, endpoint_transform, has_port), endpoint_children)| {
-                            if !has_port {
-                                let anchor = Anchor::new(endpoint_transform.translation);
-                                explicit_anchors.push(anchor);
-                            }
-
-                            endpoint_children.join::<Child>(&tree.waypoints).for_each(
-                                |waypoint_transform| {
-                                    let anchor = Anchor::new(waypoint_transform.translation);
-                                    explicit_anchors.push(anchor);
-                                },
-                            );
-                        },
-                    );
-                });
-
-            // Sort all X coordinates.
             x_coords.clear();
-            x_coords.extend(
-                explicit_anchors
-                    .iter()
-                    .chain(implicit_anchors.iter())
-                    .map(|anchor| anchor.position.x),
-            );
+            x_coords.extend(explicit_anchors.iter().map(|anchor| anchor.position.x));
+            x_coords.extend(implicit_anchors.iter().map(|anchor| anchor.position.x));
             x_coords.sort_unstable();
             x_coords.dedup();
 
-            // Sort all Y coordinates.
             y_coords.clear();
-            y_coords.extend(
-                explicit_anchors
-                    .iter()
-                    .chain(implicit_anchors.iter())
-                    .map(|anchor| anchor.position.y),
-            );
+            y_coords.extend(explicit_anchors.iter().map(|anchor| anchor.position.y));
+            y_coords.extend(implicit_anchors.iter().map(|anchor| anchor.position.y));
             y_coords.sort_unstable();
             y_coords.dedup();
 
             self.node_map.clear();
             self.nodes.clear();
 
-            // Add graph nodes for explicit anchors.
             for anchor in explicit_anchors.iter() {
                 match self.node_map.entry(anchor.position) {
                     Entry::Occupied(entry) => {
@@ -975,22 +1126,27 @@ impl Graph {
                 }
             }
 
-            // Add graph nodes for implicit anchors.
             for anchor in implicit_anchors.iter() {
                 match self.node_map.entry(anchor.position) {
                     Entry::Occupied(entry) => {
                         let index = *entry.get();
-                        self.nodes[index].legal_directions = Directions::ALL;
+                        self.nodes[index].legal_directions |= anchor.connect_directions;
                     }
                     Entry::Vacant(entry) => {
-                        let index = self.nodes.push(anchor.position, false, Directions::ALL);
+                        let index =
+                            self.nodes
+                                .push(anchor.position, false, anchor.connect_directions);
                         entry.insert(index);
                     }
                 }
             }
 
-            // Scan all anchors.
-            for anchor in explicit_anchors.iter().chain(implicit_anchors.iter()) {
+            for anchor in explicit_anchors.iter() {
+                let anchor_index = self.node_map[&anchor.position];
+                self.scan(anchor, anchor_index, x_coords, y_coords);
+            }
+
+            for anchor in implicit_anchors.iter() {
                 let anchor_index = self.node_map[&anchor.position];
                 self.scan(anchor, anchor_index, x_coords, y_coords);
             }

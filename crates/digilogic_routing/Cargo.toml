@@ -19,6 +19,7 @@ bevy_derive.workspace = true
 bevy_app.workspace = true
 bevy_log.workspace = true
 aery.workspace = true
+smallvec.workspace = true
 ahash.workspace = true
 priority-queue.workspace = true
 

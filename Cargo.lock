@@ -1946,6 +1946,7 @@ dependencies = [
  "digilogic_core",
  "priority-queue",
  "serde",
+ "smallvec",
  "tracing",
 ]
 

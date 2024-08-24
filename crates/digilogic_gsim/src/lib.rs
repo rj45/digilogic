@@ -22,11 +22,10 @@ impl Default for ClientState {
 
 fn update_sim_state(simulator: &Simulator, sim_state: &mut SimState) {
     sim_state.reset();
-    
+
     for wire in simulator.iter_wire_ids() {
         let width = simulator.get_wire_width(wire).unwrap();
         let state = simulator.get_wire_state(wire).unwrap();
-        
     }
 }
 

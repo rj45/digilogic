@@ -1,9 +1,5 @@
 use crate::graph::{Graph, NodeIndex, INVALID_NODE_INDEX};
-use crate::{EndpointQuery, WaypointQuery};
-use aery::prelude::*;
-use bevy_ecs::prelude::*;
 use bevy_log::{debug, error, info_span};
-use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::{fixed, Fixed, HashMap, HashSet};
 use std::cmp::Reverse;
@@ -431,68 +427,5 @@ impl PathFinder {
             start_straight_dir,
             false,
         )
-    }
-
-    pub(crate) fn find_path_waypoints(
-        &mut self,
-        graph: &Graph,
-        start: Vec2,
-        waypoint_sources: &[Entity],
-        endpoints: &EndpointQuery,
-        waypoints: &WaypointQuery,
-    ) -> PathFindResult {
-        let Some(start_index) = graph.find_node(start) else {
-            error!(
-                "Start point ({}, {}) does not exist in the graph",
-                start.x, start.y
-            );
-            return PathFindResult::InvalidStartPoint;
-        };
-
-        self.end_indices.clear();
-        let mut invalid_end_point = false;
-        let mut total_neighbor_count = 0;
-        for &waypoint_source in waypoint_sources {
-            let (_, endpoint_children) = endpoints.get(waypoint_source).unwrap();
-
-            endpoint_children
-                .join::<Child>(waypoints)
-                .for_each(|waypoint_transform| {
-                    let waypoint = waypoint_transform.translation;
-
-                    let Some(waypoint_index) = graph.find_node(waypoint) else {
-                        error!(
-                            "Waypoint ({}, {}) does not exist in the graph",
-                            waypoint.x, waypoint.y
-                        );
-
-                        invalid_end_point = true;
-                        return JCF::Exit;
-                    };
-
-                    let waypoint_node = &graph.nodes[waypoint_index];
-                    let neighbor_count = waypoint_node.neighbor_count();
-
-                    if neighbor_count > 0 {
-                        if self.end_indices.insert(waypoint_index) {
-                            total_neighbor_count += neighbor_count;
-                        }
-                    } else {
-                        #[cfg(debug_assertions)]
-                        debug!(
-                            "Waypoint ({}, {}) unreachable, skipping",
-                            waypoint.x, waypoint.y,
-                        );
-                    }
-
-                    JCF::Continue
-                });
-        }
-
-        if invalid_end_point {
-            return PathFindResult::InvalidEndPoint;
-        }
-
-        self.find_path_impl(graph, start_index, total_neighbor_count, None, true)
     }
 }
