@@ -17,6 +17,7 @@ use bevy_tasks::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use tracing::Instrument;
 
 #[derive(Default, Debug, Component, Reflect)]
@@ -35,10 +36,24 @@ pub enum VertexKind {
     },
 }
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
+pub enum JunctionKind {
+    #[default]
+    LineSegment,
+    Corner,
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
+pub struct Junction {
+    pub vertex_index: u32,
+    pub kind: JunctionKind,
+}
+
 #[derive(Default, Debug, Reflect)]
 pub struct Vertex {
     pub position: Vec2,
     pub kind: VertexKind,
+    pub connected_junctions: SmallVec<[Junction; 2]>,
 }
 
 #[derive(Default, Debug, Deref, Component, Reflect)]

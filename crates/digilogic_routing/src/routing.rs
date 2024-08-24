@@ -8,6 +8,7 @@ use bevy_log::debug;
 use digilogic_core::components::*;
 use digilogic_core::fixed;
 use digilogic_core::transform::*;
+use smallvec::SmallVec;
 use std::cell::RefCell;
 
 #[derive(Default)]
@@ -67,6 +68,7 @@ fn push_vertices(
                 } else {
                     VertexKind::Normal
                 },
+                connected_junctions: SmallVec::new(),
             });
 
             first = false;
@@ -79,6 +81,7 @@ fn push_vertices(
         vertices.push(Vertex {
             position: prev_node.position,
             kind: VertexKind::WireEnd { is_junction },
+            connected_junctions: SmallVec::new(),
         });
     }
 }
@@ -94,6 +97,7 @@ fn push_fallback_vertices(
     vertices.push(Vertex {
         position: start,
         kind: VertexKind::WireStart { is_root },
+        connected_junctions: SmallVec::new(),
     });
 
     let (middle, dir) = if start_dirs.intersects(Directions::X) {
@@ -128,12 +132,14 @@ fn push_fallback_vertices(
         vertices.push(Vertex {
             position: middle,
             kind: VertexKind::Normal,
+            connected_junctions: SmallVec::new(),
         });
     }
 
     vertices.push(Vertex {
         position: end,
         kind: VertexKind::WireEnd { is_junction },
+        connected_junctions: SmallVec::new(),
     });
 
     dir
@@ -162,7 +168,7 @@ fn route_root_wire(
         path_finder, ends, ..
     } = thread_local_data;
 
-    match path_finder.find_path(graph, root_start_pos, None, root_end_pos) {
+    match path_finder.find_path(graph, root_start_pos, root_end_pos) {
         PathFindResult::Found(path) => {
             push_vertices(&path, vertices, ends, true, false);
         }
@@ -212,7 +218,7 @@ fn route_branch_wires(
             }
 
             let endpoint_pos = endpoint_transform.translation;
-            match path_finder.find_path_multi(graph, endpoint_pos, None, ends) {
+            match path_finder.find_path_multi(graph, endpoint_pos, ends) {
                 PathFindResult::Found(path) => {
                     push_vertices(&path, vertices, ends, false, true);
                 }

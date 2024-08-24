@@ -178,14 +178,7 @@ impl PathFinder {
     }
 
     #[tracing::instrument(skip_all, name = "find_path")]
-    fn find_path_impl(
-        &mut self,
-        graph: &Graph,
-        mut start_index: NodeIndex,
-        mut total_neighbor_count: usize,
-        start_straight_dir: Option<Direction>,
-        visit_all: bool,
-    ) -> PathFindResult {
+    fn find_path_impl(&mut self, graph: &Graph, start_index: NodeIndex) -> PathFindResult {
         let mut path = Path::default();
 
         self.g_score.clear();
@@ -195,15 +188,7 @@ impl PathFinder {
         self.g_score.insert(start_index, fixed!(0));
         self.open_queue.push(start_index, Reverse(fixed!(0)));
 
-        'outer: loop {
-            if total_neighbor_count == 0 {
-                // There cannot possibly be a path, abort.
-                break 'outer;
-            }
-
-            let scope = info_span!("find_path_segment");
-            let scope = scope.enter();
-
+        'outer: {
             while let Some((current_index, _)) = self.open_queue.pop() {
                 let current_node = &graph.nodes[current_index];
 
@@ -213,47 +198,23 @@ impl PathFinder {
                 if self.end_indices.contains(&current_index) {
                     self.assert_data_is_valid(graph);
                     self.build_path(&mut path, graph, start_index, current_index);
-
-                    if visit_all {
-                        self.end_indices.remove(&current_index);
-                        total_neighbor_count -= current_node.neighbor_count();
-                        start_index = current_index;
-
-                        self.g_score.clear();
-                        self.predecessor.clear();
-                        self.open_queue.clear();
-
-                        self.g_score.insert(start_index, fixed!(0));
-                        self.open_queue.push(start_index, Reverse(fixed!(0)));
-
-                        if let Some(pred_index) = pred_index {
-                            self.predecessor.insert(start_index, pred_index);
-                        }
-
-                        drop(scope);
-                        continue 'outer;
-                    } else {
-                        drop(scope);
-                        break 'outer;
-                    }
+                    break 'outer;
                 }
 
                 let pred = pred_index.map(|pred_index| (pred_index, &graph.nodes[pred_index]));
 
                 // Find which direction is straight ahead to apply weights.
-                let straight_dir = pred
-                    .map(|(pred_index, pred_node)| {
-                        let pred_to_current_dir = pred_node
-                            .neighbors
-                            .find(current_index)
-                            .expect("invalid predecessor");
+                let straight_dir = pred.map(|(pred_index, pred_node)| {
+                    let pred_to_current_dir = pred_node
+                        .neighbors
+                        .find(current_index)
+                        .expect("invalid predecessor");
 
-                        let current_to_pred_dir = current_node.neighbors.find(pred_index);
-                        debug_assert_eq!(current_to_pred_dir, Some(pred_to_current_dir.opposite()));
+                    let current_to_pred_dir = current_node.neighbors.find(pred_index);
+                    debug_assert_eq!(current_to_pred_dir, Some(pred_to_current_dir.opposite()));
 
-                        pred_to_current_dir
-                    })
-                    .or(start_straight_dir);
+                    pred_to_current_dir
+                });
 
                 for dir in Direction::ALL {
                     if Some(dir.opposite()) == straight_dir {
@@ -308,8 +269,6 @@ impl PathFinder {
                 }
             }
 
-            drop(scope);
-
             #[cfg(debug_assertions)]
             {
                 use std::fmt::Write;
@@ -332,8 +291,6 @@ impl PathFinder {
 
                 drop(scope);
             }
-
-            break 'outer;
         }
 
         if !path.nodes.is_empty() {
@@ -343,17 +300,11 @@ impl PathFinder {
         }
     }
 
-    pub(crate) fn find_path(
-        &mut self,
-        graph: &Graph,
-        start: Vec2,
-        start_straight_dir: Option<Direction>,
-        end: Vec2,
-    ) -> PathFindResult {
+    pub(crate) fn find_path(&mut self, graph: &Graph, start: Vec2, end: Vec2) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
             error!(
                 "Start point ({}, {}) does not exist in the graph",
-                start.x, start.y
+                start.x, start.y,
             );
             return PathFindResult::InvalidStartPoint;
         };
@@ -361,37 +312,31 @@ impl PathFinder {
         let Some(end_index) = graph.find_node(end) else {
             error!(
                 "End point ({}, {}) does not exist in the graph",
-                end.x, end.y
+                end.x, end.y,
             );
             return PathFindResult::InvalidEndPoint;
         };
 
-        let end_node = &graph.nodes[end_index];
-        let neighbor_count = end_node.neighbor_count();
+        if graph.nodes[end_index].neighbor_count() == 0 {
+            return PathFindResult::NotFound;
+        }
 
         self.end_indices.clear();
         self.end_indices.insert(end_index);
 
-        self.find_path_impl(
-            graph,
-            start_index,
-            neighbor_count,
-            start_straight_dir,
-            false,
-        )
+        self.find_path_impl(graph, start_index)
     }
 
     pub(crate) fn find_path_multi(
         &mut self,
         graph: &Graph,
         start: Vec2,
-        start_straight_dir: Option<Direction>,
         ends: &[Vec2],
     ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
             error!(
                 "Start point ({}, {}) does not exist in the graph",
-                start.x, start.y
+                start.x, start.y,
             );
             return PathFindResult::InvalidStartPoint;
         };
@@ -402,7 +347,7 @@ impl PathFinder {
             let Some(end_index) = graph.find_node(end) else {
                 error!(
                     "End point ({}, {}) does not exist in the graph",
-                    end.x, end.y
+                    end.x, end.y,
                 );
                 return PathFindResult::InvalidEndPoint;
             };
@@ -420,12 +365,10 @@ impl PathFinder {
             }
         }
 
-        self.find_path_impl(
-            graph,
-            start_index,
-            total_neighbor_count,
-            start_straight_dir,
-            false,
-        )
+        if total_neighbor_count == 0 {
+            return PathFindResult::NotFound;
+        }
+
+        self.find_path_impl(graph, start_index)
     }
 }
