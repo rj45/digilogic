@@ -764,11 +764,6 @@ fn generate_implicit_anchors(
             let corridor_max_x = x_coords[range.end as usize] - Fixed::EPSILON;
             let corridor_min_y = y_coords[i];
             let corridor_max_y = y_coords[i + height];
-
-            if (corridor_max_y - corridor_min_y) >= (corridor_max_x - corridor_min_x) {
-                continue;
-            }
-
             let corridor_y = (corridor_min_y + corridor_max_y) * fixed!(0.5);
 
             implicit_anchors.push(Anchor::new(
@@ -815,11 +810,6 @@ fn generate_implicit_anchors(
             let corridor_max_y = y_coords[range.end as usize] - Fixed::EPSILON;
             let corridor_min_x = x_coords[i];
             let corridor_max_x = x_coords[i + width];
-
-            if (corridor_max_x - corridor_min_x) >= (corridor_max_y - corridor_min_y) {
-                continue;
-            }
-
             let corridor_x = (corridor_min_x + corridor_max_x) * fixed!(0.5);
 
             implicit_anchors.push(Anchor::new(
