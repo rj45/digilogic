@@ -1,4 +1,4 @@
-use crate::{NetQuery, VertexKind};
+use crate::{JunctionKind, NetQuery, VertexKind};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::entity::Entity;
@@ -326,6 +326,31 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                 let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
                 vertices.0[pair.index].position.y = y + offset * MIN_WIRE_SPACING;
                 vertices.0[pair.index + 1].position.y = y + offset * MIN_WIRE_SPACING;
+
+                let (head, tail) = vertices.0.split_at_mut(pair.index + 2);
+                for junction in &head[pair.index].connected_junctions {
+                    match junction.kind {
+                        JunctionKind::LineSegment => {
+                            tail[junction.vertex_index as usize - head.len()].position.y =
+                                head[pair.index].position.y;
+                        }
+                        JunctionKind::Corner => {
+                            // TODO: move the vertex before the junction if needed
+                            tail[junction.vertex_index as usize - head.len()].position =
+                                head[pair.index].position;
+                        }
+                    }
+                }
+                for junction in &head[pair.index + 1].connected_junctions {
+                    match junction.kind {
+                        JunctionKind::LineSegment => (),
+                        JunctionKind::Corner => {
+                            // TODO: move the vertex before the junction if needed
+                            tail[junction.vertex_index as usize - head.len()].position =
+                                head[pair.index + 1].position;
+                        }
+                    }
+                }
             }
         }
     }
@@ -340,6 +365,31 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                 let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
                 vertices.0[pair.index].position.x = x + offset * MIN_WIRE_SPACING;
                 vertices.0[pair.index + 1].position.x = x + offset * MIN_WIRE_SPACING;
+
+                let (head, tail) = vertices.0.split_at_mut(pair.index + 2);
+                for junction in &head[pair.index].connected_junctions {
+                    match junction.kind {
+                        JunctionKind::LineSegment => {
+                            tail[junction.vertex_index as usize - head.len()].position.x =
+                                head[pair.index].position.x;
+                        }
+                        JunctionKind::Corner => {
+                            // TODO: move the vertex before the junction if needed
+                            tail[junction.vertex_index as usize - head.len()].position =
+                                head[pair.index].position;
+                        }
+                    }
+                }
+                for junction in &head[pair.index + 1].connected_junctions {
+                    match junction.kind {
+                        JunctionKind::LineSegment => (),
+                        JunctionKind::Corner => {
+                            // TODO: move the vertex before the junction if needed
+                            tail[junction.vertex_index as usize - head.len()].position =
+                                head[pair.index + 1].position;
+                        }
+                    }
+                }
             }
         }
     }

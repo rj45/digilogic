@@ -1,6 +1,6 @@
 use crate::graph::Graph;
 use crate::path_finding::*;
-use crate::{EndpointQuery, Vertex, VertexKind};
+use crate::{EndpointQuery, Junction, JunctionKind, Vertex, VertexKind};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
@@ -11,10 +11,17 @@ use digilogic_core::transform::*;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 
+#[derive(Debug)]
+struct PathFindingEnd {
+    position: Vec2,
+    vertex_index: u32,
+    junction_kind: JunctionKind,
+}
+
 #[derive(Default)]
 struct ThreadLocalData {
     path_finder: PathFinder,
-    ends: Vec<Vec2>,
+    ends: Vec<PathFindingEnd>,
 }
 
 fn pick_root_path(
@@ -48,19 +55,15 @@ fn pick_root_path(
 fn push_vertices(
     path: &Path,
     vertices: &mut Vec<Vertex>,
-    ends: &mut Vec<Vec2>,
+    ends: &mut Vec<PathFindingEnd>,
     is_root: bool,
     is_junction: bool,
-) {
-    ends.reserve(path.nodes().len());
-    for node in path.nodes() {
-        ends.push(node.position);
-    }
-
+) -> u32 {
     let mut first = true;
-    let mut prev_node: Option<PathNode> = None;
-    for (_, node) in path.iter_pruned() {
-        if let Some(prev_node) = prev_node {
+    let mut prev_node: Option<(usize, PathNode)> = None;
+    for (node_index, node) in path.iter_pruned() {
+        if let Some((prev_node_index, prev_node)) = prev_node {
+            let prev_vertex_index = vertices.len() as u32;
             vertices.push(Vertex {
                 position: prev_node.position,
                 kind: if first {
@@ -71,19 +74,40 @@ fn push_vertices(
                 connected_junctions: SmallVec::new(),
             });
 
+            ends.push(PathFindingEnd {
+                position: path.nodes()[prev_node_index].position,
+                vertex_index: prev_vertex_index,
+                junction_kind: JunctionKind::Corner,
+            });
+            for i in (prev_node_index + 1)..node_index {
+                ends.push(PathFindingEnd {
+                    position: path.nodes()[i].position,
+                    vertex_index: prev_vertex_index,
+                    junction_kind: JunctionKind::LineSegment,
+                });
+            }
+
             first = false;
         }
 
-        prev_node = Some(node);
+        prev_node = Some((node_index, node));
     }
 
-    if let Some(prev_node) = prev_node {
-        vertices.push(Vertex {
-            position: prev_node.position,
-            kind: VertexKind::WireEnd { is_junction },
-            connected_junctions: SmallVec::new(),
-        });
-    }
+    let (last_node_index, last_node) = prev_node.unwrap();
+    let last_vertex_index = vertices.len() as u32;
+    vertices.push(Vertex {
+        position: last_node.position,
+        kind: VertexKind::WireEnd { is_junction },
+        connected_junctions: SmallVec::new(),
+    });
+
+    ends.push(PathFindingEnd {
+        position: path.nodes()[last_node_index].position,
+        vertex_index: last_vertex_index,
+        junction_kind: JunctionKind::Corner,
+    });
+
+    last_vertex_index
 }
 
 fn push_fallback_vertices(
@@ -91,41 +115,27 @@ fn push_fallback_vertices(
     end: Vec2,
     start_dirs: Directions,
     vertices: &mut Vec<Vertex>,
+    ends: &mut Vec<PathFindingEnd>,
     is_root: bool,
     is_junction: bool,
-) -> Direction {
+) -> u32 {
+    let start_vertex_index = vertices.len() as u32;
     vertices.push(Vertex {
         position: start,
         kind: VertexKind::WireStart { is_root },
         connected_junctions: SmallVec::new(),
     });
 
-    let (middle, dir) = if start_dirs.intersects(Directions::X) {
-        let middle = Vec2 {
+    let middle = if start_dirs.intersects(Directions::X) {
+        Vec2 {
             x: end.x,
             y: start.y,
-        };
-
-        let dir = if end.y < start.y {
-            Direction::NegY
-        } else {
-            Direction::PosY
-        };
-
-        (middle, dir)
+        }
     } else {
-        let middle = Vec2 {
-            x: end.x,
-            y: start.y,
-        };
-
-        let dir = if end.x < start.x {
-            Direction::NegX
-        } else {
-            Direction::PosX
-        };
-
-        (middle, dir)
+        Vec2 {
+            x: start.x,
+            y: end.y,
+        }
     };
 
     if (middle != start) && (middle != end) {
@@ -136,13 +146,25 @@ fn push_fallback_vertices(
         });
     }
 
+    let end_vertex_index = vertices.len() as u32;
     vertices.push(Vertex {
         position: end,
         kind: VertexKind::WireEnd { is_junction },
         connected_junctions: SmallVec::new(),
     });
 
-    dir
+    ends.push(PathFindingEnd {
+        position: start,
+        vertex_index: start_vertex_index,
+        junction_kind: JunctionKind::Corner,
+    });
+    ends.push(PathFindingEnd {
+        position: end,
+        vertex_index: end_vertex_index,
+        junction_kind: JunctionKind::Corner,
+    });
+
+    end_vertex_index
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,17 +200,16 @@ fn route_root_wire(
                 root_start_pos.x, root_start_pos.y, root_end_pos.x, root_end_pos.y
             );
 
-            let root_end_node = &graph.nodes[graph.find_node(root_end_pos).unwrap()];
+            let root_start_node = &graph.nodes[graph.find_node(root_start_pos).unwrap()];
             push_fallback_vertices(
-                root_end_pos,
                 root_start_pos,
-                root_end_node.legal_directions,
+                root_end_pos,
+                root_start_node.legal_directions,
                 vertices,
+                ends,
                 true,
                 false,
             );
-
-            ends.push(root_end_pos);
         }
         PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
             return Err(RoutingError::InvalidPoint);
@@ -218,23 +239,51 @@ fn route_branch_wires(
             }
 
             let endpoint_pos = endpoint_transform.translation;
-            match path_finder.find_path_multi(graph, endpoint_pos, ends) {
-                PathFindResult::Found(path) => {
-                    push_vertices(&path, vertices, ends, false, true);
-                }
+            let last_vertex_index = match path_finder.find_path_multi(
+                graph,
+                endpoint_pos,
+                ends.iter().map(|end| end.position),
+            ) {
+                PathFindResult::Found(path) => push_vertices(&path, vertices, ends, false, true),
                 PathFindResult::NotFound => {
                     debug!(
                         "no path between ({}, {}) and root net found, generating fallback wire",
                         endpoint_pos.x, endpoint_pos.y
                     );
 
-                    ends.push(endpoint_pos);
+                    let start_node = &graph.nodes[graph.find_node(endpoint_pos).unwrap()];
+                    let end = ends
+                        .iter()
+                        .min_by_key(|end| end.position.manhatten_distance_to(endpoint_pos))
+                        .unwrap();
+
+                    push_fallback_vertices(
+                        endpoint_pos,
+                        end.position,
+                        start_node.legal_directions,
+                        vertices,
+                        ends,
+                        true,
+                        false,
+                    )
                 }
                 PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
                     result = Err(RoutingError::InvalidPoint);
                     return JCF::Exit;
                 }
-            }
+            };
+
+            let junction_end = ends
+                .iter()
+                .find(|end| end.position == vertices[last_vertex_index as usize].position)
+                .unwrap();
+            let junction_vertex_index = junction_end.vertex_index as usize;
+            vertices[junction_vertex_index]
+                .connected_junctions
+                .push(Junction {
+                    vertex_index: last_vertex_index,
+                    kind: junction_end.junction_kind,
+                });
 
             JCF::Continue
         });

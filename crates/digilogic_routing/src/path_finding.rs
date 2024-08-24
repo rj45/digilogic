@@ -331,7 +331,7 @@ impl PathFinder {
         &mut self,
         graph: &Graph,
         start: Vec2,
-        ends: &[Vec2],
+        ends: impl Iterator<Item = Vec2>,
     ) -> PathFindResult {
         let Some(start_index) = graph.find_node(start) else {
             error!(
@@ -343,7 +343,7 @@ impl PathFinder {
 
         self.end_indices.clear();
         let mut total_neighbor_count = 0;
-        for &end in ends {
+        for end in ends {
             let Some(end_index) = graph.find_node(end) else {
                 error!(
                     "End point ({}, {}) does not exist in the graph",
