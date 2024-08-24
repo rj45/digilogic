@@ -389,14 +389,6 @@ fn layout_circuit(
     graph: &mut MetaGraph,
     bit_map: &HashMap<usize, NetBit>,
 ) -> anyhow::Result<()> {
-    std::fs::write(
-        "graph.dot",
-        format!(
-            "{:?}",
-            petgraph::dot::Dot::with_config(&graph.graph, &[petgraph::dot::Config::EdgeNoLabel])
-        ),
-    )?;
-
     // add adjacency constraints
     let node_indices = graph.graph.node_indices().collect::<Vec<_>>();
     for index in node_indices.iter() {
@@ -442,6 +434,14 @@ fn layout_circuit(
 
     digilogic_layout::layout_graph(&mut graph.graph).map_err(anyhow::Error::msg)?;
 
+    std::fs::write(
+        "graph.dot",
+        format!(
+            "{:?}",
+            petgraph::dot::Dot::with_config(&graph.graph, &[petgraph::dot::Config::EdgeNoLabel])
+        ),
+    )?;
+
     let mut max_x: f64 = 0.;
     let mut max_y: f64 = 0.;
 
@@ -484,6 +484,9 @@ fn layout_circuit(
             }
             NodeEntity::ListenerJunction(_net_id) => {
                 // TODO: place waypoints?
+            }
+            NodeEntity::Dummy => {
+                // ignore
             }
         }
     }
