@@ -285,7 +285,7 @@ mod tests {
     use super::*;
 
     macro_rules! nz {
-        ($v:expr) => {
+        ($v:literal) => {
             match NonZeroU8::new($v) {
                 Some(v) => v,
                 None => panic!("passed zero to a non-zero value"),
