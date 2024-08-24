@@ -16,7 +16,7 @@ missing-debug-implementations = "warn"
 non-ascii-idents = "forbid"
 non-local-definitions = "forbid"
 redundant-lifetimes = "warn"
-rust_2024_compatibility = "forbid"
+rust_2024_compatibility = { level = "forbid", priority = -1 }
 single-use-lifetimes = "warn"
 unit-bindings = "warn"
 unnameable-types = "warn"
