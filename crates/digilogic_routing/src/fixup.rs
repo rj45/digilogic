@@ -1,10 +1,10 @@
-use crate::{Junction, JunctionKind, NetQuery, Vertex, VertexKind};
+use crate::{JunctionKind, NetQuery, Vertex, VertexKind};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::entity::Entity;
 use digilogic_core::components::Child;
 use digilogic_core::{fixed, Fixed, HashMap};
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use std::ops::{Index, IndexMut};
 
 const MIN_WIRE_SPACING: Fixed = fixed!(10);
@@ -20,39 +20,37 @@ struct VertexPair {
 
 impl VertexPair {
     #[inline]
-    fn new(start_inclusive: Fixed, end_inclusive: Fixed, net: Entity, index: usize) -> Self {
-        Self {
-            start_inclusive,
-            end_inclusive,
-            net,
-            index,
-            track: usize::MAX,
-        }
-    }
-
-    #[inline]
     fn overlaps(&self, other: &Self) -> bool {
         !(((self.start_inclusive - MIN_WIRE_SPACING) > other.end_inclusive)
             || ((self.end_inclusive + MIN_WIRE_SPACING) < other.start_inclusive))
     }
 }
 
-#[derive(Debug)]
-struct RangeItem {
-    start_inclusive: Fixed,
-    end_inclusive: Fixed,
-    values: SmallVec<[VertexPair; 1]>,
+#[derive(Debug, Default)]
+struct Corridor {
+    pairs: SmallVec<[VertexPair; 1]>,
     track_count: usize,
 }
 
-impl RangeItem {
+impl Corridor {
+    #[inline]
+    fn insert(&mut self, start_inclusive: Fixed, end_inclusive: Fixed, net: Entity, index: usize) {
+        self.pairs.push(VertexPair {
+            start_inclusive,
+            end_inclusive,
+            net,
+            index,
+            track: usize::MAX,
+        })
+    }
+
     fn assign_tracks(&mut self) {
         // TODO: save memory using bitvec
         let mut used_tracks: SmallVec<[bool; 16]> = SmallVec::new();
 
         // This is essentially greedy graph coloring.
-        for i in 0..self.values.len() {
-            let (&mut ref head, tail) = self.values.split_at_mut(i);
+        for i in 0..self.pairs.len() {
+            let (&mut ref head, tail) = self.pairs.split_at_mut(i);
             let current = tail.first_mut().unwrap();
 
             used_tracks.clear();
@@ -72,213 +70,6 @@ impl RangeItem {
                 .unwrap_or(used_tracks.len());
             self.track_count = self.track_count.max(current.track + 1);
         }
-    }
-}
-
-#[derive(Debug, Default)]
-struct RangeSet {
-    ranges: Vec<RangeItem>,
-}
-
-impl RangeSet {
-    #[cfg(debug_assertions)]
-    fn is_sorted(&self) -> bool {
-        for range in &self.ranges {
-            if range.start_inclusive >= range.end_inclusive {
-                return false;
-            }
-        }
-
-        for pair in self.ranges.windows(2) {
-            let [a, b] = pair else {
-                unreachable!();
-            };
-
-            if a.end_inclusive >= b.start_inclusive {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    fn merge_ranges(&mut self, index: usize) {
-        while (index + 1) < self.ranges.len() {
-            let (head, tail) = self.ranges.split_at_mut(index + 1);
-
-            let dst_range = &mut head[index];
-            let src_range = &mut tail[0];
-
-            if src_range.start_inclusive > dst_range.end_inclusive {
-                break;
-            }
-
-            dst_range.values.extend(src_range.values.drain(..));
-            self.ranges.remove(index + 1);
-        }
-    }
-
-    fn insert(
-        &mut self,
-        start_inclusive: Fixed,
-        end_inclusive: Fixed,
-        net: Entity,
-        vertex_index: usize,
-    ) {
-        match self
-            .ranges
-            .binary_search_by_key(&start_inclusive, |range| range.start_inclusive)
-        {
-            Ok(index) => {
-                let existing_range = &mut self.ranges[index];
-
-                // Start of the new range is identical to an existing one, so they need to merge.
-                existing_range.values.push(VertexPair::new(
-                    start_inclusive,
-                    end_inclusive,
-                    net,
-                    vertex_index,
-                ));
-
-                if existing_range.end_inclusive < end_inclusive {
-                    // Existing range is shorter than the new one, extend it.
-                    existing_range.end_inclusive = end_inclusive;
-
-                    // Merge following ranges if they overlap with the extended one.
-                    self.merge_ranges(index);
-                }
-            }
-            Err(0) => {
-                // The new range will be the new first range in the list.
-
-                'insert: {
-                    // Check if it needs to merge with following ranges.
-                    if let Some(next_range) = self.ranges.first_mut() {
-                        if next_range.start_inclusive <= end_inclusive {
-                            // The ranges do need to merge, so use the existing range object.
-                            next_range.start_inclusive = start_inclusive;
-                            next_range.values.push(VertexPair::new(
-                                start_inclusive,
-                                end_inclusive,
-                                net,
-                                vertex_index,
-                            ));
-
-                            if next_range.end_inclusive < end_inclusive {
-                                // Existing range is shorter than the new one, extend it.
-                                next_range.end_inclusive = end_inclusive;
-
-                                // Merge following ranges if they overlap with the extended one.
-                                self.merge_ranges(0);
-                            }
-
-                            break 'insert;
-                        }
-                    }
-
-                    // No merge required, insert a new range.
-                    self.ranges.insert(
-                        0,
-                        RangeItem {
-                            start_inclusive,
-                            end_inclusive,
-                            values: smallvec![VertexPair::new(
-                                start_inclusive,
-                                end_inclusive,
-                                net,
-                                vertex_index
-                            )],
-                            track_count: 0,
-                        },
-                    );
-                }
-            }
-            Err(index) => {
-                'insert: {
-                    // Check if the new range needs to be merged with the previous one.
-                    if let Some(prev_range) = self.ranges.get_mut(index - 1) {
-                        if prev_range.end_inclusive >= start_inclusive {
-                            // The ranges do need to merge, so use the existing range object.
-                            prev_range.values.push(VertexPair::new(
-                                start_inclusive,
-                                end_inclusive,
-                                net,
-                                vertex_index,
-                            ));
-
-                            if prev_range.end_inclusive < end_inclusive {
-                                // Existing range is shorter than the new one, extend it.
-                                prev_range.end_inclusive = end_inclusive;
-
-                                // Merge following ranges if they overlap with the extended one.
-                                self.merge_ranges(index - 1);
-                            }
-
-                            break 'insert;
-                        }
-                    }
-
-                    // Check if it needs to merge with following ranges.
-                    if let Some(next_range) = self.ranges.get_mut(index) {
-                        if next_range.start_inclusive <= end_inclusive {
-                            // The ranges do need to merge, so use the existing range object.
-                            next_range.start_inclusive = start_inclusive;
-                            next_range.values.push(VertexPair::new(
-                                start_inclusive,
-                                end_inclusive,
-                                net,
-                                vertex_index,
-                            ));
-
-                            if next_range.end_inclusive < end_inclusive {
-                                // Existing range is shorter than the new one, extend it.
-                                next_range.end_inclusive = end_inclusive;
-
-                                // Merge following ranges if they overlap with the extended one.
-                                self.merge_ranges(index);
-                            }
-
-                            break 'insert;
-                        }
-                    }
-
-                    // No merge required, insert a new range.
-                    self.ranges.insert(
-                        index,
-                        RangeItem {
-                            start_inclusive,
-                            end_inclusive,
-                            values: smallvec![VertexPair::new(
-                                start_inclusive,
-                                end_inclusive,
-                                net,
-                                vertex_index
-                            )],
-                            track_count: 0,
-                        },
-                    );
-                }
-            }
-        }
-
-        #[cfg(debug_assertions)]
-        if !self.is_sorted() {
-            eprintln!("{self:#?}");
-            panic!();
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn insert() {
-        let mut set = RangeSet::default();
-        set.insert(fixed!(-460), fixed!(-430), Entity::PLACEHOLDER, 0);
-        set.insert(fixed!(-160), fixed!(4720), Entity::PLACEHOLDER, 0);
-        set.insert(fixed!(-280), fixed!(3240), Entity::PLACEHOLDER, 0);
     }
 }
 
@@ -402,8 +193,8 @@ fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut HeadTail<Vertex>) {
 
 #[tracing::instrument(skip_all)]
 pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQuery) {
-    let mut horizontal_sets: HashMap<Fixed, RangeSet> = HashMap::default();
-    let mut vertical_sets: HashMap<Fixed, RangeSet> = HashMap::default();
+    let mut horizontal_corridors: HashMap<Fixed, Corridor> = HashMap::default();
+    let mut vertical_corridors: HashMap<Fixed, Corridor> = HashMap::default();
 
     circuit_children
         .join::<Child>(&*nets)
@@ -420,14 +211,14 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                 if a.position.y == b.position.y {
                     let min_x = a.position.x.min(b.position.x);
                     let max_x = a.position.x.max(b.position.x);
-                    horizontal_sets
+                    horizontal_corridors
                         .entry(a.position.y)
                         .or_default()
                         .insert(min_x, max_x, net, i);
                 } else if a.position.x == b.position.x {
                     let min_y = a.position.y.min(b.position.y);
                     let max_y = a.position.y.max(b.position.y);
-                    vertical_sets
+                    vertical_corridors
                         .entry(a.position.x)
                         .or_default()
                         .insert(min_y, max_y, net, i);
@@ -435,41 +226,37 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
             }
         });
 
-    for (y, set) in horizontal_sets {
-        for mut range in set.ranges {
-            range.assign_tracks();
-            let track_offset = Fixed::try_from_usize(range.track_count - 1).unwrap() * fixed!(0.5);
+    for (y, mut corridor) in horizontal_corridors {
+        corridor.assign_tracks();
+        let track_offset = Fixed::try_from_usize(corridor.track_count - 1).unwrap() * fixed!(0.5);
 
-            for pair in range.values {
-                let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
-                let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
+        for pair in corridor.pairs {
+            let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
+            let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
 
-                let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
-                let y = y + offset * MIN_WIRE_SPACING;
-                a.position.y = y;
-                b.position.y = y;
+            let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
+            let y = y + offset * MIN_WIRE_SPACING;
+            a.position.y = y;
+            b.position.y = y;
 
-                move_junctions(a, b, &mut vertices);
-            }
+            move_junctions(a, b, &mut vertices);
         }
     }
 
-    for (x, set) in vertical_sets {
-        for mut range in set.ranges {
-            range.assign_tracks();
-            let track_offset = Fixed::try_from_usize(range.track_count - 1).unwrap() * fixed!(0.5);
+    for (x, mut corridor) in vertical_corridors {
+        corridor.assign_tracks();
+        let track_offset = Fixed::try_from_usize(corridor.track_count - 1).unwrap() * fixed!(0.5);
 
-            for pair in range.values {
-                let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
-                let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
+        for pair in corridor.pairs {
+            let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
+            let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
 
-                let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
-                let x = x + offset * MIN_WIRE_SPACING;
-                a.position.x = x;
-                b.position.x = x;
+            let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
+            let x = x + offset * MIN_WIRE_SPACING;
+            a.position.x = x;
+            b.position.x = x;
 
-                move_junctions(a, b, &mut vertices);
-            }
+            move_junctions(a, b, &mut vertices);
         }
     }
 }
