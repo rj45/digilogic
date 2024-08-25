@@ -79,7 +79,7 @@ struct Tail<'a, T> {
 }
 
 impl<T> Tail<'_, T> {
-    fn split_pair<'b>(&'b mut self, pair_index: usize) -> (&'b mut T, &'b mut T, Tail<'b, T>) {
+    fn split_pair(&mut self, pair_index: usize) -> (&mut T, &mut T, Tail<T>) {
         let (a, tail) = self.tail[(pair_index - self.offset)..]
             .split_first_mut()
             .unwrap();
@@ -123,6 +123,42 @@ impl<T> IndexMut<usize> for Tail<'_, T> {
             &mut self.tail[index - self.offset]
         } else {
             panic!("attempt to index into gap")
+        }
+    }
+}
+
+fn find_min_max_x(v: &Vertex, vertices: &[Vertex], min_x: &mut Fixed, max_x: &mut Fixed) {
+    // Recursively follows all horizontal corner junctions to find the actual start and and X coordinates.
+
+    for junction in &v.connected_junctions {
+        match junction.kind {
+            JunctionKind::LineSegment => (),
+            JunctionKind::Corner => {
+                let prev = &vertices[junction.vertex_index as usize - 1];
+                if prev.position.y == v.position.y {
+                    *min_x = (*min_x).min(prev.position.x);
+                    *max_x = (*max_x).max(prev.position.x);
+                    find_min_max_x(prev, vertices, min_x, max_x);
+                }
+            }
+        }
+    }
+}
+
+fn find_min_max_y(v: &Vertex, vertices: &[Vertex], min_y: &mut Fixed, max_y: &mut Fixed) {
+    // Recursively follows all vertical corner junctions to find the actual start and and Y coordinates.
+
+    for junction in &v.connected_junctions {
+        match junction.kind {
+            JunctionKind::LineSegment => (),
+            JunctionKind::Corner => {
+                let prev = &vertices[junction.vertex_index as usize - 1];
+                if prev.position.x == v.position.x {
+                    *min_y = (*min_y).min(prev.position.y);
+                    *max_y = (*max_y).max(prev.position.y);
+                    find_min_max_y(prev, vertices, min_y, max_y);
+                }
+            }
         }
     }
 }
@@ -227,17 +263,23 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                 }
 
                 if a.position.y == b.position.y {
-                    // TODO: include corner junctions in min/max
-                    let min_x = a.position.x.min(b.position.x);
-                    let max_x = a.position.x.max(b.position.x);
+                    let mut min_x = a.position.x.min(b.position.x);
+                    let mut max_x = a.position.x.max(b.position.x);
+
+                    find_min_max_x(a, vertices, &mut min_x, &mut max_x);
+                    find_min_max_x(b, vertices, &mut min_x, &mut max_x);
+
                     horizontal_corridors
                         .entry(a.position.y)
                         .or_default()
                         .insert(min_x, max_x, net, i);
                 } else if a.position.x == b.position.x {
-                    // TODO: include corner junctions in min/max
-                    let min_y = a.position.y.min(b.position.y);
-                    let max_y = a.position.y.max(b.position.y);
+                    let mut min_y = a.position.y.min(b.position.y);
+                    let mut max_y = a.position.y.max(b.position.y);
+
+                    find_min_max_y(a, vertices, &mut min_y, &mut max_y);
+                    find_min_max_y(b, vertices, &mut min_y, &mut max_y);
+
                     vertical_corridors
                         .entry(a.position.x)
                         .or_default()
