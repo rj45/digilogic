@@ -73,57 +73,64 @@ impl Corridor {
     }
 }
 
-struct HeadTail<'a, T> {
-    gap_size: usize,
-    head: &'a mut [T],
+struct Tail<'a, T> {
+    offset: usize,
     tail: &'a mut [T],
 }
 
-impl<'a, T> HeadTail<'a, T> {
-    fn split_pair(list: &'a mut [T], pair_index: usize) -> (&'a mut T, &'a mut T, Self) {
-        let (head, tail) = list.split_at_mut(pair_index);
-        let (a, tail) = tail.split_first_mut().unwrap();
+impl<T> Tail<'_, T> {
+    fn split_pair<'b>(&'b mut self, pair_index: usize) -> (&'b mut T, &'b mut T, Tail<'b, T>) {
+        let (a, tail) = self.tail[(pair_index - self.offset)..]
+            .split_first_mut()
+            .unwrap();
         let (b, tail) = tail.split_first_mut().unwrap();
 
         (
             a,
             b,
-            Self {
-                gap_size: 2,
-                head,
+            Tail {
+                offset: pair_index + 2,
                 tail,
             },
         )
     }
 }
 
-impl<T> Index<usize> for HeadTail<'_, T> {
+impl<'a, T> From<&'a mut [T]> for Tail<'a, T> {
+    #[inline]
+    fn from(tail: &'a mut [T]) -> Self {
+        Self { offset: 0, tail }
+    }
+}
+
+impl<T> Index<usize> for Tail<'_, T> {
     type Output = T;
 
+    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
-        if index < self.head.len() {
-            &self.head[index]
-        } else if index >= (self.head.len() + self.gap_size) {
-            &self.tail[index - self.head.len() - self.gap_size]
+        if index >= self.offset {
+            &self.tail[index - self.offset]
         } else {
             panic!("attempt to index into gap")
         }
     }
 }
 
-impl<T> IndexMut<usize> for HeadTail<'_, T> {
+impl<T> IndexMut<usize> for Tail<'_, T> {
+    #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index < self.head.len() {
-            &mut self.head[index]
-        } else if index >= (self.head.len() + self.gap_size) {
-            &mut self.tail[index - self.head.len() - self.gap_size]
+        if index >= self.offset {
+            &mut self.tail[index - self.offset]
         } else {
             panic!("attempt to index into gap")
         }
     }
 }
 
-fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut HeadTail<Vertex>) {
+fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut Tail<Vertex>) {
+    // We can use the tail as the vertex list because junction vertices
+    // will always occur after the line segment they are connected to.
+
     for junction in &a.connected_junctions {
         let junction_index = junction.vertex_index as usize;
 
@@ -154,7 +161,8 @@ fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut HeadTail<Vertex>) {
                         vertices[junction_index - 1].position.x = a.position.x;
                     }
 
-                    // TODO: move junctions recursively
+                    let (a, b, mut vertices) = vertices.split_pair(junction_index - 1);
+                    move_junctions(a, b, &mut vertices);
                 }
             }
         }
@@ -184,7 +192,8 @@ fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut HeadTail<Vertex>) {
                         vertices[junction_index - 1].position.x = b.position.x;
                     }
 
-                    // TODO: move junctions recursively
+                    let (a, b, mut vertices) = vertices.split_pair(junction_index - 1);
+                    move_junctions(a, b, &mut vertices);
                 }
             }
         }
@@ -204,6 +213,8 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     unreachable!();
                 };
 
+                // Corner junctions are not inserted because they are
+                // considered part of the segment they connect to.
                 match (a.kind, b.kind) {
                     (
                         VertexKind::Normal,
@@ -216,6 +227,7 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                 }
 
                 if a.position.y == b.position.y {
+                    // TODO: include corner junctions in min/max
                     let min_x = a.position.x.min(b.position.x);
                     let max_x = a.position.x.max(b.position.x);
                     horizontal_corridors
@@ -223,6 +235,7 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                         .or_default()
                         .insert(min_x, max_x, net, i);
                 } else if a.position.x == b.position.x {
+                    // TODO: include corner junctions in min/max
                     let min_y = a.position.y.min(b.position.y);
                     let max_y = a.position.y.max(b.position.y);
                     vertical_corridors
@@ -239,7 +252,8 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
-            let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
+            let mut vertices = Tail::from(vertices.0.as_mut_slice());
+            let (a, b, mut vertices) = vertices.split_pair(pair.index);
 
             let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
             let y = y + offset * MIN_WIRE_SPACING;
@@ -256,7 +270,8 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
-            let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
+            let mut vertices = Tail::from(vertices.0.as_mut_slice());
+            let (a, b, mut vertices) = vertices.split_pair(pair.index);
 
             let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
             let x = x + offset * MIN_WIRE_SPACING;
