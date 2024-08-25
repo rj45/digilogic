@@ -1,10 +1,11 @@
-use crate::{JunctionKind, NetQuery, VertexKind};
+use crate::{Junction, JunctionKind, NetQuery, Vertex, VertexKind};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::entity::Entity;
 use digilogic_core::components::Child;
 use digilogic_core::{fixed, Fixed, HashMap};
 use smallvec::{smallvec, SmallVec};
+use std::ops::{Index, IndexMut};
 
 const MIN_WIRE_SPACING: Fixed = fixed!(10);
 
@@ -281,6 +282,124 @@ mod tests {
     }
 }
 
+struct HeadTail<'a, T> {
+    gap_size: usize,
+    head: &'a mut [T],
+    tail: &'a mut [T],
+}
+
+impl<'a, T> HeadTail<'a, T> {
+    fn split_pair(list: &'a mut [T], pair_index: usize) -> (&'a mut T, &'a mut T, Self) {
+        let (head, tail) = list.split_at_mut(pair_index);
+        let (a, tail) = tail.split_first_mut().unwrap();
+        let (b, tail) = tail.split_first_mut().unwrap();
+
+        (
+            a,
+            b,
+            Self {
+                gap_size: 2,
+                head,
+                tail,
+            },
+        )
+    }
+}
+
+impl<T> Index<usize> for HeadTail<'_, T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index < self.head.len() {
+            &self.head[index]
+        } else if index >= (self.head.len() + self.gap_size) {
+            &self.tail[index - self.head.len() - self.gap_size]
+        } else {
+            panic!("attempt to index into gap")
+        }
+    }
+}
+
+impl<T> IndexMut<usize> for HeadTail<'_, T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index < self.head.len() {
+            &mut self.head[index]
+        } else if index >= (self.head.len() + self.gap_size) {
+            &mut self.tail[index - self.head.len() - self.gap_size]
+        } else {
+            panic!("attempt to index into gap")
+        }
+    }
+}
+
+fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut HeadTail<Vertex>) {
+    for junction in &a.connected_junctions {
+        let junction_index = junction.vertex_index as usize;
+
+        match junction.kind {
+            JunctionKind::LineSegment => {
+                if a.position.y == b.position.y {
+                    vertices[junction_index].position.y = a.position.y;
+                } else if a.position.x == b.position.x {
+                    vertices[junction_index].position.x = a.position.x;
+                }
+            }
+            JunctionKind::Corner => {
+                let is_horizontal =
+                    vertices[junction_index].position.y == vertices[junction_index - 1].position.y;
+                let is_vertical =
+                    vertices[junction_index].position.x == vertices[junction_index - 1].position.x;
+
+                vertices[junction_index].position = a.position;
+                if matches!(
+                    vertices[junction_index - 1].kind,
+                    VertexKind::WireStart { .. }
+                ) {
+                    // TODO: we can't move this vertex because it connects to a port, but this prodcues a diagonal wire
+                } else {
+                    if is_horizontal {
+                        vertices[junction_index - 1].position.y = a.position.y;
+                    } else if is_vertical {
+                        vertices[junction_index - 1].position.x = a.position.x;
+                    }
+
+                    // TODO: move junctions recursively
+                }
+            }
+        }
+    }
+
+    for junction in &b.connected_junctions {
+        let junction_index = junction.vertex_index as usize;
+
+        match junction.kind {
+            JunctionKind::LineSegment => (),
+            JunctionKind::Corner => {
+                let is_horizontal =
+                    vertices[junction_index].position.y == vertices[junction_index - 1].position.y;
+                let is_vertical =
+                    vertices[junction_index].position.x == vertices[junction_index - 1].position.x;
+
+                vertices[junction_index].position = b.position;
+                if matches!(
+                    vertices[junction_index - 1].kind,
+                    VertexKind::WireStart { .. }
+                ) {
+                    // TODO: we can't move this vertex because it connects to a port, but this prodcues a diagonal wire
+                } else {
+                    if is_horizontal {
+                        vertices[junction_index - 1].position.y = b.position.y;
+                    } else if is_vertical {
+                        vertices[junction_index - 1].position.x = b.position.x;
+                    }
+
+                    // TODO: move junctions recursively
+                }
+            }
+        }
+    }
+}
+
 #[tracing::instrument(skip_all)]
 pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQuery) {
     let mut horizontal_sets: HashMap<Fixed, RangeSet> = HashMap::default();
@@ -323,34 +442,14 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
             for pair in range.values {
                 let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
-                let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
-                vertices.0[pair.index].position.y = y + offset * MIN_WIRE_SPACING;
-                vertices.0[pair.index + 1].position.y = y + offset * MIN_WIRE_SPACING;
+                let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
 
-                let (head, tail) = vertices.0.split_at_mut(pair.index + 2);
-                for junction in &head[pair.index].connected_junctions {
-                    match junction.kind {
-                        JunctionKind::LineSegment => {
-                            tail[junction.vertex_index as usize - head.len()].position.y =
-                                head[pair.index].position.y;
-                        }
-                        JunctionKind::Corner => {
-                            // TODO: move the vertex before the junction if needed
-                            tail[junction.vertex_index as usize - head.len()].position =
-                                head[pair.index].position;
-                        }
-                    }
-                }
-                for junction in &head[pair.index + 1].connected_junctions {
-                    match junction.kind {
-                        JunctionKind::LineSegment => (),
-                        JunctionKind::Corner => {
-                            // TODO: move the vertex before the junction if needed
-                            tail[junction.vertex_index as usize - head.len()].position =
-                                head[pair.index + 1].position;
-                        }
-                    }
-                }
+                let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
+                let y = y + offset * MIN_WIRE_SPACING;
+                a.position.y = y;
+                b.position.y = y;
+
+                move_junctions(a, b, &mut vertices);
             }
         }
     }
@@ -362,34 +461,14 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
             for pair in range.values {
                 let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
-                let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
-                vertices.0[pair.index].position.x = x + offset * MIN_WIRE_SPACING;
-                vertices.0[pair.index + 1].position.x = x + offset * MIN_WIRE_SPACING;
+                let (a, b, mut vertices) = HeadTail::split_pair(&mut vertices.0, pair.index);
 
-                let (head, tail) = vertices.0.split_at_mut(pair.index + 2);
-                for junction in &head[pair.index].connected_junctions {
-                    match junction.kind {
-                        JunctionKind::LineSegment => {
-                            tail[junction.vertex_index as usize - head.len()].position.x =
-                                head[pair.index].position.x;
-                        }
-                        JunctionKind::Corner => {
-                            // TODO: move the vertex before the junction if needed
-                            tail[junction.vertex_index as usize - head.len()].position =
-                                head[pair.index].position;
-                        }
-                    }
-                }
-                for junction in &head[pair.index + 1].connected_junctions {
-                    match junction.kind {
-                        JunctionKind::LineSegment => (),
-                        JunctionKind::Corner => {
-                            // TODO: move the vertex before the junction if needed
-                            tail[junction.vertex_index as usize - head.len()].position =
-                                head[pair.index + 1].position;
-                        }
-                    }
-                }
+                let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
+                let x = x + offset * MIN_WIRE_SPACING;
+                a.position.x = x;
+                b.position.x = x;
+
+                move_junctions(a, b, &mut vertices);
             }
         }
     }
