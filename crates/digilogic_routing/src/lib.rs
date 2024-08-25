@@ -32,7 +32,7 @@ pub enum VertexKind {
         is_root: bool,
     },
     WireEnd {
-        is_junction: bool,
+        junction_kind: Option<JunctionKind>,
     },
 }
 

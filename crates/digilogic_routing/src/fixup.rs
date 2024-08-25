@@ -204,8 +204,15 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     unreachable!();
                 };
 
-                if (a.kind != VertexKind::Normal) || (b.kind != VertexKind::Normal) {
-                    continue;
+                match (a.kind, b.kind) {
+                    (
+                        VertexKind::Normal,
+                        VertexKind::Normal
+                        | VertexKind::WireEnd {
+                            junction_kind: Some(JunctionKind::LineSegment),
+                        },
+                    ) => (),
+                    _ => continue,
                 }
 
                 if a.position.y == b.position.y {

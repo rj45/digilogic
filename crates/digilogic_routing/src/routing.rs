@@ -57,7 +57,7 @@ fn push_vertices(
     vertices: &mut Vec<Vertex>,
     ends: &mut Vec<PathFindingEnd>,
     is_root: bool,
-    is_junction: bool,
+    junction_kind: Option<JunctionKind>,
 ) -> u32 {
     let mut first = true;
     let mut prev_node: Option<(usize, PathNode)> = None;
@@ -97,7 +97,7 @@ fn push_vertices(
     let last_vertex_index = vertices.len() as u32;
     vertices.push(Vertex {
         position: last_node.position,
-        kind: VertexKind::WireEnd { is_junction },
+        kind: VertexKind::WireEnd { junction_kind },
         connected_junctions: SmallVec::new(),
     });
 
@@ -117,7 +117,7 @@ fn push_fallback_vertices(
     vertices: &mut Vec<Vertex>,
     ends: &mut Vec<PathFindingEnd>,
     is_root: bool,
-    is_junction: bool,
+    junction_kind: Option<JunctionKind>,
 ) -> u32 {
     let start_vertex_index = vertices.len() as u32;
     vertices.push(Vertex {
@@ -149,7 +149,7 @@ fn push_fallback_vertices(
     let end_vertex_index = vertices.len() as u32;
     vertices.push(Vertex {
         position: end,
-        kind: VertexKind::WireEnd { is_junction },
+        kind: VertexKind::WireEnd { junction_kind },
         connected_junctions: SmallVec::new(),
     });
 
@@ -192,7 +192,7 @@ fn route_root_wire(
 
     match path_finder.find_path(graph, root_start_pos, root_end_pos) {
         PathFindResult::Found(path) => {
-            push_vertices(&path, vertices, ends, true, false);
+            push_vertices(&path, vertices, ends, true, None);
         }
         PathFindResult::NotFound => {
             debug!(
@@ -208,7 +208,7 @@ fn route_root_wire(
                 vertices,
                 ends,
                 true,
-                false,
+                None,
             );
         }
         PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
@@ -239,12 +239,23 @@ fn route_branch_wires(
             }
 
             let endpoint_pos = endpoint_transform.translation;
-            let last_vertex_index = match path_finder.find_path_multi(
-                graph,
-                endpoint_pos,
-                ends.iter().map(|end| end.position),
-            ) {
-                PathFindResult::Found(path) => push_vertices(&path, vertices, ends, false, true),
+            let (last_vertex_index, junction_kind, junction_vertex_index) = match path_finder
+                .find_path_multi(graph, endpoint_pos, ends.iter().map(|end| end.position))
+            {
+                PathFindResult::Found(path) => {
+                    let junction_end = ends
+                        .iter()
+                        .find(|end| end.position == path.nodes().last().unwrap().position)
+                        .unwrap();
+
+                    let junction_kind = junction_end.junction_kind;
+                    let junction_vertex_index = junction_end.vertex_index;
+
+                    let last_vertex_index =
+                        push_vertices(&path, vertices, ends, false, Some(junction_kind));
+
+                    (last_vertex_index, junction_kind, junction_vertex_index)
+                }
                 PathFindResult::NotFound => {
                     debug!(
                         "no path between ({}, {}) and root net found, generating fallback wire",
@@ -252,20 +263,25 @@ fn route_branch_wires(
                     );
 
                     let start_node = &graph.nodes[graph.find_node(endpoint_pos).unwrap()];
-                    let end = ends
+                    let junction_end = ends
                         .iter()
                         .min_by_key(|end| end.position.manhatten_distance_to(endpoint_pos))
                         .unwrap();
 
-                    push_fallback_vertices(
+                    let junction_kind = junction_end.junction_kind;
+                    let junction_vertex_index = junction_end.vertex_index;
+
+                    let last_vertex_index = push_fallback_vertices(
                         endpoint_pos,
-                        end.position,
+                        junction_end.position,
                         start_node.legal_directions,
                         vertices,
                         ends,
                         true,
-                        false,
-                    )
+                        Some(junction_kind),
+                    );
+
+                    (last_vertex_index, junction_kind, junction_vertex_index)
                 }
                 PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
                     result = Err(RoutingError::InvalidPoint);
@@ -273,16 +289,11 @@ fn route_branch_wires(
                 }
             };
 
-            let junction_end = ends
-                .iter()
-                .find(|end| end.position == vertices[last_vertex_index as usize].position)
-                .unwrap();
-            let junction_vertex_index = junction_end.vertex_index as usize;
-            vertices[junction_vertex_index]
+            vertices[junction_vertex_index as usize]
                 .connected_junctions
                 .push(Junction {
                     vertex_index: last_vertex_index,
-                    kind: junction_end.junction_kind,
+                    kind: junction_kind,
                 });
 
             JCF::Continue

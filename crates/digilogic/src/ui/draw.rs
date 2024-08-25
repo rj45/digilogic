@@ -203,7 +203,7 @@ pub fn draw_wires(
                             path.move_to(pos);
                             is_root_path = is_root;
                         }
-                        VertexKind::WireEnd { is_junction } => {
+                        VertexKind::WireEnd { junction_kind } => {
                             path.line_to(pos);
 
                             let is_root = is_root_path && app_state.show_root_wires;
@@ -222,7 +222,7 @@ pub fn draw_wires(
                                 &path,
                             );
 
-                            if is_junction {
+                            if junction_kind.is_some() {
                                 scene.fill(
                                     Fill::NonZero,
                                     Affine::IDENTITY,
