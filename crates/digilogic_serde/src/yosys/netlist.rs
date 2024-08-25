@@ -7,7 +7,7 @@
 
 use digilogic_core::SharedStr;
 use serde::Deserialize;
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{collections::BTreeMap, path::Path, sync::Arc};
 
 /// The known Yosys cell types
 #[allow(missing_docs)]
@@ -165,9 +165,9 @@ pub struct Cell {
     #[serde(rename = "type", deserialize_with = "cell_type")]
     pub cell_type: CellType,
     #[serde(default)]
-    pub parameters: HashMap<String, String>,
-    pub port_directions: HashMap<String, PortDirection>,
-    pub connections: HashMap<String, Bits>,
+    pub parameters: BTreeMap<String, String>,
+    pub port_directions: BTreeMap<String, PortDirection>,
+    pub connections: BTreeMap<String, Bits>,
 }
 
 #[derive(Deserialize)]
@@ -179,16 +179,16 @@ pub struct NetNameOpts {
 
 #[derive(Deserialize)]
 pub struct Module {
-    pub ports: HashMap<SharedStr, Port>,
+    pub ports: BTreeMap<SharedStr, Port>,
     #[serde(default)]
-    pub cells: HashMap<SharedStr, Cell>,
+    pub cells: BTreeMap<SharedStr, Cell>,
     #[serde(default, rename = "netnames")]
-    pub net_names: HashMap<SharedStr, NetNameOpts>,
+    pub net_names: BTreeMap<SharedStr, NetNameOpts>,
 }
 
 #[derive(Deserialize)]
 pub struct Netlist {
-    pub modules: HashMap<SharedStr, Module>,
+    pub modules: BTreeMap<SharedStr, Module>,
 }
 
 impl TryFrom<&str> for Netlist {

@@ -354,7 +354,6 @@ fn translate_net(
             // driver's port -> driver junction
             graph.graph.add_edge(*driver_id, *junction_id, ());
             driver_id = junction_id;
-            driver_node = junction;
         }
 
         if let Some(junction) = listener_junction {
@@ -364,7 +363,6 @@ fn translate_net(
                 // driver port -> listener junction
                 graph.graph.add_edge(*driver_id, *junction_id, ());
             }
-            driver_node = junction;
             driver_id = junction_id;
         }
 

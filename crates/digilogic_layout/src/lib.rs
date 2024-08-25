@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::Entity;
 use petgraph::algo::kosaraju_scc;
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use std::cmp::Ordering;
@@ -47,7 +47,7 @@ impl Node {
     }
 }
 
-pub type Graph = DiGraph<Node, ()>;
+pub type Graph = StableDiGraph<Node, ()>;
 
 pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     bevy_log::debug!(
@@ -68,7 +68,7 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
 }
 
 pub fn create_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<Graph, String> {
-    let mut graph = DiGraph::new();
+    let mut graph = StableDiGraph::new();
     let mut node_indices = HashMap::new();
 
     // Add nodes to the graph
@@ -174,13 +174,13 @@ fn assign_ranks(graph: &mut Graph) {
 
     // Assign ranks to any remaining unranked nodes
     let max_rank = *rank_map.values().max().unwrap_or(&0);
-    for node in graph.node_indices() {
+    for node in graph.node_indices().collect::<Vec<_>>() {
         graph[node].rank = Some(*rank_map.entry(node).or_insert(max_rank + 1));
     }
 
     // Compact ranks
     let mut unique_ranks: Vec<u32> = rank_map.values().cloned().collect();
-    unique_ranks.sort_unstable();
+    unique_ranks.sort();
     unique_ranks.dedup();
 
     let compact_rank_map: HashMap<u32, u32> = unique_ranks
@@ -190,9 +190,9 @@ fn assign_ranks(graph: &mut Graph) {
         .collect();
 
     // Update ranks based on the new mapping
-    for node in graph.node_indices() {
-        if let Some(old_rank) = graph[node].rank {
-            graph[node].rank = Some(compact_rank_map[&old_rank]);
+    for node in graph.node_weights_mut() {
+        if let Some(old_rank) = node.rank {
+            node.rank = Some(compact_rank_map[&old_rank]);
         }
     }
 }
@@ -253,45 +253,56 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
         improved = false;
         iteration += 1;
 
-        // Forward sweep
-        for rank in 0..=max_rank {
-            if apply_median_heuristic(graph, rank, Direction::Incoming) {
-                improved = true;
-            }
-        }
-
         // Backward sweep
         for rank in (0..max_rank).rev() {
-            if apply_median_heuristic(graph, rank, Direction::Outgoing) {
+            if apply_barycenter_heuristic(graph, rank, Direction::Incoming) {
                 improved = true;
             }
         }
 
-        // Apply crossing minimization after each complete sweep
-        if minimize_crossings(graph, max_rank) {
-            improved = true;
+        // Forward sweep
+        for rank in 0..=max_rank {
+            if apply_barycenter_heuristic(graph, rank, Direction::Outgoing) {
+                improved = true;
+            }
+        }
+
+        for _ in 0..8 {
+            // Backward sweep
+            for rank in (0..max_rank).rev() {
+                if iteration > 1 && minimize_crossings(graph, rank, Direction::Incoming) {
+                    improved = true;
+                }
+            }
+
+            // Forward sweep
+            for rank in 0..=max_rank {
+                if minimize_crossings(graph, rank, Direction::Outgoing) {
+                    improved = true;
+                }
+            }
         }
     }
 }
 
-fn apply_median_heuristic(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
+fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
     let nodes_at_rank: Vec<NodeIndex> = graph
         .node_indices()
         .filter(|&n| graph[n].rank == Some(rank))
         .collect();
 
-    // Calculate median positions
-    let mut node_medians: Vec<(NodeIndex, f64)> = nodes_at_rank
+    // Calculate barycenter positions
+    let mut node_barycenters: Vec<(NodeIndex, f64)> = nodes_at_rank
         .iter()
-        .map(|&node| (node, calculate_median_position(graph, node, direction)))
+        .map(|&node| (node, calculate_barycenter_position(graph, node, direction)))
         .collect();
 
-    // Sort nodes by median values
-    node_medians.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
+    // Sort nodes by barycenter values
+    node_barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
 
     // Check if the order has changed
     let mut changed = false;
-    for (i, (node, _)) in node_medians.iter().enumerate() {
+    for (i, (node, _)) in node_barycenters.iter().enumerate() {
         if graph[*node].order != Some(i as u32) {
             graph[*node].order = Some(i as u32);
             changed = true;
@@ -301,7 +312,7 @@ fn apply_median_heuristic(graph: &mut Graph, rank: u32, direction: Direction) ->
     changed
 }
 
-fn calculate_median_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
+fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
     let adjacent_nodes: Vec<NodeIndex> = graph.neighbors_directed(node, direction).collect();
 
     let positions: Vec<f64> = adjacent_nodes
@@ -314,44 +325,34 @@ fn calculate_median_position(graph: &Graph, node: NodeIndex, direction: Directio
     }
 
     let len = positions.len();
-    if len % 2 == 1 {
-        positions[len / 2]
-    } else {
-        let mid = len / 2;
-        (positions[mid - 1] + positions[mid]) / 2.0
-    }
+    let sum = positions.iter().sum::<f64>();
+    sum / len as f64
 }
 
-fn minimize_crossings(graph: &mut Graph, max_rank: u32) -> bool {
+fn minimize_crossings(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
     let mut improved = false;
 
-    for rank in 0..max_rank {
-        let nodes_at_rank: Vec<NodeIndex> = graph
-            .node_indices()
-            .filter(|&n| graph[n].rank == Some(rank))
-            .collect();
+    let nodes_at_rank: Vec<NodeIndex> = graph
+        .node_indices()
+        .filter(|&n| graph[n].rank == Some(rank))
+        .collect();
 
-        for i in 0..nodes_at_rank.len() - 1 {
-            let (n1, n2) = (nodes_at_rank[i], nodes_at_rank[i + 1]);
+    for i in 0..nodes_at_rank.len() - 1 {
+        let (n1, n2) = (nodes_at_rank[i], nodes_at_rank[i + 1]);
 
-            if !can_exchange(graph, n1, n2) {
-                continue;
-            }
+        if !can_exchange(graph, n1, n2) {
+            continue;
+        }
 
-            let chain1 = get_adjacent_chain(graph, n1);
-            let chain2 = get_adjacent_chain(graph, n2);
+        let chain1 = get_adjacent_chain(graph, n1);
+        let chain2 = get_adjacent_chain(graph, n2);
 
-            let crossings_before =
-                count_crossings_for_chains(graph, &chain1, &chain2, Direction::Outgoing)
-                    + count_crossings_for_chains(graph, &chain1, &chain2, Direction::Incoming);
-            let crossings_after =
-                count_crossings_for_chains(graph, &chain2, &chain1, Direction::Outgoing)
-                    + count_crossings_for_chains(graph, &chain2, &chain1, Direction::Incoming);
+        let crossings_before = count_crossings_for_chains(graph, &chain1, &chain2, direction);
+        let crossings_after = count_crossings_for_chains(graph, &chain2, &chain1, direction);
 
-            if crossings_after < crossings_before {
-                exchange_chains(graph, &chain1, &chain2);
-                improved = true;
-            }
+        if crossings_after < crossings_before {
+            exchange_chains(graph, &chain1, &chain2);
+            improved = true;
         }
     }
 
@@ -435,46 +436,64 @@ fn count_crossings(
     right: NodeIndex,
     direction: Direction,
 ) -> usize {
-    let left_edges: Vec<(NodeIndex, bool)> = graph
+    let left_edges: Vec<NodeIndex> = graph
         .edges_directed(left, direction)
         .map(|e| {
-            let (source, target) = graph.edge_endpoints(e.id()).unwrap();
-            (if source == left { target } else { source }, source == left)
+            if e.source() == left {
+                e.target()
+            } else {
+                e.source()
+            }
         })
         .collect();
-    let right_edges: Vec<(NodeIndex, bool)> = graph
+    let right_edges: Vec<NodeIndex> = graph
         .edges_directed(right, direction)
         .map(|e| {
-            let (source, target) = graph.edge_endpoints(e.id()).unwrap();
-            (
-                if source == right { target } else { source },
-                source == right,
-            )
+            if e.source() == right {
+                e.target()
+            } else {
+                e.source()
+            }
         })
         .collect();
 
-    let left_rank = graph[left].rank.unwrap();
-    let right_rank = graph[right].rank.unwrap();
+    // let left_rank = graph[left].rank.unwrap();
+    // let right_rank = graph[right].rank.unwrap();
+
+    // let mut crossings = 0;
+    // for &(l, l_outgoing) in &left_edges {
+    //     for &(r, r_outgoing) in &right_edges {
+    //         let l_rank = graph[l].rank.unwrap();
+    //         let r_rank = graph[r].rank.unwrap();
+
+    //         // Handle in-layer edges
+    //         if l_rank == left_rank && r_rank == right_rank {
+    //             if l_outgoing != r_outgoing {
+    //                 crossings += 1;
+    //             }
+    //         } else {
+    //             let l_order = graph[l].order.unwrap() as i32;
+    //             let r_order = graph[r].order.unwrap() as i32;
+    //             if (left_rank as i32 - l_rank as i32) * (right_rank as i32 - r_rank as i32) < 0
+    //                 && (l_order - r_order) * (if l_outgoing == r_outgoing { 1 } else { -1 }) < 0
+    //             {
+    //                 crossings += 1;
+    //             }
+    //         }
+    //     }
+    // }
+
+    let left_1 = graph[left].order.unwrap();
+    let right_1 = graph[right].order.unwrap();
 
     let mut crossings = 0;
-    for &(l, l_outgoing) in &left_edges {
-        for &(r, r_outgoing) in &right_edges {
-            let l_rank = graph[l].rank.unwrap();
-            let r_rank = graph[r].rank.unwrap();
+    for &l in &left_edges {
+        for &r in &right_edges {
+            let left_2 = graph[l].order.unwrap();
+            let right_2 = graph[r].order.unwrap();
 
-            // Handle in-layer edges
-            if l_rank == left_rank && r_rank == right_rank {
-                if l_outgoing != r_outgoing {
-                    crossings += 1;
-                }
-            } else {
-                let l_order = graph[l].order.unwrap() as i32;
-                let r_order = graph[r].order.unwrap() as i32;
-                if (left_rank as i32 - l_rank as i32) * (right_rank as i32 - r_rank as i32) < 0
-                    && (l_order - r_order) * (if l_outgoing == r_outgoing { 1 } else { -1 }) < 0
-                {
-                    crossings += 1;
-                }
+            if (left_1 < left_2 && right_1 > right_2) || (left_1 > left_2 && right_1 < right_2) {
+                crossings += 1;
             }
         }
     }
@@ -1053,7 +1072,7 @@ mod tests {
 
     #[test]
     fn test_simple_adjacency() {
-        let mut graph = DiGraph::new();
+        let mut graph = StableDiGraph::new();
         // Component 1
         let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
         let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
@@ -1084,7 +1103,7 @@ mod tests {
 
     #[test]
     fn test_multiple_adjacency_constraints() {
-        let mut graph = DiGraph::new();
+        let mut graph = StableDiGraph::new();
         // Component 1
         let n0 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 1
         let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (50, 30))); // Input pin 2
@@ -1127,7 +1146,7 @@ mod tests {
 
     #[test]
     fn test_small_circuit_has_no_crossings() {
-        let mut graph = DiGraph::new();
+        let mut graph = StableDiGraph::new();
         let n0 = graph.add_node(Node::new(NodeEntity::Symbol(Entity::PLACEHOLDER), (80, 80)));
         let n1 = graph.add_node(Node::new(NodeEntity::Port(Entity::PLACEHOLDER), (5, 5)));
         let n2 = graph.add_node(Node::new(NodeEntity::Symbol(Entity::PLACEHOLDER), (80, 80)));
