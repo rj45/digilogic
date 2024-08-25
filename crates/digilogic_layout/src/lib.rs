@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::Entity;
 use petgraph::algo::kosaraju_scc;
-use petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use petgraph::stable_graph::{EdgeReference, NodeIndex, StableDiGraph};
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use std::cmp::Ordering;
@@ -267,20 +267,39 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
             }
         }
 
-        for _ in 0..8 {
-            // Backward sweep
-            for rank in (0..max_rank).rev() {
-                if iteration > 1 && minimize_crossings(graph, rank, Direction::Incoming) {
-                    improved = true;
-                }
+        // Backward sweep
+        for rank in (0..max_rank).rev() {
+            if minimize_crossings(graph, rank) {
+                improved = true;
             }
+        }
 
-            // Forward sweep
-            for rank in 0..=max_rank {
-                if minimize_crossings(graph, rank, Direction::Outgoing) {
-                    improved = true;
-                }
+        // Forward sweep
+        for rank in 0..=max_rank {
+            if minimize_crossings(graph, rank) {
+                improved = true;
             }
+        }
+    }
+    for _ in 0..24 {
+        improved = false;
+
+        // Backward sweep
+        for rank in (0..max_rank).rev() {
+            if minimize_crossings(graph, rank) {
+                improved = true;
+            }
+        }
+
+        // Forward sweep
+        for rank in 0..=max_rank {
+            if minimize_crossings(graph, rank) {
+                improved = true;
+            }
+        }
+
+        if !improved {
+            break;
         }
     }
 }
@@ -329,7 +348,7 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
     sum / len as f64
 }
 
-fn minimize_crossings(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
+fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
     let mut improved = false;
 
     let nodes_at_rank: Vec<NodeIndex> = graph
@@ -347,12 +366,22 @@ fn minimize_crossings(graph: &mut Graph, rank: u32, direction: Direction) -> boo
         let chain1 = get_adjacent_chain(graph, n1);
         let chain2 = get_adjacent_chain(graph, n2);
 
-        let crossings_before = count_crossings_for_chains(graph, &chain1, &chain2, direction);
-        let crossings_after = count_crossings_for_chains(graph, &chain2, &chain1, direction);
+        let crossings_before = count_crossings_for_chains(graph, &chain1, &chain2);
 
-        if crossings_after < crossings_before {
+        exchange_chains(graph, &chain1, &chain2);
+
+        let crossings_after = count_crossings_for_chains(graph, &chain1, &chain2);
+
+        if crossings_before <= crossings_after {
+            // Revert the exchange
             exchange_chains(graph, &chain1, &chain2);
+        } else {
             improved = true;
+            bevy_log::debug!(
+                "Exchanged chains with {} crossings (before) -> {} crossings (after)",
+                crossings_before,
+                crossings_after
+            );
         }
     }
 
@@ -415,16 +444,15 @@ fn exchange_chains(graph: &mut Graph, chain1: &[NodeIndex], chain2: &[NodeIndex]
     }
 }
 
-fn count_crossings_for_chains(
-    graph: &Graph,
-    chain1: &[NodeIndex],
-    chain2: &[NodeIndex],
-    direction: Direction,
-) -> usize {
+fn count_crossings_for_chains(graph: &Graph, chain1: &[NodeIndex], chain2: &[NodeIndex]) -> usize {
     let mut crossings = 0;
-    for &n1 in chain1 {
-        for &n2 in chain2 {
-            crossings += count_crossings(graph, n1, n2, direction);
+
+    for &n1 in chain1.iter().chain(chain2) {
+        for &n2 in chain1.iter().chain(chain2) {
+            if graph[n1].order.unwrap() < graph[n2].order.unwrap() {
+                crossings += count_crossings(graph, n1, n2, Direction::Incoming)
+                    + count_crossings(graph, n1, n2, Direction::Outgoing);
+            }
         }
     }
     crossings
@@ -436,26 +464,26 @@ fn count_crossings(
     right: NodeIndex,
     direction: Direction,
 ) -> usize {
-    let left_edges: Vec<NodeIndex> = graph
-        .edges_directed(left, direction)
-        .map(|e| {
-            if e.source() == left {
-                e.target()
-            } else {
-                e.source()
-            }
-        })
-        .collect();
-    let right_edges: Vec<NodeIndex> = graph
-        .edges_directed(right, direction)
-        .map(|e| {
-            if e.source() == right {
-                e.target()
-            } else {
-                e.source()
-            }
-        })
-        .collect();
+    // let left_edges: Vec<NodeIndex> = graph
+    //     .edges_directed(left, direction)
+    //     .map(|e| {
+    //         if e.source() == left {
+    //             e.target()
+    //         } else {
+    //             e.source()
+    //         }
+    //     })
+    //     .collect();
+    // let right_edges: Vec<NodeIndex> = graph
+    //     .edges_directed(right, direction)
+    //     .map(|e| {
+    //         if e.source() == right {
+    //             e.target()
+    //         } else {
+    //             e.source()
+    //         }
+    //     })
+    //     .collect();
 
     // let left_rank = graph[left].rank.unwrap();
     // let right_rank = graph[right].rank.unwrap();
@@ -483,22 +511,41 @@ fn count_crossings(
     //     }
     // }
 
-    let left_1 = graph[left].order.unwrap();
-    let right_1 = graph[right].order.unwrap();
-
     let mut crossings = 0;
-    for &l in &left_edges {
-        for &r in &right_edges {
-            let left_2 = graph[l].order.unwrap();
-            let right_2 = graph[r].order.unwrap();
-
-            if (left_1 < left_2 && right_1 > right_2) || (left_1 > left_2 && right_1 < right_2) {
+    for e1 in graph.edges_directed(left, direction) {
+        for e2 in graph.edges_directed(right, direction) {
+            if edges_cross(graph, e1, e2) {
                 crossings += 1;
             }
         }
     }
 
     crossings
+}
+
+fn edges_cross(graph: &Graph, e1: EdgeReference<()>, e2: EdgeReference<()>) -> bool {
+    let (u1, v1) = (
+        graph[e1.source()].order.unwrap(),
+        graph[e1.target()].order.unwrap(),
+    );
+    let (u2, v2) = (
+        graph[e2.source()].order.unwrap(),
+        graph[e2.target()].order.unwrap(),
+    );
+
+    // Consider two edges:
+    // - Edge 1: from node $$ u_1 $$ in layer 1 to node $$ v_1 $$ in layer 2.
+    // - Edge 2: from node $$ u_2 $$ in layer 1 to node $$ v_2 $$ in layer 2.
+
+    // The edges cross if the following conditions are met:
+    // 1. The nodes in layer 1 are ordered such that $$ u_1 $$ is to the left of $$ u_2 $$.
+    // 2. The nodes in layer 2 are ordered such that $$ v_2 $$ is to the left of $$ v_1 $$.
+
+    // In mathematical terms, the crossing condition can be expressed as:
+    // - If $$ u_1 < u_2 $$ and $$ v_1 > v_2 $$, then the edges cross.
+    // - Conversely, if $$ u_1 > u_2 $$ and $$ v_1 < v_2 $$, then the edges also cross.
+
+    (u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)
 }
 
 // fn remove_dummy_nodes(graph: &mut Graph) {

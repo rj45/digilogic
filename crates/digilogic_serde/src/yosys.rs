@@ -343,7 +343,7 @@ fn translate_net(
             .entity_ids
             .get(&NodeEntity::Symbol(driver.symbol))
             .unwrap();
-        let mut driver_node = NodeEntity::Port(driver.id);
+        let driver_node = NodeEntity::Port(driver.id);
         let mut driver_id = graph.entity_ids.get(&driver_node).unwrap();
 
         // driver's symbol -> driver's port
@@ -469,7 +469,7 @@ fn layout_circuit(
                     transform: Transform {
                         translation: Vec2 {
                             x: Fixed::try_from(x).unwrap(),
-                            y: Fixed::try_from(max_y - y).unwrap(), // need to flip y
+                            y: Fixed::try_from(y).unwrap(), // need to flip y
                         },
                         ..Default::default()
                     },
