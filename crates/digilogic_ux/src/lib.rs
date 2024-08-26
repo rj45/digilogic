@@ -25,7 +25,14 @@ impl bevy_app::Plugin for UxPlugin {
         app.observe(on_add_viewport_augment_with_fsm);
 
         app.init_resource::<spatial_index::SpatialIndex>();
-        app.add_systems(bevy_app::PreUpdate, spatial_index::update_spatial_index);
-        app.observe(spatial_index::on_remove_update_spatial_index);
+        app.add_systems(
+            bevy_app::PreUpdate,
+            (
+                spatial_index::update_spatial_index,
+                spatial_index::update_spatial_index_on_routing,
+            ),
+        );
+        app.observe(spatial_index::on_remove_bounding_box_update_spatial_index);
+        app.observe(spatial_index::on_remove_net_update_spatial_index);
     }
 }

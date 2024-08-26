@@ -210,7 +210,7 @@ pub fn draw_wires(
                             let path_color = match (is_root, hovered) {
                                 (true, true) => Color::rgb8(230, 192, 35),
                                 (true, false) => Color::rgb8(212, 172, 16),
-                                (false, true) => Color::rgb8(35, 230, 72),
+                                (false, true) => Color::rgb8(125, 240, 147),
                                 (false, false) => Color::rgb8(8, 190, 42),
                             };
 

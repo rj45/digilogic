@@ -77,13 +77,16 @@ enum HoveredEntityKind {
     Waypoint,
     Endpoint,
     Port,
+    Net,
 }
+
+type EntityKindQuery<'w, 's> = Query<'w, 's, (Has<Port>, Has<Endpoint>, Has<Waypoint>, Has<Net>)>;
 
 fn hover_system(
     trigger: Trigger<PointerMovedEvent>,
     mut commands: Commands,
     spatial_index: Res<SpatialIndex>,
-    entity_kind_query: Query<(Has<Port>, Has<Endpoint>, Has<Waypoint>)>,
+    entity_kind_query: EntityKindQuery,
     mut current_hovered_entity: Query<&mut HoveredEntity>,
 ) {
     let position = trigger.event().0;
@@ -100,11 +103,13 @@ fn hover_system(
     let mut new_hovered_entity = None;
     let mut new_hovered_entity_kind = HoveredEntityKind::default();
     spatial_index.query(bounds, |&entity| {
-        let (is_port, is_endpoint, is_waypoint) = entity_kind_query.get(entity).unwrap_or_default();
-        let kind = match (is_port, is_endpoint, is_waypoint) {
-            (true, _, _) => HoveredEntityKind::Port,
-            (_, true, _) => HoveredEntityKind::Endpoint,
-            (_, _, true) => HoveredEntityKind::Waypoint,
+        let (is_port, is_endpoint, is_waypoint, is_net) =
+            entity_kind_query.get(entity).unwrap_or_default();
+        let kind = match (is_port, is_endpoint, is_waypoint, is_net) {
+            (true, _, _, _) => HoveredEntityKind::Port,
+            (_, true, _, _) => HoveredEntityKind::Endpoint,
+            (_, _, true, _) => HoveredEntityKind::Waypoint,
+            (_, _, _, true) => HoveredEntityKind::Net,
             _ => HoveredEntityKind::Other,
         };
 

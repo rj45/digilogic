@@ -1974,9 +1974,11 @@ dependencies = [
 name = "digilogic_ux"
 version = "0.1.0"
 dependencies = [
+ "aery",
  "bevy_app",
  "bevy_derive",
  "bevy_ecs",
+ "bevy_log",
  "bevy_reflect",
  "bvh-arena",
  "digilogic_core",
