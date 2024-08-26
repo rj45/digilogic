@@ -43,8 +43,6 @@ pub struct Node {
     pub order: Option<u32>,
     pub x: f32,
     pub y: f32,
-
-    pub dummy: bool,
 }
 
 impl Node {
@@ -59,7 +57,6 @@ impl Node {
             order: None,
             x: 0.0,
             y: 0.0,
-            dummy: false,
         }
     }
 }
@@ -236,7 +233,6 @@ fn add_dummy_nodes(graph: &mut Graph) {
                 order: None,
                 x: 0.0,
                 y: 0.0,
-                dummy: true,
             });
 
             let ax = graph.add_edge(source, dummy, ());
@@ -589,8 +585,10 @@ fn edges_cross(graph: &Graph, e1: EdgeReference<()>, e2: EdgeReference<()>) -> b
 
 #[tracing::instrument(skip_all)]
 fn remove_dummy_nodes(graph: &mut Graph) {
-    let mut dummy_nodes: Vec<NodeIndex> =
-        graph.node_indices().filter(|&n| graph[n].dummy).collect();
+    let mut dummy_nodes: Vec<NodeIndex> = graph
+        .node_indices()
+        .filter(|&n| graph[n].entity == NodeEntity::Dummy)
+        .collect();
     dummy_nodes.sort_by_key(|&n| graph[n].rank);
 
     for node in dummy_nodes.iter().copied() {
@@ -726,7 +724,6 @@ mod tests {
                 order: None,
                 x: 0.0,
                 y: 0.0,
-                dummy: false,
             })
             .collect();
 
