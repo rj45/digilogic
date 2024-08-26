@@ -277,7 +277,9 @@ fn forward_hover_events(
             match event {
                 egui::Event::PointerMoved(_) => {
                     commands.trigger_targets(
-                        crate::ux::PointerMovedEvent((world_mouse_pos.x, world_mouse_pos.y).into()),
+                        digilogic_ux::PointerMovedEvent(
+                            (world_mouse_pos.x, world_mouse_pos.y).into(),
+                        ),
                         viewport,
                     );
                 }
@@ -288,7 +290,7 @@ fn forward_hover_events(
                     ..
                 } => {
                     commands.trigger_targets(
-                        crate::ux::PointerButtonEvent {
+                        digilogic_ux::PointerButtonEvent {
                             pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
                             button: *button,
                             pressed: *pressed,

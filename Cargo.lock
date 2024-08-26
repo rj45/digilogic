@@ -1867,6 +1867,7 @@ dependencies = [
  "digilogic_netcode",
  "digilogic_routing",
  "digilogic_serde",
+ "digilogic_ux",
  "eframe",
  "egui",
  "egui-wgpu",
@@ -1967,6 +1968,19 @@ dependencies = [
  "serde",
  "serde-xml-rs",
  "serde_json",
+]
+
+[[package]]
+name = "digilogic_ux"
+version = "0.1.0"
+dependencies = [
+ "bevy_app",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_reflect",
+ "digilogic_core",
+ "digilogic_routing",
+ "egui",
 ]
 
 [[package]]

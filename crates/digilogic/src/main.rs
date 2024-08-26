@@ -1,7 +1,6 @@
 #![cfg_attr(all(not(debug_assertions), not(trace)), windows_subsystem = "windows")]
 
 mod ui;
-mod ux;
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -101,7 +100,7 @@ impl App {
             digilogic_serde::LoadSavePlugin,
             digilogic_routing::RoutingPlugin,
             digilogic_netcode::ClientPlugin,
-            ux::UxPlugin::default(),
+            digilogic_ux::UxPlugin::default(),
             ui::UiPlugin::new(context, render_state),
         ));
 

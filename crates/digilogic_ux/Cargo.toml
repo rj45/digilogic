@@ -1,0 +1,19 @@
+[package]
+name = "digilogic_ux"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+bevy_reflect.workspace = true
+bevy_derive.workspace = true
+digilogic_core = { path = "../digilogic_core" }
+digilogic_routing = { path = "../digilogic_routing" }
+egui.workspace = true
