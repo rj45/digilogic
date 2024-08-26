@@ -70,13 +70,13 @@ fn disconnect(
 }
 
 fn update(
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     mut client: ResMut<RenetClient>,
     mut transport: ResMut<NetcodeClientTransport>,
     mut transport_errors: EventWriter<NetcodeTransportError>,
 ) {
     client.update(time.delta());
-    if let Err(err) = transport.update(time.elapsed(), &mut client) {
+    if let Err(err) = transport.update(time.delta(), &mut client) {
         transport_errors.send(err);
     }
 }

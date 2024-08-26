@@ -1,10 +1,15 @@
-#![cfg_attr(all(not(debug_assertions), not(trace)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(debug_assertions), not(feature = "trace")),
+    windows_subsystem = "windows"
+)]
 
 mod ui;
 
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
+use bevy_state::prelude::{OnEnter, OnExit};
+use bevy_time::{Time, Virtual};
 use digilogic_routing::RoutingConfig;
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +51,14 @@ enum FileDialogEvent {
 #[repr(transparent)]
 struct App(bevy_app::App);
 
+fn pause_time(mut time: ResMut<Time<Virtual>>) {
+    time.pause();
+}
+
+fn resume_time(mut time: ResMut<Time<Virtual>>) {
+    time.unpause();
+}
+
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let context = &cc.egui_ctx;
@@ -86,6 +99,13 @@ impl App {
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
 
+        // Setup virtual time to only advance while simulating.
+        let mut virt_time = app.world_mut().get_resource_mut::<Time<Virtual>>().unwrap();
+        virt_time.pause();
+        virt_time.set_max_delta(std::time::Duration::MAX);
+        app.add_systems(OnExit(AppState::Simulating), pause_time);
+        app.add_systems(OnEnter(AppState::Simulating), resume_time);
+
         // TODO: find a way to have plugins register what they want to save and restore.
         if let Some(routing_config) = cc
             .storage
@@ -103,12 +123,6 @@ impl App {
             digilogic_ux::UxPlugin::default(),
             ui::UiPlugin::new(context, render_state),
         ));
-
-        // disable the max delta time since the app does not run in a fixed FPS
-        app.world_mut()
-            .get_resource_mut::<bevy_time::Time<bevy_time::Virtual>>()
-            .unwrap()
-            .set_max_delta(std::time::Duration::MAX);
 
         Self(app)
     }
