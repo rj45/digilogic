@@ -120,7 +120,7 @@ impl App {
             digilogic_serde::LoadSavePlugin,
             digilogic_routing::RoutingPlugin,
             digilogic_netcode::ClientPlugin,
-            digilogic_ux::UxPlugin::default(),
+            digilogic_ux::UxPlugin,
             ui::UiPlugin::new(context, render_state),
         ));
 

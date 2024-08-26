@@ -72,6 +72,9 @@ impl Default for RoutingConfig {
     }
 }
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RoutingSet;
+
 #[derive(Debug, Event, Reflect)]
 pub struct RoutingComplete {
     pub circuit: CircuitID,
@@ -222,7 +225,7 @@ impl bevy_app::Plugin for RoutingPlugin {
         app.add_event::<RoutingComplete>();
         app.observe(inject_graph);
         app.observe(inject_vertices);
-        app.add_systems(bevy_app::PreUpdate, route);
+        app.add_systems(bevy_app::PreUpdate, route.in_set(RoutingSet));
         app.add_systems(bevy_app::PostUpdate, route_on_config_change);
         app.add_systems(
             bevy_app::PostUpdate,
