@@ -14,8 +14,8 @@ struct VertexPair {
     start_inclusive: Fixed,
     end_inclusive: Fixed,
     net: Entity,
-    index: usize,
-    track: usize,
+    index: u32,
+    track: u32,
 }
 
 impl VertexPair {
@@ -29,19 +29,45 @@ impl VertexPair {
 #[derive(Debug, Default)]
 struct Corridor {
     pairs: SmallVec<[VertexPair; 1]>,
-    track_count: usize,
+    immovable_pairs: u32,
+    track_count: u32,
 }
 
 impl Corridor {
-    #[inline]
-    fn insert(&mut self, start_inclusive: Fixed, end_inclusive: Fixed, net: Entity, index: usize) {
-        self.pairs.push(VertexPair {
+    fn insert(
+        &mut self,
+        start_inclusive: Fixed,
+        end_inclusive: Fixed,
+        net: Entity,
+        index: u32,
+        can_move: bool,
+    ) {
+        let pair = VertexPair {
             start_inclusive,
             end_inclusive,
             net,
             index,
-            track: usize::MAX,
-        })
+            track: u32::MAX,
+        };
+
+        if can_move {
+            self.pairs.push(pair);
+        } else {
+            if self.pairs.len() > (self.immovable_pairs as usize) {
+                // Swap-insert to avoid memcopy
+                let prev = std::mem::replace(&mut self.pairs[self.immovable_pairs as usize], pair);
+                self.pairs.push(prev);
+            } else {
+                self.pairs.push(pair);
+            }
+
+            self.immovable_pairs += 1;
+        }
+    }
+
+    #[inline]
+    fn track_offset(&self) -> u32 {
+        self.track_count / 2
     }
 
     fn assign_tracks(&mut self) {
@@ -49,26 +75,40 @@ impl Corridor {
         let mut used_tracks: SmallVec<[bool; 16]> = SmallVec::new();
 
         // This is essentially greedy graph coloring.
-        for i in 0..self.pairs.len() {
+        for i in (self.immovable_pairs as usize)..self.pairs.len() {
             let (&mut ref head, tail) = self.pairs.split_at_mut(i);
+            let head = &head[self.immovable_pairs as usize..];
             let current = tail.first_mut().unwrap();
 
             used_tracks.clear();
             for other in head {
                 if current.overlaps(other) {
-                    if used_tracks.len() <= other.track {
-                        used_tracks.resize(other.track + 1, false);
+                    if used_tracks.len() <= (other.track as usize) {
+                        used_tracks.resize((other.track as usize) + 1, false);
                     }
 
-                    used_tracks[other.track] = true;
+                    used_tracks[other.track as usize] = true;
                 }
             }
 
             current.track = used_tracks
                 .iter()
                 .position(|&x| !x)
-                .unwrap_or(used_tracks.len());
+                .unwrap_or(used_tracks.len()) as u32;
             self.track_count = self.track_count.max(current.track + 1);
+        }
+
+        if self.immovable_pairs > 0 {
+            self.track_count += 1;
+            let track_offset = self.track_offset();
+
+            self.pairs[..self.immovable_pairs as usize]
+                .iter_mut()
+                .for_each(|pair| pair.track = track_offset);
+            self.pairs[self.immovable_pairs as usize..]
+                .iter_mut()
+                .filter(|pair| pair.track >= track_offset)
+                .for_each(|pair| pair.track += 1);
         }
     }
 }
@@ -249,18 +289,25 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     unreachable!();
                 };
 
-                // Corner junctions are not inserted because they are
-                // considered part of the segment they connect to.
-                match (a.kind, b.kind) {
+                let can_move = match (a.kind, b.kind) {
+                    (VertexKind::WireEnd { .. }, _) => continue,
+                    // Corner junctions are not inserted because they are
+                    // considered part of the segment they connect to.
                     (
-                        VertexKind::Normal,
-                        VertexKind::Normal
-                        | VertexKind::WireEnd {
-                            junction_kind: Some(JunctionKind::LineSegment),
+                        _,
+                        VertexKind::WireEnd {
+                            junction_kind: Some(JunctionKind::Corner),
                         },
-                    ) => (),
-                    _ => continue,
-                }
+                    ) => continue,
+                    (VertexKind::WireStart { .. }, _) => false,
+                    (
+                        _,
+                        VertexKind::WireEnd {
+                            junction_kind: None,
+                        },
+                    ) => false,
+                    _ => true,
+                };
 
                 if a.position.y == b.position.y {
                     let mut min_x = a.position.x.min(b.position.x);
@@ -272,7 +319,7 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     horizontal_corridors
                         .entry(a.position.y)
                         .or_default()
-                        .insert(min_x, max_x, net, i);
+                        .insert(min_x, max_x, net, i as u32, can_move);
                 } else if a.position.x == b.position.x {
                     let mut min_y = a.position.y.min(b.position.y);
                     let mut max_y = a.position.y.max(b.position.y);
@@ -283,44 +330,48 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     vertical_corridors
                         .entry(a.position.x)
                         .or_default()
-                        .insert(min_y, max_y, net, i);
+                        .insert(min_y, max_y, net, i as u32, can_move);
                 }
             }
         });
 
     for (y, mut corridor) in horizontal_corridors {
         corridor.assign_tracks();
-        let track_offset = Fixed::try_from_usize(corridor.track_count - 1).unwrap() * fixed!(0.5);
+        let track_offset = Fixed::try_from_u32(corridor.track_offset()).unwrap();
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
             let mut vertices = Tail::from(vertices.0.as_mut_slice());
-            let (a, b, mut vertices) = vertices.split_pair(pair.index);
+            let (a, b, mut vertices) = vertices.split_pair(pair.index as usize);
 
-            let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
-            let y = y + offset * MIN_WIRE_SPACING;
-            a.position.y = y;
-            b.position.y = y;
+            let offset = Fixed::try_from_u32(pair.track).unwrap() - track_offset;
+            if offset != fixed!(0) {
+                let y = y + offset * MIN_WIRE_SPACING;
+                a.position.y = y;
+                b.position.y = y;
 
-            move_junctions(a, b, &mut vertices);
+                move_junctions(a, b, &mut vertices);
+            }
         }
     }
 
     for (x, mut corridor) in vertical_corridors {
         corridor.assign_tracks();
-        let track_offset = Fixed::try_from_usize(corridor.track_count - 1).unwrap() * fixed!(0.5);
+        let track_offset = Fixed::try_from_u32(corridor.track_offset()).unwrap();
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
             let mut vertices = Tail::from(vertices.0.as_mut_slice());
-            let (a, b, mut vertices) = vertices.split_pair(pair.index);
+            let (a, b, mut vertices) = vertices.split_pair(pair.index as usize);
 
-            let offset = Fixed::try_from_usize(pair.track).unwrap() - track_offset;
-            let x = x + offset * MIN_WIRE_SPACING;
-            a.position.x = x;
-            b.position.x = x;
+            let offset = Fixed::try_from_u32(pair.track).unwrap() - track_offset;
+            if offset != fixed!(0) {
+                let x = x + offset * MIN_WIRE_SPACING;
+                a.position.x = x;
+                b.position.x = x;
 
-            move_junctions(a, b, &mut vertices);
+                move_junctions(a, b, &mut vertices);
+            }
         }
     }
 }
