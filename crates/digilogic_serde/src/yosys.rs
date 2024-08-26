@@ -267,6 +267,7 @@ fn translate_net(
 
     let mut listeners: Vec<PortInfo> = Vec::new();
     let mut drivers: Vec<PortInfo> = Vec::new();
+    let mut others: Vec<PortInfo> = Vec::new();
 
     for port in port_infos.iter() {
         commands
@@ -283,99 +284,94 @@ fn translate_net(
             .contains_key(&NodeEntity::Symbol(port.symbol))
         {
             let ne = NodeEntity::Symbol(port.symbol);
-            let id = graph.graph.add_node(Node::new(ne, (80, 80)));
-            graph.entity_ids.insert(ne, id);
-        }
-        if !graph.entity_ids.contains_key(&NodeEntity::Port(port.id)) {
-            let ne = NodeEntity::Port(port.id);
-            let node = Node::new(ne, (5, 5));
 
-            let id = graph.graph.add_node(node);
+            let id = graph.graph.add_node(Node::new(ne, (60, 80)));
             graph.entity_ids.insert(ne, id);
         }
+        let symbol_node = *graph
+            .entity_ids
+            .get(&NodeEntity::Symbol(port.symbol))
+            .unwrap();
 
         match port.direction {
             Directions::NEG_X => {
                 listeners.push(port.clone());
+                graph.graph[symbol_node]
+                    .input_ports
+                    .push(digilogic_layout::Port {
+                        entity: port.id,
+                        index: port.position.y.to_i32(),
+                        edges: Vec::new(),
+                    });
             }
             Directions::POS_X => {
                 drivers.push(port.clone());
+                graph.graph[symbol_node]
+                    .output_ports
+                    .push(digilogic_layout::Port {
+                        entity: port.id,
+                        index: port.position.y.to_i32(),
+                        edges: Vec::new(),
+                    });
             }
             _ => {
-                // figure out how to handle in/out/top/bottom ports
-                todo!();
+                others.push(port.clone());
+                graph.graph[symbol_node]
+                    .other_ports
+                    .push(digilogic_layout::Port {
+                        entity: port.id,
+                        index: port.position.y.to_i32(),
+                        edges: Vec::new(),
+                    });
             }
         }
     }
 
-    let driver_junction = if drivers.len() > 1 {
-        let junction = NodeEntity::DriverJunction(net_id);
-        let junction_id = graph.graph.add_node(Node::new(junction, (3, 3)));
-        graph.entity_ids.insert(junction, junction_id);
-        Some(junction)
+    // if the drivers list is empty, then treat `others` as drivers
+    // otherwise others are listeners
+    // TODO: improve this
+    if drivers.is_empty() && !others.is_empty() {
+        for port in others.iter() {
+            drivers.push(port.clone());
+        }
     } else {
-        None
-    };
-
-    let listener_junction = if listeners.len() > 1 {
-        let junction = NodeEntity::ListenerJunction(net_id);
-        let junction_id = graph.graph.add_node(Node::new(junction, (3, 3)));
-        graph.entity_ids.insert(junction, junction_id);
-        Some(junction)
-    } else {
-        None
-    };
-
-    // add a single edge between the junctions if they both exist
-    if let (Some(driver_junction), Some(listener_junction)) = (driver_junction, listener_junction) {
-        graph.graph.add_edge(
-            *graph.entity_ids.get(&driver_junction).unwrap(),
-            *graph.entity_ids.get(&listener_junction).unwrap(),
-            (),
-        );
+        for port in others.iter() {
+            listeners.push(port.clone());
+        }
     }
 
-    // Set up a graph from each driver's symbol to the driver's port, then optionally to the
-    // driver junction, then optionally to the listener junction, then to each listener's port,
-    // then to the listener's symbol.
+    // Add edges from each driver symbol to each listener symbol, tracking the edge in the port's edges list
     for driver in drivers.iter() {
-        let driver_symbol_id = graph
+        let driver_symbol_id = *graph
             .entity_ids
             .get(&NodeEntity::Symbol(driver.symbol))
             .unwrap();
-        let mut driver_node = NodeEntity::Port(driver.id);
-        let mut driver_id = graph.entity_ids.get(&driver_node).unwrap();
-
-        // driver's symbol -> driver's port
-        graph.graph.add_edge(*driver_symbol_id, *driver_id, ());
-
-        if let Some(junction) = driver_junction {
-            let junction_id = graph.entity_ids.get(&junction).unwrap();
-            // driver's port -> driver junction
-            graph.graph.add_edge(*driver_id, *junction_id, ());
-            driver_id = junction_id;
-        }
-
-        if let Some(junction) = listener_junction {
-            let junction_id = graph.entity_ids.get(&junction).unwrap();
-            if driver_junction.is_none() {
-                // only add an edge here if there is no driver junction
-                // driver port -> listener junction
-                graph.graph.add_edge(*driver_id, *junction_id, ());
-            }
-            driver_id = junction_id;
-        }
 
         for listener in listeners.iter() {
-            let listener_node = NodeEntity::Port(listener.id);
-            let listener_id = graph.entity_ids.get(&listener_node).unwrap();
-            // listener's port / listener junction / driver junction -> listener's port
-            graph.graph.add_edge(*driver_id, *listener_id, ());
+            let listener_symbol_id = *graph
+                .entity_ids
+                .get(&NodeEntity::Symbol(listener.symbol))
+                .unwrap();
 
-            let listener_symbol_node = NodeEntity::Symbol(listener.symbol);
-            let listener_symbol_id = graph.entity_ids.get(&listener_symbol_node).unwrap();
-            // listener's port -> listener's symbol
-            graph.graph.add_edge(*listener_id, *listener_symbol_id, ());
+            let edge = graph
+                .graph
+                .add_edge(driver_symbol_id, listener_symbol_id, ());
+
+            if let Some(driver_port) = graph.graph[driver_symbol_id]
+                .output_ports
+                .iter_mut()
+                .find(|port| port.entity == driver.id)
+            {
+                driver_port.edges.push(edge);
+            }
+
+            if let Some(listener_port) = graph.graph[listener_symbol_id]
+                .input_ports
+                .iter_mut()
+                .find(|port| port.entity == listener.id)
+            {
+                listener_port.edges.push(edge);
+            }
         }
     }
 
@@ -391,43 +387,9 @@ fn layout_circuit(
     let node_indices = graph.graph.node_indices().collect::<Vec<_>>();
     for index in node_indices.iter() {
         let node = graph.graph.node_weight_mut(*index).unwrap();
-        if let NodeEntity::Symbol(symbol) = node.entity {
-            // TODO: kind of hacky
-            let mut ports = bit_map
-                .values()
-                .flat_map(|net_bit| net_bit.ports.iter())
-                .filter(|port| port.symbol == symbol)
-                .collect::<Vec<_>>();
-            ports.sort_by(|a, b| a.position.y.cmp(&b.position.y));
-            let mut prev_listener: Option<NodeIndex> = None;
-            let mut prev_driver: Option<NodeIndex> = None;
-            for port in ports.iter() {
-                let port_index = *graph.entity_ids.get(&NodeEntity::Port(port.id)).unwrap();
-                if port.direction == Directions::NEG_X {
-                    if prev_listener.is_some() {
-                        bevy_log::debug!(
-                            "{}  adjacent_to: {}",
-                            port_index.index(),
-                            prev_listener.unwrap().index()
-                        );
-                    }
-                    graph.graph[port_index].adjacent_to = prev_listener;
-                    prev_listener = Some(port_index);
-                } else if port.direction == Directions::POS_X {
-                    if prev_driver.is_some() {
-                        bevy_log::debug!(
-                            "{}  adjacent_to: {}",
-                            port_index.index(),
-                            prev_driver.unwrap().index()
-                        );
-                    }
-                    graph.graph[port_index].adjacent_to = prev_driver;
-                    prev_driver = Some(port_index);
-                }
-            }
-
-            continue;
-        }
+        node.input_ports.sort_by(|a, b| a.index.cmp(&b.index));
+        node.output_ports.sort_by(|a, b| a.index.cmp(&b.index));
+        node.other_ports.sort_by(|a, b| a.index.cmp(&b.index));
     }
 
     digilogic_layout::layout_graph(&mut graph.graph).map_err(anyhow::Error::msg)?;
@@ -461,27 +423,18 @@ fn layout_circuit(
         let y = node.x.unwrap();
         let x = node.y.unwrap();
         match node.entity {
-            NodeEntity::Port(_port_id) => {
-                // ignore
-            }
             NodeEntity::Symbol(symbol_id) => {
                 let transform = TransformBundle {
                     transform: Transform {
                         translation: Vec2 {
                             x: Fixed::try_from(x).unwrap(),
-                            y: Fixed::try_from(max_y - y).unwrap(), // need to flip y
+                            y: Fixed::try_from(y).unwrap(), // need to flip y
                         },
                         ..Default::default()
                     },
                     ..Default::default()
                 };
                 commands.entity(symbol_id).insert(transform);
-            }
-            NodeEntity::DriverJunction(_net_id) => {
-                // TODO: place waypoints?
-            }
-            NodeEntity::ListenerJunction(_net_id) => {
-                // TODO: place waypoints?
             }
             NodeEntity::Dummy => {
                 // ignore
