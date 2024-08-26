@@ -2,6 +2,7 @@ use crate::{JunctionKind, NetQuery, Vertex, VertexKind};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::entity::Entity;
+use bevy_log::debug;
 use digilogic_core::components::Child;
 use digilogic_core::{fixed, Fixed, HashMap};
 use smallvec::SmallVec;
@@ -15,7 +16,8 @@ struct VertexPair {
     end_inclusive: Fixed,
     net: Entity,
     index: u32,
-    track: u32,
+    track: u16,
+    immovable_track: u16,
 }
 
 impl VertexPair {
@@ -30,7 +32,8 @@ impl VertexPair {
 struct Corridor {
     pairs: SmallVec<[VertexPair; 1]>,
     immovable_pairs: u32,
-    track_count: u32,
+    track_count: u16,
+    immovable_track_count: u16,
 }
 
 impl Corridor {
@@ -47,7 +50,8 @@ impl Corridor {
             end_inclusive,
             net,
             index,
-            track: u32::MAX,
+            track: u16::MAX,
+            immovable_track: u16::MAX,
         };
 
         if can_move {
@@ -66,7 +70,7 @@ impl Corridor {
     }
 
     #[inline]
-    fn track_offset(&self) -> u32 {
+    fn track_offset(&self) -> u16 {
         self.track_count / 2
     }
 
@@ -94,7 +98,7 @@ impl Corridor {
             current.track = used_tracks
                 .iter()
                 .position(|&x| !x)
-                .unwrap_or(used_tracks.len()) as u32;
+                .unwrap_or(used_tracks.len()) as u16;
             self.track_count = self.track_count.max(current.track + 1);
         }
 
@@ -109,6 +113,37 @@ impl Corridor {
                 .iter_mut()
                 .filter(|pair| pair.track >= track_offset)
                 .for_each(|pair| pair.track += 1);
+
+            self.immovable_track_count = 1;
+            for i in 0..(self.immovable_pairs as usize) {
+                let (&mut ref head, tail) = self.pairs.split_at_mut(i);
+                let current = tail.first_mut().unwrap();
+
+                used_tracks.clear();
+                for other in head {
+                    if current.overlaps(other) {
+                        if used_tracks.len() <= (other.immovable_track as usize) {
+                            used_tracks.resize((other.immovable_track as usize) + 1, false);
+                        }
+
+                        used_tracks[other.immovable_track as usize] = true;
+                    }
+                }
+
+                current.immovable_track = used_tracks
+                    .iter()
+                    .position(|&x| !x)
+                    .unwrap_or(used_tracks.len()) as u16;
+                self.immovable_track_count =
+                    self.immovable_track_count.max(current.immovable_track + 1);
+
+                if current.immovable_track > 0 {
+                    debug!(
+                        "net {} segment {} has unavoidable overlap",
+                        current.net, current.index,
+                    );
+                }
+            }
         }
     }
 }
@@ -337,14 +372,14 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
     for (y, mut corridor) in horizontal_corridors {
         corridor.assign_tracks();
-        let track_offset = Fixed::try_from_u32(corridor.track_offset()).unwrap();
+        let track_offset = Fixed::from_u16(corridor.track_offset());
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
             let mut vertices = Tail::from(vertices.0.as_mut_slice());
             let (a, b, mut vertices) = vertices.split_pair(pair.index as usize);
 
-            let offset = Fixed::try_from_u32(pair.track).unwrap() - track_offset;
+            let offset = Fixed::from_u16(pair.track) - track_offset;
             if offset != fixed!(0) {
                 let y = y + offset * MIN_WIRE_SPACING;
                 a.position.y = y;
@@ -357,14 +392,14 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
     for (x, mut corridor) in vertical_corridors {
         corridor.assign_tracks();
-        let track_offset = Fixed::try_from_u32(corridor.track_offset()).unwrap();
+        let track_offset = Fixed::from_u16(corridor.track_offset());
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
             let mut vertices = Tail::from(vertices.0.as_mut_slice());
             let (a, b, mut vertices) = vertices.split_pair(pair.index as usize);
 
-            let offset = Fixed::try_from_u32(pair.track).unwrap() - track_offset;
+            let offset = Fixed::from_u16(pair.track) - track_offset;
             if offset != fixed!(0) {
                 let x = x + offset * MIN_WIRE_SPACING;
                 a.position.x = x;
