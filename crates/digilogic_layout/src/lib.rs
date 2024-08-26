@@ -612,7 +612,7 @@ fn assign_x_coordinates(graph: &mut Graph) {
 
     // Center nodes within their rank
     for rank in 0..=max_rank {
-        let mut nodes_at_rank: Vec<NodeIndex> = graph
+        let nodes_at_rank: Vec<NodeIndex> = graph
             .node_indices()
             .filter(|&n| graph[n].rank == Some(rank))
             .collect();
@@ -828,9 +828,8 @@ mod tests {
         // Check for edge crossings
         let edge_crossings = count_edge_crossings(graph);
         if edge_crossings > 0 {
-            // TODO: fixme
-            // println!("Layout has {} edge crossings", edge_crossings);
-            // return false;
+            println!("Layout has {} edge crossings", edge_crossings);
+            return false;
         }
 
         // Check for minimum distance between nodes
