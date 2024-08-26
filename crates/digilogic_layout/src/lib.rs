@@ -41,8 +41,8 @@ pub struct Node {
 
     pub rank: Option<u32>,
     pub order: Option<u32>,
-    pub x: Option<f64>,
-    pub y: Option<f64>,
+    pub x: f32,
+    pub y: f32,
 
     pub dummy: bool,
 }
@@ -57,8 +57,8 @@ impl Node {
             other_ports: Vec::new(),
             rank: None,
             order: None,
-            x: None,
-            y: None,
+            x: 0.0,
+            y: 0.0,
             dummy: false,
         }
     }
@@ -234,8 +234,8 @@ fn add_dummy_nodes(graph: &mut Graph) {
                 other_ports: Vec::new(),
                 rank: Some(rank),
                 order: None,
-                x: None,
-                y: None,
+                x: 0.0,
+                y: 0.0,
                 dummy: true,
             });
 
@@ -649,8 +649,8 @@ fn assign_x_coordinates(graph: &mut Graph) {
 
         let mut x = 0.0;
         for &node in &nodes_at_rank {
-            graph[node].x = Some(x);
-            x += graph[node].size.0 as f64 + 50.0; // Add some spacing between nodes
+            graph[node].x = x;
+            x += graph[node].size.0 as f32 + 50.0; // Add some spacing between nodes
         }
     }
 
@@ -664,19 +664,17 @@ fn assign_x_coordinates(graph: &mut Graph) {
         if let (Some(min_x), Some(max_x)) = (
             nodes_at_rank
                 .iter()
-                .filter_map(|&n| graph[n].x)
-                .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal)),
+                .map(|&n| graph[n].x)
+                .min_by(|a, b| a.total_cmp(b)),
             nodes_at_rank
                 .iter()
-                .filter_map(|&n| graph[n].x)
-                .max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal)),
+                .map(|&n| graph[n].x)
+                .max_by(|a, b| a.total_cmp(b)),
         ) {
             let center = (min_x + max_x) / 2.0;
             let offset = 500.0 - center; // Assuming we want to center around x=500
             for &node in &nodes_at_rank {
-                if let Some(x) = graph[node].x.as_mut() {
-                    *x += offset;
-                }
+                graph[node].x += offset;
             }
         }
     }
@@ -702,9 +700,9 @@ fn assign_y_coordinates(graph: &mut Graph) {
             .iter()
             .map(|&n| graph[n].size.1)
             .max()
-            .unwrap_or(0) as f64;
+            .unwrap_or(0) as f32;
         for &node in rank_nodes.iter() {
-            graph[node].y = Some(y);
+            graph[node].y = y;
         }
         y += max_height + rank_separation;
     }
@@ -726,8 +724,8 @@ mod tests {
                 other_ports: Vec::new(),
                 rank: None,
                 order: None,
-                x: None,
-                y: None,
+                x: 0.0,
+                y: 0.0,
                 dummy: false,
             })
             .collect();
@@ -800,7 +798,7 @@ mod tests {
             nodes_at_rank.windows(2).all(|w| {
                 let (n1, n2) = (w[0], w[1]);
 
-                graph[n1].x.unwrap() < graph[n2].x.unwrap()
+                graph[n1].x < graph[n2].x
             })
         })
     }
@@ -808,11 +806,11 @@ mod tests {
     fn check_y_coordinates(graph: &Graph) -> bool {
         let rank_coords = graph
             .node_indices()
-            .map(|n| (graph[n].rank.unwrap(), graph[n].y.unwrap()))
+            .map(|n| (graph[n].rank.unwrap(), graph[n].y))
             .collect::<HashMap<_, _>>();
         graph
             .node_indices()
-            .all(|n| graph[n].y.unwrap() == rank_coords[&graph[n].rank.unwrap()])
+            .all(|n| graph[n].y == rank_coords[&graph[n].rank.unwrap()])
     }
 
     fn validate_layout(graph: &Graph) -> bool {
@@ -878,12 +876,12 @@ mod tests {
         }
 
         // Check for minimum distance between nodes
-        const MIN_DISTANCE: f64 = 1.0;
+        const MIN_DISTANCE: f32 = 1.0;
         for n1 in graph.node_indices() {
             for n2 in graph.node_indices() {
                 if n1 != n2 {
-                    let dx = graph[n1].x.unwrap() - graph[n2].x.unwrap();
-                    let dy = graph[n1].y.unwrap() - graph[n2].y.unwrap();
+                    let dx = graph[n1].x - graph[n2].x;
+                    let dy = graph[n1].y - graph[n2].y;
                     let distance = (dx * dx + dy * dy).sqrt();
                     if distance < MIN_DISTANCE {
                         println!("Nodes are too close: distance = {}", distance);
@@ -918,10 +916,10 @@ mod tests {
         s2: NodeIndex,
         t2: NodeIndex,
     ) -> bool {
-        let (x1, y1) = (graph[s1].x.unwrap(), graph[s1].y.unwrap());
-        let (x2, y2) = (graph[t1].x.unwrap(), graph[t1].y.unwrap());
-        let (x3, y3) = (graph[s2].x.unwrap(), graph[s2].y.unwrap());
-        let (x4, y4) = (graph[t2].x.unwrap(), graph[t2].y.unwrap());
+        let (x1, y1) = (graph[s1].x, graph[s1].y);
+        let (x2, y2) = (graph[t1].x, graph[t1].y);
+        let (x3, y3) = (graph[s2].x, graph[s2].y);
+        let (x4, y4) = (graph[t2].x, graph[t2].y);
 
         // Check if bounding boxes intersect
         if x1.max(x2) < x3.min(x4)

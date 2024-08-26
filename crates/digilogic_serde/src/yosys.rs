@@ -101,7 +101,7 @@ fn translate_module_port(
     circuit_id: Entity,
     symbols: &SymbolRegistry,
 ) -> anyhow::Result<()> {
-    let mut symbol_builder = match (port.direction) {
+    let mut symbol_builder = match port.direction {
         netlist::PortDirection::Input => symbols.get(SymbolKind::In),
         netlist::PortDirection::Output => symbols.get(SymbolKind::Out),
         netlist::PortDirection::InOut => todo!(),
@@ -402,13 +402,13 @@ fn layout_circuit(
         ),
     )?;
 
-    let mut max_x: f64 = 0.;
-    let mut max_y: f64 = 0.;
+    let mut max_x = 0.0;
+    let mut max_y = 0.0;
 
     for node in graph.graph.node_weights() {
         // swap x and y
-        let x = node.y.unwrap();
-        let y = node.x.unwrap();
+        let x = node.y;
+        let y = node.x;
 
         if x > max_x {
             max_x = x;
@@ -420,8 +420,8 @@ fn layout_circuit(
 
     for node in graph.graph.node_weights() {
         // swap x and y
-        let y = node.x.unwrap();
-        let x = node.y.unwrap();
+        let y = node.x;
+        let x = node.y;
         match node.entity {
             NodeEntity::Symbol(symbol_id) => {
                 let transform = TransformBundle {
