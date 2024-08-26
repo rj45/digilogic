@@ -77,7 +77,8 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     break_cycles(graph);
     assign_ranks(graph);
     add_dummy_nodes(graph);
-    order_nodes_within_ranks(graph);
+    let rank_cache = create_rank_cache(graph);
+    order_nodes_within_ranks(graph, &rank_cache);
     remove_dummy_nodes(graph);
     assign_x_coordinates(graph);
     assign_y_coordinates(graph);
@@ -305,19 +306,28 @@ fn add_dummy_nodes(graph: &mut Graph) {
     }
 }
 
+fn create_rank_cache(graph: &Graph) -> Vec<Vec<NodeIndex>> {
+    let mut cache = Vec::new();
+    for index in graph.node_indices() {
+        if let Some(rank) = graph[index].rank {
+            let rank = rank as usize;
+
+            if rank >= cache.len() {
+                cache.resize(rank + 1, Vec::new());
+            }
+
+            cache[rank].push(index);
+        }
+    }
+    cache
+}
+
 #[tracing::instrument(skip_all)]
-fn order_nodes_within_ranks(graph: &mut Graph) {
-    let max_rank = graph
-        .node_weights()
-        .filter_map(|n| n.rank)
-        .max()
-        .unwrap_or(0);
+fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>]) {
+    let max_rank = rank_cache.len() as u32;
 
     // Initialize random order for the first rank
-    let nodes_at_rank: Vec<NodeIndex> = graph
-        .node_indices()
-        .filter(|&n| graph[n].rank == Some(0))
-        .collect();
+    let nodes_at_rank = rank_cache.first().map(Vec::as_slice).unwrap_or(&[]);
     for (i, &node) in nodes_at_rank.iter().enumerate() {
         graph[node].order = Some(i as u32);
     }
@@ -331,32 +341,33 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
         iteration += 1;
 
         // Backward sweep
-        for rank in (0..=max_rank).rev() {
-            if apply_barycenter_heuristic(graph, rank, Direction::Outgoing) {
+        for rank in (0..max_rank).rev() {
+            if apply_barycenter_heuristic(graph, rank_cache, rank, Direction::Outgoing) {
                 improved = true;
             }
         }
 
         // Forward sweep
-        for rank in 0..=max_rank {
-            if apply_barycenter_heuristic(graph, rank, Direction::Incoming) {
+        for rank in 0..max_rank {
+            if apply_barycenter_heuristic(graph, rank_cache, rank, Direction::Incoming) {
                 improved = true;
             }
         }
     }
+
     for _ in 0..100 {
         improved = false;
 
         // Backward sweep
-        for rank in (0..=max_rank).rev() {
-            if minimize_crossings(graph, rank) {
+        for rank in (0..max_rank).rev() {
+            if minimize_crossings(graph, rank_cache, rank) {
                 improved = true;
             }
         }
 
         // Forward sweep
-        for rank in 0..=max_rank {
-            if minimize_crossings(graph, rank) {
+        for rank in 0..max_rank {
+            if minimize_crossings(graph, rank_cache, rank) {
                 improved = true;
             }
         }
@@ -368,12 +379,16 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
 }
 
 #[tracing::instrument(skip_all)]
-fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
+fn apply_barycenter_heuristic(
+    graph: &mut Graph,
+    rank_cache: &[Vec<NodeIndex>],
+    rank: u32,
+    direction: Direction,
+) -> bool {
     // Calculate barycenter positions
-    let mut node_barycenters: Vec<(NodeIndex, f64)> = graph
-        .node_indices()
-        .filter(|&n| graph[n].rank == Some(rank))
-        .map(|node| (node, calculate_barycenter_position(graph, node, direction)))
+    let mut node_barycenters: Vec<(NodeIndex, f64)> = rank_cache[rank as usize]
+        .iter()
+        .map(|&node| (node, calculate_barycenter_position(graph, node, direction)))
         .collect();
 
     // Sort nodes by barycenter values
@@ -428,14 +443,10 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
 }
 
 #[tracing::instrument(skip_all)]
-fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
+fn minimize_crossings(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>], rank: u32) -> bool {
     let mut improved = false;
 
-    let mut nodes_at_rank: Vec<NodeIndex> = graph
-        .node_indices()
-        .filter(|&n| graph[n].rank == Some(rank))
-        .collect();
-
+    let mut nodes_at_rank = rank_cache[rank as usize].clone();
     nodes_at_rank.sort_by_key(|&n| graph[n].order);
 
     for pair in nodes_at_rank.windows(2) {
