@@ -1978,6 +1978,7 @@ dependencies = [
  "bevy_derive",
  "bevy_ecs",
  "bevy_reflect",
+ "bvh-arena",
  "digilogic_core",
  "digilogic_routing",
  "egui",

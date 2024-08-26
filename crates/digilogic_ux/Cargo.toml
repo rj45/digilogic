@@ -17,3 +17,4 @@ bevy_derive.workspace = true
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }
 egui.workspace = true
+bvh-arena.workspace = true

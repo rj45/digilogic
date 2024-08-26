@@ -2,9 +2,9 @@ use super::{
     EntityOffset, HoveredEntity, MouseIdle, MouseMoving, MouseState, PointerButtonEvent,
     PointerMovedEvent,
 };
+use crate::spatial_index::SpatialIndex;
 use bevy_ecs::prelude::*;
 use digilogic_core::components::*;
-use digilogic_core::spatial_index::SpatialIndex;
 use digilogic_core::transform::{BoundingBox, Transform, Vec2};
 use digilogic_core::Fixed;
 

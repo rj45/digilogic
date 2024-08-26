@@ -1,7 +1,6 @@
 pub mod bundles;
 pub mod components;
 pub mod events;
-pub mod spatial_index;
 pub mod symbol;
 pub mod transform;
 pub mod visibility;
@@ -74,9 +73,5 @@ impl bevy_app::Plugin for CorePlugin {
             .add_event::<events::UnloadedEvent>();
 
         app.add_plugins((transform::TransformPlugin, visibility::VisibilityPlugin));
-
-        app.init_resource::<spatial_index::SpatialIndex>();
-        app.add_systems(bevy_app::PreUpdate, spatial_index::update_spatial_index);
-        app.observe(spatial_index::on_remove_update_spatial_index);
     }
 }
