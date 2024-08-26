@@ -369,19 +369,15 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
 
 #[tracing::instrument(skip_all)]
 fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
-    let nodes_at_rank: Vec<NodeIndex> = graph
+    // Calculate barycenter positions
+    let mut node_barycenters: Vec<(NodeIndex, f64)> = graph
         .node_indices()
         .filter(|&n| graph[n].rank == Some(rank))
-        .collect();
-
-    // Calculate barycenter positions
-    let mut node_barycenters: Vec<(NodeIndex, f64)> = nodes_at_rank
-        .iter()
-        .map(|&node| (node, calculate_barycenter_position(graph, node, direction)))
+        .map(|node| (node, calculate_barycenter_position(graph, node, direction)))
         .collect();
 
     // Sort nodes by barycenter values
-    node_barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
+    node_barycenters.sort_by(|&(_, a), &(_, b)| a.total_cmp(&b));
 
     // Check if the order has changed
     let mut changed = false;
@@ -397,10 +393,10 @@ fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction
 
 #[tracing::instrument(skip_all)]
 fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
-    let adjacent_nodes: Vec<NodeIndex> = graph.neighbors_directed(node, direction).collect();
-
+    let mut len = 0;
     let mut sum = 0;
-    for &adjacent_node in &adjacent_nodes {
+    for adjacent_node in graph.neighbors_directed(node, direction) {
+        len += 1;
         sum += (graph[adjacent_node].order.unwrap_or(0) << 8) as i64;
 
         let all_ports = graph[adjacent_node]
@@ -424,12 +420,11 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
         }
     }
 
-    if adjacent_nodes.is_empty() {
-        return -1.0; // Use -1 for nodes without adjacent nodes in the given direction
+    if len == 0 {
+        -1.0 // Use -1 for nodes without adjacent nodes in the given direction
+    } else {
+        (sum as f64) / len as f64
     }
-
-    let len = adjacent_nodes.len();
-    (sum as f64) / len as f64
 }
 
 #[tracing::instrument(skip_all)]
@@ -443,8 +438,10 @@ fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
 
     nodes_at_rank.sort_by_key(|&n| graph[n].order);
 
-    for i in 0..nodes_at_rank.len() - 1 {
-        let (n1, n2) = (nodes_at_rank[i], nodes_at_rank[i + 1]);
+    for pair in nodes_at_rank.windows(2) {
+        let &[n1, n2] = pair else {
+            unreachable!();
+        };
 
         let crossings_before = count_crossings(graph, n1, n2, Direction::Outgoing)
             + count_crossings(graph, n1, n2, Direction::Incoming);
