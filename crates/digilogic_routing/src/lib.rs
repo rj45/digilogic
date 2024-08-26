@@ -72,6 +72,11 @@ impl Default for RoutingConfig {
     }
 }
 
+#[derive(Debug, Event, Reflect)]
+pub struct RoutingComplete {
+    pub circuit: CircuitID,
+}
+
 type CircuitQuery<'w, 's> = Query<
     'w,
     's,
@@ -103,6 +108,7 @@ fn route(
     config: Res<RoutingConfig>,
     mut circuits: CircuitQuery,
     mut tree: CircuitTree,
+    mut routing_complete_events: EventWriter<RoutingComplete>,
 ) {
     for ((circuit, mut graph, circuit_edges), circuit_children) in circuits.iter_mut() {
         commands.entity(circuit).remove::<GraphDirty>();
@@ -138,6 +144,10 @@ fn route(
         });
 
         fixup::separate_wires(&circuit_children, &mut tree.nets);
+
+        routing_complete_events.send(RoutingComplete {
+            circuit: CircuitID(circuit),
+        });
     }
 }
 
@@ -209,6 +219,7 @@ impl bevy_app::Plugin for RoutingPlugin {
             .register_type::<GraphDirty>();
 
         app.init_resource::<RoutingConfig>();
+        app.add_event::<RoutingComplete>();
         app.observe(inject_graph);
         app.observe(inject_vertices);
         app.add_systems(bevy_app::PreUpdate, route);
