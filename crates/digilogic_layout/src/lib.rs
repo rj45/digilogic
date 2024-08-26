@@ -77,8 +77,8 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     break_cycles(graph);
     assign_ranks(graph);
     add_dummy_nodes(graph);
-    let rank_cache = create_rank_cache(graph);
-    order_nodes_within_ranks(graph, &rank_cache);
+    let mut rank_cache = create_rank_cache(graph);
+    order_nodes_within_ranks(graph, &mut rank_cache);
     remove_dummy_nodes(graph);
     assign_x_coordinates(graph);
     assign_y_coordinates(graph);
@@ -323,7 +323,7 @@ fn create_rank_cache(graph: &Graph) -> Vec<Vec<NodeIndex>> {
 }
 
 #[tracing::instrument(skip_all)]
-fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>]) {
+fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>]) {
     let max_rank = rank_cache.len() as u32;
 
     // Initialize random order for the first rank
@@ -340,6 +340,9 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>]) {
         improved = false;
         iteration += 1;
 
+        let span = bevy_log::info_span!("apply_barycenter_heuristic");
+        let span = span.enter();
+
         // Backward sweep
         for rank in (0..max_rank).rev() {
             if apply_barycenter_heuristic(graph, rank_cache, rank, Direction::Outgoing) {
@@ -353,10 +356,15 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>]) {
                 improved = true;
             }
         }
+
+        drop(span);
     }
 
     for _ in 0..100 {
         improved = false;
+
+        let span = bevy_log::info_span!("minimize_crossings");
+        let span = span.enter();
 
         // Backward sweep
         for rank in (0..max_rank).rev() {
@@ -375,30 +383,51 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>]) {
         if !improved {
             break;
         }
+
+        drop(span);
     }
 }
 
-#[tracing::instrument(skip_all)]
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+struct TotalOrdF64(f64);
+
+impl PartialEq for TotalOrdF64 {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.total_cmp(&other.0).is_eq()
+    }
+}
+
+impl Eq for TotalOrdF64 {}
+
+impl PartialOrd for TotalOrdF64 {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TotalOrdF64 {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.total_cmp(&other.0)
+    }
+}
+
 fn apply_barycenter_heuristic(
     graph: &mut Graph,
-    rank_cache: &[Vec<NodeIndex>],
+    rank_cache: &mut [Vec<NodeIndex>],
     rank: u32,
     direction: Direction,
 ) -> bool {
-    // Calculate barycenter positions
-    let mut node_barycenters: Vec<(NodeIndex, f64)> = rank_cache[rank as usize]
-        .iter()
-        .map(|&node| (node, calculate_barycenter_position(graph, node, direction)))
-        .collect();
-
     // Sort nodes by barycenter values
-    node_barycenters.sort_by(|&(_, a), &(_, b)| a.total_cmp(&b));
+    rank_cache[rank as usize].sort_by_cached_key(|&node| {
+        TotalOrdF64(calculate_barycenter_position(graph, node, direction))
+    });
 
     // Check if the order has changed
     let mut changed = false;
-    for (i, (node, _)) in node_barycenters.iter().enumerate() {
-        if graph[*node].order != Some(i as u32) {
-            graph[*node].order = Some(i as u32);
+    for (i, &node) in rank_cache[rank as usize].iter().enumerate() {
+        if graph[node].order != Some(i as u32) {
+            graph[node].order = Some(i as u32);
             changed = true;
         }
     }
@@ -406,13 +435,12 @@ fn apply_barycenter_heuristic(
     changed
 }
 
-#[tracing::instrument(skip_all)]
 fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
     let mut len = 0;
     let mut sum = 0;
     for adjacent_node in graph.neighbors_directed(node, direction) {
         len += 1;
-        sum += (graph[adjacent_node].order.unwrap_or(0) << 8) as i64;
+        sum += (graph[adjacent_node].order.unwrap_or(0) as i64) << 8;
 
         let all_ports = graph[adjacent_node]
             .input_ports
@@ -442,14 +470,11 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
     }
 }
 
-#[tracing::instrument(skip_all)]
-fn minimize_crossings(graph: &mut Graph, rank_cache: &[Vec<NodeIndex>], rank: u32) -> bool {
+fn minimize_crossings(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>], rank: u32) -> bool {
+    rank_cache[rank as usize].sort_by_key(|&node| graph[node].order);
+
     let mut improved = false;
-
-    let mut nodes_at_rank = rank_cache[rank as usize].clone();
-    nodes_at_rank.sort_by_key(|&n| graph[n].order);
-
-    for pair in nodes_at_rank.windows(2) {
+    for pair in rank_cache[rank as usize].windows(2) {
         let &[n1, n2] = pair else {
             unreachable!();
         };
