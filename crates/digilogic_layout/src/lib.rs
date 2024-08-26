@@ -66,6 +66,7 @@ impl Node {
 
 pub type Graph = StableDiGraph<Node, ()>;
 
+#[tracing::instrument(skip_all)]
 pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     bevy_log::debug!(
         "Layout graph with {} nodes and {} edges",
@@ -84,6 +85,7 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 pub fn create_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<Graph, String> {
     let mut graph = StableDiGraph::new();
     let mut node_indices = HashMap::new();
@@ -108,6 +110,7 @@ pub fn create_graph(edges: Vec<(u32, u32)>, nodes: Vec<Node>) -> Result<Graph, S
     Ok(graph)
 }
 
+#[tracing::instrument(skip_all)]
 fn break_cycles(graph: &mut Graph) {
     // Remove self-loops first
     graph.retain_edges(|graph, edge| {
@@ -148,6 +151,7 @@ fn break_cycles(graph: &mut Graph) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn assign_ranks(graph: &mut Graph) {
     let mut rank_map: HashMap<NodeIndex, u32> = HashMap::new();
     let mut queue = VecDeque::new();
@@ -205,6 +209,7 @@ fn assign_ranks(graph: &mut Graph) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn add_dummy_nodes(graph: &mut Graph) {
     for edge in graph.edge_indices().collect::<Vec<_>>() {
         let (mut source, target) = graph.edge_endpoints(edge).unwrap();
@@ -300,6 +305,7 @@ fn add_dummy_nodes(graph: &mut Graph) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn order_nodes_within_ranks(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()
@@ -361,6 +367,7 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction) -> bool {
     let nodes_at_rank: Vec<NodeIndex> = graph
         .node_indices()
@@ -388,6 +395,7 @@ fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction
     changed
 }
 
+#[tracing::instrument(skip_all)]
 fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
     let adjacent_nodes: Vec<NodeIndex> = graph.neighbors_directed(node, direction).collect();
 
@@ -424,6 +432,7 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
     (sum as f64) / len as f64
 }
 
+#[tracing::instrument(skip_all)]
 fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
     let mut improved = false;
 
@@ -545,6 +554,7 @@ fn edges_cross(graph: &Graph, e1: EdgeReference<()>, e2: EdgeReference<()>) -> b
     (u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)
 }
 
+#[tracing::instrument(skip_all)]
 fn remove_dummy_nodes(graph: &mut Graph) {
     let mut dummy_nodes: Vec<NodeIndex> =
         graph.node_indices().filter(|&n| graph[n].dummy).collect();
@@ -588,6 +598,7 @@ fn remove_dummy_nodes(graph: &mut Graph) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn assign_x_coordinates(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()
@@ -638,6 +649,7 @@ fn assign_x_coordinates(graph: &mut Graph) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn assign_y_coordinates(graph: &mut Graph) {
     let max_rank = graph
         .node_weights()

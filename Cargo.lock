@@ -1914,6 +1914,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "petgraph",
+ "tracing",
 ]
 
 [[package]]

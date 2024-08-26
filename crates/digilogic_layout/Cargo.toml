@@ -10,6 +10,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+tracing.workspace = true
 petgraph.workspace = true
 bevy_ecs.workspace = true
 bevy_log.workspace = true
