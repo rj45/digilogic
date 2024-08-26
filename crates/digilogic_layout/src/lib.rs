@@ -77,7 +77,7 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     assign_ranks(graph);
     add_dummy_nodes(graph);
     order_nodes_within_ranks(graph);
-    // remove_dummy_nodes(graph);
+    remove_dummy_nodes(graph);
     assign_x_coordinates(graph);
     assign_y_coordinates(graph);
 
@@ -325,38 +325,24 @@ fn order_nodes_within_ranks(graph: &mut Graph) {
         iteration += 1;
 
         // Backward sweep
-        for rank in (0..max_rank).rev() {
-            if apply_barycenter_heuristic(graph, rank, Direction::Incoming) {
-                improved = true;
-            }
-        }
-
-        // Forward sweep
-        for rank in 0..=max_rank {
+        for rank in (0..=max_rank).rev() {
             if apply_barycenter_heuristic(graph, rank, Direction::Outgoing) {
                 improved = true;
             }
         }
 
-        // Backward sweep
-        for rank in (0..max_rank).rev() {
-            if minimize_crossings(graph, rank) {
-                improved = true;
-            }
-        }
-
         // Forward sweep
         for rank in 0..=max_rank {
-            if minimize_crossings(graph, rank) {
+            if apply_barycenter_heuristic(graph, rank, Direction::Incoming) {
                 improved = true;
             }
         }
     }
-    for _ in 0..24 {
+    for _ in 0..100 {
         improved = false;
 
         // Backward sweep
-        for rank in (0..max_rank).rev() {
+        for rank in (0..=max_rank).rev() {
             if minimize_crossings(graph, rank) {
                 improved = true;
             }
@@ -405,27 +391,48 @@ fn apply_barycenter_heuristic(graph: &mut Graph, rank: u32, direction: Direction
 fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Direction) -> f64 {
     let adjacent_nodes: Vec<NodeIndex> = graph.neighbors_directed(node, direction).collect();
 
-    let positions: Vec<f64> = adjacent_nodes
-        .iter()
-        .filter_map(|&n| graph[n].order.map(|o| o as f64))
-        .collect();
+    let mut sum = 0;
+    for &adjacent_node in &adjacent_nodes {
+        sum += (graph[adjacent_node].order.unwrap_or(0) << 8) as i64;
 
-    if positions.is_empty() {
+        let all_ports = graph[adjacent_node]
+            .input_ports
+            .iter()
+            .chain(&graph[adjacent_node].output_ports)
+            .chain(&graph[adjacent_node].other_ports);
+
+        // Add the position of the port on the adjacent node
+        for port in all_ports {
+            if port.edges.iter().any(|&e| {
+                if graph.edge_endpoints(e).is_none() {
+                    return false;
+                }
+                let (source, target) = graph.edge_endpoints(e).unwrap();
+                (source == node || target == node)
+                    && (source == adjacent_node || target == adjacent_node)
+            }) {
+                sum += port.index as i64;
+            }
+        }
+    }
+
+    if adjacent_nodes.is_empty() {
         return -1.0; // Use -1 for nodes without adjacent nodes in the given direction
     }
 
-    let len = positions.len();
-    let sum = positions.iter().sum::<f64>();
-    sum / len as f64
+    let len = adjacent_nodes.len();
+    (sum as f64) / len as f64
 }
 
 fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
     let mut improved = false;
 
-    let nodes_at_rank: Vec<NodeIndex> = graph
+    let mut nodes_at_rank: Vec<NodeIndex> = graph
         .node_indices()
         .filter(|&n| graph[n].rank == Some(rank))
         .collect();
+
+    nodes_at_rank.sort_by_key(|&n| graph[n].order);
 
     for i in 0..nodes_at_rank.len() - 1 {
         let (n1, n2) = (nodes_at_rank[i], nodes_at_rank[i + 1]);
@@ -435,16 +442,17 @@ fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
 
         exchange_nodes(graph, n1, n2);
 
-        let crossings_after = count_crossings(graph, n1, n2, Direction::Outgoing)
-            + count_crossings(graph, n1, n2, Direction::Incoming);
+        let crossings_after = count_crossings(graph, n2, n1, Direction::Outgoing)
+            + count_crossings(graph, n2, n1, Direction::Incoming);
 
         if crossings_before <= crossings_after {
             // Revert the exchange
             exchange_nodes(graph, n1, n2);
         } else {
             improved = true;
+            exchange_nodes(graph, n1, n2);
             bevy_log::debug!(
-                "Exchanged chains with {} crossings (before) -> {} crossings (after)",
+                "Exchanged nodes with {} crossings (before) -> {} crossings (after)",
                 crossings_before,
                 crossings_after
             );
@@ -455,6 +463,9 @@ fn minimize_crossings(graph: &mut Graph, rank: u32) -> bool {
 }
 
 fn exchange_nodes(graph: &mut Graph, n1: NodeIndex, n2: NodeIndex) {
+    assert!(graph[n1].rank == graph[n2].rank);
+    assert!(graph[n1].order.is_some() && graph[n2].order.is_some());
+    assert!((graph[n1].order.unwrap() as i32 - graph[n2].order.unwrap() as i32).abs() == 1);
     let tmp = graph[n2].order;
     graph[n2].order = graph[n1].order;
     graph[n1].order = tmp;
@@ -483,60 +494,40 @@ fn edges_cross(graph: &Graph, e1: EdgeReference<()>, e2: EdgeReference<()>) -> b
     let e1s = graph[e1.source()]
         .output_ports
         .iter()
+        .chain(graph[e1.source()].other_ports.iter())
         .find(|port| port.edges.contains(&e1.id()))
-        .or_else(|| {
-            graph[e1.source()]
-                .other_ports
-                .iter()
-                .find(|port| port.edges.contains(&e1.id()))
-        })
         .map(|port| port.index)
-        .unwrap_or(0);
+        .unwrap_or(0) as i64;
     let e1t = graph[e1.target()]
         .output_ports
         .iter()
+        .chain(graph[e1.target()].other_ports.iter())
         .find(|port| port.edges.contains(&e1.id()))
-        .or_else(|| {
-            graph[e1.target()]
-                .other_ports
-                .iter()
-                .find(|port| port.edges.contains(&e1.id()))
-        })
         .map(|port| port.index)
-        .unwrap_or(0);
+        .unwrap_or(0) as i64;
 
     let e2s = graph[e2.source()]
         .output_ports
         .iter()
+        .chain(graph[e1.source()].other_ports.iter())
         .find(|port| port.edges.contains(&e1.id()))
-        .or_else(|| {
-            graph[e2.source()]
-                .other_ports
-                .iter()
-                .find(|port| port.edges.contains(&e1.id()))
-        })
         .map(|port| port.index)
-        .unwrap_or(0);
+        .unwrap_or(0) as i64;
     let e2t = graph[e2.target()]
         .output_ports
         .iter()
+        .chain(graph[e1.target()].other_ports.iter())
         .find(|port| port.edges.contains(&e1.id()))
-        .or_else(|| {
-            graph[e2.target()]
-                .other_ports
-                .iter()
-                .find(|port| port.edges.contains(&e1.id()))
-        })
         .map(|port| port.index)
-        .unwrap_or(0);
+        .unwrap_or(0) as i64;
 
     let (u1, v1) = (
-        (graph[e1.source()].order.unwrap() << 8) as i32 + e1s,
-        (graph[e1.target()].order.unwrap() << 8) as i32 + e1t,
+        (graph[e1.source()].order.unwrap() << 8) as i64 + e1s,
+        (graph[e1.target()].order.unwrap() << 8) as i64 + e1t,
     );
     let (u2, v2) = (
-        (graph[e2.source()].order.unwrap() << 8) as i32 + e2s,
-        (graph[e2.target()].order.unwrap() << 8) as i32 + e2t,
+        (graph[e2.source()].order.unwrap() << 8) as i64 + e2s,
+        (graph[e2.target()].order.unwrap() << 8) as i64 + e2t,
     );
 
     // Consider two edges:
@@ -554,48 +545,48 @@ fn edges_cross(graph: &Graph, e1: EdgeReference<()>, e2: EdgeReference<()>) -> b
     (u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)
 }
 
-// fn remove_dummy_nodes(graph: &mut Graph) {
-//     let mut dummy_nodes: Vec<NodeIndex> =
-//         graph.node_indices().filter(|&n| graph[n].dummy).collect();
-//     dummy_nodes.sort_by_key(|&n| graph[n].rank);
+fn remove_dummy_nodes(graph: &mut Graph) {
+    let mut dummy_nodes: Vec<NodeIndex> =
+        graph.node_indices().filter(|&n| graph[n].dummy).collect();
+    dummy_nodes.sort_by_key(|&n| graph[n].rank);
 
-//     for node in dummy_nodes.iter().copied() {
-//         let incoming = graph.neighbors_directed(node, Direction::Incoming).next();
-//         if incoming.is_none() {
-//             continue;
-//         }
-//         let incoming = incoming.unwrap();
-//         let outgoing = graph
-//             .neighbors_directed(node, Direction::Outgoing)
-//             .next()
-//             .unwrap();
+    for node in dummy_nodes.iter().copied() {
+        let incoming = graph.neighbors_directed(node, Direction::Incoming).next();
+        if incoming.is_none() {
+            continue;
+        }
+        let incoming = incoming.unwrap();
+        let outgoing = graph
+            .neighbors_directed(node, Direction::Outgoing)
+            .next()
+            .unwrap();
 
-//         if let Some(edge) = graph.find_edge(incoming, node) {
-//             graph.remove_edge(edge);
-//         }
-//         if let Some(edge) = graph.find_edge(node, outgoing) {
-//             graph.remove_edge(edge);
-//         }
+        if let Some(edge) = graph.find_edge(incoming, node) {
+            graph.remove_edge(edge);
+        }
+        if let Some(edge) = graph.find_edge(node, outgoing) {
+            graph.remove_edge(edge);
+        }
 
-//         // restore the original edge
-//         graph.add_edge(incoming, outgoing, ());
+        // restore the original edge
+        graph.add_edge(incoming, outgoing, ());
 
-//         // Update order of nodes in the same rank
-//         let rank = graph[node].rank.unwrap();
-//         let order = graph[node].order.unwrap();
-//         let nodes_at_rank: Vec<NodeIndex> = graph
-//             .node_indices()
-//             .filter(|&n| graph[n].rank == Some(rank))
-//             .collect();
-//         for &node in nodes_at_rank.iter() {
-//             if graph[node].order.unwrap() > order {
-//                 graph[node].order = Some(graph[node].order.unwrap() - 1);
-//             }
-//         }
+        // Update order of nodes in the same rank
+        let rank = graph[node].rank.unwrap();
+        let order = graph[node].order.unwrap();
+        let nodes_at_rank: Vec<NodeIndex> = graph
+            .node_indices()
+            .filter(|&n| graph[n].rank == Some(rank))
+            .collect();
+        for &node in nodes_at_rank.iter() {
+            if graph[node].order.unwrap() > order {
+                graph[node].order = Some(graph[node].order.unwrap() - 1);
+            }
+        }
 
-//         graph.remove_node(node);
-//     }
-// }
+        graph.remove_node(node);
+    }
+}
 
 fn assign_x_coordinates(graph: &mut Graph) {
     let max_rank = graph
@@ -621,7 +612,7 @@ fn assign_x_coordinates(graph: &mut Graph) {
 
     // Center nodes within their rank
     for rank in 0..=max_rank {
-        let nodes_at_rank: Vec<NodeIndex> = graph
+        let mut nodes_at_rank: Vec<NodeIndex> = graph
             .node_indices()
             .filter(|&n| graph[n].rank == Some(rank))
             .collect();
