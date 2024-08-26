@@ -104,6 +104,12 @@ impl App {
             ui::UiPlugin::new(context, render_state),
         ));
 
+        // disable the max delta time since the app does not run in a fixed FPS
+        app.world_mut()
+            .get_resource_mut::<bevy_time::Time<bevy_time::Virtual>>()
+            .unwrap()
+            .set_max_delta(std::time::Duration::MAX);
+
         Self(app)
     }
 }
