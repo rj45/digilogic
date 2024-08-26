@@ -7,27 +7,41 @@ use bvh_arena::{Bvh, VolumeHandle};
 #[derive(Resource, Default)]
 pub struct SpatialIndex {
     index: Bvh<Entity, BoundingBox>,
-    handles: HashMap<Entity, VolumeHandle>,
+    handles: HashMap<Entity, Vec<VolumeHandle>>,
 }
 
 impl SpatialIndex {
-    pub fn insert(&mut self, entity: Entity, bounds: BoundingBox) {
-        let handle = self.index.insert(entity, bounds);
-        self.handles.insert(entity, handle);
-    }
-
     pub fn remove(&mut self, entity: Entity) {
-        if let Some(handle) = self.handles.remove(&entity) {
-            self.index.remove(handle);
+        if let Some(handles) = self.handles.remove(&entity) {
+            for handle in handles {
+                self.index.remove(handle);
+            }
         }
     }
 
+    /// Update the spatial index for the given entity with a single bounding box.
+    /// Any existing bounding boxes for the entity will be removed.
     pub fn update(&mut self, entity: Entity, bounds: BoundingBox) {
-        if let Some(handle) = self.handles.get(&entity) {
-            self.index.remove(*handle);
+        self.update_all(entity, vec![bounds]);
+    }
+
+    /// Update the spatial index for the given entity with multiple bounding boxes.
+    /// Any existing bounding boxes for the entity will be removed.
+    pub fn update_all(&mut self, entity: Entity, bounds: Vec<BoundingBox>) {
+        let handles = if let Some(handles) = self.handles.get_mut(&entity) {
+            for handle in handles.iter() {
+                self.index.remove(*handle);
+            }
+            handles.clear();
+            handles
+        } else {
+            self.handles.insert(entity, Vec::new());
+            self.handles.get_mut(&entity).unwrap()
+        };
+        for bound in bounds {
+            let handle = self.index.insert(entity, bound);
+            handles.push(handle);
         }
-        let handle = self.index.insert(entity, bounds);
-        self.handles.insert(entity, handle);
     }
 
     pub fn query(&self, bounds: BoundingBox, cb: impl FnMut(&Entity)) {
