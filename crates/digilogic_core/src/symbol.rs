@@ -277,6 +277,14 @@ impl SymbolBuilder<'_> {
         &self.ports
     }
 
+    pub fn bounding_box(&self) -> BoundingBox {
+        self.registry
+            .kinds
+            .get(self.kind as usize)
+            .map(|kind| kind.bounding_box)
+            .unwrap_or_default()
+    }
+
     pub fn build(&mut self, commands: &mut Commands, circuit_id: Entity) -> Entity {
         let kind = self.registry.kinds.get(self.kind as usize).unwrap();
 
