@@ -448,6 +448,18 @@ impl Fixed {
     pub const fn abs(self) -> Self {
         self.wrapping_abs()
     }
+
+    #[cfg(debug_assertions)]
+    #[inline]
+    pub const fn sqr(self) -> Self {
+        self.strict_mul(self)
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[inline]
+    pub const fn sqr(self) -> Self {
+        self.wrapping_mul(self)
+    }
 }
 
 // FIXME: move all of this into the corresponding traits once const trait impls become stable

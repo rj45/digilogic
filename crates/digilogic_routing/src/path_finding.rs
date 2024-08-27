@@ -177,6 +177,22 @@ impl PathFinder {
         }
     }
 
+    fn length_in_direction(&self, graph: &Graph, mut node: NodeIndex, dir: Direction) -> Fixed {
+        let mut len = fixed!(0);
+        while let Some(&pred) = self.predecessor.get(&node) {
+            if graph.nodes[node].neighbors[dir] == pred {
+                let node_pos = graph.nodes[node].position;
+                let pred_pos = graph.nodes[pred].position;
+                len += node_pos.manhatten_distance_to(pred_pos);
+
+                node = pred;
+            } else {
+                break;
+            }
+        }
+        len
+    }
+
     #[tracing::instrument(skip_all, name = "find_path")]
     fn find_path_impl(&mut self, graph: &Graph, start_index: NodeIndex) -> PathFindResult {
         let mut path = Path::default();
@@ -216,6 +232,14 @@ impl PathFinder {
                     pred_to_current_dir
                 });
 
+                let straight_length = if let Some(straight_dir) = straight_dir {
+                    self.length_in_direction(graph, current_index, straight_dir.opposite())
+                } else {
+                    fixed!(0)
+                };
+
+                let corner_penalty = (straight_length / fixed!(100)).sqr().max(fixed!(50));
+
                 for dir in Direction::ALL {
                     if Some(dir.opposite()) == straight_dir {
                         // The path came from here.
@@ -235,11 +259,11 @@ impl PathFinder {
                         + current_node
                             .position
                             .manhatten_distance_to(neighbor_node.position)
-                            * if Some(dir) == straight_dir {
-                                fixed!(1)
-                            } else {
-                                fixed!(2)
-                            };
+                        + if Some(dir) == straight_dir {
+                            fixed!(0)
+                        } else {
+                            corner_penalty
+                        };
 
                     // Check whether the new path length is shorter than the previous one.
                     let update = match self.g_score.get(&neighbor_index) {

@@ -5,9 +5,8 @@ use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_log::debug;
-use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::Fixed;
+use digilogic_core::{components::*, Fixed};
 use smallvec::SmallVec;
 use std::cell::RefCell;
 
@@ -42,7 +41,9 @@ fn pick_root_path(
                     if a != b {
                         let pos_b = transform_b.translation;
 
-                        let dist = pos_a.manhatten_distance_to(pos_b);
+                        let dist_x = (pos_a.x - pos_b.x).abs();
+                        let dist_y = (pos_a.y - pos_b.y).abs();
+                        let dist = (dist_x - dist_y).abs();
                         if dist > max_dist {
                             max_dist = dist;
                             max_pair = Some((a, b));
