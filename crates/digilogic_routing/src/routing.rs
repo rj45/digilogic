@@ -6,8 +6,8 @@ use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_log::debug;
 use digilogic_core::components::*;
-use digilogic_core::fixed;
 use digilogic_core::transform::*;
+use digilogic_core::Fixed;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 
@@ -28,7 +28,7 @@ fn pick_root_path(
     net_children: &RelationsItem<Child>,
     endpoints: &EndpointQuery,
 ) -> Option<(Entity, Entity)> {
-    let mut max_dist = fixed!(0);
+    let mut max_dist = Fixed::MIN;
     let mut max_pair: Option<(Entity, Entity)> = None;
 
     net_children
@@ -39,12 +39,14 @@ fn pick_root_path(
             net_children
                 .join::<Child>(endpoints)
                 .for_each(|(b, transform_b, _)| {
-                    let pos_b = transform_b.translation;
+                    if a != b {
+                        let pos_b = transform_b.translation;
 
-                    let dist = pos_a.manhatten_distance_to(pos_b);
-                    if dist >= max_dist {
-                        max_dist = dist;
-                        max_pair = Some((a, b));
+                        let dist = pos_a.manhatten_distance_to(pos_b);
+                        if dist > max_dist {
+                            max_dist = dist;
+                            max_pair = Some((a, b));
+                        }
                     }
                 });
         });
