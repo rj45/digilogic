@@ -467,36 +467,45 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
 }
 
 fn minimize_crossings(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>], rank: u32) -> bool {
-    rank_cache[rank as usize].sort_by_key(|&node| graph[node].order);
+    let mut changed = true;
+    let mut improved = false;
 
-    for pair in rank_cache[rank as usize].windows(2) {
-        let &[n1, n2] = pair else {
-            unreachable!();
-        };
+    while changed {
+        changed = false;
 
-        let crossings_before = count_crossings(graph, n1, n2, Direction::Outgoing)
-            + count_crossings(graph, n1, n2, Direction::Incoming);
+        rank_cache[rank as usize].sort_by_key(|&node| graph[node].order);
 
-        exchange_nodes(graph, n1, n2);
+        for pair in rank_cache[rank as usize].windows(2) {
+            let &[n1, n2] = pair else {
+                unreachable!();
+            };
 
-        let crossings_after = count_crossings(graph, n2, n1, Direction::Outgoing)
-            + count_crossings(graph, n2, n1, Direction::Incoming);
+            let crossings_before = count_crossings(graph, n1, n2, Direction::Outgoing)
+                + count_crossings(graph, n1, n2, Direction::Incoming);
 
-        if crossings_before <= crossings_after {
-            // Revert the exchange
             exchange_nodes(graph, n1, n2);
-        } else {
-            bevy_log::debug!(
-                "Exchanged nodes with {} crossings (before) -> {} crossings (after)",
-                crossings_before,
-                crossings_after
-            );
 
-            return true;
+            let crossings_after = count_crossings(graph, n2, n1, Direction::Outgoing)
+                + count_crossings(graph, n2, n1, Direction::Incoming);
+
+            if crossings_before <= crossings_after {
+                // Revert the exchange
+                exchange_nodes(graph, n1, n2);
+            } else {
+                bevy_log::debug!(
+                    "Exchanged nodes with {} crossings (before) -> {} crossings (after)",
+                    crossings_before,
+                    crossings_after
+                );
+                improved = true;
+                changed = true;
+
+                break;
+            }
         }
     }
 
-    false
+    improved
 }
 
 fn exchange_nodes(graph: &mut Graph, n1: NodeIndex, n2: NodeIndex) {
