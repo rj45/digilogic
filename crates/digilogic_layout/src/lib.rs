@@ -330,12 +330,7 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>]
 
     // Perform layer sweep algorithm
     let mut improved = true;
-    let mut iteration = 0;
-    while improved && iteration < 24 {
-        // Max 24 iterations as per the paper
-        improved = false;
-        iteration += 1;
-
+    for _ in 0..4 {
         let span = bevy_log::info_span!("apply_barycenter_heuristic");
         let span = span.enter();
 
@@ -354,9 +349,13 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>]
         }
 
         drop(span);
+
+        if !improved {
+            break;
+        }
     }
 
-    for _ in 0..100 {
+    for i in 0..24 {
         improved = false;
 
         let span = bevy_log::info_span!("minimize_crossings");
@@ -377,6 +376,7 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>]
         }
 
         if !improved {
+            bevy_log::debug!("Minimize crossings converged after {} iterations", i);
             break;
         }
 
