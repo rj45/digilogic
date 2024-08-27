@@ -208,8 +208,8 @@ pub fn draw_wires(
 
                             let is_root = is_root_path && app_state.show_root_wires;
                             let path_color = match (is_root, hovered) {
-                                (true, true) => Color::rgb8(230, 192, 35),
-                                (true, false) => Color::rgb8(212, 172, 16),
+                                (true, true) => Color::rgb8(245, 220, 116),
+                                (true, false) => Color::rgb8(208, 166, 2),
                                 (false, true) => Color::rgb8(125, 240, 147),
                                 (false, false) => Color::rgb8(8, 190, 42),
                             };
