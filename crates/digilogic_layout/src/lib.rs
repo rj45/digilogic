@@ -469,7 +469,6 @@ fn calculate_barycenter_position(graph: &Graph, node: NodeIndex, direction: Dire
 fn minimize_crossings(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>], rank: u32) -> bool {
     rank_cache[rank as usize].sort_by_key(|&node| graph[node].order);
 
-    let mut improved = false;
     for pair in rank_cache[rank as usize].windows(2) {
         let &[n1, n2] = pair else {
             unreachable!();
@@ -487,23 +486,27 @@ fn minimize_crossings(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>], rank
             // Revert the exchange
             exchange_nodes(graph, n1, n2);
         } else {
-            improved = true;
-            exchange_nodes(graph, n1, n2);
             bevy_log::debug!(
                 "Exchanged nodes with {} crossings (before) -> {} crossings (after)",
                 crossings_before,
                 crossings_after
             );
+
+            return true;
         }
     }
 
-    improved
+    false
 }
 
 fn exchange_nodes(graph: &mut Graph, n1: NodeIndex, n2: NodeIndex) {
-    assert!(graph[n1].rank == graph[n2].rank);
+    assert_eq!(graph[n1].rank, graph[n2].rank);
     assert!(graph[n1].order.is_some() && graph[n2].order.is_some());
-    assert!((graph[n1].order.unwrap() as i32 - graph[n2].order.unwrap() as i32).abs() == 1);
+    assert_eq!(
+        graph[n1].order.unwrap().abs_diff(graph[n2].order.unwrap()),
+        1
+    );
+
     let tmp = graph[n2].order;
     graph[n2].order = graph[n1].order;
     graph[n1].order = tmp;
