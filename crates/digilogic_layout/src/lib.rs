@@ -7,12 +7,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
-// the fix is that Ports need to only exist on Nodes, and not on the graph itself
-// the crossing detections need to be aware of ports, and ordering need to order ports,
-// but ports need to be rigidly attached to nodes, and not be nodes themselves, otherwise
-// the ports on one side of the symbol will become detached from the symbol itself and nodes
-// on the other side, and that will cause the crossing detection to fail to detect all the
-// crossings, and the ordering to fail to order the symbols correctly
+const SPLIT_RANKS_LARGER_THAN: usize = 12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NodeEntity {
@@ -76,7 +71,7 @@ pub fn layout_graph(graph: &mut Graph) -> Result<(), String> {
     add_dummy_nodes(graph);
     let mut rank_cache = create_rank_cache(graph);
     order_nodes_within_ranks(graph, &mut rank_cache);
-    remove_dummy_nodes(graph);
+    // remove_dummy_nodes(graph);
     assign_x_coordinates(graph);
     assign_y_coordinates(graph);
 
@@ -203,6 +198,45 @@ fn assign_ranks(graph: &mut Graph) {
     for node in graph.node_weights_mut() {
         if let Some(old_rank) = node.rank {
             node.rank = Some(compact_rank_map[&old_rank]);
+        }
+    }
+
+    // try to split large ranks
+    let mut split = true;
+    let mut max_rank = compact_rank_map.len() as u32;
+    while split {
+        split = false;
+        for rank in 0..max_rank {
+            let nodes_at_rank: Vec<NodeIndex> = graph
+                .node_indices()
+                .filter(|&n| graph[n].rank == Some(rank))
+                .collect();
+
+            if nodes_at_rank.len() > SPLIT_RANKS_LARGER_THAN {
+                split = true;
+                let new_rank = rank + 1;
+                let split_point = nodes_at_rank.len() / 2;
+
+                // upgrade ranks of all nodes with rank >= new_rank
+                for node in graph.node_weights_mut() {
+                    if let Some(old_rank) = node.rank {
+                        if old_rank >= new_rank {
+                            node.rank = Some(old_rank + 1);
+                        }
+                    }
+                }
+
+                // assign new_rank to all nodes after the split_point
+                for &node in nodes_at_rank.iter().skip(split_point) {
+                    graph[node].rank = Some(new_rank);
+                }
+
+                // break because we need to increment max_rank but can't while in the loop
+                break;
+            }
+        }
+        if split {
+            max_rank += 1;
         }
     }
 }
@@ -376,7 +410,7 @@ fn order_nodes_within_ranks(graph: &mut Graph, rank_cache: &mut [Vec<NodeIndex>]
         }
 
         if !improved {
-            bevy_log::debug!("Minimize crossings converged after {} iterations", i);
+            bevy_log::debug!("Minimize crossings converged after {} iterations", i + 1);
             break;
         }
 
@@ -419,11 +453,14 @@ fn apply_barycenter_heuristic(
         TotalOrdF64(calculate_barycenter_position(graph, node, direction))
     });
 
+    let max_len = rank_cache.iter().map(Vec::len).max().unwrap_or(0);
+    let offset = (max_len - rank_cache[rank as usize].len()) / 2;
+
     // Check if the order has changed
     let mut changed = false;
     for (i, &node) in rank_cache[rank as usize].iter().enumerate() {
-        if graph[node].order != Some(i as u32) {
-            graph[node].order = Some(i as u32);
+        if graph[node].order != Some((i + offset) as u32) {
+            graph[node].order = Some((i + offset) as u32);
             changed = true;
         }
     }
