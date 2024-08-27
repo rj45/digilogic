@@ -27,7 +27,7 @@ fn update_sim_state(simulator: &Simulator, sim_state: &mut SimState) {
         let width = simulator.get_wire_width(wire).unwrap();
         let state = simulator.get_wire_state(wire).unwrap();
         let (bit_plane_0, bit_plane_1) = state.to_bit_planes(width);
-        
+
         sim_state.push_net(
             width,
             bytemuck::cast_slice(&bit_plane_0),

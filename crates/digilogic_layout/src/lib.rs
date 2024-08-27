@@ -734,24 +734,31 @@ fn assign_y_coordinates(graph: &mut Graph) {
         .filter_map(|n| n.rank)
         .max()
         .unwrap_or(0);
-    let rank_separation = 120.0; // Vertical separation between ranks
 
-    let mut y = 0.;
-
+    let mut y = 0.0;
     for rank in 0..=max_rank {
         let rank_nodes: Vec<NodeIndex> = graph
             .node_indices()
             .filter(|&n| graph[n].rank == Some(rank))
             .collect();
+
         let max_height = rank_nodes
             .iter()
             .map(|&n| graph[n].size.1)
             .max()
             .unwrap_or(0) as f32;
+
         for &node in rank_nodes.iter() {
             graph[node].y = y;
         }
-        y += max_height + rank_separation;
+
+        // TODO: technically this should be based on the number of output ports, not the number of symbols.
+        let rank_separation = rank_nodes
+            .iter()
+            .filter(|&&n| graph[n].entity != NodeEntity::Dummy)
+            .count()
+            .max(5);
+        y += max_height + (rank_separation * 15) as f32;
     }
 }
 
