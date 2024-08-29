@@ -8,6 +8,7 @@ use digilogic_core::components::*;
 use digilogic_core::symbol::PortInfo;
 use digilogic_core::symbol::SymbolRegistry;
 
+use digilogic_core::transform::BoundingBox;
 use digilogic_core::transform::Directions;
 use digilogic_core::transform::InheritTransform;
 use digilogic_core::transform::Transform;
@@ -30,6 +31,7 @@ struct NetBit {
 struct MetaGraph {
     graph: Graph,
     entity_ids: HashMap<NodeEntity, NodeIndex>,
+    bounding_boxes: HashMap<Entity, BoundingBox>,
 }
 
 pub fn load_yosys(
@@ -63,11 +65,27 @@ fn translate_netlist(
         let mut graph = MetaGraph::default();
 
         for (name, port) in module.ports.iter() {
-            translate_module_port(name, port, &mut bit_map, commands, circuit_id, symbols)?;
+            translate_module_port(
+                name,
+                port,
+                &mut bit_map,
+                commands,
+                circuit_id,
+                symbols,
+                &mut graph,
+            )?;
         }
 
         for (name, cell) in module.cells.iter() {
-            translate_cell(name, cell, &mut bit_map, commands, circuit_id, symbols)?;
+            translate_cell(
+                name,
+                cell,
+                &mut bit_map,
+                commands,
+                circuit_id,
+                symbols,
+                &mut graph,
+            )?;
         }
 
         for (name, net_info) in module.net_names.iter() {
@@ -100,15 +118,20 @@ fn translate_module_port(
     commands: &mut Commands,
     circuit_id: Entity,
     symbols: &SymbolRegistry,
+    graph: &mut MetaGraph,
 ) -> anyhow::Result<()> {
     let mut symbol_builder = match port.direction {
         netlist::PortDirection::Input => symbols.get(SymbolKind::In),
         netlist::PortDirection::Output => symbols.get(SymbolKind::Out),
         netlist::PortDirection::InOut => todo!(),
     };
-    symbol_builder
+    let symbol_id = symbol_builder
         .name(name.clone())
         .build(commands, circuit_id);
+    graph
+        .bounding_boxes
+        .insert(symbol_id, symbol_builder.bounding_box());
+
     if let Some(port_info) = symbol_builder.ports().first() {
         for signal in port.bits.iter() {
             if let netlist::Signal::Net(bit) = signal {
@@ -131,6 +154,7 @@ fn translate_cell(
     commands: &mut Commands,
     circuit_id: Entity,
     symbols: &SymbolRegistry,
+    graph: &mut MetaGraph,
 ) -> anyhow::Result<()> {
     let mut symbol_builder = match cell.cell_type {
         netlist::CellType::Not => symbols.get(SymbolKind::Not),
@@ -185,9 +209,13 @@ fn translate_cell(
         netlist::CellType::Unknown(_) => todo!(),
     };
 
-    symbol_builder
+    let symbol_id = symbol_builder
         .name(name.clone())
         .build(commands, circuit_id);
+
+    graph
+        .bounding_boxes
+        .insert(symbol_id, symbol_builder.bounding_box());
 
     for (port_name, signals) in cell.connections.iter() {
         if let Some(port_info) = symbol_builder
@@ -284,8 +312,15 @@ fn translate_net(
             .contains_key(&NodeEntity::Symbol(port.symbol))
         {
             let ne = NodeEntity::Symbol(port.symbol);
+            let bounds = graph.bounding_boxes.get(&port.symbol).unwrap();
 
-            let id = graph.graph.add_node(Node::new(ne, (60, 80)));
+            let id = graph.graph.add_node(Node::new(
+                ne,
+                (
+                    bounds.height().try_to_u32().unwrap(),
+                    bounds.width().try_to_u32().unwrap(),
+                ),
+            ));
             graph.entity_ids.insert(ne, id);
         }
         let symbol_node = *graph

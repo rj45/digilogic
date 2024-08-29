@@ -686,6 +686,8 @@ fn assign_x_coordinates(graph: &mut Graph) {
         .max()
         .unwrap_or(0);
 
+    let mut max_rank_x = 0.0;
+
     for rank in 0..=max_rank {
         let mut nodes_at_rank: Vec<NodeIndex> = graph
             .node_indices()
@@ -698,6 +700,10 @@ fn assign_x_coordinates(graph: &mut Graph) {
         for &node in &nodes_at_rank {
             graph[node].x = x;
             x += graph[node].size.0 as f32 + 50.0; // Add some spacing between nodes
+
+            if x > max_rank_x {
+                max_rank_x = x;
+            }
         }
     }
 
@@ -708,23 +714,144 @@ fn assign_x_coordinates(graph: &mut Graph) {
             .filter(|&n| graph[n].rank == Some(rank))
             .collect();
 
-        if let (Some(min_x), Some(max_x)) = (
-            nodes_at_rank
-                .iter()
-                .map(|&n| graph[n].x)
-                .min_by(|a, b| a.total_cmp(b)),
-            nodes_at_rank
-                .iter()
-                .map(|&n| graph[n].x)
-                .max_by(|a, b| a.total_cmp(b)),
-        ) {
-            let center = (min_x + max_x) / 2.0;
-            let offset = 500.0 - center; // Assuming we want to center around x=500
+        if let Some(max_x) = nodes_at_rank
+            .iter()
+            .map(|&n| graph[n].x)
+            .max_by(|a, b| a.total_cmp(b))
+        {
+            let offset = (max_rank_x - max_x) / 2.0;
             for &node in &nodes_at_rank {
                 graph[node].x += offset;
             }
         }
     }
+
+    // Try to align ports to minimize wire bends
+    // for i in 0..12 {
+    //     let mut improved = false;
+
+    //     let rank_set: Vec<_> = if i % 2 == 0 {
+    //         (0..=max_rank).rev().collect()
+    //     } else {
+    //         (0..=max_rank).collect()
+    //     };
+
+    //     for &rank in rank_set.iter() {
+    //         let mut nodes_at_rank: Vec<NodeIndex> = graph
+    //             .node_indices()
+    //             .filter(|&n| graph[n].rank == Some(rank))
+    //             .collect();
+
+    //         nodes_at_rank.sort_by_key(|&n| graph[n].x as i64);
+
+    //         for (i, &node) in nodes_at_rank.iter().enumerate().rev() {
+    //             let mut ports: Vec<(i32, &Vec<EdgeIndex>)> = graph[node]
+    //                 .input_ports
+    //                 .iter()
+    //                 .chain(&graph[node].other_ports)
+    //                 .chain(&graph[node].output_ports)
+    //                 .map(|port| (port.index, &port.edges))
+    //                 .collect();
+
+    //             ports.sort_by_key(|&port| port.0);
+
+    //             let node_edges = graph
+    //                 .edges_directed(node, Direction::Incoming)
+    //                 .chain(graph.edges_directed(node, Direction::Outgoing))
+    //                 .map(|e| e.id())
+    //                 .collect();
+
+    //             if ports.is_empty() {
+    //                 ports.push((0, &node_edges));
+    //             }
+
+    //             let upper_bound_x = if i == 0 {
+    //                 -f32::INFINITY
+    //             } else {
+    //                 let neighbor = nodes_at_rank[i - 1];
+    //                 if let NodeEntity::Dummy = graph[neighbor].entity {
+    //                     graph[neighbor].x
+    //                 } else {
+    //                     graph[neighbor].x + graph[neighbor].size.0 as f32 + 10.0
+    //                 }
+    //             };
+
+    //             let lower_bound_x = if i == nodes_at_rank.len() - 1 {
+    //                 f32::INFINITY
+    //             } else {
+    //                 let neighbor = nodes_at_rank[i + 1];
+    //                 if let NodeEntity::Dummy = graph[neighbor].entity {
+    //                     graph[neighbor].x
+    //                 } else {
+    //                     graph[neighbor].x - graph[node].size.0 as f32 - 10.0
+    //                 }
+    //             };
+
+    //             let mut min_distance = f32::INFINITY;
+    //             let mut best_x = graph[node].x;
+    //             let mut sum = 0.0;
+    //             let mut count = 0;
+
+    //             for (port_offset, edges) in ports.iter() {
+    //                 let port_x = graph[node].x + *port_offset as f32;
+
+    //                 for &edge in edges.iter() {
+    //                     if graph.edge_endpoints(edge).is_none() {
+    //                         continue;
+    //                     }
+    //                     let edge_ref = graph.edge_endpoints(edge).unwrap();
+    //                     let neighbor_node = if edge_ref.0 == node {
+    //                         edge_ref.1
+    //                     } else {
+    //                         edge_ref.0
+    //                     };
+
+    //                     // find the output port
+    //                     let neighbor_port = graph[neighbor_node]
+    //                         .output_ports
+    //                         .iter()
+    //                         .chain(&graph[neighbor_node].other_ports)
+    //                         .chain(&graph[neighbor_node].output_ports)
+    //                         .find(|port| port.edges.contains(&edge));
+
+    //                     let neighbor_port_x = if let Some(output_port) = neighbor_port {
+    //                         graph[neighbor_node].x + output_port.index as f32
+    //                     } else {
+    //                         graph[neighbor_node].x
+    //                     };
+
+    //                     if neighbor_port_x < upper_bound_x || neighbor_port_x > lower_bound_x {
+    //                         continue;
+    //                     }
+
+    //                     sum += neighbor_port_x;
+    //                     count += 1;
+
+    //                     let distance = (neighbor_port_x - port_x).abs();
+    //                     if distance < min_distance {
+    //                         min_distance = distance;
+    //                         best_x = neighbor_port_x;
+    //                     }
+    //                 }
+    //             }
+
+    //             if i < 4 && count > 0 {
+    //                 let average_x = sum / count as f32;
+    //                 if average_x != graph[node].x {
+    //                     graph[node].x = average_x;
+    //                     improved = true;
+    //                 }
+    //             } else if best_x != graph[node].x {
+    //                 graph[node].x = best_x;
+    //                 improved = true;
+    //             }
+    //         }
+    //     }
+
+    //     if !improved {
+    //         break;
+    //     }
+    // }
 }
 
 #[tracing::instrument(skip_all)]
