@@ -43,8 +43,75 @@ fn common_config() -> ConnectionConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NetId(u32);
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct NetMap {
+    #[serde(with = "serde_bytes")]
+    widths: Vec<u8>,
+}
+
+impl NetMap {
+    pub fn add_net(&mut self, width: NonZeroU8) -> ServerResult<NetId> {
+        let index: u32 = self
+            .widths
+            .len()
+            .try_into()
+            .map_err(|_| ServerError::OutOfResources)?;
+
+        self.widths.push(width.get());
+        Ok(NetId(index))
+    }
+
+    pub fn resolve(&self) -> ResolvedNetMap {
+        let mut offset = 0u64;
+        let mut offsets = Vec::new();
+        for &width in &self.widths {
+            assert!(width > 0);
+            offsets.push(offset);
+            offset += width as u64;
+        }
+
+        offsets.push(offset);
+        ResolvedNetMap { offsets }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedNetMap {
+    offsets: Vec<u64>,
+}
+
+impl ResolvedNetMap {
+    pub fn get_offset_width(&self, net: NetId) -> Option<(u64, NonZeroU8)> {
+        let index = net.0 as usize;
+        let offset = *self.offsets.get(index)?;
+        let next_offset = *self.offsets.get(index + 1)?;
+        let width = (next_offset - offset)
+            .try_into()
+            .ok()
+            .and_then(NonZeroU8::new)
+            .expect("invalid wire width");
+        Some((offset, width))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellId(u32);
+
+impl From<CellId> for usize {
+    #[inline]
+    fn from(value: CellId) -> Self {
+        value.0 as usize
+    }
+}
+
+impl TryFrom<usize> for CellId {
+    type Error = std::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        u32::try_from(value).map(Self)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 enum ServerMessageId {
@@ -56,11 +123,13 @@ enum ServerMessageId {
 pub enum ServerError {
     Unsupported,
     InvalidState,
+    OutOfResources,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 enum ServerMessageKind {
     Error(ServerError),
+    BuildingFinished { net_map: NetMap },
     NetAdded { id: NetId },
     CellAdded { id: CellId },
 }

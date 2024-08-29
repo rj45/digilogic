@@ -27,11 +27,12 @@ macro_rules! gate_stub {
     ($name:ident) => {
         fn $name(
             &mut self,
+            client_id: ClientId,
             width: NonZeroU8,
             inputs: &[NetId],
             output: NetId,
         ) -> ServerResult<CellId> {
-            let _ = (width, inputs, output);
+            let _ = (client_id, width, inputs, output);
             Err(ServerError::Unsupported)
         }
     };
@@ -46,9 +47,9 @@ pub trait SimServer {
     fn client_disconnected(&mut self, client_id: ClientId);
 
     fn begin_build(&mut self, client_id: ClientId) -> ServerResult<()>;
-    fn end_build(&mut self, client_id: ClientId) -> ServerResult<()>;
+    fn end_build(&mut self, client_id: ClientId) -> ServerResult<NetMap>;
 
-    fn add_net(&mut self, width: NonZeroU8) -> ServerResult<NetId>;
+    fn add_net(&mut self, client_id: ClientId, width: NonZeroU8) -> ServerResult<NetId>;
     gate_stub!(add_and_gate);
     gate_stub!(add_or_gate);
     gate_stub!(add_xor_gate);
@@ -57,11 +58,12 @@ pub trait SimServer {
     gate_stub!(add_xnor_gate);
     fn add_not_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         input: NetId,
         output: NetId,
     ) -> ServerResult<CellId> {
-        let _ = (width, input, output);
+        let _ = (client_id, width, input, output);
         Err(ServerError::Unsupported)
     }
 
@@ -91,7 +93,7 @@ fn process_message(
 ) -> ServerResult<()> {
     macro_rules! add_gate {
         ($add_fn:ident, $width:ident, $inputs:ident, $output:ident) => {{
-            let id = sim_server.$add_fn($width, &$inputs, $output)?;
+            let id = sim_server.$add_fn(client_id, $width, &$inputs, $output)?;
             server.send_command_message(
                 client_id,
                 ServerMessage {
@@ -104,10 +106,19 @@ fn process_message(
 
     match message_kind {
         ClientMessageKind::BeginBuild => sim_server.begin_build(client_id)?,
-        ClientMessageKind::EndBuild => sim_server.end_build(client_id)?,
+        ClientMessageKind::EndBuild => {
+            let net_map = sim_server.end_build(client_id)?;
+            server.send_command_message(
+                client_id,
+                ServerMessage {
+                    id: response_id,
+                    kind: ServerMessageKind::BuildingFinished { net_map },
+                },
+            );
+        }
 
         ClientMessageKind::AddNet { width } => {
-            let id = sim_server.add_net(width)?;
+            let id = sim_server.add_net(client_id, width)?;
             server.send_command_message(
                 client_id,
                 ServerMessage {
@@ -151,7 +162,7 @@ fn process_message(
             input,
             output,
         } => {
-            let id = sim_server.add_not_gate(width, input, output)?;
+            let id = sim_server.add_not_gate(client_id, width, input, output)?;
             server.send_command_message(
                 client_id,
                 ServerMessage {

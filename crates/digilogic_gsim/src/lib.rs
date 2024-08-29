@@ -2,21 +2,38 @@ use digilogic_netcode::*;
 use gsim::*;
 use std::num::NonZeroU8;
 
+#[derive(Default)]
+struct BuildingState {
+    net_map: NetMap,
+    cell_count: usize,
+    builder: SimulatorBuilder,
+}
+
+struct SimulatingState {
+    simulator: Simulator,
+    sim_state: SimState,
+}
+
+impl BuildingState {
+    fn build(&mut self) -> (SimulatingState, NetMap) {
+        (
+            SimulatingState {
+                simulator: std::mem::take(&mut self.builder).build(),
+                sim_state: SimState::default(),
+            },
+            std::mem::take(&mut self.net_map),
+        )
+    }
+}
+
 enum ClientState {
-    Building {
-        builder: SimulatorBuilder,
-    },
-    Simulating {
-        simulator: Simulator,
-        sim_state: SimState,
-    },
+    Building(BuildingState),
+    Simulating(SimulatingState),
 }
 
 impl Default for ClientState {
     fn default() -> Self {
-        Self::Building {
-            builder: SimulatorBuilder::default(),
-        }
+        Self::Building(BuildingState::default())
     }
 }
 
@@ -43,8 +60,25 @@ pub struct GsimServer {
 }
 
 impl GsimServer {
-    fn get_glient_state_mut(&mut self, client_id: ClientId) -> &mut ClientState {
+    fn get_client_state_mut(&mut self, client_id: ClientId) -> &mut ClientState {
         self.clients.get_mut(&client_id).expect("invalid client ID")
+    }
+
+    fn get_building_state_mut(&mut self, client_id: ClientId) -> ServerResult<&mut BuildingState> {
+        match self.get_client_state_mut(client_id) {
+            ClientState::Building(state) => Ok(state),
+            ClientState::Simulating(_) => Err(ServerError::InvalidState),
+        }
+    }
+
+    fn get_simulating_state_mut(
+        &mut self,
+        client_id: ClientId,
+    ) -> ServerResult<&mut SimulatingState> {
+        match self.get_client_state_mut(client_id) {
+            ClientState::Building(_) => Err(ServerError::InvalidState),
+            ClientState::Simulating(state) => Ok(state),
+        }
     }
 }
 
@@ -62,31 +96,37 @@ impl SimServer for GsimServer {
     }
 
     fn begin_build(&mut self, client_id: ClientId) -> ServerResult<()> {
-        let client_state = self.get_glient_state_mut(client_id);
+        let client_state = self.get_client_state_mut(client_id);
         *client_state = ClientState::default();
         Ok(())
     }
 
-    fn end_build(&mut self, client_id: ClientId) -> ServerResult<()> {
-        let client_state = self.get_glient_state_mut(client_id);
-        *client_state = match client_state {
-            ClientState::Building { builder } => ClientState::Simulating {
-                simulator: std::mem::take(builder).build(),
-                sim_state: SimState::default(),
-            },
-            ClientState::Simulating { .. } => {
-                return Err(ServerError::InvalidState);
+    fn end_build(&mut self, client_id: ClientId) -> ServerResult<NetMap> {
+        let client_state = self.get_client_state_mut(client_id);
+        match client_state {
+            ClientState::Building(building_state) => {
+                let (simulating_state, net_map) = building_state.build();
+                *client_state = ClientState::Simulating(simulating_state);
+                Ok(net_map)
             }
-        };
-        Ok(())
+            ClientState::Simulating { .. } => Err(ServerError::InvalidState),
+        }
     }
 
-    fn add_net(&mut self, width: NonZeroU8) -> ServerResult<NetId> {
-        todo!()
+    fn add_net(&mut self, client_id: ClientId, width: NonZeroU8) -> ServerResult<NetId> {
+        let building_state = self.get_building_state_mut(client_id)?;
+
+        building_state
+            .builder
+            .add_wire(width)
+            .ok_or(ServerError::OutOfResources)?;
+
+        building_state.net_map.add_net(width)
     }
 
     fn add_and_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         inputs: &[NetId],
         output: NetId,
@@ -96,6 +136,7 @@ impl SimServer for GsimServer {
 
     fn add_or_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         inputs: &[NetId],
         output: NetId,
@@ -105,6 +146,7 @@ impl SimServer for GsimServer {
 
     fn add_xor_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         inputs: &[NetId],
         output: NetId,
@@ -114,6 +156,7 @@ impl SimServer for GsimServer {
 
     fn add_nand_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         inputs: &[NetId],
         output: NetId,
@@ -123,6 +166,7 @@ impl SimServer for GsimServer {
 
     fn add_nor_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         inputs: &[NetId],
         output: NetId,
@@ -132,6 +176,7 @@ impl SimServer for GsimServer {
 
     fn add_xnor_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         inputs: &[NetId],
         output: NetId,
@@ -141,6 +186,7 @@ impl SimServer for GsimServer {
 
     fn add_not_gate(
         &mut self,
+        client_id: ClientId,
         width: NonZeroU8,
         input: NetId,
         output: NetId,
@@ -149,16 +195,8 @@ impl SimServer for GsimServer {
     }
 
     fn sim_state(&mut self, client_id: ClientId) -> ServerResult<Option<&SimState>> {
-        let client_state = self.get_glient_state_mut(client_id);
-        match client_state {
-            ClientState::Building { .. } => Ok(None),
-            ClientState::Simulating {
-                simulator,
-                sim_state,
-            } => {
-                update_sim_state(simulator, sim_state);
-                Ok(Some(sim_state))
-            }
-        }
+        let simulating_state = self.get_simulating_state_mut(client_id)?;
+        update_sim_state(&simulating_state.simulator, &mut simulating_state.sim_state);
+        Ok(Some(&simulating_state.sim_state))
     }
 }
