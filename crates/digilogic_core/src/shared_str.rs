@@ -5,8 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
-const SHARED_STR_INLINE_CAP: usize =
-    (std::mem::size_of::<usize>() * 3) - (std::mem::size_of::<u8>() * 2);
+const SHARED_STR_INLINE_CAP: usize = (size_of::<usize>() * 3) - (size_of::<u8>() * 2);
 const_assert!(SHARED_STR_INLINE_CAP <= (u8::MAX as usize));
 
 enum SharedStrRepr {
