@@ -15,6 +15,35 @@ use serde::{Deserialize, Serialize};
 
 const ROUTING_CONFIG_KEY: &str = "routing";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
+enum Backend {
+    #[cfg(not(target_arch = "wasm32"))]
+    Builtin,
+    External,
+}
+
+impl Backend {
+    const ALL: &[Self] = &[
+        #[cfg(not(target_arch = "wasm32"))]
+        Self::Builtin,
+        Self::External,
+    ];
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for Backend {
+    fn default() -> Self {
+        Self::Builtin
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Default for Backend {
+    fn default() -> Self {
+        Self::External
+    }
+}
+
 #[derive(Serialize, Deserialize, Resource, Reflect)]
 #[reflect(Resource)]
 struct AppSettings {
@@ -22,6 +51,9 @@ struct AppSettings {
     show_bounding_boxes: bool,
     show_routing_graph: bool,
     show_root_wires: bool,
+    backend: Backend,
+    builtin_backend_engine: native_main::SimulationEngine,
+    external_backend_addr: (String, u16),
 }
 
 impl Default for AppSettings {
@@ -31,6 +63,9 @@ impl Default for AppSettings {
             show_bounding_boxes: false,
             show_routing_graph: false,
             show_root_wires: false,
+            backend: Backend::default(),
+            builtin_backend_engine: native_main::SimulationEngine::default(),
+            external_backend_addr: ("127.0.0.1".to_owned(), digilogic_netcode::DEFAULT_PORT),
         }
     }
 }
@@ -227,14 +262,30 @@ impl eframe::App for App {
 #[cfg(not(target_arch = "wasm32"))]
 mod native_main {
     use clap::{Parser, Subcommand, ValueEnum};
+    use serde::{Deserialize, Serialize};
 
-    #[derive(Default, Clone, Copy, PartialEq, Eq, ValueEnum)]
-    enum SimulationEngine {
+    #[derive(
+        Default,
+        Debug,
+        Clone,
+        Copy,
+        PartialEq,
+        Eq,
+        ValueEnum,
+        bevy_reflect::Reflect,
+        Serialize,
+        Deserialize,
+    )]
+    pub enum SimulationEngine {
         #[default]
         /// 4-state lockstep simulation
         Gsim,
         /// 4-state lockstep simulation using GPU compute
         GsimCompute,
+    }
+
+    impl SimulationEngine {
+        pub const ALL: &[Self] = &[Self::Gsim, Self::GsimCompute];
     }
 
     #[derive(Subcommand)]

@@ -4,6 +4,9 @@ use canvas::*;
 mod draw;
 use draw::*;
 
+mod settings;
+use settings::*;
+
 use crate::{AppSettings, AppState, FileDialogEvent};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
@@ -132,12 +135,19 @@ fn combine_scenes(
     }
 }
 
+#[derive(Debug, Default, Resource, Reflect)]
+#[reflect(Resource)]
+struct OpenWindows {
+    settings: bool,
+}
+
 fn update_main_menu(
     egui: &Egui,
     ui: &mut Ui,
-    app_state: &mut AppSettings,
+    settings: &mut AppSettings,
     mut routing_config: ResMut<digilogic_routing::RoutingConfig>,
     file_dialog_events: &mut EventWriter<FileDialogEvent>,
+    open_windows: &mut OpenWindows,
 ) {
     menu::bar(ui, |ui| {
         ui.menu_button("File", |ui| {
@@ -161,9 +171,17 @@ fn update_main_menu(
         ui.add_space(8.0);
 
         ui.menu_button("View", |ui| {
-            ui.checkbox(&mut app_state.show_bounding_boxes, "Bounding boxes");
-            ui.checkbox(&mut app_state.show_routing_graph, "Routing graph");
-            ui.checkbox(&mut app_state.show_root_wires, "Root wires");
+            ui.menu_button("Debug", |ui| {
+                ui.checkbox(&mut settings.show_bounding_boxes, "Bounding boxes");
+                ui.checkbox(&mut settings.show_routing_graph, "Routing graph");
+                ui.checkbox(&mut settings.show_root_wires, "Root wires");
+            });
+
+            ui.separator();
+
+            if ui.button("Settings").clicked() {
+                open_windows.settings = true;
+            }
         });
         ui.add_space(8.0);
 
@@ -180,24 +198,26 @@ fn update_main_menu(
 
         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             global_dark_light_mode_switch(ui);
-            app_state.dark_mode = egui.context.style().visuals.dark_mode;
+            settings.dark_mode = egui.context.style().visuals.dark_mode;
         });
     });
 }
 
 fn update_menu(
     egui: Res<Egui>,
-    mut app_state: ResMut<AppSettings>,
+    mut settings: ResMut<AppSettings>,
     routing_config: ResMut<digilogic_routing::RoutingConfig>,
     mut file_dialog_events: EventWriter<FileDialogEvent>,
+    mut open_windows: ResMut<OpenWindows>,
 ) {
     TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
         update_main_menu(
             &egui,
             ui,
-            &mut app_state,
+            &mut settings,
             routing_config,
             &mut file_dialog_events,
+            &mut open_windows,
         );
     });
 
@@ -461,6 +481,7 @@ impl bevy_app::Plugin for UiPlugin {
         app.insert_non_send_resource(CanvasRenderer::new(&self.render_state));
         app.insert_resource(Egui::new(&self.context, &self.render_state));
         app.insert_resource(SymbolShapes(Vec::new()));
+        app.init_resource::<OpenWindows>();
         app.register_type::<ViewportCount>()
             .register_type::<Viewport>();
 
@@ -492,6 +513,8 @@ impl bevy_app::Plugin for UiPlugin {
             bevy_app::PostUpdate,
             repaint.run_if(bevy_state::condition::in_state(AppState::Simulating)),
         );
+
+        app.add_plugins(SettingsPlugin);
 
         #[cfg(feature = "inspector")]
         {
