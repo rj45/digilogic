@@ -190,7 +190,7 @@ pub fn run_server(
 
     let server_addr: SocketAddr = (Ipv4Addr::UNSPECIFIED, port.unwrap_or(DEFAULT_PORT)).into();
     let socket = UdpSocket::bind(server_addr)?;
-    let config = server_config(sim_server.max_clients(), server_addr);
+    let config = server_config(sim_server.max_clients().min(1024), server_addr);
     let mut transport = NetcodeServerTransport::new(config, socket)?;
 
     let mut prev_time = Instant::now();
@@ -206,10 +206,20 @@ pub fn run_server(
         while let Some(event) = server.get_event() {
             match event {
                 ServerEvent::ClientConnected { client_id } => {
-                    sim_server.client_connected(client_id)
+                    println!("client {client_id} connected");
+                    sim_server.client_connected(client_id);
+
+                    server.send_command_message(
+                        client_id,
+                        ServerMessage {
+                            id: ServerMessageId::Status,
+                            kind: ServerMessageKind::Ready,
+                        },
+                    );
                 }
                 ServerEvent::ClientDisconnected { client_id, .. } => {
-                    sim_server.client_disconnected(client_id)
+                    println!("client {client_id} disconnected");
+                    sim_server.client_disconnected(client_id);
                 }
             }
         }
@@ -241,6 +251,6 @@ pub fn run_server(
         }
 
         transport.send_packets(&mut server);
-        std::thread::yield_now();
+        std::thread::sleep(Duration::from_millis(1));
     }
 }

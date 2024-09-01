@@ -129,6 +129,7 @@ pub enum ServerError {
 #[derive(Debug, Serialize, Deserialize)]
 enum ServerMessageKind {
     Error(ServerError),
+    Ready,
     BuildingFinished { net_map: NetMap },
     NetAdded { id: NetId },
     CellAdded { id: CellId },

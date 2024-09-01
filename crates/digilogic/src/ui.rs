@@ -7,11 +7,12 @@ use draw::*;
 mod settings;
 use settings::*;
 
-use crate::{AppSettings, AppState, FileDialogEvent};
+use crate::{AppSettings, AppState, Backend, FileDialogEvent, DEFAULT_LOCAL_SERVER_ADDR};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
 use bevy_reflect::Reflect;
+use bevy_state::prelude::*;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
 use digilogic_core::events::{LoadedEvent, UnloadedEvent};
 use egui::*;
@@ -147,90 +148,120 @@ impl OpenWindows {
     }
 }
 
-fn update_main_menu(
-    egui: &Egui,
-    ui: &mut Ui,
-    settings: &mut AppSettings,
+fn update_menu(
+    egui: Res<Egui>,
+    mut settings: ResMut<AppSettings>,
     mut routing_config: ResMut<digilogic_routing::RoutingConfig>,
-    file_dialog_events: &mut EventWriter<FileDialogEvent>,
-    open_windows: &mut OpenWindows,
+    mut file_dialog_events: EventWriter<FileDialogEvent>,
+    mut open_windows: ResMut<OpenWindows>,
 ) {
-    menu::bar(ui, |ui| {
-        ui.menu_button("File", |ui| {
-            if ui.button("Open").clicked() {
-                file_dialog_events.send(FileDialogEvent::Open);
-                ui.close_menu();
-            }
+    TopBottomPanel::top("menu_panel").show(&egui.context, |ui| {
+        ui.add_enabled_ui(!open_windows.any(), |ui| {
+            menu::bar(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Open").clicked() {
+                        file_dialog_events.send(FileDialogEvent::Open);
+                        ui.close_menu();
+                    }
 
-            if ui.button("Save").clicked() {
-                file_dialog_events.send(FileDialogEvent::Save);
-                ui.close_menu();
-            }
+                    if ui.button("Save").clicked() {
+                        file_dialog_events.send(FileDialogEvent::Save);
+                        ui.close_menu();
+                    }
 
-            ui.separator();
+                    ui.separator();
 
-            #[cfg(not(target_arch = "wasm32"))]
-            if ui.button("Quit").clicked() {
-                egui.context.send_viewport_cmd(ViewportCommand::Close);
-            }
-        });
-        ui.add_space(8.0);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if ui.button("Quit").clicked() {
+                        egui.context.send_viewport_cmd(ViewportCommand::Close);
+                    }
+                });
+                ui.add_space(8.0);
 
-        ui.menu_button("View", |ui| {
-            ui.menu_button("Debug", |ui| {
-                ui.checkbox(&mut settings.show_bounding_boxes, "Bounding boxes");
-                ui.checkbox(&mut settings.show_routing_graph, "Routing graph");
-                ui.checkbox(&mut settings.show_root_wires, "Root wires");
+                ui.menu_button("View", |ui| {
+                    ui.menu_button("Debug", |ui| {
+                        ui.checkbox(&mut settings.show_bounding_boxes, "Bounding boxes");
+                        ui.checkbox(&mut settings.show_routing_graph, "Routing graph");
+                        ui.checkbox(&mut settings.show_root_wires, "Root wires");
+                    });
+
+                    ui.separator();
+
+                    if ui.button("Settings").clicked() {
+                        open_windows.settings = true;
+                        ui.close_menu();
+                    }
+                });
+                ui.add_space(8.0);
+
+                ui.menu_button("Routing", |ui| {
+                    let mut prune_graph = routing_config.prune_graph;
+                    ui.checkbox(&mut prune_graph, "Prune graph");
+
+                    // Don't trigger change detection if nothing changed.
+                    if prune_graph != routing_config.prune_graph {
+                        routing_config.prune_graph = prune_graph;
+                    }
+                });
+                ui.add_space(8.0);
+
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    global_dark_light_mode_switch(ui);
+                    settings.dark_mode = egui.context.style().visuals.dark_mode;
+                });
             });
-
-            ui.separator();
-
-            if ui.button("Settings").clicked() {
-                open_windows.settings = true;
-                ui.close_menu();
-            }
-        });
-        ui.add_space(8.0);
-
-        ui.menu_button("Routing", |ui| {
-            let mut prune_graph = routing_config.prune_graph;
-            ui.checkbox(&mut prune_graph, "Prune graph");
-
-            // Don't trigger change detection if nothing changed.
-            if prune_graph != routing_config.prune_graph {
-                routing_config.prune_graph = prune_graph;
-            }
-        });
-        ui.add_space(8.0);
-
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            global_dark_light_mode_switch(ui);
-            settings.dark_mode = egui.context.style().visuals.dark_mode;
         });
     });
 }
 
-fn update_menu(
+fn update_tool_bar(
+    mut commands: Commands,
     egui: Res<Egui>,
-    mut settings: ResMut<AppSettings>,
-    routing_config: ResMut<digilogic_routing::RoutingConfig>,
-    mut file_dialog_events: EventWriter<FileDialogEvent>,
-    mut open_windows: ResMut<OpenWindows>,
+    settings: Res<AppSettings>,
+    open_windows: Res<OpenWindows>,
+    state: Res<State<AppState>>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
-    TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
+    TopBottomPanel::top("tool_bar_panel").show(&egui.context, |ui| {
         ui.add_enabled_ui(!open_windows.any(), |ui| {
-            update_main_menu(
-                &egui,
-                ui,
-                &mut settings,
-                routing_config,
-                &mut file_dialog_events,
-                &mut open_windows,
-            );
+            menu::bar(ui, |ui| match **state {
+                AppState::Normal => {
+                    if ui.button("Run").clicked() {
+                        next_state.set(AppState::Simulating);
+                        match settings.backend {
+                            #[cfg(not(target_arch = "wasm32"))]
+                            Backend::Builtin => {
+                                //let executable = std::env::current_exe().unwrap();
+                                //std::process::Command::new(executable)
+                                //    .arg("server")
+                                //    .spawn()
+                                //    .unwrap();
+
+                                commands.trigger(digilogic_netcode::Connect {
+                                    server_addr: DEFAULT_LOCAL_SERVER_ADDR,
+                                });
+                            }
+                            Backend::External => {
+                                commands.trigger(digilogic_netcode::Connect {
+                                    server_addr: settings.external_backend_addr.clone(),
+                                });
+                            }
+                        }
+                    }
+                }
+                AppState::Simulating => {
+                    if ui.button("Stop").clicked() {
+                        next_state.set(AppState::Normal);
+                        commands.trigger(digilogic_netcode::Disconnect);
+                    }
+                }
+            });
         });
     });
+}
 
-    TopBottomPanel::bottom("bottom_panel").show(&egui.context, |ui| {
+fn update_status_bar(egui: Res<Egui>, open_windows: Res<OpenWindows>) {
+    TopBottomPanel::bottom("status_bar_panel").show(&egui.context, |ui| {
         ui.add_enabled_ui(!open_windows.any(), |ui| {
             ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
                 warn_if_debug_build(ui);
@@ -490,6 +521,9 @@ impl UiPlugin {
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 struct DrawSet;
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+struct MenuSet;
+
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
@@ -518,15 +552,21 @@ impl bevy_app::Plugin for UiPlugin {
                 .run_if(|app_state: Res<AppSettings>| app_state.show_routing_graph),
         );
         app.add_systems(bevy_app::Update, combine_scenes.after(DrawSet));
-        app.add_systems(bevy_app::Update, (update_menu, add_tabs));
         app.add_systems(
             bevy_app::Update,
-            update_tabs.after(combine_scenes).after(update_menu),
+            (update_menu, update_tool_bar, update_status_bar)
+                .chain()
+                .in_set(MenuSet),
+        );
+        app.add_systems(bevy_app::Update, add_tabs);
+        app.add_systems(
+            bevy_app::Update,
+            update_tabs.after(combine_scenes).after(MenuSet),
         );
 
         app.add_systems(
             bevy_app::PostUpdate,
-            repaint.run_if(bevy_state::condition::in_state(AppState::Simulating)),
+            repaint.run_if(in_state(AppState::Simulating)),
         );
 
         app.add_plugins(SettingsPlugin);

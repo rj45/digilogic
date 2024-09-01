@@ -3,6 +3,19 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
 use digilogic_core::components::Circuit;
+use digilogic_core::SharedStr;
+use std::net::ToSocketAddrs;
+
+trait RenetClientExt {
+    fn send_command_message(&mut self, message: ClientMessage);
+}
+
+impl RenetClientExt for RenetClient {
+    fn send_command_message(&mut self, message: ClientMessage) {
+        let message = rmp_serde::to_vec(&message).unwrap();
+        self.send_message(COMMAND_CHANNEL_ID, message);
+    }
+}
 
 fn inject_sim_state(trigger: Trigger<OnAdd, Circuit>, mut commands: Commands) {
     commands
@@ -13,7 +26,7 @@ fn inject_sim_state(trigger: Trigger<OnAdd, Circuit>, mut commands: Commands) {
 
 #[derive(Debug, Clone, Event)]
 pub struct Connect {
-    pub server_addr: SocketAddr,
+    pub server_addr: (SharedStr, u16),
 }
 
 #[derive(Debug, Clone, Event)]
@@ -24,6 +37,28 @@ fn connect(
     mut commands: Commands,
     mut transport_errors: EventWriter<NetcodeTransportError>,
 ) {
+    let server_addr = (
+        trigger.event().server_addr.0.as_str(),
+        trigger.event().server_addr.1,
+    );
+
+    let server_addr = match server_addr.to_socket_addrs() {
+        Ok(addrs) => {
+            if let Some(addr) = addrs.into_iter().next() {
+                addr
+            } else {
+                transport_errors.send(NetcodeTransportError::IO(
+                    std::io::ErrorKind::AddrNotAvailable.into(),
+                ));
+                return;
+            }
+        }
+        Err(err) => {
+            transport_errors.send(NetcodeTransportError::IO(err));
+            return;
+        }
+    };
+
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
@@ -32,7 +67,7 @@ fn connect(
     let authentication = ClientAuthentication::Unsecure {
         protocol_id: PROTOCOL_VERSION,
         client_id: current_time.as_millis() as u64,
-        server_addr: trigger.event().server_addr,
+        server_addr,
         user_data: None,
     };
 

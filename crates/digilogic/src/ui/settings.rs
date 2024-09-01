@@ -78,7 +78,11 @@ fn update_simulator_settings(ui: &mut Ui, settings: &mut AppSettings) {
         Backend::External => {
             ui.horizontal(|ui| {
                 ui.label("Server address");
-                ui.text_edit_singleline(&mut settings.external_backend_addr.0);
+                let mut host_str = settings.external_backend_addr.0.to_string();
+                ui.text_edit_singleline(&mut host_str);
+                if host_str.as_str() != settings.external_backend_addr.0.as_str() {
+                    settings.external_backend_addr.0 = host_str.into();
+                }
             });
 
             ui.horizontal(|ui| {

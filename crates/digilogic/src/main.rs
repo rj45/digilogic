@@ -10,10 +10,16 @@ use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
 use bevy_state::prelude::{OnEnter, OnExit};
 use bevy_time::{Time, Virtual};
+use digilogic_core::SharedStr;
 use digilogic_routing::RoutingConfig;
 use serde::{Deserialize, Serialize};
 
 const ROUTING_CONFIG_KEY: &str = "routing";
+
+#[cfg(debug_assertions)]
+const LOG_LEVEL: bevy_log::Level = bevy_log::Level::DEBUG;
+#[cfg(not(debug_assertions))]
+const LOG_LEVEL: bevy_log::Level = bevy_log::Level::INFO;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
 enum Backend {
@@ -53,8 +59,13 @@ struct AppSettings {
     show_root_wires: bool,
     backend: Backend,
     builtin_backend_engine: native_main::SimulationEngine,
-    external_backend_addr: (String, u16),
+    external_backend_addr: (SharedStr, u16),
 }
+
+const DEFAULT_LOCAL_SERVER_ADDR: (SharedStr, u16) = (
+    SharedStr::new_static("127.0.0.1"),
+    digilogic_netcode::DEFAULT_PORT,
+);
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -65,7 +76,7 @@ impl Default for AppSettings {
             show_root_wires: false,
             backend: Backend::default(),
             builtin_backend_engine: native_main::SimulationEngine::default(),
-            external_backend_addr: ("127.0.0.1".to_owned(), digilogic_netcode::DEFAULT_PORT),
+            external_backend_addr: DEFAULT_LOCAL_SERVER_ADDR,
         }
     }
 }
@@ -121,10 +132,7 @@ impl App {
             bevy_time::TimePlugin,
             bevy_state::app::StatesPlugin,
             bevy_log::LogPlugin {
-                #[cfg(debug_assertions)]
-                level: bevy_log::Level::DEBUG,
-                #[cfg(not(debug_assertions))]
-                level: bevy_log::Level::INFO,
+                level: LOG_LEVEL,
                 ..Default::default()
             },
         ));
