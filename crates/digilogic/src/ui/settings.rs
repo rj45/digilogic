@@ -128,6 +128,7 @@ fn update_settings_window(
         .collapsible(false)
         .show(&egui.context, |ui| {
             DockArea::new(&mut dock_state)
+                .id("settings_dock_area".into())
                 .show_close_buttons(false)
                 .tab_context_menus(false)
                 .draggable_tabs(false)

@@ -411,6 +411,7 @@ fn update_tabs(mut dock_state: NonSendMut<DockState<Entity>>, mut tab_viewer: Ta
 
     CentralPanel::default().show(&context, |ui| {
         DockArea::new(&mut dock_state)
+            .id("main_dock_area".into())
             .style(egui_dock::Style::from_egui(context.style().as_ref()))
             .show_inside(ui, &mut tab_viewer);
     });
