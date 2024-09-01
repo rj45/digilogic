@@ -141,6 +141,12 @@ struct OpenWindows {
     settings: bool,
 }
 
+impl OpenWindows {
+    fn any(&self) -> bool {
+        self.settings
+    }
+}
+
 fn update_main_menu(
     egui: &Egui,
     ui: &mut Ui,
@@ -181,6 +187,7 @@ fn update_main_menu(
 
             if ui.button("Settings").clicked() {
                 open_windows.settings = true;
+                ui.close_menu();
             }
         });
         ui.add_space(8.0);
@@ -211,19 +218,23 @@ fn update_menu(
     mut open_windows: ResMut<OpenWindows>,
 ) {
     TopBottomPanel::top("top_panel").show(&egui.context, |ui| {
-        update_main_menu(
-            &egui,
-            ui,
-            &mut settings,
-            routing_config,
-            &mut file_dialog_events,
-            &mut open_windows,
-        );
+        ui.add_enabled_ui(!open_windows.any(), |ui| {
+            update_main_menu(
+                &egui,
+                ui,
+                &mut settings,
+                routing_config,
+                &mut file_dialog_events,
+                &mut open_windows,
+            );
+        });
     });
 
     TopBottomPanel::bottom("bottom_panel").show(&egui.context, |ui| {
-        ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
-            warn_if_debug_build(ui);
+        ui.add_enabled_ui(!open_windows.any(), |ui| {
+            ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
+                warn_if_debug_build(ui);
+            });
         });
     });
 }
@@ -335,6 +346,7 @@ struct TabViewer<'w, 's> {
     unloaded_events: EventWriter<'w, UnloadedEvent>,
     viewports: Query<'w, 's, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
     circuits: Query<'w, 's, (Option<Read<Name>>, Write<ViewportCount>)>,
+    open_windows: Res<'w, OpenWindows>,
 }
 
 impl egui_dock::TabViewer for TabViewer<'_, '_> {
@@ -351,18 +363,20 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
     }
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
-        if let Ok((_, mut pan_zoom, scene, mut canvas)) = self.viewports.get_mut(*tab) {
-            update_viewport(
-                &self.egui,
-                ui,
-                &mut self.renderer,
-                &mut pan_zoom,
-                scene,
-                &mut canvas,
-                &mut self.commands,
-                *tab,
-            );
-        }
+        ui.add_enabled_ui(!self.open_windows.any(), |ui| {
+            if let Ok((_, mut pan_zoom, scene, mut canvas)) = self.viewports.get_mut(*tab) {
+                update_viewport(
+                    &self.egui,
+                    ui,
+                    &mut self.renderer,
+                    &mut pan_zoom,
+                    scene,
+                    &mut canvas,
+                    &mut self.commands,
+                    *tab,
+                );
+            }
+        });
     }
 
     fn id(&mut self, tab: &mut Self::Tab) -> Id {
