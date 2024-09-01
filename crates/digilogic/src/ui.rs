@@ -15,6 +15,7 @@ use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
 use digilogic_core::events::{LoadedEvent, UnloadedEvent};
+use digilogic_core::StateMut;
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
@@ -219,15 +220,14 @@ fn update_tool_bar(
     egui: Res<Egui>,
     settings: Res<AppSettings>,
     open_windows: Res<OpenWindows>,
-    state: Res<State<AppState>>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut state: StateMut<AppState>,
 ) {
     TopBottomPanel::top("tool_bar_panel").show(&egui.context, |ui| {
         ui.add_enabled_ui(!open_windows.any(), |ui| {
-            menu::bar(ui, |ui| match **state {
+            menu::bar(ui, |ui| match *state {
                 AppState::Normal => {
                     if ui.button("Run").clicked() {
-                        next_state.set(AppState::Simulating);
+                        state.queue_next(AppState::Simulating);
                         match settings.backend {
                             #[cfg(not(target_arch = "wasm32"))]
                             Backend::Builtin => {
@@ -251,7 +251,7 @@ fn update_tool_bar(
                 }
                 AppState::Simulating => {
                     if ui.button("Stop").clicked() {
-                        next_state.set(AppState::Normal);
+                        state.queue_next(AppState::Normal);
                         commands.trigger(digilogic_netcode::Disconnect);
                     }
                 }

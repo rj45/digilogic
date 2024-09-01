@@ -18,6 +18,39 @@ pub use fixed::{Fixed, FromFixedError, ToFixedError};
 pub type HashSet<T> = ahash::AHashSet<T>;
 pub type HashMap<K, V> = ahash::AHashMap<K, V>;
 
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::SystemParam;
+use bevy_state::prelude::*;
+use bevy_state::state::FreelyMutableState;
+use std::ops::Deref;
+
+#[derive(Debug, SystemParam)]
+pub struct StateMut<'w, S: FreelyMutableState> {
+    state: Res<'w, State<S>>,
+    next_state: ResMut<'w, NextState<S>>,
+}
+
+impl<S: FreelyMutableState> StateMut<'_, S> {
+    #[inline]
+    pub fn get(&self) -> &S {
+        self.state.get()
+    }
+
+    #[inline]
+    pub fn queue_next(&mut self, next: S) {
+        self.next_state.set(next);
+    }
+}
+
+impl<S: FreelyMutableState> Deref for StateMut<'_, S> {
+    type Target = S;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.get()
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct CorePlugin;
 

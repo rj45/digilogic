@@ -1890,6 +1890,7 @@ dependencies = [
  "bevy_derive",
  "bevy_ecs",
  "bevy_reflect",
+ "bevy_state",
  "bitflags 2.6.0",
  "bvh-arena",
  "egui",

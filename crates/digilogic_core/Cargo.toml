@@ -19,6 +19,7 @@ bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_derive.workspace = true
 bevy_app.workspace = true
+bevy_state.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 aery.workspace = true
 smallvec.workspace = true
