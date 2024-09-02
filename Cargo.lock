@@ -1926,6 +1926,7 @@ dependencies = [
  "ahash",
  "bevy_app",
  "bevy_ecs",
+ "bevy_state",
  "bevy_time",
  "digilogic_core",
  "renet",

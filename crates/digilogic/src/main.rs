@@ -81,7 +81,7 @@ impl Default for AppSettings {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, States)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, States)]
 enum AppState {
     #[default]
     Normal,

@@ -1,19 +1,28 @@
 use crate::*;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_state::prelude::*;
 use bevy_time::prelude::*;
 use digilogic_core::components::Circuit;
-use digilogic_core::SharedStr;
+use digilogic_core::{SharedStr, StateMut};
 use std::net::ToSocketAddrs;
 
 trait RenetClientExt {
     fn send_command_message(&mut self, message: ClientMessage);
+    fn receive_command_message(&mut self) -> Option<ServerMessage>;
 }
 
 impl RenetClientExt for RenetClient {
     fn send_command_message(&mut self, message: ClientMessage) {
         let message = rmp_serde::to_vec(&message).unwrap();
         self.send_message(COMMAND_CHANNEL_ID, message);
+    }
+
+    fn receive_command_message(&mut self) -> Option<ServerMessage> {
+        let message = self.receive_message(COMMAND_CHANNEL_ID)?;
+        let message: ServerMessage =
+            rmp_serde::from_slice(&message).expect("invalid server message");
+        Some(message)
     }
 }
 
@@ -22,6 +31,14 @@ fn inject_sim_state(trigger: Trigger<OnAdd, Circuit>, mut commands: Commands) {
         .get_entity(trigger.entity())
         .unwrap()
         .insert(SimState::default());
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, States)]
+enum ConnectionState {
+    #[default]
+    Disconnected,
+    WaitingOnServer,
+    ServerReady,
 }
 
 #[derive(Debug, Clone, Event)]
@@ -36,6 +53,7 @@ fn connect(
     trigger: Trigger<Connect>,
     mut commands: Commands,
     mut transport_errors: EventWriter<NetcodeTransportError>,
+    mut next_state: ResMut<NextState<ConnectionState>>,
 ) {
     let server_addr = (
         trigger.event().server_addr.0.as_str(),
@@ -89,12 +107,14 @@ fn connect(
 
     commands.insert_resource(RenetClient::new(common_config()));
     commands.insert_resource(transport);
+    next_state.set(ConnectionState::WaitingOnServer);
 }
 
 fn disconnect(
     _trigger: Trigger<Disconnect>,
     mut commands: Commands,
     transport: Option<ResMut<NetcodeClientTransport>>,
+    mut next_state: ResMut<NextState<ConnectionState>>,
 ) {
     if let Some(mut transport) = transport {
         transport.disconnect();
@@ -102,6 +122,7 @@ fn disconnect(
 
     commands.remove_resource::<RenetClient>();
     commands.remove_resource::<NetcodeClientTransport>();
+    next_state.set(ConnectionState::Disconnected);
 }
 
 fn update(
@@ -138,12 +159,34 @@ fn disconnect_on_exit(
     }
 }
 
+fn process_incomming(mut client: ResMut<RenetClient>, mut state: StateMut<ConnectionState>) {
+    let mut actual_state = *state;
+
+    while let Some(message) = client.receive_command_message() {
+        match message.kind {
+            ServerMessageKind::Error(_) => todo!(),
+            ServerMessageKind::Ready => {
+                assert_eq!(actual_state, ConnectionState::WaitingOnServer);
+                actual_state = ConnectionState::ServerReady;
+            }
+            ServerMessageKind::BuildingFinished { net_map } => todo!(),
+            ServerMessageKind::NetAdded { id } => todo!(),
+            ServerMessageKind::CellAdded { id } => todo!(),
+        }
+    }
+
+    if actual_state != *state {
+        state.queue_next(actual_state);
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<NetcodeTransportError>()
+        app.init_state::<ConnectionState>()
+            .add_event::<NetcodeTransportError>()
             .observe(inject_sim_state)
             .observe(connect)
             .observe(disconnect);
@@ -151,6 +194,13 @@ impl Plugin for ClientPlugin {
         app.add_systems(
             PreUpdate,
             update
+                .run_if(resource_exists::<RenetClient>)
+                .run_if(resource_exists::<NetcodeClientTransport>),
+        );
+
+        app.add_systems(
+            Update,
+            process_incomming
                 .run_if(resource_exists::<RenetClient>)
                 .run_if(resource_exists::<NetcodeClientTransport>),
         );
