@@ -20,6 +20,7 @@ macro_rules! def_pages {
 }
 
 def_pages! {
+    Appearance,
     Simulator,
 }
 
@@ -98,6 +99,7 @@ fn update_simulator_settings(ui: &mut Ui, settings: &mut AppSettings) {
 }
 
 struct TabViewer<'a> {
+    context: &'a Context,
     settings: &'a mut AppSettings,
 }
 
@@ -106,12 +108,14 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
         match *tab {
+            Page::Appearance => "Appearance".into(),
             Page::Simulator => "Simulator".into(),
         }
     }
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
         match *tab {
+            Page::Appearance => self.context.style_ui(ui),
             Page::Simulator => update_simulator_settings(ui, self.settings),
         }
     }
@@ -124,6 +128,7 @@ fn update_settings_window(
     mut open_windows: ResMut<OpenWindows>,
 ) {
     let mut tab_viewer = TabViewer {
+        context: &egui.context,
         settings: &mut settings,
     };
 
