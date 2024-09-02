@@ -90,8 +90,12 @@ enum AppState {
 
 #[derive(Event)]
 enum FileDialogEvent {
-    Open,
-    Save,
+    OpenProject,
+    SaveProject,
+
+    AddCircuit,
+    ImportCircuit,
+    SaveCircuit,
 }
 
 #[repr(transparent)]
@@ -184,42 +188,65 @@ fn handle_exit_events(world: &mut World, context: &egui::Context) {
     }
 }
 
+trait FileDialogExt {
+    fn add_project_filters(self) -> Self;
+    fn add_circuit_filters(self) -> Self;
+    fn add_import_filters(self) -> Self;
+}
+
+impl FileDialogExt for rfd::FileDialog {
+    fn add_project_filters(self) -> Self {
+        self.add_filter("Digilogic project", &["dlp"])
+    }
+
+    fn add_circuit_filters(self) -> Self {
+        self.add_filter("Digilogic Circuit", &["dlc"])
+    }
+
+    fn add_import_filters(self) -> Self {
+        self.add_filter("Digital Circuit", &["dig"])
+            .add_filter("Yosys JSON", &["yosys", "json"])
+    }
+}
+
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = Events<FileDialogEvent>;
     type LoadEvents = Events<digilogic_core::events::LoadEvent>;
 
-    let file_dialog_event = {
-        let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
-        let mut file_dialog_events = file_dialog_events.drain();
-        let file_dialog_event = file_dialog_events.next();
+    let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
+    let file_dialog_events: Vec<_> = file_dialog_events.drain().collect();
 
-        assert!(
-            file_dialog_events.next().is_none(),
-            "multiple file dialog events in one frame",
-        );
-
-        file_dialog_event
-    };
-
-    if let Some(file_dialog_event) = file_dialog_event {
+    for file_dialog_event in file_dialog_events {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let dialog = rfd::FileDialog::new()
-                .add_filter("Digilogic Circuit", &["dlc"])
-                .add_filter("Digital Circuit", &["dig"])
-                .add_filter("Yosys JSON", &["yosys", "json"]);
-            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-            let dialog = dialog.set_parent(frame);
+            let dialog = rfd::FileDialog::new().set_parent(frame);
 
             match file_dialog_event {
-                FileDialogEvent::Open => {
-                    if let Some(file) = dialog.pick_file() {
+                FileDialogEvent::OpenProject => {
+                    if let Some(file) = dialog.add_project_filters().pick_file() {
+                        //let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
+                        //load_events.send(digilogic_core::events::LoadEvent { filename: file });
+                    }
+                }
+                FileDialogEvent::SaveProject => {
+                    if let Some(file) = dialog.add_project_filters().save_file() {
+                        // TODO: save project file
+                    }
+                }
+                FileDialogEvent::AddCircuit => {
+                    if let Some(file) = dialog.add_circuit_filters().pick_file() {
                         let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
                         load_events.send(digilogic_core::events::LoadEvent { filename: file });
                     }
                 }
-                FileDialogEvent::Save => {
-                    if let Some(file) = dialog.save_file() {
+                FileDialogEvent::ImportCircuit => {
+                    if let Some(file) = dialog.add_import_filters().pick_file() {
+                        let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
+                        load_events.send(digilogic_core::events::LoadEvent { filename: file });
+                    }
+                }
+                FileDialogEvent::SaveCircuit => {
+                    if let Some(file) = dialog.add_project_filters().save_file() {
                         // TODO: save circuit file
                     }
                 }

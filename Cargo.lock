@@ -1967,6 +1967,7 @@ dependencies = [
  "digilogic_core",
  "digilogic_layout",
  "petgraph",
+ "ron",
  "serde",
  "serde-xml-rs",
  "serde_json",

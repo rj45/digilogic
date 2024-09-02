@@ -2,6 +2,7 @@ mod canvas;
 use canvas::*;
 
 mod draw;
+use digilogic_core::resources::Project;
 use draw::*;
 
 mod settings;
@@ -149,26 +150,71 @@ impl OpenWindows {
     }
 }
 
+// TODO: separate responsibilities
+#[allow(clippy::too_many_arguments)]
 fn update_menu(
+    mut commands: Commands,
     egui: Res<Egui>,
     mut settings: ResMut<AppSettings>,
     mut routing_config: ResMut<digilogic_routing::RoutingConfig>,
     mut file_dialog_events: EventWriter<FileDialogEvent>,
     mut open_windows: ResMut<OpenWindows>,
+    project: Option<Res<Project>>,
+    circuits: Query<Entity, With<Circuit>>,
 ) {
     TopBottomPanel::top("menu_panel").show(&egui.context, |ui| {
         ui.add_enabled_ui(!open_windows.any(), |ui| {
             menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Open").clicked() {
-                        file_dialog_events.send(FileDialogEvent::Open);
+                    if ui.button("New Project").clicked() {
+                        if project.is_some() {
+                            // TODO: check for unsaved changes
+
+                            for circuit in circuits.iter() {
+                                commands.entity(circuit).despawn();
+                            }
+                        }
+
+                        commands.insert_resource(Project {
+                            name: "Unnamed Project".to_owned(),
+                            root_circuit: None,
+                        });
                         ui.close_menu();
                     }
 
-                    if ui.button("Save").clicked() {
-                        file_dialog_events.send(FileDialogEvent::Save);
+                    if ui.button("Open Project").clicked() {
+                        file_dialog_events.send(FileDialogEvent::OpenProject);
                         ui.close_menu();
                     }
+
+                    if ui.button("Save Project").clicked() {
+                        file_dialog_events.send(FileDialogEvent::SaveProject);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    ui.add_enabled_ui(project.is_some(), |ui| {
+                        if ui.button("New Circuit").clicked() {
+                            // TODO
+                            ui.close_menu();
+                        }
+
+                        if ui.button("Add Circuit").clicked() {
+                            file_dialog_events.send(FileDialogEvent::AddCircuit);
+                            ui.close_menu();
+                        }
+
+                        if ui.button("Import Circuit").clicked() {
+                            file_dialog_events.send(FileDialogEvent::ImportCircuit);
+                            ui.close_menu();
+                        }
+
+                        if ui.button("Save Circuit").clicked() {
+                            file_dialog_events.send(FileDialogEvent::SaveCircuit);
+                            ui.close_menu();
+                        }
+                    });
 
                     ui.separator();
 
@@ -268,6 +314,39 @@ fn update_status_bar(egui: Res<Egui>, open_windows: Res<OpenWindows>) {
             });
         });
     });
+}
+
+fn update_explorer(
+    egui: Res<Egui>,
+    open_windows: Res<OpenWindows>,
+    project: Option<Res<Project>>,
+    circuits: Query<(Entity, &Name), With<Circuit>>,
+) {
+    SidePanel::left("explorer_panel")
+        .resizable(true)
+        .show(&egui.context, |ui| {
+            ui.add_enabled_ui(!open_windows.any(), |ui| {
+                if let Some(project) = project.as_deref() {
+                    CollapsingHeader::new(&project.name)
+                        .id_source("project_header")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            for (circuit_id, circuit_name) in circuits.iter() {
+                                if project
+                                    .root_circuit
+                                    .is_some_and(|root_id| root_id.0 == circuit_id)
+                                {
+                                    // TODO: visually mark root circuit
+                                }
+
+                                ui.label(circuit_name.0.as_str());
+                            }
+                        });
+                }
+            });
+
+            ui.allocate_space(ui.available_size_before_wrap());
+        });
 }
 
 #[allow(clippy::too_many_arguments)] // TODO: fixme
@@ -554,7 +633,12 @@ impl bevy_app::Plugin for UiPlugin {
         app.add_systems(bevy_app::Update, combine_scenes.after(DrawSet));
         app.add_systems(
             bevy_app::Update,
-            (update_menu, update_tool_bar, update_status_bar)
+            (
+                update_menu,
+                update_tool_bar,
+                update_status_bar,
+                update_explorer,
+            )
                 .chain()
                 .in_set(MenuSet),
         );
