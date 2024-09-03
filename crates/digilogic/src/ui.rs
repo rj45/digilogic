@@ -2,11 +2,13 @@ mod canvas;
 use canvas::*;
 
 mod draw;
-use digilogic_core::resources::Project;
 use draw::*;
 
 mod settings;
 use settings::*;
+
+mod explorer;
+use explorer::*;
 
 use crate::{AppSettings, AppState, Backend, FileDialogEvent, DEFAULT_LOCAL_SERVER_ADDR};
 use bevy_ecs::prelude::*;
@@ -15,8 +17,8 @@ use bevy_ecs::system::SystemParam;
 use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
-use digilogic_core::events::CircuitLoadedEvent;
-use digilogic_core::StateMut;
+use digilogic_core::resources::Project;
+use digilogic_core::{SharedStr, StateMut};
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
@@ -172,7 +174,7 @@ fn update_menu(
                         }
 
                         commands.insert_resource(Project {
-                            name: "Unnamed Project".to_owned(),
+                            name: SharedStr::new_static("Unnamed Project"),
                             file_path: None,
                             root_circuit: None,
                         });
@@ -311,39 +313,6 @@ fn update_status_bar(egui: Res<Egui>, open_windows: Res<OpenWindows>) {
             });
         });
     });
-}
-
-fn update_explorer(
-    egui: Res<Egui>,
-    open_windows: Res<OpenWindows>,
-    project: Option<Res<Project>>,
-    circuits: Query<(Entity, &Name), With<Circuit>>,
-) {
-    SidePanel::left("explorer_panel")
-        .resizable(true)
-        .show(&egui.context, |ui| {
-            ui.add_enabled_ui(!open_windows.any(), |ui| {
-                if let Some(project) = project.as_deref() {
-                    CollapsingHeader::new(&project.name)
-                        .id_source("project_header")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            for (circuit_id, circuit_name) in circuits.iter() {
-                                if project
-                                    .root_circuit
-                                    .is_some_and(|root_id| root_id.0 == circuit_id)
-                                {
-                                    // TODO: visually mark root circuit
-                                }
-
-                                ui.label(circuit_name.0.as_str());
-                            }
-                        });
-                }
-            });
-
-            ui.allocate_space(ui.available_size_before_wrap());
-        });
 }
 
 #[allow(clippy::too_many_arguments)] // TODO: fixme
@@ -513,27 +482,6 @@ fn update_tabs(mut dock_state: NonSendMut<DockState<Entity>>, mut tab_viewer: Ta
     });
 }
 
-fn add_tabs(
-    mut commands: Commands,
-    egui: Res<Egui>,
-    mut dock_state: NonSendMut<DockState<Entity>>,
-    mut loaded_events: EventReader<CircuitLoadedEvent>,
-) {
-    for loaded_event in loaded_events.read() {
-        let viewport = commands
-            .spawn(ViewportBundle {
-                viewport: Viewport,
-                circuit: loaded_event.circuit,
-                pan_zoom: PanZoom::default(),
-                scene: Scene::default(),
-                canvas: Canvas::create(&egui.render_state),
-            })
-            .id();
-
-        dock_state.main_surface_mut().push_to_first_leaf(viewport);
-    }
-}
-
 #[cfg(feature = "inspector")]
 fn inspect(world: &mut World) {
     let Some(egui) = world.get_resource::<Egui>() else {
@@ -590,6 +538,7 @@ impl bevy_app::Plugin for UiPlugin {
         app.register_type::<Viewport>();
 
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
+
         app.add_systems(
             bevy_app::Update,
             (draw_symbols, draw_ports, draw_wires).in_set(DrawSet),
@@ -607,21 +556,20 @@ impl bevy_app::Plugin for UiPlugin {
                 .run_if(|app_state: Res<AppSettings>| app_state.show_routing_graph),
         );
         app.add_systems(bevy_app::Update, combine_scenes.after(DrawSet));
+
         app.add_systems(
             bevy_app::Update,
-            (
-                update_menu,
-                update_tool_bar,
-                update_status_bar,
-                update_explorer,
-            )
+            (update_menu, update_tool_bar, update_status_bar)
                 .chain()
                 .in_set(MenuSet),
         );
-        app.add_systems(bevy_app::Update, add_tabs);
+
         app.add_systems(
             bevy_app::Update,
-            update_tabs.after(combine_scenes).after(MenuSet),
+            update_tabs
+                .after(combine_scenes)
+                .after(MenuSet)
+                .after(ExplorerSet),
         );
 
         app.add_systems(
@@ -630,6 +578,7 @@ impl bevy_app::Plugin for UiPlugin {
         );
 
         app.add_plugins(SettingsPlugin);
+        app.add_plugins(ExplorerPlugin);
 
         #[cfg(feature = "inspector")]
         {

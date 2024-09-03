@@ -137,7 +137,7 @@ fn load_project_file(
     }
 
     commands.insert_resource(digilogic_core::resources::Project {
-        name: project.name,
+        name: project.name.into(),
         file_path: Some(filename.to_owned()),
         root_circuit: project.root_circuit.and_then(|i| circuits.get(i).copied()),
     });
