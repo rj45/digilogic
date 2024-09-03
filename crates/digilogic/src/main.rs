@@ -141,7 +141,9 @@ impl App {
             },
         ));
 
-        app.register_type::<AppSettings>();
+        app.register_type::<std::path::PathBuf>()
+            .register_type::<std::time::Instant>()
+            .register_type::<AppSettings>();
         app.init_state::<AppState>();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();

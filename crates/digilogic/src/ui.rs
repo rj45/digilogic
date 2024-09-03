@@ -582,10 +582,6 @@ impl bevy_app::Plugin for UiPlugin {
 
         #[cfg(feature = "inspector")]
         {
-            // Crashes if these types are not registered
-            app.register_type::<std::path::PathBuf>();
-            app.register_type::<std::time::Instant>();
-
             app.add_plugins(bevy_inspector_egui::DefaultInspectorConfigPlugin);
             app.add_systems(bevy_app::Last, inspect);
         }
