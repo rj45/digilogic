@@ -103,9 +103,10 @@ impl bevy_app::Plugin for CorePlugin {
 
         app.init_resource::<symbol::SymbolRegistry>();
 
-        app.add_event::<events::LoadEvent>()
-            .add_event::<events::LoadedEvent>()
-            .add_event::<events::UnloadedEvent>();
+        app.add_event::<events::ProjectLoadEvent>()
+            .add_event::<events::ProjectLoadedEvent>()
+            .add_event::<events::CircuitLoadEvent>()
+            .add_event::<events::CircuitLoadedEvent>();
 
         app.add_plugins((transform::TransformPlugin, visibility::VisibilityPlugin));
     }

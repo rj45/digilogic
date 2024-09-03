@@ -3,18 +3,20 @@ use bevy_ecs::prelude::*;
 use std::path::PathBuf;
 
 #[derive(Debug, Event)]
-pub struct LoadEvent {
+pub struct ProjectLoadEvent {
     pub filename: PathBuf,
 }
 
 #[derive(Debug, Event)]
-pub struct LoadedEvent {
+pub struct ProjectLoadedEvent;
+
+#[derive(Debug, Event)]
+pub struct CircuitLoadEvent {
     pub filename: PathBuf,
-    pub circuit: CircuitID,
 }
 
 #[derive(Debug, Event)]
-pub struct UnloadedEvent {
+pub struct CircuitLoadedEvent {
     pub circuit: CircuitID,
 }
 

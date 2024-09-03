@@ -211,7 +211,8 @@ impl FileDialogExt for rfd::FileDialog {
 
 fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
     type FileDialogEvents = Events<FileDialogEvent>;
-    type LoadEvents = Events<digilogic_core::events::LoadEvent>;
+    type ProjectLoadEvents = Events<digilogic_core::events::ProjectLoadEvent>;
+    type CircuitLoadEvents = Events<digilogic_core::events::CircuitLoadEvent>;
 
     let mut file_dialog_events = world.get_resource_mut::<FileDialogEvents>().unwrap();
     let file_dialog_events: Vec<_> = file_dialog_events.drain().collect();
@@ -223,30 +224,33 @@ fn handle_file_dialog(world: &mut World, frame: &mut eframe::Frame) {
 
             match file_dialog_event {
                 FileDialogEvent::OpenProject => {
-                    if let Some(file) = dialog.add_project_filters().pick_file() {
-                        //let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
-                        //load_events.send(digilogic_core::events::LoadEvent { filename: file });
+                    if let Some(filename) = dialog.add_project_filters().pick_file() {
+                        let mut load_events =
+                            world.get_resource_mut::<ProjectLoadEvents>().unwrap();
+                        load_events.send(digilogic_core::events::ProjectLoadEvent { filename });
                     }
                 }
                 FileDialogEvent::SaveProject => {
-                    if let Some(file) = dialog.add_project_filters().save_file() {
+                    if let Some(filename) = dialog.add_project_filters().save_file() {
                         // TODO: save project file
                     }
                 }
                 FileDialogEvent::AddCircuit => {
-                    if let Some(file) = dialog.add_circuit_filters().pick_file() {
-                        let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
-                        load_events.send(digilogic_core::events::LoadEvent { filename: file });
+                    if let Some(filename) = dialog.add_circuit_filters().pick_file() {
+                        let mut load_events =
+                            world.get_resource_mut::<CircuitLoadEvents>().unwrap();
+                        load_events.send(digilogic_core::events::CircuitLoadEvent { filename });
                     }
                 }
                 FileDialogEvent::ImportCircuit => {
-                    if let Some(file) = dialog.add_import_filters().pick_file() {
-                        let mut load_events = world.get_resource_mut::<LoadEvents>().unwrap();
-                        load_events.send(digilogic_core::events::LoadEvent { filename: file });
+                    if let Some(filename) = dialog.add_import_filters().pick_file() {
+                        let mut load_events =
+                            world.get_resource_mut::<CircuitLoadEvents>().unwrap();
+                        load_events.send(digilogic_core::events::CircuitLoadEvent { filename });
                     }
                 }
                 FileDialogEvent::SaveCircuit => {
-                    if let Some(file) = dialog.add_project_filters().save_file() {
+                    if let Some(filename) = dialog.add_project_filters().save_file() {
                         // TODO: save circuit file
                     }
                 }

@@ -2,7 +2,7 @@ mod digital;
 mod json;
 mod yosys;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_log::error;
@@ -10,6 +10,7 @@ use digilogic_core::components::{CircuitID, FilePath};
 use digilogic_core::events::*;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::HashMap;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 #[cfg(target_family = "unix")]
@@ -41,65 +42,58 @@ impl FileId {
 #[repr(transparent)]
 struct FileRegistry(HashMap<FileId, CircuitID>);
 
-fn load_file(
+fn load_circuit_file(
     commands: &mut Commands,
-    ev: &LoadEvent,
+    filename: &Path,
     registry: &mut FileRegistry,
     symbols: &SymbolRegistry,
-) -> Result<LoadedEvent> {
-    let file_id = FileId::for_path(&ev.filename)?;
+) -> Result<CircuitID> {
+    let file_id = FileId::for_path(filename)?;
 
-    let circuit = 'load_circuit: {
-        if let Some(circuit) = registry.0.get(&file_id) {
-            // Make sure the circuit is still loaded
-            if commands.get_entity(circuit.0).is_some() {
-                break 'load_circuit *circuit;
-            }
+    if let Some(circuit) = registry.0.get(&file_id) {
+        // Make sure the circuit is still loaded
+        if commands.get_entity(circuit.0).is_some() {
+            return Ok(*circuit);
         }
+    }
 
-        if let Some(ext) = ev.filename.extension() {
-            let circuit = if ext == "dlc" {
-                json::load_json(commands, &ev.filename, symbols)?
-            } else if ext == "dig" {
-                digital::load_digital(commands, &ev.filename, symbols)?
-            } else if ext == "yosys" {
-                yosys::load_yosys(commands, &ev.filename, symbols)?
-            } else if ext == "json" {
-                yosys::load_yosys(commands, &ev.filename, symbols)
-                    .or_else(|_| json::load_json(commands, &ev.filename, symbols))?
-            } else {
-                bail!("unsupported file extension '{}'", ext.to_string_lossy());
-            };
-
-            commands
-                .entity(circuit)
-                .insert(FilePath(ev.filename.clone()));
-
-            let circuit = CircuitID(circuit);
-            registry.0.insert(file_id, circuit);
-            circuit
+    if let Some(ext) = filename.extension() {
+        let circuit = if ext == "dlc" {
+            json::load_json(commands, filename, symbols)?
+        } else if ext == "dig" {
+            digital::load_digital(commands, filename, symbols)?
+        } else if ext == "yosys" {
+            yosys::load_yosys(commands, filename, symbols)?
+        } else if ext == "json" {
+            yosys::load_yosys(commands, filename, symbols)
+                .or_else(|_| json::load_json(commands, filename, symbols))?
         } else {
-            bail!("file without extension is not supported");
-        }
-    };
+            bail!("unsupported file extension '{}'", ext.to_string_lossy());
+        };
 
-    Ok(LoadedEvent {
-        filename: ev.filename.clone(),
-        circuit,
-    })
+        commands
+            .entity(circuit)
+            .insert(FilePath(filename.to_owned()));
+
+        let circuit = CircuitID(circuit);
+        registry.0.insert(file_id, circuit);
+        Ok(circuit)
+    } else {
+        bail!("file without extension is not supported");
+    }
 }
 
-fn handle_load_events(
+fn handle_circuit_load_events(
     mut commands: Commands,
-    mut ev_load: EventReader<LoadEvent>,
-    mut ev_loaded: EventWriter<LoadedEvent>,
+    mut circuit_load_events: EventReader<CircuitLoadEvent>,
+    mut circuit_loaded_events: EventWriter<CircuitLoadedEvent>,
     mut registry: ResMut<FileRegistry>,
     symbols: Res<SymbolRegistry>,
 ) {
-    for ev in ev_load.read() {
-        match load_file(&mut commands, ev, &mut registry, &symbols) {
-            Ok(ev) => {
-                ev_loaded.send(ev);
+    for ev in circuit_load_events.read() {
+        match load_circuit_file(&mut commands, &ev.filename, &mut registry, &symbols) {
+            Ok(circuit) => {
+                circuit_loaded_events.send(CircuitLoadedEvent { circuit });
             }
             Err(e) => {
                 // TODO: instead of this, send an ErrorEvent
@@ -109,12 +103,69 @@ fn handle_load_events(
     }
 }
 
-fn handle_unloaded_events(
+#[derive(Debug, Serialize, Deserialize)]
+struct Project {
+    name: String,
+    #[serde(default)]
+    circuits: Vec<PathBuf>,
+    #[serde(default)]
+    root_circuit: Option<usize>,
+}
+
+fn load_project_file(
+    commands: &mut Commands,
+    filename: &Path,
+    registry: &mut FileRegistry,
+    symbols: &SymbolRegistry,
+) -> Result<Vec<CircuitID>> {
+    let ron = std::fs::read_to_string(filename)?;
+    let project: Project = ron::Options::default()
+        .with_default_extension(ron::extensions::Extensions::all())
+        .from_str(&ron)?;
+
+    let prev_dir = std::env::current_dir().ok();
+    std::env::set_current_dir(filename.parent().unwrap())?;
+
+    let circuits = project
+        .circuits
+        .iter()
+        .map(|circuit_filename| load_circuit_file(commands, circuit_filename, registry, symbols))
+        .collect::<Result<Vec<_>>>()?;
+
+    if let Some(prev_dir) = prev_dir {
+        std::env::set_current_dir(prev_dir)?;
+    }
+
+    commands.insert_resource(digilogic_core::resources::Project {
+        name: project.name,
+        file_path: Some(filename.to_owned()),
+        root_circuit: project.root_circuit.and_then(|i| circuits.get(i).copied()),
+    });
+
+    Ok(circuits)
+}
+
+fn handle_project_load_events(
+    mut commands: Commands,
+    mut project_load_events: EventReader<ProjectLoadEvent>,
+    mut project_loaded_events: EventWriter<ProjectLoadedEvent>,
+    mut circuit_loaded_events: EventWriter<CircuitLoadedEvent>,
     mut registry: ResMut<FileRegistry>,
-    mut ev_unloaded: EventReader<UnloadedEvent>,
+    symbols: Res<SymbolRegistry>,
 ) {
-    for ev in ev_unloaded.read() {
-        registry.retain(|_, v| *v != ev.circuit);
+    for ev in project_load_events.read() {
+        match load_project_file(&mut commands, &ev.filename, &mut registry, &symbols) {
+            Ok(circuits) => {
+                for circuit in circuits {
+                    circuit_loaded_events.send(CircuitLoadedEvent { circuit });
+                }
+                project_loaded_events.send(ProjectLoadedEvent);
+            }
+            Err(e) => {
+                // TODO: instead of this, send an ErrorEvent
+                error!("error loading project {}: {:?}", ev.filename.display(), e);
+            }
+        }
     }
 }
 
@@ -126,7 +177,7 @@ impl bevy_app::Plugin for LoadSavePlugin {
         app.init_resource::<FileRegistry>();
         app.add_systems(
             bevy_app::Update,
-            (handle_load_events, handle_unloaded_events),
+            (handle_circuit_load_events, handle_project_load_events),
         );
     }
 }

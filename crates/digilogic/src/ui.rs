@@ -15,7 +15,7 @@ use bevy_ecs::system::SystemParam;
 use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
-use digilogic_core::events::{LoadedEvent, UnloadedEvent};
+use digilogic_core::events::CircuitLoadedEvent;
 use digilogic_core::StateMut;
 use egui::*;
 use egui_dock::*;
@@ -57,10 +57,6 @@ impl Egui {
         }
     }
 }
-
-#[derive(Debug, Clone, Copy, Component, Reflect)]
-#[repr(transparent)]
-struct ViewportCount(u16);
 
 #[derive(Debug, Clone, Copy, Component)]
 struct PanZoom {
@@ -448,15 +444,17 @@ fn forward_hover_events(
     });
 }
 
-#[allow(clippy::type_complexity)]
+type ViewportQuery<'w, 's> =
+    Query<'w, 's, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>), With<Viewport>>;
+
+//#[allow(clippy::type_complexity)]
 #[derive(SystemParam)]
 struct TabViewer<'w, 's> {
     commands: Commands<'w, 's>,
     egui: Res<'w, Egui>,
     renderer: NonSendMut<'w, CanvasRenderer>,
-    unloaded_events: EventWriter<'w, UnloadedEvent>,
-    viewports: Query<'w, 's, (Read<CircuitID>, Write<PanZoom>, Read<Scene>, Write<Canvas>)>,
-    circuits: Query<'w, 's, (Option<Read<Name>>, Write<ViewportCount>)>,
+    viewports: ViewportQuery<'w, 's>,
+    circuits: Query<'w, 's, Option<Read<Name>>, With<Circuit>>,
     open_windows: Res<'w, OpenWindows>,
 }
 
@@ -465,7 +463,7 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
         if let Ok((&circuit, _, _, _)) = self.viewports.get(*tab) {
-            if let Ok((Some(name), _)) = self.circuits.get(circuit.0) {
+            if let Ok(Some(name)) = self.circuits.get(circuit.0) {
                 return name.0.as_str().into();
             }
         }
@@ -496,19 +494,6 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
 
     fn on_close(&mut self, tab: &mut Self::Tab) -> bool {
         self.commands.entity(*tab).despawn();
-
-        if let Ok((&circuit, _, _, _)) = self.viewports.get(*tab) {
-            if let Ok((_, mut viewport_count)) = self.circuits.get_mut(circuit.0) {
-                viewport_count.0 -= 1;
-
-                if viewport_count.0 == 0 {
-                    // TODO: show confirmation prompt if circuit contains changes
-                    self.commands.entity(circuit.0).despawn();
-                    self.unloaded_events.send(UnloadedEvent { circuit });
-                }
-            }
-        }
-
         true
     }
 
@@ -532,18 +517,9 @@ fn add_tabs(
     mut commands: Commands,
     egui: Res<Egui>,
     mut dock_state: NonSendMut<DockState<Entity>>,
-    mut loaded_events: EventReader<LoadedEvent>,
-    mut circuits: Query<Option<&mut ViewportCount>, With<Circuit>>,
+    mut loaded_events: EventReader<CircuitLoadedEvent>,
 ) {
     for loaded_event in loaded_events.read() {
-        if let Ok(Some(mut viewport_count)) = circuits.get_mut(loaded_event.circuit.0) {
-            viewport_count.0 += 1;
-        } else {
-            commands
-                .entity(loaded_event.circuit.0)
-                .insert(ViewportCount(1));
-        }
-
         let viewport = commands
             .spawn(ViewportBundle {
                 viewport: Viewport,
@@ -611,8 +587,7 @@ impl bevy_app::Plugin for UiPlugin {
         app.insert_resource(Egui::new(&self.context, &self.render_state));
         app.insert_resource(SymbolShapes(Vec::new()));
         app.init_resource::<OpenWindows>();
-        app.register_type::<ViewportCount>()
-            .register_type::<Viewport>();
+        app.register_type::<Viewport>();
 
         app.add_systems(bevy_app::Startup, init_symbol_shapes);
         app.add_systems(

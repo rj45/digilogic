@@ -1,0 +1,9 @@
+Project(
+    name: "Test Project",
+    circuits: [
+        "small.yosys",
+        "medium.yosys",
+        "large.yosys",
+    ],
+    root_circuit: 0,
+)
