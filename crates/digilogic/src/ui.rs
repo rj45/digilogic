@@ -177,6 +177,7 @@ fn update_menu(
 
                         commands.insert_resource(Project {
                             name: "Unnamed Project".to_owned(),
+                            file_path: None,
                             root_circuit: None,
                         });
                         ui.close_menu();

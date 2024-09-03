@@ -1,8 +1,10 @@
 use crate::SharedStr;
 use aery::prelude::*;
+use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use smallvec::SmallVec;
+use std::path::PathBuf;
 
 /////
 // Entity relations
@@ -68,11 +70,15 @@ pub enum Shape {
 }
 
 /// A Name for the entity.
-#[derive(Default, Debug, Component, Reflect)]
+#[derive(Default, Debug, Clone, Deref, Component, Reflect)]
 pub struct Name(pub SharedStr);
 
+// The file path of the entity.
+#[derive(Default, Debug, Clone, Deref, Component, Reflect)]
+pub struct FilePath(pub PathBuf);
+
 /// The Reference Designator prefix (like U for ICs, R for resistors, etc.)
-#[derive(Default, Debug, Component, Reflect)]
+#[derive(Default, Debug, Clone, Deref, Component, Reflect)]
 pub struct DesignatorPrefix(pub SharedStr);
 
 /// The Reference Designator number (like 1, 2, 3, etc.)
@@ -80,7 +86,7 @@ pub struct DesignatorPrefix(pub SharedStr);
 pub struct DesignatorNumber(pub u32);
 
 /// The Reference Designator suffix (like A, B, C, etc.) if it has one
-#[derive(Default, Debug, Component, Reflect)]
+#[derive(Default, Debug, Clone, Deref, Component, Reflect)]
 pub struct DesignatorSuffix(pub SharedStr);
 
 /// The Number of the entity (pin number, etc.)

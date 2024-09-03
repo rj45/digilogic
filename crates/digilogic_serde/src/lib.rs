@@ -6,7 +6,7 @@ use anyhow::{anyhow, bail, Result};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_log::error;
-use digilogic_core::components::CircuitID;
+use digilogic_core::components::{CircuitID, FilePath};
 use digilogic_core::events::*;
 use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::HashMap;
@@ -48,30 +48,39 @@ fn load_file(
     symbols: &SymbolRegistry,
 ) -> Result<LoadedEvent> {
     let file_id = FileId::for_path(&ev.filename)?;
-    let circuit = if let Some(circuit) = registry.0.get(&file_id) {
-        *circuit
-    } else if let Some(ext) = ev.filename.extension() {
-        let circuit = if ext == "dlc" {
-            json::load_json(commands, &ev.filename, symbols)
-        } else if ext == "dig" {
-            digital::load_digital(commands, &ev.filename, symbols)
-        } else if ext == "yosys" {
-            yosys::load_yosys(commands, &ev.filename, symbols)
-        } else if ext == "json" {
-            yosys::load_yosys(commands, &ev.filename, symbols)
-                .or_else(|_| json::load_json(commands, &ev.filename, symbols))
-        } else {
-            Err(anyhow!(
-                "unsupported file extension '{}'",
-                ext.to_string_lossy()
-            ))
-        }?;
 
-        let circuit = CircuitID(circuit);
-        registry.0.insert(file_id, circuit);
-        circuit
-    } else {
-        bail!("file without extension is not supported");
+    let circuit = 'load_circuit: {
+        if let Some(circuit) = registry.0.get(&file_id) {
+            // Make sure the circuit is still loaded
+            if commands.get_entity(circuit.0).is_some() {
+                break 'load_circuit *circuit;
+            }
+        }
+
+        if let Some(ext) = ev.filename.extension() {
+            let circuit = if ext == "dlc" {
+                json::load_json(commands, &ev.filename, symbols)?
+            } else if ext == "dig" {
+                digital::load_digital(commands, &ev.filename, symbols)?
+            } else if ext == "yosys" {
+                yosys::load_yosys(commands, &ev.filename, symbols)?
+            } else if ext == "json" {
+                yosys::load_yosys(commands, &ev.filename, symbols)
+                    .or_else(|_| json::load_json(commands, &ev.filename, symbols))?
+            } else {
+                bail!("unsupported file extension '{}'", ext.to_string_lossy());
+            };
+
+            commands
+                .entity(circuit)
+                .insert(FilePath(ev.filename.clone()));
+
+            let circuit = CircuitID(circuit);
+            registry.0.insert(file_id, circuit);
+            circuit
+        } else {
+            bail!("file without extension is not supported");
+        }
     };
 
     Ok(LoadedEvent {
