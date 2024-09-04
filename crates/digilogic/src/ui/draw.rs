@@ -164,6 +164,7 @@ type VertexQuery<'w, 's> = Query<
         (
             Option<Read<Vertices>>,
             Option<Read<ComputedVisibility>>,
+            Option<Read<digilogic_netcode::StateOffset>>,
             Has<Hovered>,
         ),
         Relations<Child>,
@@ -172,6 +173,7 @@ type VertexQuery<'w, 's> = Query<
 
 pub fn draw_wires(
     app_state: Res<crate::AppSettings>,
+    sim_state: Option<Res<digilogic_netcode::SimState>>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     vertices: VertexQuery,
 ) {
@@ -179,15 +181,40 @@ pub fn draw_wires(
         let mut scene = scene.for_layer(Layer::Wire);
         scene.reset();
 
+        let mut bit_plane_0 = [0u8; 32];
+        let mut bit_plane_1 = [0u8; 32];
+        let mut state_string = String::new();
+
         vertices
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|&mut (vertices, visibility, hovered), _| {
+            .for_each(|&mut (vertices, visibility, state_offset, hovered), _| {
                 let Some(vertices) = vertices else {
                     return;
                 };
 
                 if !*visibility.copied().unwrap_or_default() {
                     return;
+                }
+
+                state_string.clear();
+                if let Some(sim_state) = sim_state.as_deref() {
+                    if let Some(state_offset) = state_offset {
+                        sim_state.get_net(
+                            state_offset.0,
+                            std::num::NonZeroU8::MIN, // TODO: use actual net width
+                            &mut bit_plane_0,
+                            &mut bit_plane_1,
+                        );
+
+                        // TODO: use actual net width
+                        match (bit_plane_0[0] & 0x1, bit_plane_1[0] & 0x1) {
+                            (0, 0) => state_string.push('Z'),
+                            (1, 0) => state_string.push('X'),
+                            (0, 1) => state_string.push('0'),
+                            (1, 1) => state_string.push('1'),
+                            _ => unreachable!(),
+                        }
+                    }
                 }
 
                 let mut path = BezPath::new();
@@ -207,11 +234,21 @@ pub fn draw_wires(
                             path.line_to(pos);
 
                             let is_root = is_root_path && app_state.show_root_wires;
-                            let path_color = match (is_root, hovered) {
-                                (true, true) => Color::rgb8(245, 220, 116),
-                                (true, false) => Color::rgb8(208, 166, 2),
-                                (false, true) => Color::rgb8(125, 240, 147),
-                                (false, false) => Color::rgb8(8, 190, 42),
+                            let path_color = if !state_string.is_empty() {
+                                match state_string.as_str() {
+                                    "Z" => Color::rgb8(128, 128, 128),
+                                    "X" => Color::rgb8(192, 0, 0),
+                                    "0" => Color::rgb8(16, 144, 40),
+                                    "1" => Color::rgb8(40, 220, 70),
+                                    _ => unreachable!(),
+                                }
+                            } else {
+                                match (is_root, hovered) {
+                                    (true, true) => Color::rgb8(245, 220, 116),
+                                    (true, false) => Color::rgb8(208, 166, 2),
+                                    (false, true) => Color::rgb8(125, 240, 147),
+                                    (false, false) => Color::rgb8(8, 190, 42),
+                                }
                             };
 
                             scene.stroke(

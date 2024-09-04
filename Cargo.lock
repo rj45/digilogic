@@ -1908,7 +1908,6 @@ dependencies = [
  "bytemuck",
  "digilogic_netcode",
  "gsim",
- "static_assertions",
 ]
 
 [[package]]
@@ -1925,9 +1924,11 @@ dependencies = [
 name = "digilogic_netcode"
 version = "0.1.0"
 dependencies = [
+ "aery",
  "ahash",
  "bevy_app",
  "bevy_ecs",
+ "bevy_reflect",
  "bevy_state",
  "bevy_time",
  "digilogic_core",

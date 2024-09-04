@@ -1,15 +1,25 @@
 use crate::*;
+use aery::prelude::*;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::lifetimeless::Read;
+use bevy_ecs::system::SystemParam;
+use bevy_reflect::prelude::*;
 use bevy_state::prelude::*;
 use bevy_time::prelude::*;
-use digilogic_core::components::Circuit;
+use digilogic_core::components::*;
+use digilogic_core::resources::Project;
 use digilogic_core::{SharedStr, StateMut};
 use std::net::ToSocketAddrs;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Component)]
+#[repr(transparent)]
+pub struct StateOffset(pub u64);
 
 trait RenetClientExt {
     fn send_command_message(&mut self, message: ClientMessage);
     fn receive_command_message(&mut self) -> Option<ServerMessage>;
+    fn receive_sim_state(&mut self) -> Option<SimState>;
 }
 
 impl RenetClientExt for RenetClient {
@@ -24,29 +34,41 @@ impl RenetClientExt for RenetClient {
             rmp_serde::from_slice(&message).expect("invalid server message");
         Some(message)
     }
+
+    fn receive_sim_state(&mut self) -> Option<SimState> {
+        let message = self.receive_message(DATA_CHANNEL_ID)?;
+        let sim_state: SimState = rmp_serde::from_slice(&message).expect("invalid server message");
+        Some(sim_state)
+    }
 }
 
-fn inject_sim_state(trigger: Trigger<OnAdd, Circuit>, mut commands: Commands) {
-    commands
-        .get_entity(trigger.entity())
-        .unwrap()
-        .insert(SimState::default());
-}
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, States)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, States)]
 enum ConnectionState {
     #[default]
     Disconnected,
     WaitingOnServer,
     Building,
+    SimulationIdle,
 }
 
-#[derive(Debug, Clone, Event)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Resource)]
+#[repr(transparent)]
+struct NextMessageId(u64);
+
+impl NextMessageId {
+    fn get(&mut self) -> u64 {
+        let id = self.0;
+        self.0 = self.0.wrapping_add(1);
+        id
+    }
+}
+
+#[derive(Debug, Clone, Reflect, Event)]
 pub struct Connect {
     pub server_addr: (SharedStr, u16),
 }
 
-#[derive(Debug, Clone, Event)]
+#[derive(Debug, Clone, Reflect, Event)]
 pub struct Disconnect;
 
 fn connect(
@@ -122,6 +144,7 @@ fn disconnect(
 
     commands.remove_resource::<RenetClient>();
     commands.remove_resource::<NetcodeClientTransport>();
+    commands.remove_resource::<SimState>();
     next_state.set(ConnectionState::Disconnected);
 }
 
@@ -156,23 +179,48 @@ fn disconnect_on_exit(
         transport.disconnect();
         commands.remove_resource::<RenetClient>();
         commands.remove_resource::<NetcodeClientTransport>();
+        commands.remove_resource::<SimState>();
     }
 }
 
-fn process_incomming(mut client: ResMut<RenetClient>, mut state: StateMut<ConnectionState>) {
+fn process_messages(
+    mut commands: Commands,
+    mut client: ResMut<RenetClient>,
+    mut state: StateMut<ConnectionState>,
+    mut next_message_id: ResMut<NextMessageId>,
+    current_sim_state: Option<Res<SimState>>,
+) {
     let mut actual_state = *state;
 
     while let Some(message) = client.receive_command_message() {
-        match message.kind {
-            ServerMessageKind::Error(_) => todo!(),
-            ServerMessageKind::Ready => {
+        match message {
+            ServerMessage::Error { .. } => todo!(),
+            ServerMessage::Ready => {
                 assert_eq!(actual_state, ConnectionState::WaitingOnServer);
                 actual_state = ConnectionState::Building;
             }
-            ServerMessageKind::BuildingFinished => todo!(),
-            ServerMessageKind::NetAdded { id, offset } => todo!(),
-            ServerMessageKind::CellAdded { id } => todo!(),
+            ServerMessage::BuildingFinished => {
+                assert_eq!(actual_state, ConnectionState::Building);
+                actual_state = ConnectionState::SimulationIdle;
+
+                client.send_command_message(ClientMessage {
+                    id: next_message_id.get(),
+                    kind: ClientMessageKind::QuerySimState,
+                });
+            }
         }
+    }
+
+    let mut order = current_sim_state.map(|state| state.order).unwrap_or(0);
+    let mut new_sim_state = None;
+    while let Some(sim_state) = client.receive_sim_state() {
+        if sim_state.order >= order {
+            order = sim_state.order;
+            new_sim_state = Some(sim_state);
+        }
+    }
+    if let Some(new_sim_state) = new_sim_state {
+        commands.insert_resource(new_sim_state);
     }
 
     if actual_state != *state {
@@ -180,14 +228,80 @@ fn process_incomming(mut client: ResMut<RenetClient>, mut state: StateMut<Connec
     }
 }
 
+type CircuitQuery<'w, 's> = Query<'w, 's, ((), Relations<Child>), With<Circuit>>;
+type SymbolQuery<'w, 's> = Query<'w, 's, (Entity, Relations<Child>), With<Symbol>>;
+type PortQuery<'w, 's> = Query<'w, 's, Entity, With<Port>>;
+type NetQuery<'w, 's> = Query<'w, 's, (Entity, Relations<Child>), With<Net>>;
+type EndpointQuery<'w, 's> = Query<'w, 's, (Entity, Read<PortID>), With<Endpoint>>;
+
+#[derive(SystemParam)]
+struct BuildQueries<'w, 's> {
+    circuits: CircuitQuery<'w, 's>,
+    symbols: SymbolQuery<'w, 's>,
+    ports: PortQuery<'w, 's>,
+    nets: NetQuery<'w, 's>,
+    endpoints: EndpointQuery<'w, 's>,
+}
+
+fn build(
+    mut commands: Commands,
+    mut client: ResMut<RenetClient>,
+    project: Res<Project>,
+    mut next_message_id: ResMut<NextMessageId>,
+    queries: BuildQueries,
+) {
+    let root_circuit = project
+        .root_circuit
+        .expect("simulation started with no root");
+    let (_, root_children) = queries
+        .circuits
+        .get(root_circuit.0)
+        .expect("invalid root circuit");
+
+    client.send_command_message(ClientMessage {
+        id: next_message_id.get(),
+        kind: ClientMessageKind::BeginBuild,
+    });
+
+    let mut net_id = NetId(0);
+    let mut offset = 0u64;
+    root_children
+        .join::<Child>(&queries.nets)
+        .for_each(|(net, _)| {
+            client.send_command_message(ClientMessage {
+                id: next_message_id.get(),
+                kind: ClientMessageKind::AddNet {
+                    width: NonZeroU8::MIN, // TODO: use actual net width
+                },
+            });
+
+            commands.entity(net).insert(StateOffset(offset));
+
+            net_id.0 += 1;
+            offset += 1; // TODO: use actual net width
+        });
+
+    client.send_command_message(ClientMessage {
+        id: next_message_id.get(),
+        kind: ClientMessageKind::EndBuild,
+    });
+}
+
 #[derive(Default, Debug)]
 pub struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<SimState>()
+            .register_type::<StateOffset>()
+            .register_type::<ConnectionState>()
+            .register_type::<NextMessageId>()
+            .register_type::<Connect>()
+            .register_type::<Disconnect>();
+
         app.init_state::<ConnectionState>()
+            .init_resource::<NextMessageId>()
             .add_event::<NetcodeTransportError>()
-            .observe(inject_sim_state)
             .observe(connect)
             .observe(disconnect);
 
@@ -200,7 +314,7 @@ impl Plugin for ClientPlugin {
 
         app.add_systems(
             Update,
-            process_incomming
+            process_messages
                 .run_if(resource_exists::<RenetClient>)
                 .run_if(resource_exists::<NetcodeClientTransport>),
         );
@@ -211,5 +325,7 @@ impl Plugin for ClientPlugin {
                 .run_if(resource_exists::<RenetClient>)
                 .run_if(resource_exists::<NetcodeClientTransport>),
         );
+
+        app.add_systems(OnEnter(ConnectionState::Building), build);
     }
 }

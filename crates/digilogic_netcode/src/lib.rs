@@ -2,7 +2,7 @@ use renet::transport::*;
 use renet::*;
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, UdpSocket};
-use std::num::{NonZeroU64, NonZeroU8};
+use std::num::NonZeroU8;
 use std::time::{Duration, SystemTime};
 
 pub type HashMap<K, V> = ahash::AHashMap<K, V>;
@@ -44,43 +44,6 @@ fn common_config() -> ConnectionConfig {
 #[repr(transparent)]
 pub struct NetId(u32);
 
-#[cfg(feature = "server")]
-#[derive(Default, Debug, Clone)]
-#[repr(transparent)]
-pub struct NetMap<T> {
-    map: Vec<T>,
-}
-
-#[cfg(feature = "server")]
-impl<T> NetMap<T> {
-    pub fn insert(&mut self, value: T) -> ServerResult<NetId> {
-        let index = self
-            .map
-            .len()
-            .checked_add(1)
-            .and_then(|index| u32::try_from(index).ok())
-            .ok_or(ServerError::OutOfResources)?;
-
-        self.map.push(value);
-        Ok(NetId(index))
-    }
-
-    #[inline]
-    pub fn get(&self, id: NetId) -> Option<&T> {
-        self.map.get(id.0 as usize)
-    }
-}
-
-#[cfg(feature = "server")]
-impl<T> std::ops::Index<NetId> for NetMap<T> {
-    type Output = T;
-
-    #[inline]
-    fn index(&self, id: NetId) -> &Self::Output {
-        &self.map[id.0 as usize]
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct CellId(u32);
@@ -101,12 +64,6 @@ impl TryFrom<usize> for CellId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-enum ServerMessageId {
-    Status,
-    Response(NonZeroU64),
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerError {
     Unsupported,
@@ -115,18 +72,10 @@ pub enum ServerError {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum ServerMessageKind {
-    Error(ServerError),
+enum ServerMessage {
+    Error { id: u64, error: ServerError },
     Ready,
     BuildingFinished,
-    NetAdded { id: NetId, offset: u64 },
-    CellAdded { id: CellId },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ServerMessage {
-    id: ServerMessageId,
-    kind: ServerMessageKind,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -178,14 +127,17 @@ enum ClientMessageKind {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ClientMessage {
-    id: NonZeroU64,
+    id: u64,
     kind: ClientMessageKind,
 }
 
+#[cfg(feature = "client")]
+use bevy_ecs::prelude::{ReflectResource, Resource};
+
 // Invariant for this struct: bit planes need to contain at least one unused bit at any time
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "client", derive(bevy_ecs::prelude::Component))]
-#[allow(missing_debug_implementations)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "client", derive(bevy_reflect::prelude::Reflect, Resource))]
+#[cfg_attr(feature = "client", reflect(Resource))]
 pub struct SimState {
     order: u64, // To detect if message order gets messed up
     bit_len: u64,
@@ -246,8 +198,8 @@ fn align_byte(low: u8, high: u8, bit_offset: u8) -> u8 {
 }
 
 impl SimState {
-    pub fn reset(&mut self) {
-        self.order += 1;
+    fn reset(&mut self, order: u64) {
+        self.order = order;
         self.bit_len = 0;
         self.bit_plane_0.clear();
         self.bit_plane_0.push(0);
@@ -255,12 +207,7 @@ impl SimState {
         self.bit_plane_1.push(0);
     }
 
-    pub fn push_net(
-        &mut self,
-        bit_width: NonZeroU8,
-        bit_plane_0: &[u8],
-        bit_plane_1: &[u8],
-    ) -> u64 {
+    fn push_net(&mut self, bit_width: NonZeroU8, bit_plane_0: &[u8], bit_plane_1: &[u8]) -> u64 {
         // Make sure invariant is upheld
         debug_assert_eq!(self.bit_plane_0.len(), self.bit_plane_1.len());
         debug_assert!(((self.bit_plane_0.len() as u64) * 8) > self.bit_len);

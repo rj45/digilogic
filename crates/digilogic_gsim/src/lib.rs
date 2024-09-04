@@ -2,57 +2,14 @@ use digilogic_netcode::*;
 use gsim::*;
 use std::num::NonZeroU8;
 
-#[macro_use]
-extern crate static_assertions;
-
-assert_eq_size!(WireId, NetId);
-assert_eq_align!(WireId, NetId);
-
-#[derive(Default)]
-struct BuildingState {
-    net_map: NetMap<WireId>,
-    cell_count: usize,
-    builder: SimulatorBuilder,
-}
-
-struct SimulatingState {
-    simulator: Simulator,
-    sim_state: SimState,
-}
-
-impl BuildingState {
-    fn build(&mut self) -> SimulatingState {
-        SimulatingState {
-            simulator: std::mem::take(&mut self.builder).build(),
-            sim_state: SimState::default(),
-        }
-    }
-}
-
 enum ClientState {
-    Building(BuildingState),
-    Simulating(SimulatingState),
+    Building(SimulatorBuilder),
+    Simulating(Simulator),
 }
 
 impl Default for ClientState {
     fn default() -> Self {
-        Self::Building(BuildingState::default())
-    }
-}
-
-fn update_sim_state(simulator: &Simulator, sim_state: &mut SimState) {
-    sim_state.reset();
-
-    for wire in simulator.iter_wire_ids() {
-        let width = simulator.get_wire_width(wire).unwrap();
-        let state = simulator.get_wire_state(wire).unwrap();
-        let (bit_plane_0, bit_plane_1) = state.to_bit_planes(width);
-
-        sim_state.push_net(
-            width,
-            bytemuck::cast_slice(&bit_plane_0),
-            bytemuck::cast_slice(&bit_plane_1),
-        );
+        Self::Building(SimulatorBuilder::default())
     }
 }
 
@@ -60,32 +17,45 @@ fn update_sim_state(simulator: &Simulator, sim_state: &mut SimState) {
 #[allow(missing_debug_implementations)]
 pub struct GsimServer {
     clients: ahash::AHashMap<ClientId, ClientState>,
+    bit_plane_0: [u8; 32],
+    bit_plane_1: [u8; 32],
 }
 
 impl GsimServer {
+    fn get_client_state(&self, client_id: ClientId) -> &ClientState {
+        self.clients.get(&client_id).expect("invalid client ID")
+    }
+
     fn get_client_state_mut(&mut self, client_id: ClientId) -> &mut ClientState {
         self.clients.get_mut(&client_id).expect("invalid client ID")
     }
 
-    fn get_building_state_mut(&mut self, client_id: ClientId) -> ServerResult<&mut BuildingState> {
+    fn get_builder_mut(&mut self, client_id: ClientId) -> ServerResult<&mut SimulatorBuilder> {
         match self.get_client_state_mut(client_id) {
-            ClientState::Building(state) => Ok(state),
+            ClientState::Building(builder) => Ok(builder),
             ClientState::Simulating(_) => Err(ServerError::InvalidState),
         }
     }
 
-    fn get_simulating_state_mut(
-        &mut self,
-        client_id: ClientId,
-    ) -> ServerResult<&mut SimulatingState> {
+    fn get_simulator(&self, client_id: ClientId) -> ServerResult<&Simulator> {
+        match self.get_client_state(client_id) {
+            ClientState::Building(_) => Err(ServerError::InvalidState),
+            ClientState::Simulating(simulator) => Ok(simulator),
+        }
+    }
+
+    fn get_simulator_mut(&mut self, client_id: ClientId) -> ServerResult<&mut Simulator> {
         match self.get_client_state_mut(client_id) {
             ClientState::Building(_) => Err(ServerError::InvalidState),
-            ClientState::Simulating(state) => Ok(state),
+            ClientState::Simulating(simulator) => Ok(simulator),
         }
     }
 }
 
 impl SimServer for GsimServer {
+    type NetId = WireId;
+    type CellId = ComponentId;
+
     fn max_clients(&mut self) -> usize {
         usize::MAX
     }
@@ -107,33 +77,28 @@ impl SimServer for GsimServer {
     fn end_build(&mut self, client_id: ClientId) -> ServerResult<()> {
         let client_state = self.get_client_state_mut(client_id);
         match client_state {
-            ClientState::Building(building_state) => {
-                let simulating_state = building_state.build();
-                *client_state = ClientState::Simulating(simulating_state);
+            ClientState::Building(builder) => {
+                let simulator = std::mem::take(builder).build();
+                *client_state = ClientState::Simulating(simulator);
                 Ok(())
             }
             ClientState::Simulating { .. } => Err(ServerError::InvalidState),
         }
     }
 
-    fn add_net(&mut self, client_id: ClientId, width: NonZeroU8) -> ServerResult<NetId> {
-        let building_state = self.get_building_state_mut(client_id)?;
-
-        let wire_id = building_state
-            .builder
+    fn add_net(&mut self, client_id: ClientId, width: NonZeroU8) -> ServerResult<Self::NetId> {
+        self.get_builder_mut(client_id)?
             .add_wire(width)
-            .ok_or(ServerError::OutOfResources)?;
-
-        building_state.net_map.insert(wire_id)
+            .ok_or(ServerError::OutOfResources)
     }
 
     fn add_and_gate(
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        inputs: &[NetId],
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
@@ -141,9 +106,9 @@ impl SimServer for GsimServer {
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        inputs: &[NetId],
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
@@ -151,9 +116,9 @@ impl SimServer for GsimServer {
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        inputs: &[NetId],
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
@@ -161,9 +126,9 @@ impl SimServer for GsimServer {
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        inputs: &[NetId],
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
@@ -171,9 +136,9 @@ impl SimServer for GsimServer {
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        inputs: &[NetId],
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
@@ -181,9 +146,9 @@ impl SimServer for GsimServer {
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        inputs: &[NetId],
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
@@ -191,15 +156,28 @@ impl SimServer for GsimServer {
         &mut self,
         client_id: ClientId,
         width: NonZeroU8,
-        input: NetId,
-        output: NetId,
-    ) -> ServerResult<CellId> {
+        input: Self::NetId,
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
         todo!()
     }
 
-    fn sim_state(&mut self, client_id: ClientId) -> ServerResult<Option<&SimState>> {
-        let simulating_state = self.get_simulating_state_mut(client_id)?;
-        update_sim_state(&simulating_state.simulator, &mut simulating_state.sim_state);
-        Ok(Some(&simulating_state.sim_state))
+    fn get_net_state(
+        &mut self,
+        client_id: ClientId,
+        net: Self::NetId,
+    ) -> ServerResult<(NonZeroU8, &[u8], &[u8])> {
+        let simulator = self.get_simulator(client_id)?;
+
+        let bit_width = simulator.get_wire_width(net).unwrap();
+        let state = simulator.get_wire_state(net).unwrap();
+        let (bit_plane_0, bit_plane_1) = state.to_bit_planes(bit_width);
+
+        let bit_plane_0: &[u8] = bytemuck::cast_slice(&bit_plane_0);
+        self.bit_plane_0[..bit_plane_0.len()].copy_from_slice(bit_plane_0);
+        let bit_plane_1: &[u8] = bytemuck::cast_slice(&bit_plane_1);
+        self.bit_plane_1[..bit_plane_1.len()].copy_from_slice(bit_plane_1);
+
+        Ok((bit_width, &self.bit_plane_0, &self.bit_plane_1))
     }
 }
