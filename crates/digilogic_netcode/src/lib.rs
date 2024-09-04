@@ -66,9 +66,19 @@ impl TryFrom<usize> for CellId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerError {
+    /// The engine does not implement the requested feature
     Unsupported,
+
+    /// An error of unclassified kind
+    Other,
+
     InvalidState,
     OutOfResources,
+    InvalidNetId,
+    WidthMismatch,
+    WidthIncompatible,
+    OutOfRange,
+    InvalidInputCount,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -52,6 +52,44 @@ impl GsimServer {
     }
 }
 
+fn component_error_to_server_error(error: AddComponentError) -> ServerError {
+    match error {
+        AddComponentError::TooManyComponents => ServerError::OutOfResources,
+        AddComponentError::InvalidWireId => ServerError::InvalidNetId,
+        AddComponentError::WireWidthMismatch => ServerError::WidthMismatch,
+        AddComponentError::WireWidthIncompatible => ServerError::WidthIncompatible,
+        AddComponentError::OffsetOutOfRange => ServerError::OutOfRange,
+        AddComponentError::TooFewInputs => ServerError::InvalidInputCount,
+        AddComponentError::InvalidInputCount => ServerError::InvalidInputCount,
+        _ => ServerError::Other,
+    }
+}
+
+macro_rules! gate_impl {
+    ($name:ident) => {
+        fn $name(
+            &mut self,
+            client_id: ClientId,
+            width: NonZeroU8,
+            inputs: &[Self::NetId],
+            output: Self::NetId,
+        ) -> ServerResult<Self::CellId> {
+            let builder = self.get_builder_mut(client_id)?;
+
+            let output_width = builder
+                .get_wire_width(output)
+                .map_err(|_| ServerError::InvalidNetId)?;
+            if width != output_width {
+                return Err(ServerError::WidthMismatch);
+            }
+
+            builder
+                .$name(inputs, output)
+                .map_err(component_error_to_server_error)
+        }
+    };
+}
+
 impl SimServer for GsimServer {
     type NetId = WireId;
     type CellId = ComponentId;
@@ -92,65 +130,12 @@ impl SimServer for GsimServer {
             .ok_or(ServerError::OutOfResources)
     }
 
-    fn add_and_gate(
-        &mut self,
-        client_id: ClientId,
-        width: NonZeroU8,
-        inputs: &[Self::NetId],
-        output: Self::NetId,
-    ) -> ServerResult<Self::CellId> {
-        todo!()
-    }
-
-    fn add_or_gate(
-        &mut self,
-        client_id: ClientId,
-        width: NonZeroU8,
-        inputs: &[Self::NetId],
-        output: Self::NetId,
-    ) -> ServerResult<Self::CellId> {
-        todo!()
-    }
-
-    fn add_xor_gate(
-        &mut self,
-        client_id: ClientId,
-        width: NonZeroU8,
-        inputs: &[Self::NetId],
-        output: Self::NetId,
-    ) -> ServerResult<Self::CellId> {
-        todo!()
-    }
-
-    fn add_nand_gate(
-        &mut self,
-        client_id: ClientId,
-        width: NonZeroU8,
-        inputs: &[Self::NetId],
-        output: Self::NetId,
-    ) -> ServerResult<Self::CellId> {
-        todo!()
-    }
-
-    fn add_nor_gate(
-        &mut self,
-        client_id: ClientId,
-        width: NonZeroU8,
-        inputs: &[Self::NetId],
-        output: Self::NetId,
-    ) -> ServerResult<Self::CellId> {
-        todo!()
-    }
-
-    fn add_xnor_gate(
-        &mut self,
-        client_id: ClientId,
-        width: NonZeroU8,
-        inputs: &[Self::NetId],
-        output: Self::NetId,
-    ) -> ServerResult<Self::CellId> {
-        todo!()
-    }
+    gate_impl!(add_and_gate);
+    gate_impl!(add_or_gate);
+    gate_impl!(add_xor_gate);
+    gate_impl!(add_nand_gate);
+    gate_impl!(add_nor_gate);
+    gate_impl!(add_xnor_gate);
 
     fn add_not_gate(
         &mut self,
@@ -159,7 +144,18 @@ impl SimServer for GsimServer {
         input: Self::NetId,
         output: Self::NetId,
     ) -> ServerResult<Self::CellId> {
-        todo!()
+        let builder = self.get_builder_mut(client_id)?;
+
+        let output_width = builder
+            .get_wire_width(output)
+            .map_err(|_| ServerError::InvalidNetId)?;
+        if width != output_width {
+            return Err(ServerError::WidthMismatch);
+        }
+
+        builder
+            .add_not_gate(input, output)
+            .map_err(component_error_to_server_error)
     }
 
     fn get_net_state(
