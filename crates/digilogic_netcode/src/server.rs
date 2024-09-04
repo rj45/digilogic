@@ -399,6 +399,8 @@ pub fn run_server<S: SimServer>(
     let config = server_config(sim_server.max_clients().min(1024), server_addr);
     let mut transport = NetcodeServerTransport::new(config, socket)?;
 
+    println!("server listening on {server_addr}");
+
     let mut adapter = Adapter::new(sim_server);
     let mut client_ids = Vec::new();
 
