@@ -74,18 +74,7 @@ struct ViewportSpawner<'w, 's> {
 }
 
 impl ViewportSpawner<'_, '_> {
-    fn focus_or_spawn_viewport(&mut self, circuit: CircuitID, render_state: &RenderState) {
-        for (viewport, &viewport_circuit) in self.viewports.iter() {
-            if viewport_circuit == circuit {
-                let index = self
-                    .dock_state
-                    .find_tab(&viewport)
-                    .expect("viewport without tab");
-                self.dock_state.set_active_tab(index);
-                return;
-            }
-        }
-
+    fn spawn_viewport(&mut self, circuit: CircuitID, render_state: &RenderState) {
         let viewport = self
             .commands
             .spawn(ViewportBundle {
@@ -100,6 +89,21 @@ impl ViewportSpawner<'_, '_> {
         self.dock_state
             .main_surface_mut()
             .push_to_first_leaf(viewport);
+    }
+
+    fn focus_or_spawn_viewport(&mut self, circuit: CircuitID, render_state: &RenderState) {
+        for (viewport, &viewport_circuit) in self.viewports.iter() {
+            if viewport_circuit == circuit {
+                let index = self
+                    .dock_state
+                    .find_tab(&viewport)
+                    .expect("viewport without tab");
+                self.dock_state.set_active_tab(index);
+                return;
+            }
+        }
+
+        self.spawn_viewport(circuit, render_state);
     }
 }
 
