@@ -41,60 +41,48 @@ fn common_config() -> ConnectionConfig {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
 pub struct NetId(u32);
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct NetMap {
-    #[serde(with = "serde_bytes")]
-    widths: Vec<u8>,
+#[cfg(feature = "server")]
+#[derive(Default, Debug, Clone)]
+#[repr(transparent)]
+pub struct NetMap<T> {
+    map: Vec<T>,
 }
 
-impl NetMap {
-    pub fn add_net(&mut self, width: NonZeroU8) -> ServerResult<NetId> {
-        let index: u32 = self
-            .widths
+#[cfg(feature = "server")]
+impl<T> NetMap<T> {
+    pub fn insert(&mut self, value: T) -> ServerResult<NetId> {
+        let index = self
+            .map
             .len()
-            .try_into()
-            .map_err(|_| ServerError::OutOfResources)?;
+            .checked_add(1)
+            .and_then(|index| u32::try_from(index).ok())
+            .ok_or(ServerError::OutOfResources)?;
 
-        self.widths.push(width.get());
+        self.map.push(value);
         Ok(NetId(index))
     }
 
-    pub fn resolve(&self) -> ResolvedNetMap {
-        let mut offset = 0u64;
-        let mut offsets = Vec::new();
-        for &width in &self.widths {
-            assert!(width > 0);
-            offsets.push(offset);
-            offset += width as u64;
-        }
-
-        offsets.push(offset);
-        ResolvedNetMap { offsets }
+    #[inline]
+    pub fn get(&self, id: NetId) -> Option<&T> {
+        self.map.get(id.0 as usize)
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ResolvedNetMap {
-    offsets: Vec<u64>,
-}
+#[cfg(feature = "server")]
+impl<T> std::ops::Index<NetId> for NetMap<T> {
+    type Output = T;
 
-impl ResolvedNetMap {
-    pub fn get_offset_width(&self, net: NetId) -> Option<(u64, NonZeroU8)> {
-        let index = net.0 as usize;
-        let offset = *self.offsets.get(index)?;
-        let next_offset = *self.offsets.get(index + 1)?;
-        let width = (next_offset - offset)
-            .try_into()
-            .ok()
-            .and_then(NonZeroU8::new)
-            .expect("invalid wire width");
-        Some((offset, width))
+    #[inline]
+    fn index(&self, id: NetId) -> &Self::Output {
+        &self.map[id.0 as usize]
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
 pub struct CellId(u32);
 
 impl From<CellId> for usize {
@@ -130,8 +118,8 @@ pub enum ServerError {
 enum ServerMessageKind {
     Error(ServerError),
     Ready,
-    BuildingFinished { net_map: NetMap },
-    NetAdded { id: NetId },
+    BuildingFinished,
+    NetAdded { id: NetId, offset: u64 },
     CellAdded { id: CellId },
 }
 

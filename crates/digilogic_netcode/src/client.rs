@@ -38,7 +38,7 @@ enum ConnectionState {
     #[default]
     Disconnected,
     WaitingOnServer,
-    ServerReady,
+    Building,
 }
 
 #[derive(Debug, Clone, Event)]
@@ -167,10 +167,10 @@ fn process_incomming(mut client: ResMut<RenetClient>, mut state: StateMut<Connec
             ServerMessageKind::Error(_) => todo!(),
             ServerMessageKind::Ready => {
                 assert_eq!(actual_state, ConnectionState::WaitingOnServer);
-                actual_state = ConnectionState::ServerReady;
+                actual_state = ConnectionState::Building;
             }
-            ServerMessageKind::BuildingFinished { net_map } => todo!(),
-            ServerMessageKind::NetAdded { id } => todo!(),
+            ServerMessageKind::BuildingFinished => todo!(),
+            ServerMessageKind::NetAdded { id, offset } => todo!(),
             ServerMessageKind::CellAdded { id } => todo!(),
         }
     }

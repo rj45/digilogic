@@ -2,9 +2,15 @@ use digilogic_netcode::*;
 use gsim::*;
 use std::num::NonZeroU8;
 
+#[macro_use]
+extern crate static_assertions;
+
+assert_eq_size!(WireId, NetId);
+assert_eq_align!(WireId, NetId);
+
 #[derive(Default)]
 struct BuildingState {
-    net_map: NetMap,
+    net_map: NetMap<WireId>,
     cell_count: usize,
     builder: SimulatorBuilder,
 }
@@ -15,14 +21,11 @@ struct SimulatingState {
 }
 
 impl BuildingState {
-    fn build(&mut self) -> (SimulatingState, NetMap) {
-        (
-            SimulatingState {
-                simulator: std::mem::take(&mut self.builder).build(),
-                sim_state: SimState::default(),
-            },
-            std::mem::take(&mut self.net_map),
-        )
+    fn build(&mut self) -> SimulatingState {
+        SimulatingState {
+            simulator: std::mem::take(&mut self.builder).build(),
+            sim_state: SimState::default(),
+        }
     }
 }
 
@@ -101,13 +104,13 @@ impl SimServer for GsimServer {
         Ok(())
     }
 
-    fn end_build(&mut self, client_id: ClientId) -> ServerResult<NetMap> {
+    fn end_build(&mut self, client_id: ClientId) -> ServerResult<()> {
         let client_state = self.get_client_state_mut(client_id);
         match client_state {
             ClientState::Building(building_state) => {
-                let (simulating_state, net_map) = building_state.build();
+                let simulating_state = building_state.build();
                 *client_state = ClientState::Simulating(simulating_state);
-                Ok(net_map)
+                Ok(())
             }
             ClientState::Simulating { .. } => Err(ServerError::InvalidState),
         }
@@ -116,12 +119,12 @@ impl SimServer for GsimServer {
     fn add_net(&mut self, client_id: ClientId, width: NonZeroU8) -> ServerResult<NetId> {
         let building_state = self.get_building_state_mut(client_id)?;
 
-        building_state
+        let wire_id = building_state
             .builder
             .add_wire(width)
             .ok_or(ServerError::OutOfResources)?;
 
-        building_state.net_map.add_net(width)
+        building_state.net_map.insert(wire_id)
     }
 
     fn add_and_gate(

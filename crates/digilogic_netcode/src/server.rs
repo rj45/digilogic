@@ -47,7 +47,7 @@ pub trait SimServer {
     fn client_disconnected(&mut self, client_id: ClientId);
 
     fn begin_build(&mut self, client_id: ClientId) -> ServerResult<()>;
-    fn end_build(&mut self, client_id: ClientId) -> ServerResult<NetMap>;
+    fn end_build(&mut self, client_id: ClientId) -> ServerResult<()>;
 
     fn add_net(&mut self, client_id: ClientId, width: NonZeroU8) -> ServerResult<NetId>;
     gate_stub!(add_and_gate);
@@ -90,6 +90,7 @@ fn process_message(
     client_id: ClientId,
     response_id: ServerMessageId,
     message_kind: ClientMessageKind,
+    net_offset: &mut u64,
 ) -> ServerResult<()> {
     macro_rules! add_gate {
         ($add_fn:ident, $width:ident, $inputs:ident, $output:ident) => {{
@@ -105,14 +106,17 @@ fn process_message(
     }
 
     match message_kind {
-        ClientMessageKind::BeginBuild => sim_server.begin_build(client_id)?,
+        ClientMessageKind::BeginBuild => {
+            sim_server.begin_build(client_id)?;
+            *net_offset = 0;
+        }
         ClientMessageKind::EndBuild => {
-            let net_map = sim_server.end_build(client_id)?;
+            sim_server.end_build(client_id)?;
             server.send_command_message(
                 client_id,
                 ServerMessage {
                     id: response_id,
-                    kind: ServerMessageKind::BuildingFinished { net_map },
+                    kind: ServerMessageKind::BuildingFinished,
                 },
             );
         }
@@ -123,9 +127,13 @@ fn process_message(
                 client_id,
                 ServerMessage {
                     id: response_id,
-                    kind: ServerMessageKind::NetAdded { id },
+                    kind: ServerMessageKind::NetAdded {
+                        id,
+                        offset: *net_offset,
+                    },
                 },
             );
+            *net_offset += width.get() as u64;
         }
         ClientMessageKind::AddAndGate {
             width,
@@ -195,6 +203,7 @@ pub fn run_server(
 
     let mut prev_time = Instant::now();
     let mut client_ids = Vec::new();
+    let mut net_offset = 0;
     loop {
         let current_time = Instant::now();
         let delta = prev_time - current_time;
@@ -238,6 +247,7 @@ pub fn run_server(
                     client_id,
                     response_id,
                     message.kind,
+                    &mut net_offset,
                 ) {
                     server.send_command_message(
                         client_id,
