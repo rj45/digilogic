@@ -619,8 +619,12 @@ impl bevy_app::Plugin for TransformPlugin {
             .register_type::<Rotation>()
             .register_type::<Transform>()
             .register_type::<BoundingBox>()
+            .register_type::<Direction>()
+            .register_type::<Directions>()
             .register_type::<GlobalTransform>()
-            .register_type::<AbsoluteBoundingBox>();
+            .register_type::<AbsoluteBoundingBox>()
+            .register_type::<AbsoluteDirection>()
+            .register_type::<AbsoluteDirections>();
 
         app.register_relation::<InheritTransform>();
         app.add_systems(
