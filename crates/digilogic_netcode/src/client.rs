@@ -43,12 +43,13 @@ impl RenetClientExt for RenetClient {
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, States)]
-enum ConnectionState {
+pub enum ConnectionState {
     #[default]
     Disconnected,
     WaitingOnServer,
     Building,
     SimulationIdle,
+    SimulationRunning,
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Resource)]
