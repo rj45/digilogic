@@ -347,14 +347,11 @@ fn update_status_bar(egui: Res<Egui>, open_windows: Res<OpenWindows>) {
     });
 }
 
-#[allow(clippy::too_many_arguments)] // TODO: fixme
 fn update_viewport(
     egui: &Egui,
     ui: &mut Ui,
     renderer: &mut CanvasRenderer,
-    pan_zoom: &mut PanZoom,
-    scene: &Scene,
-    canvas: &mut Canvas,
+    (&circuit, mut pan_zoom, scene, mut canvas): (&CircuitID, Mut<PanZoom>, &Scene, Mut<Canvas>),
     commands: &mut Commands,
     viewport: Entity,
 ) {
@@ -382,7 +379,8 @@ fn update_viewport(
             .interact(Sense::click_and_drag());
 
         if response.dragged_by(PointerButton::Middle) {
-            pan_zoom.pan += response.drag_delta() / pan_zoom.zoom;
+            let zoom = pan_zoom.zoom;
+            pan_zoom.pan += response.drag_delta() / zoom;
         }
 
         if let Some(mouse_pos) = response.hover_pos() {
@@ -400,7 +398,7 @@ fn update_viewport(
             pan_zoom.pan += new_mouse_world_pos - old_mouse_world_pos;
 
             // note: this will only happen if the mouse is hovering the viewport
-            forward_hover_events(ui, commands, new_mouse_world_pos, viewport);
+            forward_hover_events(ui, commands, circuit, new_mouse_world_pos, viewport);
         }
     });
 }
@@ -408,6 +406,7 @@ fn update_viewport(
 fn forward_hover_events(
     ui: &mut Ui,
     commands: &mut Commands,
+    circuit: CircuitID,
     world_mouse_pos: Vec2,
     viewport: Entity,
 ) {
@@ -416,9 +415,10 @@ fn forward_hover_events(
             match event {
                 egui::Event::PointerMoved(_) => {
                     commands.trigger_targets(
-                        digilogic_ux::PointerMovedEvent(
-                            (world_mouse_pos.x, world_mouse_pos.y).into(),
-                        ),
+                        digilogic_ux::PointerMovedEvent {
+                            circuit,
+                            pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
+                        },
                         viewport,
                     );
                 }
@@ -430,6 +430,7 @@ fn forward_hover_events(
                 } => {
                     commands.trigger_targets(
                         digilogic_ux::PointerButtonEvent {
+                            circuit,
                             pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
                             button: *button,
                             pressed: *pressed,
@@ -474,18 +475,16 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
         ui.add_enabled_ui(!self.open_windows.any(), |ui| {
-            if let Ok((_, mut pan_zoom, scene, mut canvas)) = self.viewports.get_mut(*tab) {
-                update_viewport(
-                    &self.egui,
-                    ui,
-                    &mut self.renderer,
-                    &mut pan_zoom,
-                    scene,
-                    &mut canvas,
-                    &mut self.commands,
-                    *tab,
-                );
-            }
+            let viewport_item = self.viewports.get_mut(*tab).expect("invalid viewport ID");
+
+            update_viewport(
+                &self.egui,
+                ui,
+                &mut self.renderer,
+                viewport_item,
+                &mut self.commands,
+                *tab,
+            );
         });
     }
 

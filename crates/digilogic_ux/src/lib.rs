@@ -26,7 +26,7 @@ impl bevy_app::Plugin for UxPlugin {
         app.add_event::<PointerButtonEvent>();
         app.observe(on_add_viewport_augment_with_fsm);
 
-        app.init_resource::<spatial_index::SpatialIndex>();
+        app.observe(spatial_index::inject_spatial_index);
         app.add_systems(bevy_app::PreUpdate, spatial_index::update_spatial_index);
         app.add_systems(
             bevy_app::PreUpdate,

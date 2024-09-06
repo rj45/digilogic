@@ -85,11 +85,15 @@ type EntityKindQuery<'w, 's> = Query<'w, 's, (Has<Port>, Has<Endpoint>, Has<Wayp
 fn hover_system(
     trigger: Trigger<PointerMovedEvent>,
     mut commands: Commands,
-    spatial_index: Res<SpatialIndex>,
+    circuits: Query<&SpatialIndex, With<Circuit>>,
     entity_kind_query: EntityKindQuery,
     mut current_hovered_entity: Query<&mut HoveredEntity>,
 ) {
-    let position = trigger.event().0;
+    let spatial_index = circuits
+        .get(trigger.event().circuit.0)
+        .expect("invalid circuit ID");
+
+    let position = trigger.event().pos;
     let viewport = trigger.entity();
     let bounds = BoundingBox::from_center_half_size(
         Vec2 {
@@ -137,7 +141,7 @@ fn mover_system(
     moving_query: Query<&MouseMoving>,
     mut transform_query: Query<&mut Transform>,
 ) {
-    let position = trigger.event().0;
+    let position = trigger.event().pos;
     let viewport = trigger.entity();
     if let Ok(moving) = moving_query.get(viewport) {
         for entity_offset in moving.0.iter() {

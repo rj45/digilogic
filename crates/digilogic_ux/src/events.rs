@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use digilogic_core::components::CircuitID;
 
 // TODO: the following types probably shouldn't be using egui types, I am just being lazy.
 // Especially if these move to core, they should be using their own types.
@@ -6,6 +7,9 @@ use bevy_ecs::prelude::*;
 /// A mouse button was pressed or released (or a touch started or stopped).
 #[derive(Event, Debug)]
 pub struct PointerButtonEvent {
+    /// Which circuit does this event target?
+    pub circuit: CircuitID,
+
     /// Where is the pointer?
     pub pos: egui::Pos2,
 
@@ -21,4 +25,10 @@ pub struct PointerButtonEvent {
 
 /// The mouse or touch moved to a new place.
 #[derive(Event, Debug)]
-pub struct PointerMovedEvent(pub egui::Pos2);
+pub struct PointerMovedEvent {
+    /// Which circuit does this event target?
+    pub circuit: CircuitID,
+
+    /// Where is the pointer?
+    pub pos: egui::Pos2,
+}
