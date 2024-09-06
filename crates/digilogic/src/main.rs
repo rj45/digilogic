@@ -8,8 +8,8 @@ mod ui;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
-use bevy_state::prelude::{OnEnter, OnExit};
 use bevy_time::{Time, Virtual};
+use digilogic_core::states::SimulationConnected;
 use digilogic_core::SharedStr;
 use digilogic_routing::RoutingConfig;
 use serde::{Deserialize, Serialize};
@@ -81,13 +81,6 @@ impl Default for AppSettings {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, States)]
-enum AppState {
-    #[default]
-    Normal,
-    Simulating,
-}
-
 #[derive(Event)]
 enum FileDialogEvent {
     OpenProject,
@@ -144,7 +137,6 @@ impl App {
         app.register_type::<std::path::PathBuf>()
             .register_type::<std::time::Instant>()
             .register_type::<AppSettings>();
-        app.init_state::<AppState>();
         app.insert_resource(app_state);
         app.add_event::<FileDialogEvent>();
 
@@ -152,8 +144,8 @@ impl App {
         let mut virt_time = app.world_mut().get_resource_mut::<Time<Virtual>>().unwrap();
         virt_time.pause();
         virt_time.set_max_delta(std::time::Duration::MAX);
-        app.add_systems(OnExit(AppState::Simulating), pause_time);
-        app.add_systems(OnEnter(AppState::Simulating), resume_time);
+        app.add_systems(OnExit(SimulationConnected), pause_time);
+        app.add_systems(OnEnter(SimulationConnected), resume_time);
 
         // TODO: find a way to have plugins register what they want to save and restore.
         if let Some(routing_config) = cc

@@ -2,6 +2,7 @@ pub mod bundles;
 pub mod components;
 pub mod events;
 pub mod resources;
+pub mod states;
 pub mod symbol;
 pub mod transform;
 pub mod visibility;
@@ -99,7 +100,14 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<components::Endpoint>()
             .register_type::<components::Net>()
             .register_type::<components::Circuit>()
-            .register_type::<resources::Project>();
+            .register_type::<resources::Project>()
+            .register_type::<states::SimulationState>()
+            .register_type::<states::SimulationConnected>()
+            .register_type::<states::SimulationActive>();
+
+        app.init_state::<states::SimulationState>()
+            .add_computed_state::<states::SimulationConnected>()
+            .add_computed_state::<states::SimulationActive>();
 
         app.init_resource::<symbol::SymbolRegistry>();
 

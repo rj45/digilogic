@@ -10,7 +10,7 @@ use settings::*;
 mod explorer;
 use explorer::*;
 
-use crate::{AppSettings, AppState, Backend, FileDialogEvent, DEFAULT_LOCAL_SERVER_ADDR};
+use crate::{AppSettings, Backend, FileDialogEvent, DEFAULT_LOCAL_SERVER_ADDR};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_ecs::system::SystemParam;
@@ -18,8 +18,8 @@ use bevy_reflect::Reflect;
 use bevy_state::prelude::*;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
 use digilogic_core::resources::Project;
-use digilogic_core::{SharedStr, StateMut};
-use digilogic_netcode::ConnectionState;
+use digilogic_core::states::{SimulationConnected, SimulationState};
+use digilogic_core::SharedStr;
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
@@ -267,18 +267,16 @@ fn update_tool_bar(
     settings: Res<AppSettings>,
     open_windows: Res<OpenWindows>,
     project: Option<Res<Project>>,
-    mut app_state: StateMut<AppState>,
-    connection_state: Res<State<ConnectionState>>,
+    simulation_state: Res<State<SimulationState>>,
 ) {
     let root_circuit_exists = project.and_then(|project| project.root_circuit).is_some();
 
     TopBottomPanel::top("tool_bar_panel").show(&egui.context, |ui| {
         ui.add_enabled_ui(!open_windows.any() && root_circuit_exists, |ui| {
             menu::bar(ui, |ui| {
-                match *app_state {
-                    AppState::Normal => {
+                match simulation_state.is_connected() {
+                    false => {
                         if ui.button("Start").clicked() {
-                            app_state.queue_next(AppState::Simulating);
                             match settings.backend {
                                 #[cfg(not(target_arch = "wasm32"))]
                                 Backend::Builtin => {
@@ -300,30 +298,26 @@ fn update_tool_bar(
                             }
                         }
                     }
-                    AppState::Simulating => {
+                    true => {
                         if ui.button("Stop").clicked() {
-                            app_state.queue_next(AppState::Normal);
                             commands.trigger(digilogic_netcode::Disconnect);
                         }
                     }
                 }
 
-                ui.add_enabled_ui(
-                    **connection_state == ConnectionState::SimulationIdle,
-                    |ui| {
-                        if ui.button("Step").clicked() {
-                            // TODO
-                        }
-                    },
-                );
+                ui.add_enabled_ui(**simulation_state == SimulationState::ActiveIdle, |ui| {
+                    if ui.button("Step").clicked() {
+                        // TODO
+                    }
+                });
 
-                match **connection_state {
-                    ConnectionState::SimulationIdle => {
+                match **simulation_state {
+                    SimulationState::ActiveIdle => {
                         if ui.button("Run").clicked() {
                             // TODO
                         }
                     }
-                    ConnectionState::SimulationRunning => {
+                    SimulationState::ActiveRunning => {
                         if ui.button("Pause").clicked() {
                             // TODO
                         }
@@ -605,7 +599,7 @@ impl bevy_app::Plugin for UiPlugin {
 
         app.add_systems(
             bevy_app::PostUpdate,
-            repaint.run_if(in_state(AppState::Simulating)),
+            repaint.run_if(in_state(SimulationConnected)),
         );
 
         app.add_plugins(SettingsPlugin);
