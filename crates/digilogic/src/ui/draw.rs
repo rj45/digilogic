@@ -251,8 +251,10 @@ pub fn draw_wires(
                                 }
                             };
 
+                            let (width, radius) = if hovered { (3.0, 4.5) } else { (2.5, 4.0) };
+
                             scene.stroke(
-                                &Stroke::new(2.5),
+                                &Stroke::new(width),
                                 Affine::IDENTITY,
                                 path_color,
                                 None,
@@ -265,7 +267,7 @@ pub fn draw_wires(
                                     Affine::IDENTITY,
                                     path_color,
                                     None,
-                                    &Circle::new(pos, 4.0),
+                                    &Circle::new(pos, radius),
                                 );
                             }
                         }
