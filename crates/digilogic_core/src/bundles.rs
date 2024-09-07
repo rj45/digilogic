@@ -124,4 +124,6 @@ pub struct NetBundle {
 pub struct CircuitBundle {
     /// The marker that this is a Circuit
     pub circuit: Circuit,
+    /// The name of the circuit
+    pub name: Name,
 }

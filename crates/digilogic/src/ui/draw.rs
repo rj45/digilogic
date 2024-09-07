@@ -12,6 +12,11 @@ use vello::peniko::{Color, Fill};
 
 include!("bez_path.rs");
 
+const WIRE_COLOR_HIGH_Z: Color = Color::rgb8(128, 128, 128);
+const WIRE_COLOR_UNDEFINED: Color = Color::rgb8(192, 0, 0);
+const WIRE_COLOR_LOGIC_0: Color = Color::rgb8(16, 144, 40);
+const WIRE_COLOR_LOGIC_1: Color = Color::rgb8(40, 220, 70);
+
 bitflags! {
     pub struct PathKind: u8 {
         const FILL = 0x1;
@@ -236,10 +241,10 @@ pub fn draw_wires(
                             let is_root = is_root_path && app_state.show_root_wires;
                             let path_color = if !state_string.is_empty() {
                                 match state_string.as_str() {
-                                    "Z" => Color::rgb8(128, 128, 128),
-                                    "X" => Color::rgb8(192, 0, 0),
-                                    "0" => Color::rgb8(16, 144, 40),
-                                    "1" => Color::rgb8(40, 220, 70),
+                                    "Z" => WIRE_COLOR_HIGH_Z,
+                                    "X" => WIRE_COLOR_UNDEFINED,
+                                    "0" => WIRE_COLOR_LOGIC_0,
+                                    "1" => WIRE_COLOR_LOGIC_1,
                                     _ => unreachable!(),
                                 }
                             } else {

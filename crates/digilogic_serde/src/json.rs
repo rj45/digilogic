@@ -2,6 +2,7 @@ mod circuitfile;
 use circuitfile::*;
 
 use aery::prelude::*;
+use anyhow::{bail, Result};
 use bevy_ecs::prelude::*;
 use bevy_log::info;
 use digilogic_core::bundles::*;
@@ -16,18 +17,23 @@ pub fn load_json(
     commands: &mut Commands,
     filename: &Path,
     symbols: &SymbolRegistry,
-) -> anyhow::Result<Entity> {
+) -> Result<Entity> {
     info!("loading Digilogic circuit {}", filename.display());
 
+    let Some(name) = filename.file_stem() else {
+        bail!("error getting file name of {}", filename.display(),);
+    };
+
     let circuit = CircuitFile::load(filename)?;
-    translate_circuit(commands, &circuit, symbols)
+    translate_circuit(commands, &circuit, symbols, &name.to_string_lossy())
 }
 
 fn translate_circuit(
     commands: &mut Commands,
     circuit: &CircuitFile,
     symbols: &SymbolRegistry,
-) -> anyhow::Result<Entity> {
+    name: &str,
+) -> Result<Entity> {
     let mut id_map = HashMap::new();
     let modules = &circuit.modules;
     let mut top_id: Option<Entity> = None;
@@ -35,7 +41,8 @@ fn translate_circuit(
     for module in modules.iter() {
         let circuit_id = commands
             .spawn(CircuitBundle {
-                ..Default::default()
+                circuit: Circuit,
+                name: Name(name.into()),
             })
             .id();
 
@@ -61,7 +68,7 @@ fn translate_symbol(
     commands: &mut Commands,
     circuit_id: Entity,
     symbols: &SymbolRegistry,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
     let symbol_builder = if let Some(kind_name) = symbol.symbol_kind_name.as_ref() {
         symbols.get_by_name(kind_name)
     } else if symbol.symbol_kind_id.is_some() {
@@ -103,7 +110,7 @@ fn translate_net(
     id_map: &mut HashMap<Id, Entity>,
     commands: &mut Commands,
     circuit_id: Entity,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
     let net_id = commands
         .spawn(NetBundle {
             net: Net,
@@ -126,7 +133,7 @@ fn translate_subnet(
     id_map: &mut HashMap<Id, Entity>,
     commands: &mut Commands,
     net_id: Entity,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
     for endpoint in subnet.endpoints.iter() {
         translate_endpoint(endpoint, id_map, commands, net_id)?;
     }
@@ -138,7 +145,7 @@ fn translate_endpoint(
     id_map: &mut HashMap<Id, Entity>,
     commands: &mut Commands,
     net_id: Entity,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
     let portref = &endpoint.portref;
 
     let port_id = if let Some(port_name) = portref.port_name.as_ref() {
@@ -157,27 +164,35 @@ fn translate_endpoint(
         None
     };
 
-    let mut endpoint_ent = commands.spawn(EndpointBundle {
-        transform: TransformBundle {
-            transform: Transform {
-                translation: Vec2 {
-                    x: endpoint.position[0],
-                    y: endpoint.position[1],
+    let endpoint_id = commands
+        .spawn(EndpointBundle {
+            transform: TransformBundle {
+                transform: Transform {
+                    translation: Vec2 {
+                        x: endpoint.position[0],
+                        y: endpoint.position[1],
+                    },
+                    ..Default::default()
                 },
                 ..Default::default()
             },
             ..Default::default()
-        },
-        ..Default::default()
-    });
-    endpoint_ent.set::<Child>(net_id);
+        })
+        .set::<Child>(net_id)
+        .id();
+
     if let Some(port_id) = port_id {
-        endpoint_ent.insert(PortID(port_id));
-        endpoint_ent.insert(Transform::default());
+        commands
+            .entity(endpoint_id)
+            .insert(PortID(port_id))
+            .insert(Transform::default());
+
         // Remember to disconnect this when disconnecting from the port.
-        endpoint_ent.set::<InheritTransform>(port_id);
+        commands
+            .entity(endpoint_id)
+            .set::<InheritTransform>(port_id);
+        commands.entity(port_id).insert(NetID(net_id));
     }
-    let endpoint_id = endpoint_ent.id();
 
     for waypoint in endpoint.waypoints.iter() {
         translate_waypoint(waypoint, id_map, commands, endpoint_id)?;
@@ -190,7 +205,7 @@ fn translate_waypoint(
     id_map: &mut HashMap<Id, Entity>,
     commands: &mut Commands,
     endpoint_id: Entity,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
     let waypoint_id = commands
         .spawn(WaypointBundle {
             transform: TransformBundle {

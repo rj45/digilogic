@@ -57,9 +57,9 @@ fn translate_netlist(
     for (name, module) in modules.iter() {
         let circuit_id = commands
             .spawn(CircuitBundle {
-                ..Default::default()
+                circuit: Circuit,
+                name: Name(name.clone()),
             })
-            .insert(Name(name.clone()))
             .id();
 
         let mut graph = MetaGraph::default();
@@ -306,6 +306,8 @@ fn translate_net(
             .insert(PortID(port.id))
             .set::<Child>(net_id)
             .set::<InheritTransform>(port.id);
+
+        commands.entity(port.id).insert(NetID(net_id));
 
         if !graph
             .entity_ids

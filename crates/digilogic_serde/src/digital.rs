@@ -1,7 +1,7 @@
 mod circuitfile;
 
 use aery::prelude::*;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use bevy_ecs::prelude::*;
 use bevy_log::info;
 use digilogic_core::bundles::*;
@@ -29,15 +29,25 @@ pub fn load_digital(
 ) -> Result<Entity> {
     info!("loading Digital circuit {}", filename.display());
 
-    let basedir = filename.parent().ok_or(anyhow!(
-        "error getting parent directory of {}",
-        filename.display(),
-    ))?;
+    let Some(basedir) = filename.parent() else {
+        bail!("error getting parent directory of {}", filename.display(),);
+    };
+
+    let Some(name) = filename.file_stem() else {
+        bail!("error getting file name of {}", filename.display(),);
+    };
 
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
     let circuit = serde_xml_rs::from_reader(reader)?;
-    translate_circuit(commands, &circuit, symbols, basedir)
+
+    translate_circuit(
+        commands,
+        &circuit,
+        symbols,
+        basedir,
+        &name.to_string_lossy(),
+    )
 }
 
 fn translate_circuit(
@@ -45,6 +55,7 @@ fn translate_circuit(
     circuit: &circuitfile::Circuit,
     symbols: &SymbolRegistry,
     basedir: &Path,
+    name: &str,
 ) -> Result<Entity> {
     File::create("test.json")?
         .write_all(serde_json::to_string_pretty(circuit).unwrap().as_bytes())?;
@@ -53,7 +64,8 @@ fn translate_circuit(
 
     let circuit_id = commands
         .spawn(CircuitBundle {
-            ..Default::default()
+            circuit: Circuit,
+            name: Name(name.into()),
         })
         .id();
 
@@ -184,6 +196,9 @@ fn translate_wires(
                         // Remember to disconnect this when disconnecting from the port.
                         .set::<InheritTransform>(port)
                         .id();
+
+                    commands.entity(port).insert(NetID(net_id));
+
                     pos_entry.endpoint.set(Some(endpoint_id));
                     if let Some(endpoints) = net_endpoints.get_mut(&net_id) {
                         endpoints.push(pos);

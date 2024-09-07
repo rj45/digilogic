@@ -450,7 +450,7 @@ struct TabViewer<'w, 's> {
     egui: Res<'w, Egui>,
     renderer: NonSendMut<'w, CanvasRenderer>,
     viewports: ViewportQuery<'w, 's>,
-    circuits: Query<'w, 's, Option<Read<Name>>, With<Circuit>>,
+    circuits: Query<'w, 's, Read<Name>, With<Circuit>>,
     open_windows: Res<'w, OpenWindows>,
 }
 
@@ -458,13 +458,9 @@ impl egui_dock::TabViewer for TabViewer<'_, '_> {
     type Tab = Entity;
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
-        if let Ok((&circuit, _, _, _)) = self.viewports.get(*tab) {
-            if let Ok(Some(name)) = self.circuits.get(circuit.0) {
-                return name.0.as_str().into();
-            }
-        }
-
-        format!("{}", *tab).into()
+        let (&circuit, _, _, _) = self.viewports.get(*tab).expect("invalid viewport ID");
+        let name = self.circuits.get(circuit.0).expect("invalid circuit ID");
+        name.0.as_str().into()
     }
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
