@@ -9,6 +9,7 @@ use settings::*;
 
 mod explorer;
 use explorer::*;
+use vello::peniko::Font;
 
 use crate::{AppSettings, Backend, FileDialogEvent, DEFAULT_LOCAL_SERVER_ADDR};
 use bevy_ecs::prelude::*;
@@ -23,7 +24,7 @@ use digilogic_core::SharedStr;
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 const MIN_LINEAR_ZOOM: f32 = 0.0;
 const MAX_LINEAR_ZOOM: f32 = 1.0;
@@ -549,12 +550,18 @@ struct DrawSet;
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 struct MenuSet;
 
+const FONT_BYTES: &[u8] = include_bytes!("../assets/ClearSans-Regular.ttf");
+
 impl bevy_app::Plugin for UiPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.insert_non_send_resource(DockState::<Entity>::new(Vec::new()));
         app.insert_non_send_resource(CanvasRenderer::new(&self.render_state));
         app.insert_resource(Egui::new(&self.context, &self.render_state));
         app.insert_resource(SymbolShapes(Vec::new()));
+        app.insert_resource(VelloFont(Font::new(
+            vello::peniko::Blob::new(Arc::new(FONT_BYTES)),
+            0,
+        )));
         app.init_resource::<OpenWindows>();
         app.register_type::<Viewport>();
 

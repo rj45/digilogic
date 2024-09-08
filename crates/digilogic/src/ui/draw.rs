@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::sync::LazyLock;
+
 use super::{Layer, Scene, Viewport};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
@@ -9,7 +12,7 @@ use digilogic_core::visibility::ComputedVisibility;
 use digilogic_routing::{VertexKind, Vertices};
 use std::num::NonZeroU8;
 use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Line, Rect, Stroke, Vec2};
-use vello::peniko::{Color, Fill};
+use vello::peniko::{Blob, Color, Fill, Font};
 
 include!("bez_path.rs");
 
@@ -137,8 +140,12 @@ type SymbolQuery<'w, 's> = Query<
     With<Symbol>,
 >;
 
+#[derive(Resource)]
+pub struct VelloFont(pub Font);
+
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
+    font: Res<VelloFont>,
     sim_state: Option<Res<digilogic_netcode::SimState>>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     children: Query<(Entity, Relations<Child>)>,
@@ -167,6 +174,9 @@ pub fn draw_symbols(
                         transform.translation.x.to_f64(),
                         transform.translation.y.to_f64(),
                     ));
+
+                // TODO: figure out how to layout text, as draw requires a Glyph iterator
+                //scene.draw_glyphs(&font.0).hint(true).font_size(12.0).draw();
 
                 let symbol_shape = &symbol_shapes.0[*shape as usize];
                 for path in symbol_shape.paths.iter() {
