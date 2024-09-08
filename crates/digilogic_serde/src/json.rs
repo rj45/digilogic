@@ -11,6 +11,7 @@ use digilogic_core::symbol::SymbolRegistry;
 use digilogic_core::transform::*;
 use digilogic_core::visibility::VisibilityBundle;
 use digilogic_core::HashMap;
+use std::num::NonZeroU8;
 use std::path::Path;
 
 pub fn load_json(
@@ -115,7 +116,7 @@ fn translate_net(
         .spawn(NetBundle {
             net: Net,
             name: Name(net.name.clone()),
-            bit_width: BitWidth(1),
+            bit_width: BitWidth(NonZeroU8::MIN),
             visibility: VisibilityBundle::default(),
         })
         .set::<Child>(circuit_id)

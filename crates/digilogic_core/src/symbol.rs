@@ -6,6 +6,7 @@ use crate::{fixed, Fixed, SharedStr};
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use smallvec::SmallVec;
+use std::num::NonZeroU8;
 
 #[derive(Debug, Clone)]
 struct PortDef {
@@ -316,7 +317,11 @@ impl SymbolBuilder<'_> {
             .ports
             .iter()
             .map(|port| {
-                let id = port.build(commands, symbol_id, self.bit_width.unwrap_or(BitWidth(1)));
+                let id = port.build(
+                    commands,
+                    symbol_id,
+                    self.bit_width.unwrap_or(BitWidth(NonZeroU8::MIN)),
+                );
                 PortInfo {
                     symbol: symbol_id,
                     name: port.name.clone(),

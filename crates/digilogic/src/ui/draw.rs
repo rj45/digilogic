@@ -7,12 +7,13 @@ use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::visibility::ComputedVisibility;
 use digilogic_routing::{VertexKind, Vertices};
+use std::num::NonZeroU8;
 use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Line, Rect, Stroke, Vec2};
 use vello::peniko::{Color, Fill};
 
 include!("bez_path.rs");
 
-const WIRE_COLOR_HIGH_Z: Color = Color::rgb8(128, 128, 128);
+const WIRE_COLOR_HIGH_Z: Color = Color::rgb8(80, 80, 90);
 const WIRE_COLOR_UNDEFINED: Color = Color::rgb8(192, 0, 0);
 const WIRE_COLOR_LOGIC_0: Color = Color::rgb8(16, 144, 40);
 const WIRE_COLOR_LOGIC_1: Color = Color::rgb8(40, 220, 70);
@@ -37,11 +38,111 @@ pub struct SymbolShape {
 #[derive(Default, Resource)]
 pub struct SymbolShapes(pub Vec<SymbolShape>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum BitPlaneState {
+    AllZero,
+    AllOne,
+    Mixed,
+}
+
+fn get_bit_plane_state(bit_plane: &[u8], width: NonZeroU8) -> BitPlaneState {
+    let byte_count = width.get().div_ceil(8) as usize;
+    let mut last_byte_bit_count = width.get() % 8;
+    if last_byte_bit_count == 0 {
+        last_byte_bit_count = 8;
+    }
+
+    let mut all_zero = true;
+    let mut all_one = true;
+
+    for &byte in bit_plane.iter().take(byte_count - 1) {
+        if byte != 0x00 {
+            all_zero = false;
+        }
+
+        if byte != 0xFF {
+            all_one = false;
+        }
+    }
+
+    let last_byte_mask = ((1u16 << last_byte_bit_count) - 1) as u8;
+
+    if (bit_plane[byte_count - 1] & last_byte_mask) != 0x00 {
+        all_zero = false;
+    }
+
+    if (bit_plane[byte_count - 1] | !last_byte_mask) != 0xFF {
+        all_one = false;
+    }
+
+    match (all_zero, all_one) {
+        (true, true) => unreachable!(),
+        (true, false) => BitPlaneState::AllZero,
+        (false, true) => BitPlaneState::AllOne,
+        (false, false) => BitPlaneState::Mixed,
+    }
+}
+
+fn get_brush_for_state(
+    sim_state: Option<&digilogic_netcode::SimState>,
+    offset: Option<digilogic_netcode::StateOffset>,
+    width: Option<BitWidth>,
+) -> Option<Color> {
+    const MAX_BIT_PLANE_SIZE: usize = 32;
+    let mut bit_plane_0 = [0u8; MAX_BIT_PLANE_SIZE];
+    let mut bit_plane_1 = [0u8; MAX_BIT_PLANE_SIZE];
+
+    sim_state.zip(offset).map(|(sim_state, offset)| {
+        let width = width.map(|width| width.0).unwrap_or(NonZeroU8::MIN);
+        sim_state.get_net(offset.0, width, &mut bit_plane_0, &mut bit_plane_1);
+
+        let plane_0_state = get_bit_plane_state(&bit_plane_0, width);
+        let plane_1_state = get_bit_plane_state(&bit_plane_1, width);
+
+        match (plane_0_state, plane_1_state) {
+            (BitPlaneState::AllZero, BitPlaneState::AllZero) => WIRE_COLOR_HIGH_Z,
+            (BitPlaneState::AllOne, BitPlaneState::AllZero) => WIRE_COLOR_UNDEFINED,
+            (BitPlaneState::AllZero, BitPlaneState::AllOne) => WIRE_COLOR_LOGIC_0,
+            (BitPlaneState::AllOne, BitPlaneState::AllOne) => WIRE_COLOR_LOGIC_1,
+
+            // Mix between Z and X
+            (BitPlaneState::Mixed, BitPlaneState::AllZero) => todo!(),
+
+            // Mix between 0 and 1
+            (BitPlaneState::Mixed, BitPlaneState::AllOne) => todo!(),
+
+            // Mix between Z and 0
+            (BitPlaneState::AllZero, BitPlaneState::Mixed) => todo!(),
+
+            // Mix between X and 1
+            (BitPlaneState::AllOne, BitPlaneState::Mixed) => todo!(),
+
+            // Mix of everything
+            (BitPlaneState::Mixed, BitPlaneState::Mixed) => todo!(),
+        }
+    })
+}
+
+type SymbolQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Read<Shape>,
+        Read<GlobalTransform>,
+        Read<ComputedVisibility>,
+        Option<Read<digilogic_netcode::StateOffset>>,
+        Option<Read<BitWidth>>,
+        Has<Hovered>,
+    ),
+    With<Symbol>,
+>;
+
 pub fn draw_symbols(
     symbol_shapes: Res<SymbolShapes>,
+    sim_state: Option<Res<digilogic_netcode::SimState>>,
     viewports: Query<(&Scene, &CircuitID), With<Viewport>>,
     children: Query<(Entity, Relations<Child>)>,
-    symbols: Query<(&Shape, &GlobalTransform, &ComputedVisibility, Has<Hovered>), With<Symbol>>,
+    symbols: SymbolQuery,
 ) {
     for (scene, circuit) in viewports.iter() {
         let mut scene = scene.for_layer(Layer::Symbol);
@@ -50,7 +151,9 @@ pub fn draw_symbols(
         children
             .traverse::<Child>(std::iter::once(circuit.0))
             .for_each(|&mut entity, _| {
-                let Ok((shape, transform, &visibility, hovered)) = symbols.get(entity) else {
+                let Ok((shape, transform, &visibility, state_offset, bit_width, hovered)) =
+                    symbols.get(entity)
+                else {
                     return;
                 };
 
@@ -67,21 +170,22 @@ pub fn draw_symbols(
 
                 let symbol_shape = &symbol_shapes.0[*shape as usize];
                 for path in symbol_shape.paths.iter() {
+                    let brush = get_brush_for_state(
+                        sim_state.as_deref(),
+                        state_offset.copied(),
+                        bit_width.copied(),
+                    )
+                    .unwrap_or(Color::rgb8(3, 3, 3));
+
                     if path.kind.contains(PathKind::FILL) {
-                        scene.fill(
-                            Fill::NonZero,
-                            transform,
-                            Color::rgb8(3, 3, 3),
-                            None,
-                            &path.path,
-                        );
+                        scene.fill(Fill::NonZero, transform, brush, None, &path.path);
                     }
 
                     if path.kind.contains(PathKind::STROKE) {
                         let (width, color) = if hovered {
                             (3.5, Color::WHITE)
                         } else {
-                            (3.0, Color::rgb8(140, 140, 140))
+                            (3.0, Color::rgb8(150, 150, 150))
                         };
 
                         scene.stroke(
@@ -170,6 +274,7 @@ type VertexQuery<'w, 's> = Query<
             Option<Read<Vertices>>,
             Option<Read<ComputedVisibility>>,
             Option<Read<digilogic_netcode::StateOffset>>,
+            Option<Read<BitWidth>>,
             Has<Hovered>,
         ),
         Relations<Child>,
@@ -186,99 +291,79 @@ pub fn draw_wires(
         let mut scene = scene.for_layer(Layer::Wire);
         scene.reset();
 
-        let mut bit_plane_0 = [0u8; 32];
-        let mut bit_plane_1 = [0u8; 32];
-        let mut state_string = String::new();
-
         vertices
             .traverse::<Child>(std::iter::once(circuit.0))
-            .for_each(|&mut (vertices, visibility, state_offset, hovered), _| {
-                let Some(vertices) = vertices else {
-                    return;
-                };
+            .for_each(
+                |&mut (vertices, visibility, state_offset, bit_width, hovered), _| {
+                    let Some(vertices) = vertices else {
+                        return;
+                    };
 
-                if !*visibility.copied().unwrap_or_default() {
-                    return;
-                }
-
-                state_string.clear();
-                if let Some(sim_state) = sim_state.as_deref() {
-                    if let Some(state_offset) = state_offset {
-                        sim_state.get_net(
-                            state_offset.0,
-                            std::num::NonZeroU8::MIN, // TODO: use actual net width
-                            &mut bit_plane_0,
-                            &mut bit_plane_1,
-                        );
-
-                        // TODO: use actual net width
-                        match (bit_plane_0[0] & 0x1, bit_plane_1[0] & 0x1) {
-                            (0, 0) => state_string.push('Z'),
-                            (1, 0) => state_string.push('X'),
-                            (0, 1) => state_string.push('0'),
-                            (1, 1) => state_string.push('1'),
-                            _ => unreachable!(),
-                        }
+                    if !*visibility.copied().unwrap_or_default() {
+                        return;
                     }
-                }
 
-                let mut path = BezPath::new();
-                let mut is_root_path = false;
+                    let brush = get_brush_for_state(
+                        sim_state.as_deref(),
+                        state_offset.copied(),
+                        bit_width.copied(),
+                    );
 
-                for vertex in vertices.iter() {
-                    let pos = (vertex.position.x.to_f64(), vertex.position.y.to_f64());
+                    let (width, radius) = if hovered && brush.is_none() {
+                        (3.0, 4.5)
+                    } else {
+                        (2.5, 4.0)
+                    };
 
-                    match vertex.kind {
-                        VertexKind::Normal => path.line_to(pos),
-                        VertexKind::WireStart { is_root } => {
-                            path = BezPath::new();
-                            path.move_to(pos);
-                            is_root_path = is_root;
-                        }
-                        VertexKind::WireEnd { junction_kind } => {
-                            path.line_to(pos);
+                    let mut path = BezPath::new();
+                    let mut is_root_path = false;
 
+                    for vertex in vertices.iter() {
+                        let pos = (vertex.position.x.to_f64(), vertex.position.y.to_f64());
+
+                        let brush = brush.unwrap_or_else(|| {
                             let is_root = is_root_path && app_state.show_root_wires;
-                            let path_color = if !state_string.is_empty() {
-                                match state_string.as_str() {
-                                    "Z" => WIRE_COLOR_HIGH_Z,
-                                    "X" => WIRE_COLOR_UNDEFINED,
-                                    "0" => WIRE_COLOR_LOGIC_0,
-                                    "1" => WIRE_COLOR_LOGIC_1,
-                                    _ => unreachable!(),
-                                }
-                            } else {
-                                match (is_root, hovered) {
-                                    (true, true) => Color::rgb8(245, 220, 116),
-                                    (true, false) => Color::rgb8(208, 166, 2),
-                                    (false, true) => Color::rgb8(125, 240, 147),
-                                    (false, false) => Color::rgb8(8, 190, 42),
-                                }
-                            };
 
-                            let (width, radius) = if hovered { (3.0, 4.5) } else { (2.5, 4.0) };
+                            match (is_root, hovered) {
+                                (true, true) => Color::rgb8(245, 220, 116),
+                                (true, false) => Color::rgb8(208, 166, 2),
+                                (false, true) => Color::rgb8(125, 240, 147),
+                                (false, false) => Color::rgb8(8, 190, 42),
+                            }
+                        });
 
-                            scene.stroke(
-                                &Stroke::new(width),
-                                Affine::IDENTITY,
-                                path_color,
-                                None,
-                                &path,
-                            );
+                        match vertex.kind {
+                            VertexKind::Normal => path.line_to(pos),
+                            VertexKind::WireStart { is_root } => {
+                                path = BezPath::new();
+                                path.move_to(pos);
+                                is_root_path = is_root;
+                            }
+                            VertexKind::WireEnd { junction_kind } => {
+                                path.line_to(pos);
 
-                            if junction_kind.is_some() {
-                                scene.fill(
-                                    Fill::NonZero,
+                                scene.stroke(
+                                    &Stroke::new(width),
                                     Affine::IDENTITY,
-                                    path_color,
+                                    brush,
                                     None,
-                                    &Circle::new(pos, radius),
+                                    &path,
                                 );
+
+                                if junction_kind.is_some() {
+                                    scene.fill(
+                                        Fill::NonZero,
+                                        Affine::IDENTITY,
+                                        brush,
+                                        None,
+                                        &Circle::new(pos, radius),
+                                    );
+                                }
                             }
                         }
                     }
-                }
-            });
+                },
+            );
     }
 }
 

@@ -1,7 +1,7 @@
 mod circuitfile;
 
 use aery::prelude::*;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use bevy_ecs::prelude::*;
 use bevy_log::info;
 use digilogic_core::bundles::*;
@@ -14,6 +14,7 @@ use digilogic_core::{fixed, HashMap, HashSet};
 use std::cell::Cell;
 use std::fs::File;
 use std::io::{BufReader, Write};
+use std::num::NonZeroU8;
 use std::path::Path;
 
 struct PosEntry {
@@ -169,7 +170,7 @@ fn translate_wires(
             .spawn(NetBundle {
                 net: Net,
                 name: Default::default(),
-                bit_width: BitWidth(1), // TODO: Get bit width from somewhere
+                bit_width: BitWidth(NonZeroU8::MIN), // TODO: Get bit width from somewhere
                 visibility: VisibilityBundle::default(),
             })
             .set::<Child>(circuit_id)

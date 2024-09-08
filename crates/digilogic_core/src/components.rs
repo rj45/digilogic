@@ -4,6 +4,7 @@ use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use smallvec::SmallVec;
+use std::num::NonZeroU8;
 use std::path::PathBuf;
 
 /////
@@ -96,7 +97,7 @@ pub struct Number(pub i32);
 // The bitwidth of a Port / Symbol / Net.
 // Can be up to 255 bits wide.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, Reflect)]
-pub struct BitWidth(pub u8);
+pub struct BitWidth(pub NonZeroU8);
 
 /// The list of bits that the entity uses in a Net. The order of the bits becomes
 /// the order they are presented to the input of the entity. So, for example, if

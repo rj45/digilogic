@@ -10,7 +10,7 @@ use bevy_time::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::resources::Project;
 use digilogic_core::states::SimulationState;
-use digilogic_core::{SharedStr, StateMut};
+use digilogic_core::{HashMap, SharedStr, StateMut};
 use std::net::ToSocketAddrs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Component)]
@@ -221,10 +221,10 @@ fn process_messages(
 }
 
 type CircuitQuery<'w, 's> = Query<'w, 's, ((), Relations<Child>), With<Circuit>>;
-type SymbolQuery<'w, 's> = Query<'w, 's, (Entity, Relations<Child>), With<Symbol>>;
-type PortQuery<'w, 's> = Query<'w, 's, Entity, With<Port>>;
-type NetQuery<'w, 's> = Query<'w, 's, (Entity, Relations<Child>), With<Net>>;
-type EndpointQuery<'w, 's> = Query<'w, 's, (Entity, Read<PortID>), With<Endpoint>>;
+type SymbolQuery<'w, 's> =
+    Query<'w, 's, ((Entity, Read<SymbolKind>), Relations<Child>), With<Symbol>>;
+type PortQuery<'w, 's> = Query<'w, 's, Option<Read<NetID>>, With<Port>>;
+type NetQuery<'w, 's> = Query<'w, 's, Entity, With<Net>>;
 
 #[derive(SystemParam)]
 struct BuildQueries<'w, 's> {
@@ -232,7 +232,6 @@ struct BuildQueries<'w, 's> {
     symbols: SymbolQuery<'w, 's>,
     ports: PortQuery<'w, 's>,
     nets: NetQuery<'w, 's>,
-    endpoints: EndpointQuery<'w, 's>,
 }
 
 fn build(
@@ -255,23 +254,46 @@ fn build(
         kind: ClientMessageKind::BeginBuild,
     });
 
+    let mut net_map = HashMap::default();
+
     let mut net_id = NetId(0);
     let mut offset = 0u64;
-    root_children
-        .join::<Child>(&queries.nets)
-        .for_each(|(net, _)| {
-            client.send_command_message(ClientMessage {
-                id: next_message_id.get(),
-                kind: ClientMessageKind::AddNet {
-                    width: NonZeroU8::MIN, // TODO: use actual net width
-                },
-            });
-
-            commands.entity(net).insert(StateOffset(offset));
-
-            net_id.0 += 1;
-            offset += 1; // TODO: use actual net width
+    root_children.join::<Child>(&queries.nets).for_each(|net| {
+        client.send_command_message(ClientMessage {
+            id: next_message_id.get(),
+            kind: ClientMessageKind::AddNet {
+                width: NonZeroU8::MIN, // TODO: use actual net width
+            },
         });
+
+        commands.entity(net).insert(StateOffset(offset));
+        net_map.insert(net, (net_id, offset));
+
+        net_id.0 += 1;
+        offset += 1; // TODO: use actual net width
+    });
+
+    root_children.join::<Child>(&queries.symbols).for_each(
+        |((symbol, symbol_kind), symbol_children)| {
+            if matches!(symbol_kind, SymbolKind::In | SymbolKind::Out) {
+                let mut first = true;
+                symbol_children
+                    .join::<Child>(&queries.ports)
+                    .for_each(|connected_net| {
+                        assert!(first, "input/output symbol has more than one port");
+                        first = false;
+
+                        if let Some(connected_net) = connected_net {
+                            let &(_, net_offset) = net_map
+                                .get(&connected_net.0)
+                                .expect("port connected to invalid net");
+                            commands.entity(symbol).insert(StateOffset(net_offset));
+                        }
+                    });
+                assert!(!first, "input/output symbol has no ports");
+            }
+        },
+    );
 
     client.send_command_message(ClientMessage {
         id: next_message_id.get(),

@@ -1,13 +1,13 @@
 mod netlist;
 
 use aery::prelude::*;
+use anyhow::{Context as _, Result};
 use bevy_ecs::prelude::*;
 use bevy_log::info;
 use digilogic_core::bundles::*;
 use digilogic_core::components::*;
 use digilogic_core::symbol::PortInfo;
 use digilogic_core::symbol::SymbolRegistry;
-
 use digilogic_core::transform::BoundingBox;
 use digilogic_core::transform::Directions;
 use digilogic_core::transform::InheritTransform;
@@ -21,6 +21,7 @@ use digilogic_core::HashSet;
 use digilogic_core::SharedStr;
 use digilogic_layout::{Graph, Node, NodeEntity};
 use petgraph::graph::NodeIndex;
+use std::num::NonZeroU8;
 use std::path::Path;
 
 struct NetBit {
@@ -38,7 +39,7 @@ pub fn load_yosys(
     commands: &mut Commands,
     filename: &Path,
     symbols: &SymbolRegistry,
-) -> anyhow::Result<Entity> {
+) -> Result<Entity> {
     info!("loading Yosys circuit {}", filename.display());
 
     let netlist = netlist::Netlist::load(filename)?;
@@ -49,7 +50,7 @@ fn translate_netlist(
     commands: &mut Commands,
     netlist: &netlist::Netlist,
     symbols: &SymbolRegistry,
-) -> anyhow::Result<Entity> {
+) -> Result<Entity> {
     let mut bit_map = HashMap::new();
     let modules = &netlist.modules;
     let mut top_id: Option<Entity> = None;
@@ -119,7 +120,7 @@ fn translate_module_port(
     circuit_id: Entity,
     symbols: &SymbolRegistry,
     graph: &mut MetaGraph,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let mut symbol_builder = match port.direction {
         netlist::PortDirection::Input => symbols.get(SymbolKind::In),
         netlist::PortDirection::Output => symbols.get(SymbolKind::Out),
@@ -155,7 +156,7 @@ fn translate_cell(
     circuit_id: Entity,
     symbols: &SymbolRegistry,
     graph: &mut MetaGraph,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let mut symbol_builder = match cell.cell_type {
         netlist::CellType::Not => symbols.get(SymbolKind::Not),
         netlist::CellType::Pos => todo!(),
@@ -248,12 +249,19 @@ fn translate_net(
     commands: &mut Commands,
     circuit_id: Entity,
     graph: &mut MetaGraph,
-) -> anyhow::Result<()> {
+) -> Result<()> {
+    let bit_width: u8 = net_info
+        .bits
+        .len()
+        .try_into()
+        .context("unsupported bit width")?;
+    let bit_width: NonZeroU8 = bit_width.try_into().context("unsupported bit width")?;
+
     let net_id = commands
         .spawn(NetBundle {
             net: Net,
             name: Name(name.clone()),
-            bit_width: BitWidth(net_info.bits.len() as u8),
+            bit_width: BitWidth(bit_width),
             visibility: VisibilityBundle::default(),
         })
         .set::<Child>(circuit_id)
@@ -419,7 +427,7 @@ fn layout_circuit(
     commands: &mut Commands,
     graph: &mut MetaGraph,
     bit_map: &HashMap<usize, NetBit>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     // add adjacency constraints
     let node_indices = graph.graph.node_indices().collect::<Vec<_>>();
     for index in node_indices.iter() {
