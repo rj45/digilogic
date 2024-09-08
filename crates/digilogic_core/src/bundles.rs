@@ -63,18 +63,6 @@ pub struct SymbolBundle {
     pub bounds: BoundingBoxBundle,
 }
 
-/// A Waypoint is a point in a Net that a wire needs to route through.
-/// Which of the Net's wires depends on the Endpoint the Waypoint is attached to.
-#[derive(Debug, Bundle, Default)]
-pub struct WaypointBundle {
-    /// The marker that this is a Waypoint
-    pub waypoint: Waypoint,
-
-    pub transform: TransformBundle,
-    pub visibility: VisibilityBundle,
-    pub bounds: BoundingBoxBundle,
-}
-
 /// An Endpoint is a connection point for a Net. It connects to a Port
 /// in a Symbol. Its Parent is the Net that the Endpoint is part of.
 /// It has Waypoint Children.

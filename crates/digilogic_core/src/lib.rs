@@ -96,7 +96,6 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<components::Hovered>()
             .register_type::<components::Port>()
             .register_type::<components::Symbol>()
-            .register_type::<components::Waypoint>()
             .register_type::<components::Endpoint>()
             .register_type::<components::Net>()
             .register_type::<components::Circuit>()

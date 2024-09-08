@@ -64,19 +64,10 @@ pub struct PortRef {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Waypoint {
-    pub id: Id,
-    pub position: [Fixed; 2],
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Endpoint {
     pub id: Id,
     pub position: [Fixed; 2],
     pub portref: PortRef,
-    pub waypoints: Vec<Waypoint>,
 }
 
 impl TryFrom<&str> for CircuitFile {

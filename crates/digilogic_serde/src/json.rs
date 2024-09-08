@@ -195,34 +195,5 @@ fn translate_endpoint(
         commands.entity(port_id).insert(NetID(net_id));
     }
 
-    for waypoint in endpoint.waypoints.iter() {
-        translate_waypoint(waypoint, id_map, commands, endpoint_id)?;
-    }
-    Ok(())
-}
-
-fn translate_waypoint(
-    waypoint: &circuitfile::Waypoint,
-    id_map: &mut HashMap<Id, Entity>,
-    commands: &mut Commands,
-    endpoint_id: Entity,
-) -> Result<()> {
-    let waypoint_id = commands
-        .spawn(WaypointBundle {
-            transform: TransformBundle {
-                transform: Transform {
-                    translation: Vec2 {
-                        x: waypoint.position[0],
-                        y: waypoint.position[1],
-                    },
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .set::<Child>(endpoint_id)
-        .id();
-    id_map.insert(waypoint.id.clone(), waypoint_id);
     Ok(())
 }
