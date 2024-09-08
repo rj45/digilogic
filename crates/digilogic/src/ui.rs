@@ -9,7 +9,9 @@ use settings::*;
 
 mod explorer;
 use explorer::*;
-use vello::peniko::Font;
+
+mod palette;
+use palette::*;
 
 use crate::{AppSettings, Backend, FileDialogEvent, DEFAULT_LOCAL_SERVER_ADDR};
 use bevy_ecs::prelude::*;
@@ -25,6 +27,7 @@ use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
 use std::sync::{Arc, Mutex, MutexGuard};
+use vello::peniko::Font;
 
 const MIN_LINEAR_ZOOM: f32 = 0.0;
 const MAX_LINEAR_ZOOM: f32 = 1.0;
@@ -605,8 +608,9 @@ impl bevy_app::Plugin for UiPlugin {
             repaint.run_if(in_state(SimulationConnected)),
         );
 
-        app.add_plugins(SettingsPlugin);
-        app.add_plugins(ExplorerPlugin);
+        app.add_plugins(SettingsPlugin)
+            .add_plugins(ExplorerPlugin)
+            .add_plugins(PalettePlugin);
 
         #[cfg(feature = "inspector")]
         {

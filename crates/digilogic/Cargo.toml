@@ -34,6 +34,7 @@ bevy_time.workspace = true
 bevy_state.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 aery.workspace = true
+smallvec.workspace = true
 bitflags.workspace = true
 
 digilogic_core = { path = "../digilogic_core" }

@@ -1874,6 +1874,7 @@ dependencies = [
  "egui_dock",
  "rfd",
  "serde",
+ "smallvec",
  "vello",
  "wasm-bindgen-futures",
  "web-sys",
