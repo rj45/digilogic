@@ -184,6 +184,9 @@ fn process_messages(
 ) {
     let mut actual_state = *state;
 
+    let mut order = current_sim_state.map(|state| state.order).unwrap_or(0);
+    let mut new_sim_state = None;
+
     while let Some(message) = client.receive_command_message() {
         match message {
             ServerMessage::Error { .. } => todo!(),
@@ -197,14 +200,18 @@ fn process_messages(
 
                 client.send_command_message(ClientMessage {
                     id: next_message_id.get(),
-                    kind: ClientMessageKind::QuerySimState,
+                    kind: ClientMessageKind::Eval { max_steps: 10_000 }, // TODO: add configuration for max steps
                 });
+            }
+            ServerMessage::Report(sim_state) => {
+                if sim_state.order >= order {
+                    order = sim_state.order;
+                    new_sim_state = Some(sim_state);
+                }
             }
         }
     }
 
-    let mut order = current_sim_state.map(|state| state.order).unwrap_or(0);
-    let mut new_sim_state = None;
     while let Some(sim_state) = client.receive_sim_state() {
         if sim_state.order >= order {
             order = sim_state.order;
@@ -223,7 +230,7 @@ fn process_messages(
 type CircuitQuery<'w, 's> = Query<'w, 's, ((), Relations<Child>), With<Circuit>>;
 type SymbolQuery<'w, 's> =
     Query<'w, 's, ((Entity, Read<SymbolKind>), Relations<Child>), With<Symbol>>;
-type PortQuery<'w, 's> = Query<'w, 's, Option<Read<NetID>>, With<Port>>;
+type PortQuery<'w, 's> = Query<'w, 's, (Option<Read<NetID>>, Has<Input>, Has<Output>), With<Port>>;
 type NetQuery<'w, 's> = Query<'w, 's, Entity, With<Net>>;
 
 #[derive(SystemParam)]
@@ -279,7 +286,7 @@ fn build(
                 let mut first = true;
                 symbol_children
                     .join::<Child>(&queries.ports)
-                    .for_each(|connected_net| {
+                    .for_each(|(connected_net, _, _)| {
                         assert!(first, "input/output symbol has more than one port");
                         first = false;
 
@@ -291,6 +298,67 @@ fn build(
                         }
                     });
                 assert!(!first, "input/output symbol has no ports");
+            } else {
+                let mut inputs = Vec::new();
+                let mut output = None;
+
+                // TODO: this only works for basic gates
+                symbol_children.join::<Child>(&queries.ports).for_each(
+                    |(connected_net, is_input, is_output)| {
+                        let &(net_id, _) = net_map
+                            .get(&connected_net.expect("unconnected port").0)
+                            .expect("port connected to invalid net");
+
+                        match (is_input, is_output) {
+                            (true, true) => panic!("unsupported bidirectional port"),
+                            (true, false) => inputs.push(net_id),
+                            (false, true) => {
+                                assert!(output.is_none(), "multiple output ports");
+                                output = Some(net_id);
+                            }
+                            (false, false) => panic!("port with missing direction"),
+                        }
+                    },
+                );
+
+                let output = output.expect("missing output port");
+
+                match symbol_kind {
+                    SymbolKind::In | SymbolKind::Out => unreachable!(),
+
+                    SymbolKind::And => client.send_command_message(ClientMessage {
+                        id: next_message_id.get(),
+                        kind: ClientMessageKind::AddAndGate {
+                            width: NonZeroU8::MIN, // TODO: use actual net width
+                            inputs,
+                            output,
+                        },
+                    }),
+                    SymbolKind::Or => client.send_command_message(ClientMessage {
+                        id: next_message_id.get(),
+                        kind: ClientMessageKind::AddOrGate {
+                            width: NonZeroU8::MIN, // TODO: use actual net width
+                            inputs,
+                            output,
+                        },
+                    }),
+                    SymbolKind::Xor => client.send_command_message(ClientMessage {
+                        id: next_message_id.get(),
+                        kind: ClientMessageKind::AddXorGate {
+                            width: NonZeroU8::MIN, // TODO: use actual net width
+                            inputs,
+                            output,
+                        },
+                    }),
+                    SymbolKind::Not => client.send_command_message(ClientMessage {
+                        id: next_message_id.get(),
+                        kind: ClientMessageKind::AddNotGate {
+                            width: NonZeroU8::MIN, // TODO: use actual net width
+                            input: inputs[0],
+                            output,
+                        },
+                    }),
+                }
             }
         },
     );

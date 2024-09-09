@@ -79,6 +79,9 @@ pub enum ServerError {
     WidthIncompatible,
     OutOfRange,
     InvalidInputCount,
+
+    MaxStepsReached,
+    DriverConflict, // TODO: send list of conflicting nets
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -86,6 +89,7 @@ enum ServerMessage {
     Error { id: u64, error: ServerError },
     Ready,
     BuildingFinished,
+    Report(SimState),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -132,7 +136,11 @@ enum ClientMessageKind {
         output: NetId,
     },
 
-    QuerySimState,
+    Eval {
+        max_steps: u64,
+    },
+    QueryReport,
+    QueryUpdate,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -145,7 +153,7 @@ struct ClientMessage {
 use bevy_ecs::prelude::{ReflectResource, Resource};
 
 // Invariant for this struct: bit planes need to contain at least one unused bit at any time
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "client", derive(bevy_reflect::prelude::Reflect, Resource))]
 #[cfg_attr(feature = "client", reflect(Resource))]
 pub struct SimState {

@@ -65,6 +65,14 @@ fn component_error_to_server_error(error: AddComponentError) -> ServerError {
     }
 }
 
+fn simulation_result_to_server_result(result: SimulationRunResult) -> ServerResult<()> {
+    match result {
+        SimulationRunResult::Ok => Ok(()),
+        SimulationRunResult::MaxStepsReached => Err(ServerError::MaxStepsReached),
+        SimulationRunResult::Err(_) => Err(ServerError::DriverConflict),
+    }
+}
+
 macro_rules! gate_impl {
     ($name:ident) => {
         fn $name(
@@ -156,6 +164,11 @@ impl SimServer for GsimServer {
         builder
             .add_not_gate(input, output)
             .map_err(component_error_to_server_error)
+    }
+
+    fn eval(&mut self, client_id: ClientId, max_steps: u64) -> ServerResult<()> {
+        let simulator = self.get_simulator_mut(client_id)?;
+        simulation_result_to_server_result(simulator.run_sim(max_steps))
     }
 
     fn get_net_state(

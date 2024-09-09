@@ -72,6 +72,8 @@ pub trait SimServer {
         Err(ServerError::Unsupported)
     }
 
+    fn eval(&mut self, client_id: ClientId, max_steps: u64) -> ServerResult<()>;
+
     // TODO: instead of asking for each state individually, get some kind of read only view object once
     fn get_net_state(
         &mut self,
@@ -314,6 +316,11 @@ impl<S: SimServer> Adapter<S> {
         Ok(())
     }
 
+    #[inline]
+    fn eval(&mut self, client_id: ClientId, max_steps: u64) -> ServerResult<()> {
+        self.inner.eval(client_id, max_steps)
+    }
+
     fn sim_state(&mut self, client_id: ClientId) -> ServerResult<&SimState> {
         let client_state = client_state!(self, client_id);
         self.sim_state.reset(client_state.sim_state_order);
@@ -379,7 +386,18 @@ fn process_message<S: SimServer>(
             output,
         } => adapter.add_not_gate(client_id, width, input, output)?,
 
-        ClientMessageKind::QuerySimState => {
+        ClientMessageKind::Eval { max_steps } => {
+            adapter.eval(client_id, max_steps)?;
+            let sim_state = adapter.sim_state(client_id)?.clone(); // TODO: avoid cloning
+            server.send_command_message(client_id, ServerMessage::Report(sim_state))
+        }
+
+        ClientMessageKind::QueryReport => {
+            let sim_state = adapter.sim_state(client_id)?.clone(); // TODO: avoid cloning
+            server.send_command_message(client_id, ServerMessage::Report(sim_state))
+        }
+
+        ClientMessageKind::QueryUpdate => {
             let sim_state = adapter.sim_state(client_id)?;
             server.send_sim_state(client_id, sim_state);
         }
