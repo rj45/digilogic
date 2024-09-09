@@ -1990,7 +1990,6 @@ dependencies = [
  "bvh-arena",
  "digilogic_core",
  "digilogic_routing",
- "egui",
 ]
 
 [[package]]

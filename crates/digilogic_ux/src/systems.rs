@@ -1,11 +1,9 @@
-use super::{
-    EntityOffset, HoveredEntity, MouseIdle, MouseMoving, MouseState, PointerButtonEvent,
-    PointerMovedEvent,
-};
+use super::{EntityOffset, HoveredEntity, MouseIdle, MouseMoving, MouseState};
 use crate::spatial_index::SpatialIndex;
+use crate::{DragEvent, DragType, HoverEvent, PointerButton};
 use bevy_ecs::prelude::*;
 use digilogic_core::components::*;
-use digilogic_core::transform::{BoundingBox, Transform, Vec2};
+use digilogic_core::transform::{BoundingBox, Transform};
 use digilogic_core::Fixed;
 
 /// Called when a new viewport is added to the world.
@@ -18,55 +16,7 @@ pub(crate) fn on_add_viewport_augment_with_fsm(
         .insert(HoveredEntity::default())
         .insert(MouseState::Idle)
         .observe(hover_system)
-        .observe(mouse_state_transition_system)
-        .observe(mover_system);
-}
-
-fn mouse_state_transition_system(
-    trigger: Trigger<PointerButtonEvent>,
-    hover_query: Query<&HoveredEntity>,
-    mut mouse_state_query: Query<&mut MouseState>,
-    transform_query: Query<(&Transform, Has<Port>)>,
-    mut commands: Commands,
-) {
-    let viewport = trigger.entity();
-    let event = trigger.event();
-    let hovered_entity = hover_query.get(viewport).unwrap();
-    let mut mouse_state = mouse_state_query.get_mut(viewport).unwrap();
-    match (mouse_state.as_ref(), event.pressed) {
-        (MouseState::Idle, true) => {
-            if let Some(hovered_entity) = hovered_entity.0 {
-                let mouse_pos = Vec2 {
-                    x: Fixed::try_from_f32(event.pos.x).unwrap(),
-                    y: Fixed::try_from_f32(event.pos.y).unwrap(),
-                };
-
-                let mut offset_list = Vec::new();
-                if let Ok((transform, is_port)) = transform_query.get(hovered_entity) {
-                    if is_port {
-                        // TODO: enter wire drawing mode
-                    } else {
-                        offset_list.push(EntityOffset {
-                            entity: hovered_entity,
-                            offset: transform.translation - mouse_pos,
-                        });
-                    }
-                }
-
-                if !offset_list.is_empty() {
-                    *mouse_state = MouseState::Moving(offset_list.clone());
-                    commands.entity(viewport).remove::<MouseIdle>();
-                    commands.entity(viewport).insert(MouseMoving(offset_list));
-                }
-            }
-        }
-        (MouseState::Moving(..), false) => {
-            *mouse_state = MouseState::Idle;
-            commands.entity(viewport).remove::<MouseMoving>();
-            commands.entity(viewport).insert(MouseIdle);
-        }
-        _ => {}
-    }
+        .observe(mouse_drag_system);
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -82,7 +32,7 @@ enum HoveredEntityKind {
 type EntityKindQuery<'w, 's> = Query<'w, 's, (Has<Port>, Has<Endpoint>, Has<Net>)>;
 
 fn hover_system(
-    trigger: Trigger<PointerMovedEvent>,
+    trigger: Trigger<HoverEvent>,
     mut commands: Commands,
     circuits: Query<&SpatialIndex, With<Circuit>>,
     entity_kind_query: EntityKindQuery,
@@ -94,14 +44,7 @@ fn hover_system(
 
     let position = trigger.event().pos;
     let viewport = trigger.entity();
-    let bounds = BoundingBox::from_center_half_size(
-        Vec2 {
-            x: Fixed::try_from_f32(position.x).unwrap(),
-            y: Fixed::try_from_f32(position.y).unwrap(),
-        },
-        Fixed::EPSILON,
-        Fixed::EPSILON,
-    );
+    let bounds = BoundingBox::from_center_half_size(position, Fixed::EPSILON, Fixed::EPSILON);
 
     let mut new_hovered_entity = None;
     let mut new_hovered_entity_kind = HoveredEntityKind::default();
@@ -133,21 +76,56 @@ fn hover_system(
     }
 }
 
-fn mover_system(
-    trigger: Trigger<PointerMovedEvent>,
+fn mouse_drag_system(
+    trigger: Trigger<DragEvent>,
+    mut commands: Commands,
     moving_query: Query<&MouseMoving>,
-    mut transform_query: Query<&mut Transform>,
+    hover_query: Query<&HoveredEntity>,
+    mut transform_query: Query<(&mut Transform, Has<Port>)>,
 ) {
-    let position = trigger.event().pos;
+    let event = trigger.event();
     let viewport = trigger.entity();
-    if let Ok(moving) = moving_query.get(viewport) {
-        for entity_offset in moving.0.iter() {
-            if let Ok(mut transform) = transform_query.get_mut(entity_offset.entity) {
-                transform.translation = Vec2 {
-                    x: Fixed::try_from_f32(position.x).unwrap() + entity_offset.offset.x,
-                    y: Fixed::try_from_f32(position.y).unwrap() + entity_offset.offset.y,
-                };
+
+    if event.button != PointerButton::Primary {
+        return;
+    }
+
+    let moving = if let Ok(moving) = moving_query.get(viewport) {
+        moving
+    } else {
+        // TODO: offset_list should be populated with all selected entities, for now just use the hovered entity
+        let mut offset_list = Vec::new();
+        let hovered_entity = hover_query.get(viewport).unwrap();
+        if let Some(hovered_entity) = hovered_entity.0 {
+            if let Ok((transform, is_port)) = transform_query.get(hovered_entity) {
+                if is_port {
+                    // TODO: enter wire drawing mode
+                } else {
+                    offset_list.push(EntityOffset {
+                        entity: hovered_entity,
+                        offset: transform.translation - event.pos,
+                    });
+                }
             }
         }
+
+        if !offset_list.is_empty() {
+            commands.entity(viewport).remove::<MouseIdle>();
+            commands
+                .entity(viewport)
+                .insert(MouseMoving(offset_list.clone()));
+        }
+        &MouseMoving(offset_list)
+    };
+
+    for entity_offset in moving.0.iter() {
+        if let Ok((mut transform, _)) = transform_query.get_mut(entity_offset.entity) {
+            transform.translation = event.pos + entity_offset.offset;
+        }
+    }
+
+    if event.drag_type == DragType::End {
+        commands.entity(viewport).remove::<MouseMoving>();
+        commands.entity(viewport).insert(MouseIdle);
     }
 }

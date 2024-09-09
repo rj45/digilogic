@@ -2,6 +2,7 @@ mod canvas;
 use canvas::*;
 
 mod draw;
+use digilogic_ux::DragType;
 use draw::*;
 
 mod settings;
@@ -22,7 +23,7 @@ use bevy_state::prelude::*;
 use digilogic_core::components::{Circuit, CircuitID, Name, Viewport};
 use digilogic_core::resources::Project;
 use digilogic_core::states::{SimulationConnected, SimulationState};
-use digilogic_core::SharedStr;
+use digilogic_core::{fixed, Fixed, SharedStr};
 use egui::*;
 use egui_dock::*;
 use egui_wgpu::RenderState;
@@ -396,52 +397,100 @@ fn update_viewport(
             pan_zoom.pan += new_mouse_world_pos - old_mouse_world_pos;
 
             // note: this will only happen if the mouse is hovering the viewport
-            forward_hover_events(ui, commands, circuit, new_mouse_world_pos, viewport);
+            forward_hover_events(
+                ui,
+                response,
+                commands,
+                viewport,
+                circuit,
+                new_mouse_world_pos,
+            );
         }
     });
 }
 
 fn forward_hover_events(
     ui: &mut Ui,
+    response: Response,
     commands: &mut Commands,
+    viewport: Entity,
     circuit: CircuitID,
     world_mouse_pos: Vec2,
-    viewport: Entity,
 ) {
-    ui.input(|state| {
-        for event in state.events.iter() {
-            match event {
-                egui::Event::PointerMoved(_) => {
-                    commands.trigger_targets(
-                        digilogic_ux::PointerMovedEvent {
-                            circuit,
-                            pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
-                        },
-                        viewport,
-                    );
-                }
-                egui::Event::PointerButton {
-                    button,
-                    pressed,
-                    modifiers,
-                    ..
-                } => {
-                    commands.trigger_targets(
-                        digilogic_ux::PointerButtonEvent {
-                            circuit,
-                            pos: (world_mouse_pos.x, world_mouse_pos.y).into(),
-                            button: *button,
-                            pressed: *pressed,
-                            modifiers: *modifiers,
-                        },
-                        viewport,
-                    );
-                }
-                // TODO: forward other events
-                _ => {}
-            }
-        }
+    let pos = digilogic_core::transform::Vec2 {
+        x: Fixed::try_from_f32(world_mouse_pos.x).unwrap(),
+        y: Fixed::try_from_f32(world_mouse_pos.y).unwrap(),
+    };
+    let modifiers = ui.input(|state| digilogic_ux::Modifiers {
+        alt: state.modifiers.alt,
+        ctrl: state.modifiers.ctrl,
+        shift: state.modifiers.shift,
+        mac_cmd: state.modifiers.mac_cmd,
+        command: state.modifiers.command,
     });
+
+    if response.hovered() {
+        commands.trigger_targets(
+            digilogic_ux::HoverEvent {
+                viewport,
+                circuit,
+                pos,
+                modifiers,
+            },
+            viewport,
+        );
+    }
+
+    for (egui_button, ux_button) in [
+        (PointerButton::Primary, digilogic_ux::PointerButton::Primary),
+        (
+            PointerButton::Secondary,
+            digilogic_ux::PointerButton::Secondary,
+        ),
+    ] {
+        if response.clicked_by(egui_button) {
+            commands.trigger_targets(
+                digilogic_ux::ClickEvent {
+                    viewport,
+                    circuit,
+                    pos,
+                    button: ux_button,
+                    modifiers,
+                },
+                viewport,
+            );
+        }
+
+        let drag_type = match (
+            response.drag_started_by(egui_button),
+            response.dragged_by(egui_button),
+            response.drag_stopped_by(egui_button),
+        ) {
+            (_, _, true) => DragType::End,
+            (true, _, false) => DragType::Start,
+            (false, true, false) => DragType::Dragging,
+            _ => continue,
+        };
+
+        let delta = response.drag_delta();
+        let delta = digilogic_core::transform::Vec2 {
+            x: Fixed::try_from_f32(delta.x).unwrap(),
+            y: Fixed::try_from_f32(delta.y).unwrap(),
+        };
+
+        commands.trigger_targets(
+            digilogic_ux::DragEvent {
+                drag_type,
+                viewport,
+                circuit,
+                pos,
+                delta,
+                button: ux_button,
+                modifiers,
+            },
+            viewport,
+        );
+    }
 }
 
 type ViewportQuery<'w, 's> =

@@ -5,7 +5,7 @@ mod events;
 pub use events::*;
 
 mod systems;
-pub use systems::*;
+use systems::*;
 
 mod spatial_index;
 
@@ -22,8 +22,9 @@ impl bevy_app::Plugin for UxPlugin {
             .register_type::<MouseIdle>()
             .register_type::<MouseMoving>();
 
-        app.add_event::<PointerMovedEvent>();
-        app.add_event::<PointerButtonEvent>();
+        app.add_event::<DragEvent>();
+        app.add_event::<ClickEvent>();
+        app.add_event::<HoverEvent>();
         app.observe(on_add_viewport_augment_with_fsm);
 
         app.observe(spatial_index::inject_spatial_index);
