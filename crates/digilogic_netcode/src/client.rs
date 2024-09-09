@@ -9,7 +9,7 @@ use bevy_state::prelude::*;
 use bevy_time::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::resources::Project;
-use digilogic_core::states::SimulationState;
+use digilogic_core::states::*;
 use digilogic_core::{HashMap, SharedStr, StateMut};
 use std::net::ToSocketAddrs;
 
@@ -227,6 +227,24 @@ fn process_messages(
     }
 }
 
+#[derive(Debug, Clone, Reflect, Event)]
+pub struct Eval;
+
+fn process_eval_events(
+    mut client: ResMut<RenetClient>,
+    mut next_message_id: ResMut<NextMessageId>,
+    mut events: EventReader<Eval>,
+) {
+    if !events.is_empty() {
+        events.clear();
+
+        client.send_command_message(ClientMessage {
+            id: next_message_id.get(),
+            kind: ClientMessageKind::Eval { max_steps: 10_000 }, // TODO: add configuration for max steps
+        });
+    }
+}
+
 type CircuitQuery<'w, 's> = Query<'w, 's, ((), Relations<Child>), With<Circuit>>;
 type SymbolQuery<'w, 's> =
     Query<'w, 's, ((Entity, Read<SymbolKind>), Relations<Child>), With<Symbol>>;
@@ -407,5 +425,10 @@ impl Plugin for ClientPlugin {
         );
 
         app.add_systems(OnEnter(SimulationState::Building), build);
+
+        app.add_systems(
+            Update,
+            process_eval_events.run_if(in_state(SimulationActive)),
+        );
     }
 }
