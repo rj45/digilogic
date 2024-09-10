@@ -271,14 +271,37 @@ fn update_tool_bar(
     egui: Res<Egui>,
     settings: Res<AppSettings>,
     open_windows: Res<OpenWindows>,
-    project: Option<Res<Project>>,
+    mut project: Option<ResMut<Project>>,
     simulation_state: Res<State<SimulationState>>,
+    circuits: Query<(Entity, &Name), With<Circuit>>,
 ) {
-    let root_circuit_exists = project.and_then(|project| project.root_circuit).is_some();
-
     TopBottomPanel::top("tool_bar_panel").show(&egui.context, |ui| {
-        ui.add_enabled_ui(!open_windows.any() && root_circuit_exists, |ui| {
-            menu::bar(ui, |ui| {
+        menu::bar(ui, |ui| {
+            let mut root_circuit = project.as_deref().and_then(|project| project.root_circuit);
+            let root_name = root_circuit
+                .and_then(|root_circuit| circuits.get(root_circuit.0).ok())
+                .map(|(_, name)| name.0.as_str())
+                .unwrap_or("<No Root Selected>");
+            ComboBox::from_id_source("root_selector")
+                .selected_text(root_name)
+                .show_ui(ui, |ui| {
+                    for (circuit, name) in circuits.iter() {
+                        ui.selectable_value(
+                            &mut root_circuit,
+                            Some(CircuitID(circuit)),
+                            name.0.as_str(),
+                        );
+                    }
+                });
+            if let Some(project) = project.as_deref_mut() {
+                project.root_circuit = root_circuit;
+            }
+
+            let root_circuit_exists = project
+                .as_deref()
+                .and_then(|project| project.root_circuit)
+                .is_some();
+            ui.add_enabled_ui(!open_windows.any() && root_circuit_exists, |ui| {
                 match simulation_state.is_connected() {
                     false => {
                         if ui.button("Start").clicked() {
