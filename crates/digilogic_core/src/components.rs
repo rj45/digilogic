@@ -3,7 +3,7 @@ use aery::prelude::*;
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::num::NonZeroU8;
 use std::path::PathBuf;
 
@@ -104,6 +104,15 @@ pub struct BitWidth(pub NonZeroU8);
 pub struct LogicState {
     pub bit_plane_0: SmallVec<[u8; 16]>,
     pub bit_plane_1: SmallVec<[u8; 16]>,
+}
+
+impl LogicState {
+    pub fn from_bool(value: bool) -> Self {
+        Self {
+            bit_plane_0: smallvec![value as u8],
+            bit_plane_1: smallvec![1],
+        }
+    }
 }
 
 /// The list of bits that the entity uses in a Net. The order of the bits becomes

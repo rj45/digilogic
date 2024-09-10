@@ -314,7 +314,9 @@ impl SymbolBuilder<'_> {
             .id();
 
         if self.kind == SymbolKind::In {
-            commands.entity(symbol_id).insert(LogicState::default());
+            commands
+                .entity(symbol_id)
+                .insert(LogicState::from_bool(false));
         }
 
         self.ports = kind
