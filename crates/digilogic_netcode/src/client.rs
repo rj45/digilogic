@@ -175,12 +175,30 @@ fn disconnect_on_exit(
     }
 }
 
+fn send_input_states(
+    client: &mut RenetClient,
+    next_message_id: &mut NextMessageId,
+    inputs: &Query<(&SimNet, &LogicState), With<Symbol>>,
+) {
+    for (input_net, input_state) in inputs.iter() {
+        client.send_command_message(ClientMessage {
+            id: next_message_id.get(),
+            kind: ClientMessageKind::SetNetDrive {
+                net: input_net.0,
+                bit_plane_0: input_state.bit_plane_0.as_slice().to_vec(),
+                bit_plane_1: input_state.bit_plane_1.as_slice().to_vec(),
+            },
+        });
+    }
+}
+
 fn process_messages(
     mut commands: Commands,
     mut client: ResMut<RenetClient>,
     mut state: StateMut<SimulationState>,
     mut next_message_id: ResMut<NextMessageId>,
     current_sim_state: Option<Res<SimState>>,
+    inputs: Query<(&SimNet, &LogicState), With<Symbol>>,
 ) {
     let mut actual_state = *state;
 
@@ -197,6 +215,8 @@ fn process_messages(
             ServerMessage::BuildingFinished => {
                 assert_eq!(actual_state, SimulationState::Building);
                 actual_state = SimulationState::ActiveIdle;
+
+                send_input_states(&mut client, &mut next_message_id, &inputs);
 
                 client.send_command_message(ClientMessage {
                     id: next_message_id.get(),
@@ -234,9 +254,12 @@ fn process_eval_events(
     mut client: ResMut<RenetClient>,
     mut next_message_id: ResMut<NextMessageId>,
     mut events: EventReader<Eval>,
+    inputs: Query<(&SimNet, &LogicState), With<Symbol>>,
 ) {
     if !events.is_empty() {
         events.clear();
+
+        send_input_states(&mut client, &mut next_message_id, &inputs);
 
         client.send_command_message(ClientMessage {
             id: next_message_id.get(),
@@ -244,6 +267,9 @@ fn process_eval_events(
         });
     }
 }
+
+#[derive(Debug, Clone, Component)]
+pub struct SimNet(NetId);
 
 type CircuitQuery<'w, 's> = Query<'w, 's, ((), Relations<Child>), With<Circuit>>;
 type SymbolQuery<'w, 's> =
@@ -309,10 +335,15 @@ fn build(
                         first = false;
 
                         if let Some(connected_net) = connected_net {
-                            let &(_, net_offset) = net_map
+                            let &(net_id, net_offset) = net_map
                                 .get(&connected_net.0)
                                 .expect("port connected to invalid net");
                             commands.entity(symbol).insert(StateOffset(net_offset));
+
+                            if *symbol_kind == SymbolKind::In {
+                                // Note: only do this for the root
+                                commands.entity(symbol).insert(SimNet(net_id));
+                            }
                         }
                     });
                 assert!(!first, "input/output symbol has no ports");

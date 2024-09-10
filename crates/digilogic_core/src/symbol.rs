@@ -313,6 +313,10 @@ impl SymbolBuilder<'_> {
             .set::<Child>(circuit_id)
             .id();
 
+        if self.kind == SymbolKind::In {
+            commands.entity(symbol_id).insert(LogicState::default());
+        }
+
         self.ports = kind
             .ports
             .iter()

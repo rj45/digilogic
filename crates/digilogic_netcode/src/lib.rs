@@ -92,6 +92,7 @@ enum ServerMessage {
     Report(SimState),
 }
 
+// TODO: uses borrowed slices instead of vecs
 #[derive(Debug, Serialize, Deserialize)]
 enum ClientMessageKind {
     BeginBuild,
@@ -134,6 +135,12 @@ enum ClientMessageKind {
         width: NonZeroU8,
         input: NetId,
         output: NetId,
+    },
+
+    SetNetDrive {
+        net: NetId,
+        bit_plane_0: Vec<u8>,
+        bit_plane_1: Vec<u8>,
     },
 
     Eval {

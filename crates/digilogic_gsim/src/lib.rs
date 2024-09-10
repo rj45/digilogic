@@ -166,6 +166,28 @@ impl SimServer for GsimServer {
             .map_err(component_error_to_server_error)
     }
 
+    fn set_net_drive(
+        &mut self,
+        client_id: ClientId,
+        net: Self::NetId,
+        bit_plane_0: &[u8],
+        bit_plane_1: &[u8],
+    ) -> ServerResult<()> {
+        let simulator = self.get_simulator_mut(client_id)?;
+
+        let mut words0 = [0u32; 8];
+        let mut words1 = [0u32; 8];
+        bytemuck::cast_slice_mut(&mut words0)[..bit_plane_0.len()].copy_from_slice(bit_plane_0);
+        bytemuck::cast_slice_mut(&mut words1)[..bit_plane_1.len()].copy_from_slice(bit_plane_1);
+
+        let word_count = bit_plane_0.len().min(bit_plane_1.len()).div_ceil(4);
+        let new_drive = LogicState::from_bit_planes(&words0[..word_count], &words1[..word_count]);
+
+        simulator
+            .set_wire_drive(net, &new_drive)
+            .map_err(|_| ServerError::InvalidNetId)
+    }
+
     fn eval(&mut self, client_id: ClientId, max_steps: u64) -> ServerResult<()> {
         let simulator = self.get_simulator_mut(client_id)?;
         simulation_result_to_server_result(simulator.run_sim(max_steps))

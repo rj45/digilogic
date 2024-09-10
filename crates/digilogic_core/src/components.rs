@@ -1,6 +1,6 @@
 use crate::SharedStr;
 use aery::prelude::*;
-use bevy_derive::Deref;
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use smallvec::SmallVec;
@@ -99,6 +99,13 @@ pub struct Number(pub i32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, Reflect)]
 pub struct BitWidth(pub NonZeroU8);
 
+/// The logic state of the entity
+#[derive(Default, Debug, Component, Reflect)]
+pub struct LogicState {
+    pub bit_plane_0: SmallVec<[u8; 16]>,
+    pub bit_plane_1: SmallVec<[u8; 16]>,
+}
+
 /// The list of bits that the entity uses in a Net. The order of the bits becomes
 /// the order they are presented to the input of the entity. So, for example, if
 /// a Net is 4 bits wide, and an entity uses bits 1, 3, and 0, then the entity
@@ -114,13 +121,6 @@ pub struct Input;
 /// The entity is an output
 #[derive(Default, Debug, Component, Reflect)]
 pub struct Output;
-
-/// The entity is part of a set of entities. For example, one gate in a chip.
-#[derive(Debug, Component, Reflect)]
-pub struct PartOf {
-    pub first: Entity,
-    pub index: u32,
-}
 
 /// Whether the entity is selected
 #[derive(Default, Debug, Component, Reflect)]

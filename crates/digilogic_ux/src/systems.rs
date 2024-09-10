@@ -82,7 +82,7 @@ fn hover_system(
 fn mouse_click_inputs(
     trigger: Trigger<ClickEvent>,
     hover_query: Query<&HoveredEntity>,
-    input_query: Query<&SymbolKind, With<Symbol>>,
+    mut input_query: Query<(&SymbolKind, &mut LogicState), With<Symbol>>,
     simulation: Res<State<SimulationState>>,
     mut eval_event: EventWriter<digilogic_netcode::Eval>,
 ) {
@@ -99,9 +99,23 @@ fn mouse_click_inputs(
 
     let hovered_entity = hover_query.get(viewport).unwrap();
     if let Some(hovered_entity) = hovered_entity.0 {
-        if let Ok(&kind) = input_query.get(hovered_entity) {
+        if let Ok((&kind, mut state)) = input_query.get_mut(hovered_entity) {
             if kind == SymbolKind::In {
-                // TODO: toggle input state
+                let state = &mut *state;
+
+                // TODO: support bit widths other than 1
+                if let Some((first0, first1)) = state
+                    .bit_plane_0
+                    .first_mut()
+                    .zip(state.bit_plane_1.first_mut())
+                {
+                    *first0 = !*first0 & 1;
+                    *first1 = 1;
+                } else {
+                    state.bit_plane_0 = [1].as_slice().into();
+                    state.bit_plane_1 = [1].as_slice().into();
+                }
+
                 bevy_log::info!("Eval event sent");
                 eval_event.send(digilogic_netcode::Eval);
             }
