@@ -398,6 +398,8 @@ impl Plugin for ClientPlugin {
             .register_type::<Connect>()
             .register_type::<Disconnect>();
 
+        app.add_event::<Eval>();
+
         app.init_resource::<NextMessageId>()
             .add_event::<NetcodeTransportError>()
             .observe(connect)
