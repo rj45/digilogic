@@ -1,8 +1,10 @@
 use super::{EntityOffset, HoveredEntity, MouseIdle, MouseMoving, MouseState};
 use crate::spatial_index::SpatialIndex;
-use crate::{DragEvent, DragType, HoverEvent, PointerButton};
+use crate::{ClickEvent, DragEvent, DragType, HoverEvent, PointerButton};
 use bevy_ecs::prelude::*;
+use bevy_state::prelude::*;
 use digilogic_core::components::*;
+use digilogic_core::states::SimulationState;
 use digilogic_core::transform::{BoundingBox, Transform};
 use digilogic_core::Fixed;
 
@@ -16,6 +18,7 @@ pub(crate) fn on_add_viewport_augment_with_fsm(
         .insert(HoveredEntity::default())
         .insert(MouseState::Idle)
         .observe(hover_system)
+        .observe(mouse_click_inputs)
         .observe(mouse_drag_system);
 }
 
@@ -73,6 +76,36 @@ fn hover_system(
         }
 
         current_hovered_entity.0 = new_hovered_entity;
+    }
+}
+
+fn mouse_click_inputs(
+    trigger: Trigger<ClickEvent>,
+    hover_query: Query<&HoveredEntity>,
+    input_query: Query<&SymbolKind, With<Symbol>>,
+    simulation: Res<State<SimulationState>>,
+    mut eval_event: EventWriter<digilogic_netcode::Eval>,
+) {
+    let event = trigger.event();
+    let viewport = trigger.entity();
+
+    if !simulation.is_active() {
+        return;
+    }
+
+    if event.button != PointerButton::Primary {
+        return;
+    }
+
+    let hovered_entity = hover_query.get(viewport).unwrap();
+    if let Some(hovered_entity) = hovered_entity.0 {
+        if let Ok(&kind) = input_query.get(hovered_entity) {
+            if kind == SymbolKind::In {
+                // TODO: toggle input state
+                bevy_log::info!("Eval event sent");
+                eval_event.send(digilogic_netcode::Eval);
+            }
+        }
     }
 }
 

@@ -14,8 +14,11 @@ bevy_app.workspace = true
 bevy_ecs.workspace = true
 bevy_reflect.workspace = true
 bevy_derive.workspace = true
+bevy_state.workspace = true
 bevy_log.workspace = true
 aery.workspace = true
+bvh-arena.workspace = true
+
 digilogic_core = { path = "../digilogic_core" }
 digilogic_routing = { path = "../digilogic_routing" }
-bvh-arena.workspace = true
+digilogic_netcode = { path = "../digilogic_netcode" }

@@ -1987,8 +1987,10 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "bevy_reflect",
+ "bevy_state",
  "bvh-arena",
  "digilogic_core",
+ "digilogic_netcode",
  "digilogic_routing",
 ]
 
