@@ -16,9 +16,12 @@ use bevy_reflect::Reflect;
 use bevy_tasks::prelude::*;
 use digilogic_core::components::*;
 use digilogic_core::transform::*;
+use digilogic_core::{fixed, Fixed};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use tracing::Instrument;
+
+const MIN_WIRE_SPACING: Fixed = fixed!(10);
 
 #[derive(Default, Debug, Component, Reflect)]
 #[component(storage = "SparseSet")]
@@ -28,6 +31,7 @@ struct GraphDirty;
 pub enum VertexKind {
     #[default]
     Normal,
+    Dummy,
     WireStart {
         is_root: bool,
     },

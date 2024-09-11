@@ -1,12 +1,13 @@
 use crate::graph::Graph;
 use crate::path_finding::*;
-use crate::{EndpointQuery, Junction, JunctionKind, Vertex, VertexKind};
+use crate::{EndpointQuery, Junction, JunctionKind, Vertex, VertexKind, MIN_WIRE_SPACING};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_log::debug;
+use digilogic_core::components::*;
 use digilogic_core::transform::*;
-use digilogic_core::{components::*, Fixed};
+use digilogic_core::{fixed, Fixed};
 use smallvec::SmallVec;
 use std::cell::RefCell;
 
@@ -61,56 +62,86 @@ fn push_vertices(
     ends: &mut Vec<PathFindingEnd>,
     is_root: bool,
     junction_kind: Option<JunctionKind>,
-) -> u32 {
-    let mut first = true;
-    let mut prev_node: Option<(usize, PathNode)> = None;
-    for (node_index, node) in path.iter_pruned() {
-        if let Some((prev_node_index, prev_node)) = prev_node {
-            let prev_vertex_index = vertices.len() as u32;
-            vertices.push(Vertex {
-                position: prev_node.position,
-                kind: if first {
-                    VertexKind::WireStart { is_root }
-                } else {
-                    VertexKind::Normal
-                },
-                connected_junctions: SmallVec::new(),
-            });
+) {
+    let mut path_nodes = path.iter_pruned().peekable();
 
+    {
+        let (first_node_index, first_node) = path_nodes.next().expect("path too short");
+        let &(next_node_index, _) = path_nodes.peek().expect("path too short");
+
+        let vertex_index = vertices.len() as u32;
+        ends.push(PathFindingEnd {
+            position: first_node.position,
+            vertex_index,
+            junction_kind: JunctionKind::Corner,
+        });
+
+        let vertex_index = (vertices.len() + 2) as u32;
+        ends.push(PathFindingEnd {
+            position: first_node.position,
+            vertex_index,
+            junction_kind: JunctionKind::Corner,
+        });
+
+        for i in (first_node_index + 1)..next_node_index {
             ends.push(PathFindingEnd {
-                position: path.nodes()[prev_node_index].position,
-                vertex_index: prev_vertex_index,
-                junction_kind: JunctionKind::Corner,
+                position: path.nodes()[i].position,
+                vertex_index,
+                junction_kind: JunctionKind::LineSegment,
             });
-            for i in (prev_node_index + 1)..node_index {
+        }
+
+        vertices.push(Vertex {
+            position: first_node.position,
+            kind: VertexKind::WireStart { is_root },
+            connected_junctions: SmallVec::new(),
+        });
+
+        const DUMMY_MAX_DIST: Vec2 = Vec2::splat(MIN_WIRE_SPACING);
+        let dummy_dist =
+            (path.nodes()[first_node_index + 1].position - first_node.position) * fixed!(0.5);
+        let dummy_pos = first_node.position + dummy_dist.clamp(-DUMMY_MAX_DIST, DUMMY_MAX_DIST);
+        vertices.push(Vertex {
+            position: dummy_pos,
+            kind: VertexKind::Dummy,
+            connected_junctions: SmallVec::new(),
+        });
+        vertices.push(Vertex {
+            position: dummy_pos,
+            kind: VertexKind::Dummy,
+            connected_junctions: SmallVec::new(),
+        });
+    }
+
+    while let Some((node_index, node)) = path_nodes.next() {
+        let vertex_index = vertices.len() as u32;
+
+        ends.push(PathFindingEnd {
+            position: node.position,
+            vertex_index,
+            junction_kind: JunctionKind::Corner,
+        });
+
+        let kind = if let Some(&(next_node_index, _)) = path_nodes.peek() {
+            for i in (node_index + 1)..next_node_index {
                 ends.push(PathFindingEnd {
                     position: path.nodes()[i].position,
-                    vertex_index: prev_vertex_index,
+                    vertex_index,
                     junction_kind: JunctionKind::LineSegment,
                 });
             }
 
-            first = false;
-        }
+            VertexKind::Normal
+        } else {
+            VertexKind::WireEnd { junction_kind }
+        };
 
-        prev_node = Some((node_index, node));
+        vertices.push(Vertex {
+            position: node.position,
+            kind,
+            connected_junctions: SmallVec::new(),
+        });
     }
-
-    let (last_node_index, last_node) = prev_node.unwrap();
-    let last_vertex_index = vertices.len() as u32;
-    vertices.push(Vertex {
-        position: last_node.position,
-        kind: VertexKind::WireEnd { junction_kind },
-        connected_junctions: SmallVec::new(),
-    });
-
-    ends.push(PathFindingEnd {
-        position: path.nodes()[last_node_index].position,
-        vertex_index: last_vertex_index,
-        junction_kind: JunctionKind::Corner,
-    });
-
-    last_vertex_index
 }
 
 fn push_fallback_vertices(
@@ -121,7 +152,7 @@ fn push_fallback_vertices(
     ends: &mut Vec<PathFindingEnd>,
     is_root: bool,
     junction_kind: Option<JunctionKind>,
-) -> u32 {
+) {
     let start_vertex_index = vertices.len() as u32;
     vertices.push(Vertex {
         position: start,
@@ -166,8 +197,6 @@ fn push_fallback_vertices(
         vertex_index: end_vertex_index,
         junction_kind: JunctionKind::Corner,
     });
-
-    end_vertex_index
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -242,9 +271,11 @@ fn route_branch_wires(
             }
 
             let endpoint_pos = endpoint_transform.translation;
-            let (last_vertex_index, junction_kind, junction_vertex_index) = match path_finder
-                .find_path_multi(graph, endpoint_pos, ends.iter().map(|end| end.position))
-            {
+            let (junction_kind, junction_vertex_index) = match path_finder.find_path_multi(
+                graph,
+                endpoint_pos,
+                ends.iter().map(|end| end.position),
+            ) {
                 PathFindResult::Found(path) => {
                     let junction_end = ends
                         .iter()
@@ -254,10 +285,9 @@ fn route_branch_wires(
                     let junction_kind = junction_end.junction_kind;
                     let junction_vertex_index = junction_end.vertex_index;
 
-                    let last_vertex_index =
-                        push_vertices(&path, vertices, ends, false, Some(junction_kind));
+                    push_vertices(&path, vertices, ends, false, Some(junction_kind));
 
-                    (last_vertex_index, junction_kind, junction_vertex_index)
+                    (junction_kind, junction_vertex_index)
                 }
                 PathFindResult::NotFound => {
                     debug!(
@@ -274,7 +304,7 @@ fn route_branch_wires(
                     let junction_kind = junction_end.junction_kind;
                     let junction_vertex_index = junction_end.vertex_index;
 
-                    let last_vertex_index = push_fallback_vertices(
+                    push_fallback_vertices(
                         endpoint_pos,
                         junction_end.position,
                         start_node.legal_directions,
@@ -284,7 +314,7 @@ fn route_branch_wires(
                         Some(junction_kind),
                     );
 
-                    (last_vertex_index, junction_kind, junction_vertex_index)
+                    (junction_kind, junction_vertex_index)
                 }
                 PathFindResult::InvalidStartPoint | PathFindResult::InvalidEndPoint => {
                     result = Err(RoutingError::InvalidPoint);
@@ -292,6 +322,7 @@ fn route_branch_wires(
                 }
             };
 
+            let last_vertex_index = (vertices.len() - 1) as u32;
             vertices[junction_vertex_index as usize]
                 .connected_junctions
                 .push(Junction {

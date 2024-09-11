@@ -6,7 +6,7 @@ use bevy_ecs::system::lifetimeless::{Read, Write};
 use bevy_reflect::Reflect;
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect)]
 #[repr(C)]
@@ -39,6 +39,14 @@ impl Vec2 {
         Self {
             x: self.x.max(rhs.x),
             y: self.y.max(rhs.y),
+        }
+    }
+
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        Self {
+            x: self.x.clamp(min.x, max.x),
+            y: self.y.clamp(min.y, max.y),
         }
     }
 
@@ -92,6 +100,18 @@ impl SubAssign for Vec2 {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
+    }
+}
+
+impl Neg for Vec2 {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Self {
+            x: -self.x,
+            y: -self.y,
+        }
     }
 }
 

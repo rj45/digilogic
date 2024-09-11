@@ -1,4 +1,4 @@
-use crate::{JunctionKind, NetQuery, Vertex, VertexKind};
+use crate::{JunctionKind, NetQuery, Vertex, VertexKind, MIN_WIRE_SPACING};
 use aery::operations::utils::RelationsItem;
 use aery::prelude::*;
 use bevy_ecs::entity::Entity;
@@ -8,8 +8,6 @@ use digilogic_core::{fixed, Fixed, HashMap};
 use smallvec::SmallVec;
 use std::ops::{Index, IndexMut};
 
-const MIN_WIRE_SPACING: Fixed = fixed!(10);
-
 #[derive(Debug)]
 struct VertexPair {
     start_inclusive: Fixed,
@@ -17,7 +15,6 @@ struct VertexPair {
     net: Entity,
     index: u32,
     track: u16,
-    immovable_track: u16,
 }
 
 impl VertexPair {
@@ -28,12 +25,17 @@ impl VertexPair {
     }
 }
 
+enum Movement {
+    Free,
+    Restricted,
+    Locked,
+}
+
 #[derive(Debug, Default)]
 struct Corridor {
     pairs: SmallVec<[VertexPair; 1]>,
-    immovable_pairs: u32,
+    locked_pairs: u32,
     track_count: u16,
-    immovable_track_count: u16,
 }
 
 impl Corridor {
@@ -43,7 +45,7 @@ impl Corridor {
         end_inclusive: Fixed,
         net: Entity,
         index: u32,
-        can_move: bool,
+        movement: Movement,
     ) {
         let pair = VertexPair {
             start_inclusive,
@@ -51,37 +53,48 @@ impl Corridor {
             net,
             index,
             track: u16::MAX,
-            immovable_track: u16::MAX,
         };
 
-        if can_move {
-            self.pairs.push(pair);
-        } else {
-            if self.pairs.len() > (self.immovable_pairs as usize) {
-                // Swap-insert to avoid memcopy
-                let prev = std::mem::replace(&mut self.pairs[self.immovable_pairs as usize], pair);
-                self.pairs.push(prev);
-            } else {
+        match movement {
+            Movement::Free => {
                 self.pairs.push(pair);
             }
-
-            self.immovable_pairs += 1;
+            Movement::Restricted => {
+                // By inserting restricted pairs at the front they are implicitely moved as little as possible
+                self.pairs.insert(self.locked_pairs as usize, pair);
+            }
+            Movement::Locked => {
+                self.pairs.insert(self.locked_pairs as usize, pair);
+                self.locked_pairs += 1;
+            }
         }
     }
 
-    #[inline]
-    fn track_offset(&self) -> u16 {
-        self.track_count / 2
-    }
-
+    // This is essentially greedy graph coloring.
     fn assign_tracks(&mut self) {
+        for i in 0..(self.locked_pairs as usize) {
+            let (&mut ref head, tail) = self.pairs.split_at_mut(i);
+            let current = tail.first_mut().unwrap();
+
+            #[cfg(debug_assertions)]
+            for other in head {
+                if current.overlaps(other) {
+                    debug!(
+                        "net {} segment {} has unavoidable overlap",
+                        current.net, current.index,
+                    );
+                }
+            }
+
+            current.track = 0;
+            self.track_count = 1;
+        }
+
         // TODO: save memory using bitvec
         let mut used_tracks: SmallVec<[bool; 16]> = SmallVec::new();
 
-        // This is essentially greedy graph coloring.
-        for i in (self.immovable_pairs as usize)..self.pairs.len() {
+        for i in (self.locked_pairs as usize)..self.pairs.len() {
             let (&mut ref head, tail) = self.pairs.split_at_mut(i);
-            let head = &head[self.immovable_pairs as usize..];
             let current = tail.first_mut().unwrap();
 
             used_tracks.clear();
@@ -100,50 +113,6 @@ impl Corridor {
                 .position(|&x| !x)
                 .unwrap_or(used_tracks.len()) as u16;
             self.track_count = self.track_count.max(current.track + 1);
-        }
-
-        if self.immovable_pairs > 0 {
-            self.track_count += 1;
-            let track_offset = self.track_offset();
-
-            self.pairs[..self.immovable_pairs as usize]
-                .iter_mut()
-                .for_each(|pair| pair.track = track_offset);
-            self.pairs[self.immovable_pairs as usize..]
-                .iter_mut()
-                .filter(|pair| pair.track >= track_offset)
-                .for_each(|pair| pair.track += 1);
-
-            self.immovable_track_count = 1;
-            for i in 0..(self.immovable_pairs as usize) {
-                let (&mut ref head, tail) = self.pairs.split_at_mut(i);
-                let current = tail.first_mut().unwrap();
-
-                used_tracks.clear();
-                for other in head {
-                    if current.overlaps(other) {
-                        if used_tracks.len() <= (other.immovable_track as usize) {
-                            used_tracks.resize((other.immovable_track as usize) + 1, false);
-                        }
-
-                        used_tracks[other.immovable_track as usize] = true;
-                    }
-                }
-
-                current.immovable_track = used_tracks
-                    .iter()
-                    .position(|&x| !x)
-                    .unwrap_or(used_tracks.len()) as u16;
-                self.immovable_track_count =
-                    self.immovable_track_count.max(current.immovable_track + 1);
-
-                if current.immovable_track > 0 {
-                    debug!(
-                        "net {} segment {} has unavoidable overlap",
-                        current.net, current.index,
-                    );
-                }
-            }
         }
     }
 }
@@ -311,6 +280,15 @@ fn move_junctions(a: &Vertex, b: &Vertex, vertices: &mut Tail<Vertex>) {
     }
 }
 
+#[inline]
+fn track_offset(track: u16) -> Fixed {
+    if (track % 2) == 0 {
+        -Fixed::from_u16(track / 2)
+    } else {
+        Fixed::from_u16(track / 2 + 1)
+    }
+}
+
 #[tracing::instrument(skip_all)]
 pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQuery) {
     let mut horizontal_corridors: HashMap<Fixed, Corridor> = HashMap::default();
@@ -324,8 +302,9 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     unreachable!();
                 };
 
-                let can_move = match (a.kind, b.kind) {
+                let movement = match (a.kind, b.kind) {
                     (VertexKind::WireEnd { .. }, _) => continue,
+
                     // Corner junctions are not inserted because they are
                     // considered part of the segment they connect to.
                     (
@@ -334,14 +313,21 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                             junction_kind: Some(JunctionKind::Corner),
                         },
                     ) => continue,
-                    (VertexKind::WireStart { .. }, _) => false,
+
+                    // Pretend dummy segments don't exist
+                    (VertexKind::WireStart { .. }, VertexKind::Dummy) => continue,
+                    (VertexKind::Dummy, VertexKind::Dummy) => continue,
+                    (VertexKind::Dummy, VertexKind::WireEnd { .. }) => continue,
+
+                    (VertexKind::WireStart { .. }, _) => Movement::Locked,
                     (
                         _,
                         VertexKind::WireEnd {
                             junction_kind: None,
                         },
-                    ) => false,
-                    _ => true,
+                    ) => Movement::Locked,
+                    (VertexKind::Dummy, _) | (_, VertexKind::Dummy) => Movement::Restricted,
+                    _ => Movement::Free,
                 };
 
                 if a.position.y == b.position.y {
@@ -354,7 +340,7 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     horizontal_corridors
                         .entry(a.position.y)
                         .or_default()
-                        .insert(min_x, max_x, net, i as u32, can_move);
+                        .insert(min_x, max_x, net, i as u32, movement);
                 } else if a.position.x == b.position.x {
                     let mut min_y = a.position.y.min(b.position.y);
                     let mut max_y = a.position.y.max(b.position.y);
@@ -365,21 +351,20 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
                     vertical_corridors
                         .entry(a.position.x)
                         .or_default()
-                        .insert(min_y, max_y, net, i as u32, can_move);
+                        .insert(min_y, max_y, net, i as u32, movement);
                 }
             }
         });
 
     for (y, mut corridor) in horizontal_corridors {
         corridor.assign_tracks();
-        let track_offset = Fixed::from_u16(corridor.track_offset());
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
             let mut vertices = Tail::from(vertices.0.as_mut_slice());
             let (a, b, mut vertices) = vertices.split_pair(pair.index as usize);
 
-            let offset = Fixed::from_u16(pair.track) - track_offset;
+            let offset = track_offset(pair.track);
             if offset != fixed!(0) {
                 let y = y + offset * MIN_WIRE_SPACING;
                 a.position.y = y;
@@ -392,14 +377,13 @@ pub fn separate_wires(circuit_children: &RelationsItem<Child>, nets: &mut NetQue
 
     for (x, mut corridor) in vertical_corridors {
         corridor.assign_tracks();
-        let track_offset = Fixed::from_u16(corridor.track_offset());
 
         for pair in corridor.pairs {
             let ((_, mut vertices), _) = nets.get_mut(pair.net).unwrap();
             let mut vertices = Tail::from(vertices.0.as_mut_slice());
             let (a, b, mut vertices) = vertices.split_pair(pair.index as usize);
 
-            let offset = Fixed::from_u16(pair.track) - track_offset;
+            let offset = track_offset(pair.track);
             if offset != fixed!(0) {
                 let x = x + offset * MIN_WIRE_SPACING;
                 a.position.x = x;

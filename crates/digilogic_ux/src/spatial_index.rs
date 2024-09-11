@@ -103,7 +103,7 @@ pub(crate) fn update_spatial_index_on_routing(
                 let mut prev_vertex = None;
                 for vertex in vertices.iter() {
                     match vertex.kind {
-                        VertexKind::Normal => {
+                        VertexKind::Normal | VertexKind::Dummy => {
                             if let Some(prev_vertex) = prev_vertex {
                                 add_bounding_box(prev_vertex, vertex.position, &mut boxes);
                             }

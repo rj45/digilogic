@@ -245,7 +245,7 @@ pub fn draw_wires(
                         let pos = (vertex.position.x.to_f64(), vertex.position.y.to_f64());
 
                         match vertex.kind {
-                            VertexKind::Normal => path.line_to(pos),
+                            VertexKind::Normal | VertexKind::Dummy => path.line_to(pos),
                             VertexKind::WireStart { is_root } => {
                                 path = BezPath::new();
                                 path.move_to(pos);

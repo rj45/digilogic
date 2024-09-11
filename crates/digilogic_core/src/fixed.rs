@@ -437,6 +437,19 @@ impl Fixed {
         }
     }
 
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        assert!(min.0 <= max.0);
+
+        if self.0 < min.0 {
+            Self(min.0)
+        } else if self.0 > max.0 {
+            Self(max.0)
+        } else {
+            self
+        }
+    }
+
     #[cfg(debug_assertions)]
     #[inline]
     pub const fn abs(self) -> Self {
