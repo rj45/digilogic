@@ -1,12 +1,13 @@
 use super::{EntityOffset, HoveredEntity, MouseIdle, MouseMoving, MouseState};
 use crate::spatial_index::SpatialIndex;
-use crate::{ClickEvent, DragEvent, DragType, HoverEvent, PointerButton};
+use crate::{ClickEvent, DragEvent, DragType, HoverEvent, MoveEntity, PointerButton};
+use aery::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_state::prelude::*;
-use digilogic_core::components::*;
 use digilogic_core::states::SimulationState;
-use digilogic_core::transform::{BoundingBox, Transform};
+use digilogic_core::transform::{BoundingBox, GlobalTransform, Transform, Vec2};
 use digilogic_core::Fixed;
+use digilogic_core::{components::*, fixed};
 
 /// Called when a new viewport is added to the world.
 pub(crate) fn on_add_viewport_augment_with_fsm(
@@ -128,7 +129,8 @@ fn mouse_drag_system(
     mut commands: Commands,
     moving_query: Query<&MouseMoving>,
     hover_query: Query<&HoveredEntity>,
-    mut transform_query: Query<(&mut Transform, Has<Port>)>,
+    transform_query: Query<(&Transform, Has<Port>)>,
+    mut move_events: EventWriter<MoveEntity>,
 ) {
     let event = trigger.event();
     let viewport = trigger.entity();
@@ -166,13 +168,115 @@ fn mouse_drag_system(
     };
 
     for entity_offset in moving.0.iter() {
-        if let Ok((mut transform, _)) = transform_query.get_mut(entity_offset.entity) {
-            transform.translation = event.pos + entity_offset.offset;
-        }
+        // send an event to the entity move system, mainly to keep the argument list of this system shorter
+        move_events.send(MoveEntity {
+            viewport,
+            circuit: event.circuit,
+            entity: entity_offset.entity,
+            pos: event.pos,
+            offset: entity_offset.offset,
+        });
     }
 
     if event.drag_type == DragType::End {
         commands.entity(viewport).remove::<MouseMoving>();
         commands.entity(viewport).insert(MouseIdle);
+    }
+}
+
+const SNAP_CANDIDATE_DISTANCE: Fixed = fixed!(500);
+const SNAP_DISTANCE: Fixed = fixed!(7);
+
+/// Move entities while snapping the entity's ports to nearby ports
+pub(crate) fn move_entities_with_snap(
+    mut events: EventReader<MoveEntity>,
+    spatial_indices: Query<&SpatialIndex, With<Circuit>>,
+    children: Query<(Entity, Relations<Child>)>,
+    port_transform_query: Query<&GlobalTransform, With<Port>>,
+    mut transform_query: Query<&mut Transform, Without<Port>>,
+    mut port_positions: Local<Vec<Vec2>>,
+    mut excluded_ports: Local<Vec<Entity>>,
+) {
+    // for each MoveEntity event
+    for event in events.read() {
+        // find the transform for the entity
+        if let Ok(mut transform) = transform_query.get_mut(event.entity) {
+            let proposed_pos = event.pos + event.offset;
+            let delta = proposed_pos - transform.translation;
+
+            // find all ports for the entity
+            port_positions.clear();
+            excluded_ports.clear();
+            children
+                .traverse::<Child>(std::iter::once(event.entity))
+                .for_each(|&mut entity, _| {
+                    if let Ok(port_transform) = port_transform_query.get(entity) {
+                        port_positions.push(port_transform.translation + delta);
+                        excluded_ports.push(entity);
+                    }
+                });
+
+            let mut x_delta = fixed!(0);
+            let mut x_dist = Fixed::MAX_INT;
+
+            let mut y_delta = fixed!(0);
+            let mut y_dist = Fixed::MAX_INT;
+
+            let mut comparisons = 0;
+
+            // check all entities within SNAP_CANDIDATE_DISTANCE for ports to snap to
+            let snap_vec = Vec2 {
+                x: SNAP_CANDIDATE_DISTANCE,
+                y: SNAP_CANDIDATE_DISTANCE,
+            };
+            let bbox = BoundingBox::from_points(proposed_pos - snap_vec, proposed_pos + snap_vec);
+
+            // scan the spatial index for ports within bbox
+            let spatial_index = spatial_indices
+                .get(event.circuit.0)
+                .expect("CircuitID is invalid on MoveEntity event");
+            spatial_index.query(bbox, |entity| {
+                if let Ok(candidate_transform) = port_transform_query.get(*entity) {
+                    if excluded_ports.contains(entity) {
+                        // do not snap to our own ports
+                        return;
+                    }
+
+                    // for each of the moved entity's ports
+                    for port_pos in port_positions.iter() {
+                        // check if the x coordinate of the port is closer, if so, record it
+                        let dx = (port_pos.x - candidate_transform.translation.x).abs();
+                        if dx < x_dist {
+                            x_dist = dx;
+                            x_delta = candidate_transform.translation.x - port_pos.x;
+                        }
+
+                        // check if the y coordinate of the port is closer, if so, record it
+                        let dy = (port_pos.y - candidate_transform.translation.y).abs();
+                        if dy < y_dist {
+                            y_dist = dy;
+                            y_delta = candidate_transform.translation.y - port_pos.y;
+                        }
+
+                        comparisons += 1;
+                    }
+                }
+            });
+
+            // if the closest coordinates are too far away, don't snap to them
+            if x_dist > SNAP_DISTANCE {
+                x_delta = fixed!(0);
+            }
+            if y_dist > SNAP_DISTANCE {
+                y_delta = fixed!(0);
+            }
+
+            // update the position with any snap delta added
+            transform.translation = proposed_pos
+                + Vec2 {
+                    x: x_delta,
+                    y: y_delta,
+                };
+        }
     }
 }

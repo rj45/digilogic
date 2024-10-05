@@ -64,3 +64,12 @@ pub struct DragEvent {
     pub button: PointerButton,
     pub modifiers: Modifiers,
 }
+
+#[derive(Event, Debug)]
+pub struct MoveEntity {
+    pub viewport: Entity,
+    pub circuit: CircuitID,
+    pub entity: Entity,
+    pub pos: Vec2,
+    pub offset: Vec2,
+}
