@@ -18,8 +18,8 @@ pub struct Palette {
 impl Default for Palette {
     fn default() -> Self {
         Self {
-            logic_0_color: [20, 110, 35],
-            logic_1_color: [40, 220, 70],
+            logic_0_color: [0, 45, 8],
+            logic_1_color: [16, 221, 0],
             high_z_color: [80, 80, 90],
             undefined_color: [200, 220, 50],
         }
