@@ -62,6 +62,41 @@ yosys -p "read_verilog <INPUT_VERILOG>.v; hierarchy -auto-top; proc; opt; fsm -e
 
 If it crashes/errors on loading, it likely contains components that have not been implemented yet. Simplify your verilog until it works.
 
+## Code Overview
+
+The architecture is kind of an onion-like layered architecture with core at the center, and the main crate on the outermost layer. But there's a few lumps where simulation, automatic routing and layout, and other features live.
+
+```plaintext
+.
+├── assets -- Images, fonts and other resources
+└── crates -- Main crates, set up as a mono-repo of sorts
+    ├── digilogic -- Main crate with UI, drawing and window management
+    │   ├── assets
+    │   │   ├── schemalib -- SVG symbols from the wonderful schemalib project
+    │   │   │   └── symbols
+    │   │   └── testdata -- Some example project files for testing
+    │   └── src -- Source code for the main crate
+    │       └── ui -- UI related code
+    ├── digilogic_core -- The core data types, used by most crates
+    │   └── src
+    ├── digilogic_gsim -- The simulation engine
+    │   └── src
+    ├── digilogic_layout -- Automatic layout code, mainly used when importing verilog
+    │   └── src
+    ├── digilogic_netcode -- The netcode connecting the simulation server and UI
+    │   └── src
+    ├── digilogic_routing -- Automatic wire routing code
+    │   └── src
+    ├── digilogic_serde -- Import / Export code for Digital and Yosys (Verilog)
+    │   ├── src
+    │   │   ├── digital
+    │   │   ├── json
+    │   │   └── yosys
+    │   └── testdata
+    └── digilogic_ux -- The UX (User eXperience) code -- sits between ui and core
+        └── src
+```
+
 ## Credits
 
 The vast majority of the code in this repo is written by [Mathis Rech](https://github.com/Artentus), especially the simulation engine and auto-router.
