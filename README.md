@@ -64,7 +64,13 @@ If it crashes/errors on loading, it likely contains components that have not bee
 
 ## Code Overview
 
-The architecture is kind of an onion-like layered architecture with core at the center, and the main crate on the outermost layer. But there's a few lumps where simulation, automatic routing and layout, and other features live.
+The architecture is kind of an onion-like layered architecture with core at the center, and the main crate on the outermost layer. But there's a few lumps where simulation, automatic routing and layout, and other features live. More information can be found in the [docs folder](./docs/).
+
+This app is built like a game, using game engine technology. We're using [Bevy ECS](https://docs.rs/bevy_ecs/latest/bevy_ecs/) to allow the code to be more modular. We also use [Bevy App Plugins](https://bevy-cheatbook.github.io/programming/plugins.html). I highly recommend reading through the `Unofficial Bevy Cheatbook`'s chapter on the [Bevy Programming Framework](https://bevy-cheatbook.github.io/programming.html) which covers the fundamental building blocks we're using.
+
+Most crates in the [crates](./crates/) folder are also bevy plugins. Anything that's used by several crates should be moved into [core](./crates/digilogic_core/) rather than building a spider web of dependencies between crates that will be difficult to untangle later.
+
+For windowing and UI we use [eframe](https://docs.rs/eframe/latest/eframe/) and [egui](https://docs.rs/egui/latest/egui/). For all graphics in the main schematic viewport, we use [vello](https://docs.rs/vello/latest/vello/) in order to render as much on the GPU as we can (this is why it's fast, even in debug mode).
 
 ```plaintext
 .
@@ -96,6 +102,8 @@ The architecture is kind of an onion-like layered architecture with core at the 
     └── digilogic_ux -- The UX (User eXperience) code -- sits between ui and core
         └── src
 ```
+
+Again, more information can be found in the [docs folder](./docs/) if you want to learn more.
 
 ## Credits
 

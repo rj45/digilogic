@@ -77,8 +77,6 @@ impl bevy_app::Plugin for CorePlugin {
             .register_type::<components::SymbolID>()
             .register_type::<components::WaypointID>()
             .register_type::<components::EndpointID>()
-            .register_type::<components::WireID>()
-            .register_type::<components::SubnetID>()
             .register_type::<components::NetID>()
             .register_type::<components::CircuitID>()
             .register_type::<components::Shape>()

@@ -42,12 +42,6 @@ pub struct WaypointID(pub Entity);
 pub struct EndpointID(pub Entity);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
-pub struct WireID(pub Entity);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
-pub struct SubnetID(pub Entity);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
 pub struct NetID(pub Entity);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
