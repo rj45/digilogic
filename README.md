@@ -8,13 +8,13 @@ A digital logic simulation and schematic capture program.
     - First class dark mode support
     - Cross platform (Windows, Mac, Linux)
     - Import from verilog via Yosys with auto layout and routing
-    - Import from H. Neeman's [Digital](github.com/hneemann/Digital)
+    - Import from H. Neeman's [Digital](https://github.com/hneemann/Digital)
     - Written in Rust
 - Inspirations:
-    - Issie (github.com/tomcl/issie)
-    - Digital Logic Sim (github.com/SebLague/Digital-Logic-Sim)
-    - Digital (github.com/hneemann/Digital)
-    - LogiSim Evolution (github.com/logisim-evolution/logisim-evolution)
+    - [Issie](https://github.com/tomcl/issie)
+    - [Digital Logic Sim](https://github.com/SebLague/Digital-Logic-Sim)
+    - [Digital](https://github.com/hneemann/Digital)
+    - [LogiSim Evolution](https://github.com/logisim-evolution/logisim-evolution)
 
 ## Status
 
