@@ -60,7 +60,7 @@ impl Corridor {
                 self.pairs.push(pair);
             }
             Movement::Restricted => {
-                // By inserting restricted pairs at the front they are implicitely moved as little as possible
+                // By inserting restricted pairs at the front they are implicitly moved as little as possible
                 self.pairs.insert(self.locked_pairs as usize, pair);
             }
             Movement::Locked => {

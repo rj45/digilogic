@@ -254,7 +254,7 @@ impl PathFinder {
                     let neighbor_node = &graph.nodes[neighbor_index];
                     debug_assert_eq!(neighbor_node.neighbors[dir.opposite()], current_index);
 
-                    // Calculate the new path lenght.
+                    // Calculate the new path length.
                     let new_g_score = self.g_score[&current_index]
                         + current_node
                             .position

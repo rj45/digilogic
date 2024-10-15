@@ -292,9 +292,9 @@ macro_rules! fixed {
     ($v:literal) => {{
         const SCALED: f64 = ($v as f64) * ((1 << $crate::FIXED_FRACT_BITS) as f64);
         const LOWER_BOUND: bool = SCALED >= (i32::MIN as f64);
-        const UPPER_BOUNT: bool = SCALED <= (i32::MAX as f64);
+        const UPPER_BOUND: bool = SCALED <= (i32::MAX as f64);
 
-        if LOWER_BOUND && UPPER_BOUNT {
+        if LOWER_BOUND && UPPER_BOUND {
             $crate::Fixed::from_bits(SCALED as i32)
         } else {
             panic!("Value out of range");
