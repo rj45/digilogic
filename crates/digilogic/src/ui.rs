@@ -258,7 +258,7 @@ fn update_menu(
                 ui.add_space(8.0);
 
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                    global_dark_light_mode_switch(ui);
+                    global_theme_preference_switch(ui);
                     settings.dark_mode = egui.context.style().visuals.dark_mode;
                 });
             });
@@ -282,7 +282,7 @@ fn update_tool_bar(
                 .and_then(|root_circuit| circuits.get(root_circuit.0).ok())
                 .map(|(_, name)| name.0.as_str())
                 .unwrap_or("<No Root Selected>");
-            ComboBox::from_id_source("root_selector")
+            ComboBox::from_id_salt("root_selector")
                 .selected_text(root_name)
                 .show_ui(ui, |ui| {
                     for (circuit, name) in circuits.iter() {

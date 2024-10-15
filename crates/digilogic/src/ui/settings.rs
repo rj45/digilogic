@@ -47,7 +47,7 @@ impl crate::native_main::SimulationEngine {
 fn update_simulator_settings(ui: &mut Ui, settings: &mut AppSettings) {
     ui.horizontal(|ui| {
         ui.label("Backend");
-        ComboBox::from_id_source("backend_selector")
+        ComboBox::from_id_salt("backend_selector")
             .selected_text(settings.backend.text())
             .show_ui(ui, |ui| {
                 for &backend in Backend::ALL {
@@ -63,7 +63,7 @@ fn update_simulator_settings(ui: &mut Ui, settings: &mut AppSettings) {
         Backend::Builtin => {
             ui.horizontal(|ui| {
                 ui.label("Engine");
-                ComboBox::from_id_source("builting_engine_selector")
+                ComboBox::from_id_salt("builting_engine_selector")
                     .selected_text(settings.builtin_backend_engine.text())
                     .show_ui(ui, |ui| {
                         for &engine in crate::native_main::SimulationEngine::ALL {
@@ -115,7 +115,14 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
         match *tab {
-            Page::Appearance => self.context.style_ui(ui),
+            Page::Appearance => {
+                let theme = if self.settings.dark_mode {
+                    Theme::Dark
+                } else {
+                    Theme::Light
+                };
+                self.context.style_ui(ui, theme)
+            }
             Page::Simulator => update_simulator_settings(ui, self.settings),
         }
     }
