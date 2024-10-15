@@ -252,7 +252,7 @@ pub fn draw_wires(
                                 is_root_path = is_root;
                             }
                             VertexKind::WireEnd { junction_kind } => {
-                                let brush = brush.clone().unwrap_or_else(|| {
+                                let brush = brush.unwrap_or_else(|| {
                                     let is_root = is_root_path && app_state.show_root_wires;
 
                                     match (is_root, hovered) {
@@ -268,7 +268,7 @@ pub fn draw_wires(
                                 scene.stroke(
                                     &Stroke::new(width),
                                     Affine::IDENTITY,
-                                    brush.clone(),
+                                    brush,
                                     brush_transform,
                                     &path,
                                 );
