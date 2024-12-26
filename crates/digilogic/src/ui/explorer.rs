@@ -179,7 +179,7 @@ impl bevy_app::Plugin for ExplorerPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.register_type::<EditState>()
             .register_type::<NameEditState>();
-        app.observe(inject_name_edit_state);
+        app.add_observer(inject_name_edit_state);
         app.configure_sets(bevy_app::Update, ExplorerSet.after(MenuSet));
         app.add_systems(bevy_app::Update, update_explorer.in_set(ExplorerSet));
     }

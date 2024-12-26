@@ -7,7 +7,7 @@ const FRACT_MASK: i32 = (1 << FRACT_BITS) - 1;
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]
 #[repr(transparent)]
-#[reflect_value]
+#[reflect(opaque)]
 pub struct Fixed(i32);
 
 impl Fixed {

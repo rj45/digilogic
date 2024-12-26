@@ -19,6 +19,7 @@ client = [
     "dep:digilogic_core",
     "dep:aery",
     "renet/bevy",
+    "renet_netcode/bevy",
 ]
 server = []
 
@@ -34,5 +35,6 @@ bevy_time = { workspace = true, optional = true }
 aery = { workspace = true, optional = true }
 ahash.workspace = true
 renet.workspace = true
+renet_netcode.workspace = true
 
 digilogic_core = { path = "../digilogic_core", optional = true }

@@ -1,5 +1,5 @@
-use renet::transport::*;
 use renet::*;
+use renet_netcode::*;
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, UdpSocket};
 use std::num::NonZeroU8;

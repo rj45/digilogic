@@ -18,7 +18,7 @@ enum SharedStrRepr {
 }
 
 #[derive(Reflect)]
-#[reflect_value]
+#[reflect(opaque)]
 #[repr(transparent)]
 pub struct SharedStr(SharedStrRepr);
 

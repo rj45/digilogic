@@ -510,7 +510,7 @@ pub struct DirectionBundle {
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Component, Reflect)]
     #[repr(transparent)]
-    #[reflect_value]
+    #[reflect(opaque)]
     pub struct Directions: u8 {
         const POS_X = 0x1;
         const NEG_Y = 0x2;

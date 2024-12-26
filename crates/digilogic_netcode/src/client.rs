@@ -433,8 +433,8 @@ impl Plugin for ClientPlugin {
 
         app.init_resource::<NextMessageId>()
             .add_event::<NetcodeTransportError>()
-            .observe(connect)
-            .observe(disconnect);
+            .add_observer(connect)
+            .add_observer(disconnect);
 
         app.add_systems(
             PreUpdate,

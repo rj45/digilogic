@@ -282,7 +282,7 @@ fn update_brush_translation(time: Res<bevy_time::Time>, mut brushes: ResMut<Pale
     const TRANSLATION_PER_SECOND: f64 = 5.0;
     const TRANSLATION_MODULUS: f64 = GRADIENT_COLOR_SIZE * 2.0 * 3.0 * 4.0;
 
-    brushes.brush_translation += TRANSLATION_PER_SECOND * time.delta_seconds_f64();
+    brushes.brush_translation += TRANSLATION_PER_SECOND * time.delta_secs_f64();
     brushes.brush_translation %= TRANSLATION_MODULUS;
 }
 

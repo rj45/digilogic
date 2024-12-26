@@ -16,7 +16,7 @@ missing-debug-implementations = "warn"
 non-ascii-idents = "forbid"
 non-local-definitions = "forbid"
 redundant-lifetimes = "warn"
-rust_2024_compatibility = { level = "forbid", priority = -1 }
+rust_2024_compatibility = { level = "warn", priority = -1 }
 single-use-lifetimes = "warn"
 unit-bindings = "warn"
 unnameable-types = "warn"
@@ -63,25 +63,25 @@ rfd = "0.14.1"
 vello = "0.3.0"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
-bevy_core = "0.14.1"
-bevy_tasks = "0.14.1"
-bevy_ecs = { version = "0.14.1", features = [
+bevy_core = "0.15.0"
+bevy_tasks = "0.15.0"
+bevy_ecs = { version = "0.15.0", features = [
     "multi_threaded",
     "serialize",
 ] }
-bevy_reflect = "0.14.1"
-bevy_derive = "0.14.1"
-bevy_app = "0.14.1"
-bevy_log = "0.14.1"
-bevy_time = "0.14.1"
-bevy_state = { version = "0.14.1", default-features = false, features = [
+bevy_reflect = "0.15.0"
+bevy_derive = "0.15.0"
+bevy_app = "0.15.0"
+bevy_log = "0.15.0"
+bevy_time = "0.15.0"
+bevy_state = { version = "0.15.0", default-features = false, features = [
     "bevy_app",
     "bevy_reflect",
 ] }
-bevy-inspector-egui = { version = "0.27.0", default-features = false, features = [
+bevy-inspector-egui = { version = "0.28.0", default-features = false, features = [
     "highlight_changes",
 ] }
-aery = "0.7.4"
+aery = "0.8.0"
 smallvec = "1.13"
 static_assertions = "1.1.0"
 bitflags = "2.6.0"
@@ -89,7 +89,8 @@ ahash = "0.8.11"
 serde-xml-rs = "0.6"
 bvh-arena = "1.1"
 priority-queue = "2.0.3"
-renet = { version = "0.0.16", features = ["serde"] }
+renet = "1.0.0"
+renet_netcode = "1.0.0"
 petgraph = "0.6.5"
 clap = { version = "4.5.16", features = ["derive"] }
 bytemuck = "1.17.0"

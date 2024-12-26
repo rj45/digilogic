@@ -227,8 +227,8 @@ impl bevy_app::Plugin for RoutingPlugin {
 
         app.init_resource::<RoutingConfig>();
         app.add_event::<RoutingComplete>();
-        app.observe(inject_graph);
-        app.observe(inject_vertices);
+        app.add_observer(inject_graph);
+        app.add_observer(inject_vertices);
         app.add_systems(bevy_app::PreUpdate, route.in_set(RoutingSet));
         app.add_systems(bevy_app::PostUpdate, route_on_config_change);
         app.add_systems(
