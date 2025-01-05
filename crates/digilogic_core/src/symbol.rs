@@ -194,6 +194,62 @@ const KINDS: &[SymbolDef] = &[
             directions: Directions::NEG_X,
         }],
     },
+    SymbolDef {
+        kind: SymbolKind::Mux,
+        name: SharedStr::new_static("MUX"),
+        designator_prefix: SharedStr::new_static("U"),
+        bounding_box: BoundingBox::from_top_left_size(
+            Vec2 {
+                x: fixed!(0),
+                y: fixed!(0),
+            },
+            fixed!(40),
+            fixed!(40),
+        ),
+        shape: Shape::Chip,
+        ports: &[
+            PortDef {
+                name: SharedStr::new_static("S"),
+                position: Vec2 {
+                    x: fixed!(20),
+                    y: fixed!(40),
+                },
+                input: true,
+                output: false,
+                directions: Directions::POS_Y,
+            },
+            PortDef {
+                name: SharedStr::new_static("A"),
+                position: Vec2 {
+                    x: fixed!(0),
+                    y: fixed!(0),
+                },
+                input: true,
+                output: false,
+                directions: Directions::NEG_X,
+            },
+            PortDef {
+                name: SharedStr::new_static("B"),
+                position: Vec2 {
+                    x: fixed!(0),
+                    y: fixed!(40),
+                },
+                input: true,
+                output: false,
+                directions: Directions::NEG_X,
+            },
+            PortDef {
+                name: SharedStr::new_static("Y"),
+                position: Vec2 {
+                    x: fixed!(40),
+                    y: fixed!(20),
+                },
+                input: false,
+                output: true,
+                directions: Directions::POS_X,
+            },
+        ],
+    },
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]

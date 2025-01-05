@@ -78,16 +78,6 @@ fn translate_circuit(
     Ok(circuit_id)
 }
 
-// NOTE: Must be kept in sync with ElementName!
-const KIND_MAP: [SymbolKind; 6] = [
-    SymbolKind::And,
-    SymbolKind::Or,
-    SymbolKind::Xor,
-    SymbolKind::Not,
-    SymbolKind::In,
-    SymbolKind::Out,
-];
-
 fn translate_symbol(
     symbol: &circuitfile::VisualElement,
     commands: &mut Commands,
@@ -95,7 +85,7 @@ fn translate_symbol(
     pos_map: &mut HashMap<Vec2, PosEntry>,
     symbols: &SymbolRegistry,
 ) -> Result<(), anyhow::Error> {
-    let mut symbol_builder = symbols.get(KIND_MAP[symbol.element_name as usize]);
+    let mut symbol_builder = symbols.get(symbol.element_name.into());
 
     let pos = Vec2 {
         x: symbol.pos.x.try_into()?,

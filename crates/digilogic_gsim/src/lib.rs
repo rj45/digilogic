@@ -166,6 +166,31 @@ impl SimServer for GsimServer {
             .map_err(component_error_to_server_error)
     }
 
+    fn add_mux(
+        &mut self,
+        client_id: ClientId,
+        width: NonZeroU8,
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
+        let builder = self.get_builder_mut(client_id)?;
+
+        let output_width = builder
+            .get_wire_width(output)
+            .map_err(|_| ServerError::InvalidNetId)?;
+        if width != output_width {
+            return Err(ServerError::WidthMismatch);
+        }
+
+        // TODO: probably better to not pack select inside the inputs, I was being lazy
+        let select = inputs[0];
+        let inputs = &inputs[1..];
+
+        builder
+            .add_multiplexer(inputs, select, output)
+            .map_err(component_error_to_server_error)
+    }
+
     fn set_net_drive(
         &mut self,
         client_id: ClientId,

@@ -137,6 +137,12 @@ enum ClientMessageKind {
         output: NetId,
     },
 
+    AddMux {
+        width: NonZeroU8,
+        inputs: Vec<NetId>, // TODO: handle select better
+        output: NetId,
+    },
+
     SetNetDrive {
         net: NetId,
         bit_plane_0: Vec<u8>,

@@ -50,7 +50,7 @@ pub struct VisualElements {
 }
 
 /// NOTE: Must be kept in sync with SymbolKind!
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum ElementName {
     And,
@@ -60,6 +60,21 @@ pub enum ElementName {
     Not,
     In,
     Out,
+    Multiplexer,
+}
+
+impl From<ElementName> for digilogic_core::components::SymbolKind {
+    fn from(name: ElementName) -> Self {
+        match name {
+            ElementName::And => digilogic_core::components::SymbolKind::And,
+            ElementName::Or => digilogic_core::components::SymbolKind::Or,
+            ElementName::Xor => digilogic_core::components::SymbolKind::Xor,
+            ElementName::Not => digilogic_core::components::SymbolKind::Not,
+            ElementName::In => digilogic_core::components::SymbolKind::In,
+            ElementName::Out => digilogic_core::components::SymbolKind::Out,
+            ElementName::Multiplexer => digilogic_core::components::SymbolKind::Mux,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]

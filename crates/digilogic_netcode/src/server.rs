@@ -72,6 +72,17 @@ pub trait SimServer {
         Err(ServerError::Unsupported)
     }
 
+    fn add_mux(
+        &mut self,
+        client_id: ClientId,
+        width: NonZeroU8,
+        inputs: &[Self::NetId],
+        output: Self::NetId,
+    ) -> ServerResult<Self::CellId> {
+        let _ = (client_id, width, inputs, output);
+        Err(ServerError::Unsupported)
+    }
+
     fn set_net_drive(
         &mut self,
         client_id: ClientId,
@@ -324,6 +335,25 @@ impl<S: SimServer> Adapter<S> {
         Ok(())
     }
 
+    fn add_mux(
+        &mut self,
+        client_id: ClientId,
+        width: NonZeroU8,
+        inputs: &[NetId],
+        output: NetId,
+    ) -> ServerResult<()> {
+        let client_state = client_state!(mut self, client_id);
+        self.net_id_buffer.clear();
+        self.net_id_buffer
+            .extend(inputs.iter().map(|&id| client_state.net_map[id]));
+        let output = client_state.net_map[output];
+        let cell_id = self
+            .inner
+            .add_mux(client_id, width, &self.net_id_buffer, output)?;
+        client_state.cell_map.insert(cell_id)?;
+        Ok(())
+    }
+
     fn set_net_drive(
         &mut self,
         client_id: ClientId,
@@ -406,6 +436,12 @@ fn process_message<S: SimServer>(
             input,
             output,
         } => adapter.add_not_gate(client_id, width, input, output)?,
+
+        ClientMessageKind::AddMux {
+            width,
+            inputs,
+            output,
+        } => adapter.add_mux(client_id, width, &inputs, output)?,
 
         ClientMessageKind::SetNetDrive {
             net,

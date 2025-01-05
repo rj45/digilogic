@@ -1,0 +1,10 @@
+Project(
+    name: "Test Project",
+    circuits: [
+        "small.dig",
+        "medium.dig",
+        "large.dig",
+        "mux.dig",
+    ],
+    root_circuit: 0,
+)

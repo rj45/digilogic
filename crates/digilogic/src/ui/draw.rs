@@ -7,6 +7,7 @@ use digilogic_core::components::*;
 use digilogic_core::transform::*;
 use digilogic_core::visibility::ComputedVisibility;
 use digilogic_routing::{VertexKind, Vertices};
+use vello::kurbo::Shape as _;
 use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Line, Rect, Stroke, Vec2};
 use vello::peniko::{Color, Fill, Font};
 
@@ -391,8 +392,8 @@ pub fn init_symbol_shapes(mut symbol_svgs: ResMut<SymbolShapes>) {
         // Chip
         SymbolShape {
             paths: vec![PathInfo {
-                kind: PathKind::FILL,
-                path: bez_path!(),
+                kind: PathKind::FILL | PathKind::STROKE,
+                path: Rect::new(0.0, 0.0, 40.0, 40.0).to_path(0.1),
             }],
         },
         // And -- from schemalib-and2-l.svg

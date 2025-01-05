@@ -407,6 +407,14 @@ fn build(
                             output,
                         },
                     }),
+                    SymbolKind::Mux => client.send_command_message(ClientMessage {
+                        id: next_message_id.get(),
+                        kind: ClientMessageKind::AddMux {
+                            width: NonZeroU8::MIN, // TODO: use actual net width
+                            inputs,
+                            output,
+                        },
+                    }),
                 }
             }
         },

@@ -30,6 +30,7 @@ pub enum SymbolKind {
     Not,
     In,
     Out,
+    Mux,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Reflect)]
