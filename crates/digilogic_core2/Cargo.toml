@@ -1,0 +1,15 @@
+[package]
+name = "digilogic_core2"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+
+slotmap = { version = "1.0.7", features = ["serde"] }
