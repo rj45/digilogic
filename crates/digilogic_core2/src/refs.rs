@@ -1,4 +1,4 @@
-use crate::structs;
+use crate::{structs, Project};
 
 pub trait Mutability {
     type Ref<'a, T: ?Sized>: std::ops::Deref<Target = T>
@@ -6,7 +6,9 @@ pub trait Mutability {
         T: 'a;
 }
 
+#[derive(Debug)]
 pub enum Immutable {}
+
 impl Mutability for Immutable {
     type Ref<'a, T: ?Sized>
         = &'a T
@@ -14,7 +16,9 @@ impl Mutability for Immutable {
         T: 'a;
 }
 
+#[derive(Debug)]
 pub enum Mutable {}
+
 impl Mutability for Mutable {
     type Ref<'a, T: ?Sized>
         = &'a mut T
@@ -165,29 +169,67 @@ impl EndpointRef<'_, Mutable> {
     }
 }
 
-// impl<'a, M: Mutability> SymbolKindRef<'a, M> {
-//     pub fn ports<'b>(&'b self) -> impl Iterator<Item = PortRef<'b, Immutable>> + use<'a, 'b, M> {
-//         self.ports.iter().map(move |&id| PortRef {
-//             id,
-//             project: &*self.project,
-//         })
-//     }
-// }
+macro_rules! one_to_many {
+    ($ref:ident, $foreign_ref:ident, $foreign_list:ident, $each_mut:ident) => {
+        impl<M: Mutability> $ref<'_, M> {
+            pub fn $foreign_list(
+                &self,
+            ) -> impl Iterator<Item = $foreign_ref<Immutable>> + use<'_, M> {
+                let project = &*self.project;
+                self.$foreign_list
+                    .iter()
+                    .map(move |&id| $foreign_ref { id, project })
+            }
+        }
 
-// impl<M: Mutability> SymbolKindRef<'_, M> {
-//     pub fn ports(&self) -> impl Iterator<Item = PortRef<'_, Immutable>> {
-//         self.ports.iter().map(move |&id| PortRef {
-//             id,
-//             project: &*self.project,
-//         })
-//     }
-// }
+        impl $ref<'_, Mutable> {
+            pub fn $each_mut(&mut self, mut f: impl FnMut($foreign_ref<Mutable>)) {
+                let item_len = self.$foreign_list.len();
+                for i in 0..item_len {
+                    let id = self.$foreign_list[i];
+                    let project = &mut *self.project;
+                    let item = $foreign_ref { id, project };
+                    f(item);
+                }
+            }
+        }
+    };
+}
 
-// impl<'a> SymbolKindRef<'a, Mutable> {
-//     pub fn ports_mut<'b>(&'b mut self) -> impl Iterator<Item = PortRef<'b, Mutable>> {
-//         self.ports.iter().map(|&id| PortRef {
-//             id,
-//             project: &mut *self.project,
-//         })
-//     }
-// }
+one_to_many!(SymbolKindRef, PortRef, ports, each_port_mut);
+one_to_many!(SymbolRef, EndpointRef, endpoints, each_endpoint_mut);
+one_to_many!(SubnetRef, EndpointRef, endpoints, each_endpoint_mut);
+one_to_many!(NetRef, SubnetRef, subnets, each_subnet_mut);
+one_to_many!(ModuleRef, SymbolRef, symbols, each_symbol_mut);
+one_to_many!(ModuleRef, NetRef, nets, each_net_mut);
+
+macro_rules! project_wrapper {
+    ($name:ident, $ref: ident, $each_mut: ident) => {
+        pub fn $name(&self) -> impl Iterator<Item = $ref<Immutable>> {
+            self.$name
+                .iter()
+                .map(move |(id, _)| $ref { id, project: self })
+        }
+
+        pub fn $each_mut(&mut self, mut f: impl FnMut($ref<Mutable>)) {
+            let item_len = self.$name.len();
+            let keys = self.$name.keys().collect::<Vec<_>>();
+            for i in 0..item_len {
+                let project = &mut *self;
+                let id = keys[i];
+                let item = $ref { id, project };
+                f(item);
+            }
+        }
+    };
+}
+
+impl Project {
+    project_wrapper!(ports, PortRef, each_port_mut);
+    project_wrapper!(symbol_kinds, SymbolKindRef, each_symbol_kind_mut);
+    project_wrapper!(symbols, SymbolRef, each_symbol_mut);
+    project_wrapper!(endpoints, EndpointRef, each_endpoint_mut);
+    project_wrapper!(subnets, SubnetRef, each_subnet_mut);
+    project_wrapper!(nets, NetRef, each_net_mut);
+    project_wrapper!(modules, ModuleRef, each_module_mut);
+}
