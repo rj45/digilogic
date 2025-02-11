@@ -1,4 +1,5 @@
 mod builder;
+pub mod intern;
 mod refs;
 mod structs;
 pub mod yosys;

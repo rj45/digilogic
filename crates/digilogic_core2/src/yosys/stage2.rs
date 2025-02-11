@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::intern::Intern;
+
 use super::stage1;
 
 #[derive(Debug)]
@@ -44,36 +46,41 @@ pub struct Project {
     pub bits: Vec<Option<BitAssignment>>,
     pub extra_bits: Vec<BitAssignment>,
     pub const_bits: Vec<BitAssignment>,
+    pub intern: Intern,
+}
+
+impl Project {
+    pub fn intern(&mut self, name: &str) -> Arc<str> {
+        self.intern.intern(name)
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct NetAssignment {
     /// Index into `Module::nets` for the net
-    index: usize,
+    pub index: usize,
 
     /// Which bit of the net this assignment is for
-    bit: usize,
+    pub bit: usize,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct BitAssignment {
-    name: Arc<str>,
-    port: Arc<str>,
-    bit: usize,
-    value: Option<crate::WireState>,
+    pub name: Arc<str>,
+    pub port: Arc<str>,
+    pub bit: usize,
+    pub value: Option<crate::WireState>,
 
-    net: Option<NetAssignment>,
+    pub net: Option<NetAssignment>,
 
     /// Index into `extra_bits` for more than one
     /// assignment for this bit.
-    next: Option<usize>,
+    pub next: Option<usize>,
 }
 
 #[derive(Debug, Default)]
 pub struct Importer {
     project: Project,
-
-    intern: HashSet<Arc<str>>,
 }
 
 impl Importer {
@@ -83,17 +90,10 @@ impl Importer {
     }
 
     fn intern(&mut self, name: &str) -> Arc<str> {
-        match self.intern.get(name) {
-            Some(name) => name.clone(),
-            None => {
-                let name: Arc<str> = Arc::from(name);
-                self.intern.insert(name.clone());
-                name
-            }
-        }
+        self.project.intern(name)
     }
 
-    pub fn translate(mut self, netlist: &stage1::Netlist) -> anyhow::Result<Project> {
+    fn translate(mut self, netlist: &stage1::Netlist) -> anyhow::Result<Project> {
         for (name, module) in netlist.modules.iter() {
             let name = self.intern(name);
             let ports = self.translate_ports(name.clone(), &module.ports);

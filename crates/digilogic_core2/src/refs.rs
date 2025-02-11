@@ -122,7 +122,7 @@ macro_rules! one_to_one {
 }
 
 one_to_one!(PortRef, SymbolKindRef, symbol_kind, symbol_kind_mut);
-one_to_one!(SymbolKindRef, ModuleRef, module, module_mut);
+// one_to_one!(SymbolKindRef, ModuleRef, module, module_mut);
 one_to_one!(SymbolRef, SymbolKindRef, symbol_kind, symbol_kind_mut);
 one_to_one!(ModuleRef, SymbolKindRef, symbol_kind, symbol_kind_mut);
 

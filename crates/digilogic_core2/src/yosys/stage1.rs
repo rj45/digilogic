@@ -13,11 +13,11 @@
 //! ```
 
 use serde::Deserialize;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display, sync::Arc};
 
 /// The known Yosys cell types
 #[allow(missing_docs)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CellType {
     Not,
     Pos,
@@ -68,7 +68,64 @@ pub enum CellType {
     MemWrV2,
     MemInitV2,
     MemV2,
-    Unknown(String),
+    Unknown(Arc<str>),
+}
+
+impl Display for CellType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Not => write!(f, "$not"),
+            Self::Pos => write!(f, "$pos"),
+            Self::Neg => write!(f, "$neg"),
+            Self::ReduceAnd => write!(f, "$reduce_and"),
+            Self::ReduceOr => write!(f, "$reduce_or"),
+            Self::ReduceXor => write!(f, "$reduce_xor"),
+            Self::ReduceXnor => write!(f, "$reduce_xnor"),
+            Self::ReduceBool => write!(f, "$reduce_bool"),
+            Self::LogicNot => write!(f, "$logic_not"),
+            Self::And => write!(f, "$and"),
+            Self::Or => write!(f, "$or"),
+            Self::Xor => write!(f, "$xor"),
+            Self::Xnor => write!(f, "$xnor"),
+            Self::Shl => write!(f, "$shl"),
+            Self::Sshl => write!(f, "$sshl"),
+            Self::Shr => write!(f, "$shr"),
+            Self::Sshr => write!(f, "$sshr"),
+            Self::LogicAnd => write!(f, "$logic_and"),
+            Self::LogicOr => write!(f, "$logic_or"),
+            Self::EqX => write!(f, "$eqx"),
+            Self::NeX => write!(f, "$nex"),
+            Self::Pow => write!(f, "$pow"),
+            Self::Lt => write!(f, "$lt"),
+            Self::Le => write!(f, "$le"),
+            Self::Eq => write!(f, "$eq"),
+            Self::Ne => write!(f, "$ne"),
+            Self::Ge => write!(f, "$ge"),
+            Self::Gt => write!(f, "$gt"),
+            Self::Add => write!(f, "$add"),
+            Self::Sub => write!(f, "$sub"),
+            Self::Mul => write!(f, "$mul"),
+            Self::Div => write!(f, "$div"),
+            Self::Mod => write!(f, "$mod"),
+            Self::DivFloor => write!(f, "$div_floor"),
+            Self::ModFloor => write!(f, "$mod_floor"),
+            Self::Mux => write!(f, "$mux"),
+            Self::Pmux => write!(f, "$pmux"),
+            Self::TriBuf => write!(f, "$tribuf"),
+            Self::Sr => write!(f, "$sr"),
+            Self::Dff => write!(f, "$dff"),
+            Self::Dffe => write!(f, "$dffe"),
+            Self::Sdff => write!(f, "$sdff"),
+            Self::Sdffe => write!(f, "$sdffe"),
+            Self::Sdffce => write!(f, "$sdffce"),
+            Self::Dlatch => write!(f, "$dlatch"),
+            Self::MemRdV2 => write!(f, "$memrd"),
+            Self::MemWrV2 => write!(f, "$memwr"),
+            Self::MemInitV2 => write!(f, "$meminit"),
+            Self::MemV2 => write!(f, "$mem"),
+            Self::Unknown(name) => write!(f, "{}", name),
+        }
+    }
 }
 
 impl From<String> for CellType {
@@ -123,7 +180,7 @@ impl From<String> for CellType {
             "$memwr_v2" => Self::MemWrV2,
             "$meminit_v2" => Self::MemInitV2,
             "$mem_v2" => Self::MemV2,
-            _ => Self::Unknown(value),
+            _ => Self::Unknown(value.into()),
         }
     }
 }

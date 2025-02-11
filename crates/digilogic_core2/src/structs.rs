@@ -3,7 +3,9 @@ use std::{str::FromStr, sync::Arc};
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
 
-#[derive(Default, Debug, Clone, Copy, Deserialize, Serialize)]
+use crate::intern::Intern;
+
+#[derive(Default, Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum WireState {
     #[default]
     #[serde(rename = "0")]
@@ -30,20 +32,21 @@ impl FromStr for WireState {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Direction {
+    #[default]
     In,
     Out,
     InOut,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Size {
     pub width: u32,
     pub height: u32,
@@ -68,7 +71,7 @@ new_key_type! {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymbolKind {
-    pub module: ModuleID,
+    pub module: Option<ModuleID>,
     pub ports: Vec<PortID>,
     pub size: Size,
     pub name: Arc<str>,
@@ -139,6 +142,9 @@ pub struct Project {
     pub symbols: SlotMap<SymbolID, Symbol>,
     pub symbol_kinds: SlotMap<SymbolKindID, SymbolKind>,
     pub ports: SlotMap<PortID, Port>,
+
+    #[serde(skip)]
+    pub intern: Intern,
 }
 
 impl Default for Project {
@@ -151,6 +157,7 @@ impl Default for Project {
             symbols: SlotMap::with_key(),
             symbol_kinds: SlotMap::with_key(),
             ports: SlotMap::with_key(),
+            intern: Intern::default(),
         }
     }
 }
