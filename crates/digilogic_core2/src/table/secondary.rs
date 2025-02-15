@@ -16,9 +16,24 @@ pub struct SecondaryTable<K, V, IdGen = ()> {
     idgen: IdGen,
 }
 
-impl<K, V, IdGen: IdGenerator<K>> Default for SecondaryTable<K, V, IdGen> {
+impl<K, V, IdGen: Default> Default for SecondaryTable<K, V, IdGen> {
     fn default() -> Self {
         Self::with_capacity(0)
+    }
+}
+
+impl<K, V, IdGen: Default> SecondaryTable<K, V, IdGen> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            rows: Vec::with_capacity(capacity),
+            ids: Vec::with_capacity(capacity),
+            index: IntMap::default(),
+            idgen: IdGen::default(),
+        }
     }
 }
 
@@ -30,26 +45,15 @@ impl<T, IdGen: IdGenerator<T>> SecondaryTable<T, T, IdGen> {
 
     /// Insert a value and return the Id of the inserted value.
     pub fn insert(&mut self, value: T) -> Id<T> {
+        match self.try_insert(value) {
+            Ok(id) => id,
+            Err(e) => panic!("{}", e),
+        }
+    }
+
+    pub fn try_insert(&mut self, value: T) -> Result<Id<T>, Error> {
         let id = self.idgen.next_id();
-        if let Err(e) = self.insert_with_id(id, value) {
-            panic!("{}", e);
-        }
-        id
-    }
-}
-
-impl<K, V, IdGen: IdGenerator<K>> SecondaryTable<K, V, IdGen> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            rows: Vec::with_capacity(capacity),
-            ids: Vec::with_capacity(capacity),
-            index: IntMap::default(),
-            idgen: IdGen::new_gen(),
-        }
+        self.insert_with_id(id, value).map(|_| id)
     }
 }
 

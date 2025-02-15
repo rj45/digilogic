@@ -1,6 +1,5 @@
 //! A slot map that takes pre-hashed random IDs as keys.
 
-use core::panic;
 use std::marker::PhantomData;
 
 use rand_pcg::rand_core::RngCore;
@@ -60,54 +59,53 @@ impl<T> Id<T> {
     }
 }
 
-pub trait IdGenerator<T> {
-    fn new_gen() -> Self;
+pub trait IdGenerator<T>: Default {
     fn next_id(&mut self) -> Id<T>;
 }
 
-impl<T> IdGenerator<T> for Pcg32 {
-    fn new_gen() -> Self {
-        Pcg32::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7)
-    }
-    fn next_id(&mut self) -> Id<T> {
-        Id::new(self.next_u32())
+#[derive(Debug)]
+pub struct DefaultIdGenerator(Pcg32);
+
+impl Default for DefaultIdGenerator {
+    fn default() -> Self {
+        Self(Pcg32::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7))
     }
 }
 
-impl<T> IdGenerator<T> for () {
-    fn new_gen() -> Self {}
+impl<T> IdGenerator<T> for DefaultIdGenerator {
     fn next_id(&mut self) -> Id<T> {
-        panic!("no ID generator provided");
+        Id::new(self.0.next_u32())
     }
 }
 
-type Table<T> = SecondaryTable<T, T, Pcg32>;
+/// A table that uses random IDs as keys.
+pub type Table<T> = SecondaryTable<T, T, DefaultIdGenerator>;
 
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn test_map() {
-        let mut map = Table::default();
-        let id1 = map.insert(1);
-        let id2 = map.insert(2);
-        let id3 = map.insert(3);
-        assert_eq!(map.get(&id1), Some(&1));
-        assert_eq!(map.get(&id2), Some(&2));
-        assert_eq!(map.get(&id3), Some(&3));
-        assert_eq!(map.remove(&id2), Some(2));
-        assert_eq!(map.get(&id2), None);
-        assert_eq!(map.get(&id3), Some(&3));
-        let id4 = map.insert(4);
-        assert_eq!(map.get(&id4), Some(&4));
-        assert_eq!(map.get(&id3), Some(&3));
-        assert_eq!(map.remove(&id3), Some(3));
-        assert_eq!(map.get(&id3), None);
-        assert_eq!(map.get(&id4), Some(&4));
-        assert_eq!(map.remove(&id1), Some(1));
-        assert_eq!(map.remove(&id4), Some(4));
-        assert_eq!(map.get(&id1), None);
-        assert_eq!(map.get(&id4), None);
+    fn test_table() {
+        let mut table = Table::default();
+        let id1 = table.insert(1);
+        let id2 = table.insert(2);
+        let id3 = table.insert(3);
+        assert_eq!(table.get(&id1), Some(&1));
+        assert_eq!(table.get(&id2), Some(&2));
+        assert_eq!(table.get(&id3), Some(&3));
+        assert_eq!(table.remove(&id2), Some(2));
+        assert_eq!(table.get(&id2), None);
+        assert_eq!(table.get(&id3), Some(&3));
+        let id4 = table.insert(4);
+        assert_eq!(table.get(&id4), Some(&4));
+        assert_eq!(table.get(&id3), Some(&3));
+        assert_eq!(table.remove(&id3), Some(3));
+        assert_eq!(table.get(&id3), None);
+        assert_eq!(table.get(&id4), Some(&4));
+        assert_eq!(table.remove(&id1), Some(1));
+        assert_eq!(table.remove(&id4), Some(4));
+        assert_eq!(table.get(&id1), None);
+        assert_eq!(table.get(&id4), None);
     }
 }
