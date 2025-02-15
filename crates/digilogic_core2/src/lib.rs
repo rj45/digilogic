@@ -1,9 +1,9 @@
 mod builder;
 pub mod intern;
-mod refs;
+pub mod rtlil;
 mod structs;
+pub mod table;
 pub mod yosys;
 
 pub use builder::*;
-pub use refs::*;
 pub use structs::*;

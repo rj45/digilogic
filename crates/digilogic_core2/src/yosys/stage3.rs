@@ -348,22 +348,5 @@ mod test {
         //         },
         //     ),
         // }
-
-        let module = project.modules().next().unwrap();
-        assert_eq!(module.name, "test".into());
-
-        let symbol_kind = module.symbol_kind();
-        assert_eq!(symbol_kind.name, "test".into());
-
-        let ports = symbol_kind.ports().collect::<Vec<_>>();
-        assert_eq!(ports.len(), 2);
-
-        let port = ports[0];
-        assert_eq!(port.name, "x".into());
-        assert_eq!(port.direction, Direction::In);
-
-        let port = ports[1];
-        assert_eq!(port.name, "y".into());
-        assert_eq!(port.direction, Direction::In);
     }
 }

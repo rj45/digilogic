@@ -100,6 +100,7 @@ impl ProjectBuilder {
             .max()
             .unwrap_or(0);
         let symbol_id = self.project.symbols.insert(Symbol {
+            module,
             symbol_kind,
             endpoints: Vec::new(),
             position: Position::default(),
