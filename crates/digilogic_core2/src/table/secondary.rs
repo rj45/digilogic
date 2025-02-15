@@ -6,29 +6,54 @@ use nohash_hasher::IntMap;
 
 use super::Error;
 use super::Id;
+use super::IdGenerator;
 
 #[derive(Debug)]
-pub struct SecondaryTable<K, V> {
+pub struct SecondaryTable<K, V, IdGen = ()> {
     rows: Vec<V>,
     ids: Vec<Id<K>>,
     index: IntMap<u32, u32>,
+    idgen: IdGen,
 }
 
-impl<K, V> Default for SecondaryTable<K, V> {
+impl<K, V, IdGen: IdGenerator<K>> Default for SecondaryTable<K, V, IdGen> {
     fn default() -> Self {
         Self::with_capacity(0)
     }
 }
 
-impl<K, V> SecondaryTable<K, V> {
+impl<T, IdGen: IdGenerator<T>> SecondaryTable<T, T, IdGen> {
+    /// Reserve a valid Id without inserting a value.
+    pub fn reserve_id(&mut self) -> Id<T> {
+        self.idgen.next_id()
+    }
+
+    /// Insert a value and return the Id of the inserted value.
+    pub fn insert(&mut self, value: T) -> Id<T> {
+        let id = self.idgen.next_id();
+        if let Err(e) = self.insert_with_id(id, value) {
+            panic!("{}", e);
+        }
+        id
+    }
+}
+
+impl<K, V, IdGen: IdGenerator<K>> SecondaryTable<K, V, IdGen> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             rows: Vec::with_capacity(capacity),
             ids: Vec::with_capacity(capacity),
             index: IntMap::default(),
+            idgen: IdGen::new_gen(),
         }
     }
+}
 
+impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
     pub fn len(&self) -> usize {
         self.rows.len()
     }
@@ -114,7 +139,6 @@ impl<K, V> SecondaryTable<K, V> {
     }
 
     /// Clears the table, removing all values.
-    /// NOTE: This does not clear the Ids, they are still marked as used.
     pub fn clear(&mut self) {
         self.rows.clear();
         self.ids.clear();
@@ -179,11 +203,11 @@ impl<K, V> SecondaryTable<K, V> {
         }
     }
 
-    pub fn iter(&self) -> SecondaryIter<K, V> {
+    pub fn iter(&self) -> Iter<K, V> {
         let rows = self.rows.iter();
         let ids = self.ids.iter();
         let num_left = rows.len();
-        SecondaryIter {
+        Iter {
             num_left,
             rows,
             ids,
@@ -191,11 +215,11 @@ impl<K, V> SecondaryTable<K, V> {
         }
     }
 
-    pub fn iter_mut(&mut self) -> SecondaryIterMut<K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
         let rows = self.rows.iter_mut();
         let ids = self.ids.iter();
         let num_left = rows.len();
-        SecondaryIterMut {
+        IterMut {
             num_left,
             rows,
             ids,
@@ -203,29 +227,29 @@ impl<K, V> SecondaryTable<K, V> {
         }
     }
 
-    pub fn values(&self) -> SecondaryValues<K, V> {
-        SecondaryValues { inner: self.iter() }
+    pub fn values(&self) -> Values<K, V> {
+        Values { inner: self.iter() }
     }
 
-    pub fn values_mut(&mut self) -> SecondaryValuesMut<K, V> {
-        SecondaryValuesMut {
+    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
+        ValuesMut {
             inner: self.iter_mut(),
         }
     }
 
-    pub fn keys(&self) -> SecondaryKeys<K, V> {
-        SecondaryKeys { inner: self.iter() }
+    pub fn keys(&self) -> Keys<K, V> {
+        Keys { inner: self.iter() }
     }
 
     /// Removes all values from the table and returns an iterator over the removed values.
     /// Iterates from the end of the table to the start, as that is the most efficient.
-    pub fn drain(&mut self) -> SecondaryDrain<K, V> {
+    pub fn drain(&mut self) -> Drain<K, V, IdGen> {
         let cur = self.rows.len();
-        SecondaryDrain { table: self, cur }
+        Drain { table: self, cur }
     }
 }
 
-impl<K, V> Index<Id<K>> for SecondaryTable<K, V> {
+impl<K, V, IdGen> Index<Id<K>> for SecondaryTable<K, V, IdGen> {
     type Output = V;
 
     fn index(&self, index: Id<K>) -> &Self::Output {
@@ -233,40 +257,40 @@ impl<K, V> Index<Id<K>> for SecondaryTable<K, V> {
     }
 }
 
-impl<K, V> IndexMut<Id<K>> for SecondaryTable<K, V> {
+impl<K, V, IdGen> IndexMut<Id<K>> for SecondaryTable<K, V, IdGen> {
     fn index_mut(&mut self, index: Id<K>) -> &mut Self::Output {
         self.get_mut(&index).expect("no entry found for key")
     }
 }
 
-impl<'a, K, V> IntoIterator for &'a SecondaryTable<K, V> {
+impl<'a, K, V, IdGen> IntoIterator for &'a SecondaryTable<K, V, IdGen> {
     type Item = (Id<K>, &'a V);
-    type IntoIter = SecondaryIter<'a, K, V>;
+    type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl<'a, K, V> IntoIterator for &'a mut SecondaryTable<K, V> {
+impl<'a, K, V, IdGen> IntoIterator for &'a mut SecondaryTable<K, V, IdGen> {
     type Item = (Id<K>, &'a mut V);
-    type IntoIter = SecondaryIterMut<'a, K, V>;
+    type IntoIter = IterMut<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
 }
 
-impl<K, V> IntoIterator for SecondaryTable<K, V> {
+impl<K, V, IdGen> IntoIterator for SecondaryTable<K, V, IdGen> {
     type Item = (Id<K>, V);
-    type IntoIter = SecondaryIntoIter<K, V>;
+    type IntoIter = IntoIter<K, V>;
 
-    fn into_iter(self) -> SecondaryIntoIter<K, V> {
+    fn into_iter(self) -> IntoIter<K, V> {
         let num_left = self.rows.len();
         let rows = self.rows.into_iter();
         let ids = self.ids.into_iter();
         let index = self.index.into_iter();
-        SecondaryIntoIter {
+        IntoIter {
             num_left,
             rows,
             ids,
@@ -277,12 +301,12 @@ impl<K, V> IntoIterator for SecondaryTable<K, V> {
 }
 
 #[derive(Debug)]
-pub struct SecondaryDrain<'a, K, V> {
-    table: &'a mut SecondaryTable<K, V>,
+pub struct Drain<'a, K, V, IdGen> {
+    table: &'a mut SecondaryTable<K, V, IdGen>,
     cur: usize,
 }
 
-impl<K, V> Iterator for SecondaryDrain<'_, K, V> {
+impl<K, V, IdGen> Iterator for Drain<'_, K, V, IdGen> {
     type Item = (Id<K>, V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -299,14 +323,14 @@ impl<K, V> Iterator for SecondaryDrain<'_, K, V> {
     }
 }
 
-impl<K, V> Drop for SecondaryDrain<'_, K, V> {
+impl<K, V, IdGen> Drop for Drain<'_, K, V, IdGen> {
     fn drop(&mut self) {
         self.for_each(|_drop| {});
     }
 }
 
 #[derive(Debug)]
-pub struct SecondaryIntoIter<K, V> {
+pub struct IntoIter<K, V> {
     num_left: usize,
     rows: std::vec::IntoIter<V>,
     ids: std::vec::IntoIter<Id<K>>,
@@ -314,7 +338,7 @@ pub struct SecondaryIntoIter<K, V> {
     _k: PhantomData<fn(Id<K>) -> Id<K>>,
 }
 
-impl<K, V> Iterator for SecondaryIntoIter<K, V> {
+impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (Id<K>, V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -335,14 +359,14 @@ impl<K, V> Iterator for SecondaryIntoIter<K, V> {
 }
 
 #[derive(Debug)]
-pub struct SecondaryIter<'a, K, V> {
+pub struct Iter<'a, K, V> {
     num_left: usize,
     rows: core::slice::Iter<'a, V>,
     ids: core::slice::Iter<'a, Id<K>>,
     _k: PhantomData<fn(Id<K>) -> Id<K>>,
 }
 
-impl<'a, K, V> Iterator for SecondaryIter<'a, K, V> {
+impl<'a, K, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (Id<K>, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -362,15 +386,26 @@ impl<'a, K, V> Iterator for SecondaryIter<'a, K, V> {
     }
 }
 
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
+        Self {
+            num_left: self.num_left,
+            rows: self.rows.clone(),
+            ids: self.ids.clone(),
+            _k: self._k,
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct SecondaryIterMut<'a, K, V> {
+pub struct IterMut<'a, K, V> {
     num_left: usize,
     rows: core::slice::IterMut<'a, V>,
     ids: core::slice::Iter<'a, Id<K>>,
     _k: PhantomData<fn(Id<K>) -> Id<K>>,
 }
 
-impl<'a, K, V> Iterator for SecondaryIterMut<'a, K, V> {
+impl<'a, K, V: 'a> Iterator for IterMut<'a, K, V> {
     type Item = (Id<K>, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -387,11 +422,11 @@ impl<'a, K, V> Iterator for SecondaryIterMut<'a, K, V> {
 }
 
 #[derive(Debug)]
-pub struct SecondaryValues<'a, K, V> {
-    inner: SecondaryIter<'a, K, V>,
+pub struct Values<'a, K, V> {
+    inner: Iter<'a, K, V>,
 }
 
-impl<'a, K, V> Iterator for SecondaryValues<'a, K, V> {
+impl<'a, K, V: 'a> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -399,12 +434,20 @@ impl<'a, K, V> Iterator for SecondaryValues<'a, K, V> {
     }
 }
 
-#[derive(Debug)]
-pub struct SecondaryValuesMut<'a, K, V> {
-    inner: SecondaryIterMut<'a, K, V>,
+impl<K, V> Clone for Values<'_, K, V> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
-impl<'a, K, V> Iterator for SecondaryValuesMut<'a, K, V> {
+#[derive(Debug)]
+pub struct ValuesMut<'a, K, V> {
+    inner: IterMut<'a, K, V>,
+}
+
+impl<'a, K, V: 'a> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -413,14 +456,22 @@ impl<'a, K, V> Iterator for SecondaryValuesMut<'a, K, V> {
 }
 
 #[derive(Debug)]
-pub struct SecondaryKeys<'a, K, V> {
-    inner: SecondaryIter<'a, K, V>,
+pub struct Keys<'a, K, V> {
+    inner: Iter<'a, K, V>,
 }
 
-impl<K, V> Iterator for SecondaryKeys<'_, K, V> {
+impl<'a, K, V: 'a> Iterator for Keys<'a, K, V> {
     type Item = Id<K>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next().map(|(id, _)| id)
+    }
+}
+
+impl<K, V> Clone for Keys<'_, K, V> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
