@@ -33,7 +33,7 @@ pub enum Error {
 /// integer that is randomly generated so that the table index can
 /// be a no-hash hash map. In other words, this ID is pre-hashed.
 /// The ID is guaranteed to be non-zero, and so Option<Id> is the
-/// same size as Id.
+/// same size as Id. It has a base32 string representation.
 #[derive(Debug, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Id<T> {
     id: NonZeroU32,
@@ -122,10 +122,17 @@ impl<T> Id<T> {
     }
 }
 
+/// An IdGenerator generates a series of unique IDs that are random enough to
+/// be used in a hash map without a being hashed first. It's important that
+/// whatever random source is used, that it generates unique IDs that are not
+/// repeated.
 pub trait IdGenerator<'de, T>: Default + Serialize + Deserialize<'de> {
     fn next_id(&mut self) -> Id<T>;
 }
 
+/// A simple linear congruential generator (LCG) that generates random IDs.
+/// This is the default ID generator for the table. It generates IDs that are
+/// "random enough", but not perfectly random, and not cryptographically secure.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LCG {
     state: u32,
@@ -170,9 +177,24 @@ impl<T> IdGenerator<'_, T> for LCG {
 
 type DefaultIdGenerator = LCG;
 
-/// A table that uses random IDs as keys.
+/// Table is a no-hash hash map that works in a similar way to a slot map, but with
+/// random IDs that are "pre-hashed" to avoid hash collisions.
+///
+/// Values are stored densely in a Vec to ensure good cache locality and fast
+/// iteration. A no-hash hash map is used only for random access from ID to value.
+///
+/// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
 pub type Table<T> = SecondaryTable<T, T, DefaultIdGenerator>;
 
+/// Table and SecondaryTable are no-hash hash maps that work in a similar way to
+/// a slot map, but with random IDs that are "pre-hashed" to avoid hash collisions.
+/// A Table is a map from ID to value, and a SecondaryTable is meant to be used to
+/// map the IDs from one Table to a different value.
+///
+/// Both store the values densely in a Vec to ensure good cache locality and fast
+/// iteration. A no-hash hash map is used only for random access from ID to value.
+///
+/// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SecondaryTable<K, V, IdGen = ()> {
     rows: Vec<V>,
@@ -192,6 +214,7 @@ impl<K, V, IdGen: Default> SecondaryTable<K, V, IdGen> {
         Self::default()
     }
 
+    /// Create a new table with the given capacity.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             rows: Vec::with_capacity(capacity),
@@ -216,6 +239,8 @@ impl<'de, T, IdGen: IdGenerator<'de, T>> SecondaryTable<T, T, IdGen> {
         }
     }
 
+    /// Try inserting a value, returning an error if the IdGenerator
+    /// produces an invalid ID (likely due to roll over).
     pub fn try_insert(&mut self, value: T) -> Result<Id<T>, Error> {
         let id = self.idgen.next_id();
         self.insert_with_id(id, value).map(|_| id)
@@ -223,28 +248,38 @@ impl<'de, T, IdGen: IdGenerator<'de, T>> SecondaryTable<T, T, IdGen> {
 }
 
 impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
+    /// Returns the number of elements in the table.
     pub fn len(&self) -> usize {
         self.rows.len()
     }
 
+    /// Returns true if the table is empty.
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
     }
 
+    /// Returns the number of elements the table can hold without reallocating.
     pub fn capacity(&self) -> usize {
         self.rows.capacity()
     }
 
+    /// Ensures there is capacity for at least `additional` more elements to be inserted.
+    /// Note: Not additive with the current capacity.
     pub fn reserve(&mut self, additional: usize) {
-        self.rows.reserve(additional + self.rows.capacity());
-        self.ids.reserve(additional + self.ids.capacity());
+        self.rows.reserve(additional);
+        self.ids.reserve(additional);
     }
 
+    /// Returns true if the table contains the given ID.
     pub fn contains_key(&self, id: &Id<K>) -> bool {
         self.index.contains_key(&id.id())
     }
 
+    /// Insert a value with a specific ID. Note: ID absolutely must be generated
+    /// by the table's ID generator, as it must be random due to using a no-hash
+    /// hash map.
     pub fn insert_with_id(&mut self, id: Id<K>, value: V) -> Result<(), Error> {
+        debug_assert_ne!(id.id(), u32::MAX, "invalid ID");
         if self.index.contains_key(&id.id()) {
             return Err(Error::IDCollision(id.id()));
         }
@@ -254,33 +289,40 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         Ok(())
     }
 
+    /// Get a reference to a value by ID.
     pub fn get(&self, id: &Id<K>) -> Option<&V> {
+        debug_assert_eq!(self.index.len(), self.rows.len());
         // SAFETY: The index is always kept in sync with the rows.
-        self.index
-            .get(&id.id())
-            .map(|&index| unsafe { self.rows.get_unchecked(index as usize) })
+        self.index.get(&id.id()).map(|&index| {
+            debug_assert!(index < self.rows.len() as u32);
+            unsafe { self.rows.get_unchecked(index as usize) }
+        })
     }
 
+    /// Get a mutable reference to a value by ID.
     pub fn get_mut(&mut self, id: &Id<K>) -> Option<&mut V> {
+        debug_assert_eq!(self.index.len(), self.rows.len());
         let value = self.index.get(&id.id());
         if let Some(&index) = value {
+            debug_assert!(index < self.rows.len() as u32);
             // SAFETY: The index is always kept in sync with the rows.
             return Some(unsafe { self.rows.get_unchecked_mut(index as usize) });
         }
         None
     }
 
+    /// Remove a value by ID.
     pub fn remove(&mut self, id: &Id<K>) -> Option<V> {
         if let Some(index) = self.index.remove(&id.id()) {
             let old_id = self.ids.last().copied();
             let curr_id = self.ids.swap_remove(index as usize);
+            debug_assert_eq!(curr_id.id, id.id);
 
-            assert_eq!(curr_id.id, id.id);
             let value = self.rows.swap_remove(index as usize);
             if let Some(old_id) = old_id {
                 if index != self.rows.len() as u32 {
-                    assert!(self.ids[index as usize] == old_id);
-                    assert_ne!(old_id.id, curr_id.id);
+                    debug_assert!(self.ids[index as usize] == old_id);
+                    debug_assert_ne!(old_id.id, curr_id.id);
                     let index_val = self.index.get_mut(&old_id.id()).expect("old id not found");
                     *index_val = index;
                 }
@@ -291,6 +333,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         }
     }
 
+    /// Retain only the elements specified by the predicate.
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(Id<K>, &mut V) -> bool,
@@ -314,6 +357,8 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         self.index.clear();
     }
 
+    /// Get a mutable reference to multiple values by ID. If any of the keys are
+    /// not found, returns None. If there are any duplicate keys, returns None.
     pub fn get_disjoint_mut<const N: usize>(&mut self, keys: [Id<K>; N]) -> Option<[&mut V; N]> {
         // SAFETY: It's safe because the type of keys are maybe uninit, and we are initializing them
         // with the values from the table before returning any of them.
@@ -354,6 +399,8 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         }
     }
 
+    /// Get a mutable reference to multiple values by ID. Does not check if
+    /// the keys are disjoint. Returns None if any key doesn't exist.
     /// # Safety
     /// The caller must ensure that no two keys are equal, otherwise it's
     /// unsafe (two mutable references to the same value).
@@ -372,6 +419,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         }
     }
 
+    /// Get an iterator over (ID, &value) pairs.
     pub fn iter(&self) -> Iter<K, V> {
         let rows = self.rows.iter();
         let ids = self.ids.iter();
@@ -384,6 +432,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         }
     }
 
+    /// Get an iterator over (ID, &mut value) pairs.
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
         let rows = self.rows.iter_mut();
         let ids = self.ids.iter();
@@ -396,14 +445,17 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         }
     }
 
+    /// Get an iterator over references to values.
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.rows.iter()
     }
 
+    /// Get an iterator over mutable references to values.
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.rows.iter_mut()
     }
 
+    /// Get an iterator over keys.
     pub fn keys(&self) -> impl Iterator<Item = Id<K>> + use<'_, K, V, IdGen> {
         self.ids.iter().copied()
     }
