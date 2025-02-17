@@ -2,16 +2,20 @@
 
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
+use std::num::NonZeroU32;
 use std::ops::{Index, IndexMut};
 
 use nohash_hasher::IntMap;
+use serde::{Deserialize, Serialize};
 
 mod revindex;
 
 pub use revindex::*;
 
+/// Error type for the table.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    /// An ID collision occurred.
     IDCollision(u32),
 }
 
@@ -23,9 +27,12 @@ impl std::fmt::Display for Error {
     }
 }
 
-#[derive(Debug, Eq)]
+/// A unique identifier for a value in a table. This is a 32 bit
+/// integer that is randomly generated so that the table index can
+/// be a no-hash hash map. In other words, this ID is pre-hashed.
+#[derive(Debug, Eq, Serialize, Deserialize)]
 pub struct Id<T> {
-    id: u32,
+    id: NonZeroU32,
     _marker: PhantomData<T>,
 }
 
@@ -50,19 +57,23 @@ impl<T> std::hash::Hash for Id<T> {
 }
 
 impl<T> Id<T> {
-    fn new(id: u32) -> Self {
+    fn new(id: NonZeroU32) -> Self {
         Self {
             id,
             _marker: PhantomData,
         }
     }
+
+    fn id(&self) -> u32 {
+        self.id.get()
+    }
 }
 
-pub trait IdGenerator<T>: Default {
+pub trait IdGenerator<'de, T>: Default + Serialize + Deserialize<'de> {
     fn next_id(&mut self) -> Id<T>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LCG {
     state: u32,
 }
@@ -72,34 +83,41 @@ impl LCG {
         Self { state: seed }
     }
 
-    pub fn rand_u32(&mut self) -> u32 {
-        self.state = self
-            .state
-            .wrapping_mul(1_664_525)
-            .wrapping_add(1_013_904_223);
-        self.state ^ (self.state >> 16)
+    pub fn rand_u32(&mut self) -> NonZeroU32 {
+        loop {
+            self.state = self
+                .state
+                .wrapping_mul(1_664_525)
+                .wrapping_add(1_013_904_223);
+            // LCG's lower bits are not super random, so we xor with the upper bits
+            // in order to compensate for that and get a better distribution.
+            let value = self.state ^ (self.state >> 16);
+            if value != 0 {
+                // SAFETY: We are guaranteed that the value is not zero due to the check above.
+                return unsafe { NonZeroU32::new_unchecked(value) };
+            }
+        }
     }
 }
 
-#[derive(Debug)]
-pub struct DefaultIdGenerator(LCG);
-
-impl Default for DefaultIdGenerator {
+impl Default for LCG {
     fn default() -> Self {
-        Self(LCG::new(0xcafef00d))
+        Self::new(0xcafef00d)
     }
 }
 
-impl<T> IdGenerator<T> for DefaultIdGenerator {
+impl<T> IdGenerator<'_, T> for LCG {
     fn next_id(&mut self) -> Id<T> {
-        Id::new(self.0.rand_u32())
+        Id::new(self.rand_u32())
     }
 }
+
+type DefaultIdGenerator = LCG;
 
 /// A table that uses random IDs as keys.
 pub type Table<T> = SecondaryTable<T, T, DefaultIdGenerator>;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SecondaryTable<K, V, IdGen = ()> {
     rows: Vec<V>,
     ids: Vec<Id<K>>,
@@ -128,7 +146,7 @@ impl<K, V, IdGen: Default> SecondaryTable<K, V, IdGen> {
     }
 }
 
-impl<T, IdGen: IdGenerator<T>> SecondaryTable<T, T, IdGen> {
+impl<'de, T, IdGen: IdGenerator<'de, T>> SecondaryTable<T, T, IdGen> {
     /// Reserve a valid Id without inserting a value.
     pub fn reserve_id(&mut self) -> Id<T> {
         self.idgen.next_id()
@@ -167,28 +185,28 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
     }
 
     pub fn contains_key(&self, id: &Id<K>) -> bool {
-        self.index.contains_key(&id.id)
+        self.index.contains_key(&id.id())
     }
 
     pub fn insert_with_id(&mut self, id: Id<K>, value: V) -> Result<(), Error> {
-        if self.index.contains_key(&id.id) {
-            return Err(Error::IDCollision(id.id));
+        if self.index.contains_key(&id.id()) {
+            return Err(Error::IDCollision(id.id()));
         }
         self.rows.push(value);
         self.ids.push(id);
-        self.index.insert(id.id, self.rows.len() as u32 - 1);
+        self.index.insert(id.id(), self.rows.len() as u32 - 1);
         Ok(())
     }
 
     pub fn get(&self, id: &Id<K>) -> Option<&V> {
         // SAFETY: The index is always kept in sync with the rows.
         self.index
-            .get(&id.id)
+            .get(&id.id())
             .map(|&index| unsafe { self.rows.get_unchecked(index as usize) })
     }
 
     pub fn get_mut(&mut self, id: &Id<K>) -> Option<&mut V> {
-        let value = self.index.get(&id.id);
+        let value = self.index.get(&id.id());
         if let Some(&index) = value {
             // SAFETY: The index is always kept in sync with the rows.
             return Some(unsafe { self.rows.get_unchecked_mut(index as usize) });
@@ -197,7 +215,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
     }
 
     pub fn remove(&mut self, id: &Id<K>) -> Option<V> {
-        if let Some(index) = self.index.remove(&id.id) {
+        if let Some(index) = self.index.remove(&id.id()) {
             let old_id = self.ids.last().copied();
             let curr_id = self.ids.swap_remove(index as usize);
 
@@ -207,7 +225,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
                 if index != self.rows.len() as u32 {
                     assert!(self.ids[index as usize] == old_id);
                     assert_ne!(old_id.id, curr_id.id);
-                    let index_val = self.index.get_mut(&old_id.id).expect("old id not found");
+                    let index_val = self.index.get_mut(&old_id.id()).expect("old id not found");
                     *index_val = index;
                 }
             }
@@ -253,7 +271,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
             // temporarily remove indices so that if the set is not disjoint, the following
             // if will fail and we will return None after fixing the index back up.
             // This gives us O(N) complexity.
-            let index = if let Some(index) = self.index.remove(&id.id) {
+            let index = if let Some(index) = self.index.remove(&id.id()) {
                 indices[i] = index;
                 index
             } else {
@@ -269,7 +287,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
 
         // reinsert removed indices
         for k in 0..i {
-            self.index.insert(keys[k].id, indices[k]);
+            self.index.insert(keys[k].id(), indices[k]);
         }
 
         if i == N {
@@ -291,7 +309,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
             // Safe, see get_disjoint_mut.
             let mut ptrs: [MaybeUninit<*mut V>; N] = MaybeUninit::uninit().assume_init();
             for i in 0..N {
-                let &index = self.index.get(&keys[i].id)?;
+                let &index = self.index.get(&keys[i].id())?;
                 ptrs[i] = MaybeUninit::new(self.rows.get_unchecked_mut(index as usize));
             }
             Some(core::mem::transmute_copy::<_, [&mut V; N]>(&ptrs))
@@ -653,7 +671,7 @@ mod test {
     #[should_panic]
     fn test_id_collision() {
         let mut table: Table<i32> = Table::new();
-        let id = Id::new(0);
+        let id = Id::new(NonZeroU32::new(1).unwrap());
 
         table.insert_with_id(id, 1).unwrap();
         // This should panic
@@ -751,7 +769,7 @@ mod test {
         let id3 = table.insert(3);
 
         // Test with non-existent ID
-        let non_existent_id = Id::new(99999);
+        let non_existent_id = Id::new(NonZeroU32::new(99999).unwrap());
         assert!(table.get_disjoint_mut([id1, non_existent_id]).is_none());
 
         // Test with three values
@@ -831,5 +849,11 @@ mod test {
         for i in 0..1_000_000 {
             assert_eq!(table[ids[i]], i as i32);
         }
+
+        for (i, id) in ids.iter().enumerate() {
+            assert_eq!(table.remove(id), Some(i as i32));
+        }
+
+        assert_eq!(table.len(), 0);
     }
 }
