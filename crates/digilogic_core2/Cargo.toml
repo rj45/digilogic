@@ -17,6 +17,4 @@ anyhow.workspace = true
 thiserror = "2.0.11"
 slotmap = { version = "1.0.7", features = ["serde"] }
 nohash-hasher = "0.2.0"
-bloomfilter = "3.0.1"
-foldhash = "0.1.4"
-rand_pcg = { version = "0.9.0", features = ["serde"] }
+
