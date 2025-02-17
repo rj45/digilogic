@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::num::NonZeroU32;
 use std::ops::{Index, IndexMut};
+use std::str::FromStr;
 
 use nohash_hasher::IntMap;
 use serde::{Deserialize, Serialize};
@@ -16,21 +17,24 @@ pub use revindex::*;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// An ID collision occurred.
+    #[error("ID collision: {0}")]
     IDCollision(u32),
-}
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Error::IDCollision(id) => write!(f, "ID collision: {}", id),
-        }
-    }
+    /// An invalid digit was encountered while parsing an ID.
+    #[error("invalid digit")]
+    InvalidDigit,
+
+    /// An invalid ID was parsed
+    #[error("invalid ID")]
+    InvalidId,
 }
 
 /// A unique identifier for a value in a table. This is a 32 bit
 /// integer that is randomly generated so that the table index can
 /// be a no-hash hash map. In other words, this ID is pre-hashed.
-#[derive(Debug, Eq, Serialize, Deserialize)]
+/// The ID is guaranteed to be non-zero, and so Option<Id> is the
+/// same size as Id.
+#[derive(Debug, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Id<T> {
     id: NonZeroU32,
     _marker: PhantomData<T>,
@@ -56,7 +60,54 @@ impl<T> std::hash::Hash for Id<T> {
     }
 }
 
+/// String representation of IDs will be base32 encoded.
+impl<T> std::fmt::Display for Id<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // base32 encode the ID
+        let mut id = self.id.get();
+        let mut buf = [0u8; 7];
+        let mut i = 0;
+        while id > 0 {
+            buf[i] = match id % 32 {
+                0..=9 => b'0' + (id % 32) as u8,
+                10..=31 => b'a' + (id % 32 - 10) as u8,
+                _ => unreachable!(),
+            };
+            id /= 32;
+            i += 1;
+        }
+        for c in buf[..i].iter().rev() {
+            write!(f, "{}", *c as char)?;
+        }
+        Ok(())
+    }
+}
+
+/// Parse a base32 encoded string into an ID.
+impl FromStr for Id<u32> {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut id = 0;
+        for c in s.chars() {
+            id *= 32;
+            id += match c {
+                '0'..='9' => c as u32 - '0' as u32,
+                'a'..='v' => c as u32 - 'a' as u32 + 10,
+                _ => return Err(Error::InvalidDigit),
+            };
+        }
+        if id == 0 || id == u32::MAX {
+            return Err(Error::InvalidId);
+        }
+        Ok(Id::new(NonZeroU32::new(id).ok_or(Error::InvalidId)?))
+    }
+}
+
 impl<T> Id<T> {
+    /// Create a new ID from a non-zero 32 bit integer.
+    /// This is private on purpose, so that the only way to create
+    /// an ID is through the table.
     fn new(id: NonZeroU32) -> Self {
         Self {
             id,
@@ -64,6 +115,8 @@ impl<T> Id<T> {
         }
     }
 
+    /// Get the raw ID value.
+    /// Private on purpose.
     fn id(&self) -> u32 {
         self.id.get()
     }
@@ -92,7 +145,9 @@ impl LCG {
             // LCG's lower bits are not super random, so we xor with the upper bits
             // in order to compensate for that and get a better distribution.
             let value = self.state ^ (self.state >> 16);
-            if value != 0 {
+
+            // reserve 0 and u32::MAX as invalid values
+            if value != 0 && value != u32::MAX {
                 // SAFETY: We are guaranteed that the value is not zero due to the check above.
                 return unsafe { NonZeroU32::new_unchecked(value) };
             }
@@ -102,6 +157,7 @@ impl LCG {
 
 impl Default for LCG {
     fn default() -> Self {
+        // TODO: maybe use a random seed?
         Self::new(0xcafef00d)
     }
 }
@@ -536,6 +592,22 @@ impl<'a, K, V: 'a> Iterator for IterMut<'a, K, V> {
 mod test {
     use super::*;
     use std::collections::HashSet;
+
+    #[test]
+    fn test_id_size() {
+        assert_eq!(size_of::<Id<u32>>(), 4);
+        // make sure the size of an Option<Id> is the same as the size of an Id
+        // this ensures that Id doesn't need a null/invalid value, Option can be
+        // used instead.
+        assert_eq!(size_of::<Option<Id<u32>>>(), 4);
+    }
+
+    #[test]
+    fn test_id_string_and_parse() {
+        let id: Id<u32> = Id::new(NonZeroU32::new(0x12345678).unwrap());
+        assert_eq!(id.to_string(), "938ljo");
+        assert_eq!(Id::from_str("938ljo").unwrap(), id);
+    }
 
     #[test]
     fn test_table() {
