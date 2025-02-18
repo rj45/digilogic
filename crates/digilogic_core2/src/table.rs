@@ -10,8 +10,10 @@ use nohash_hasher::IntMap;
 use serde::{Deserialize, Serialize};
 
 mod revindex;
+mod watcher;
 
 pub use revindex::*;
+pub use watcher::*;
 
 /// Error type for the table.
 #[derive(thiserror::Error, Debug)]
@@ -34,7 +36,7 @@ pub enum Error {
 /// be a no-hash hash map. In other words, this ID is pre-hashed.
 /// The ID is guaranteed to be non-zero, and so Option<Id> is the
 /// same size as Id. It has a base32 string representation.
-#[derive(Debug, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Id<T> {
     id: NonZeroU32,
     _marker: PhantomData<T>,
@@ -57,6 +59,12 @@ impl<T> PartialEq for Id<T> {
 impl<T> std::hash::Hash for Id<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl<T> std::fmt::Debug for Id<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Id({})", self.id.get())
     }
 }
 
@@ -184,7 +192,7 @@ type DefaultIdGenerator = LCG;
 /// iteration. A no-hash hash map is used only for random access from ID to value.
 ///
 /// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
-pub type Table<T> = SecondaryTable<T, T, DefaultIdGenerator>;
+pub type Table<T, W = NoWatcher> = SecondaryTable<T, T, DefaultIdGenerator, W>;
 
 /// Table and SecondaryTable are no-hash hash maps that work in a similar way to
 /// a slot map, but with random IDs that are "pre-hashed" to avoid hash collisions.
@@ -196,20 +204,21 @@ pub type Table<T> = SecondaryTable<T, T, DefaultIdGenerator>;
 ///
 /// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SecondaryTable<K, V, IdGen = ()> {
+pub struct SecondaryTable<K, V, IdGen = (), W = NoWatcher> {
     rows: Vec<V>,
     ids: Vec<Id<K>>,
     index: IntMap<u32, u32>,
     idgen: IdGen,
+    watcher: W,
 }
 
-impl<K, V, IdGen: Default> Default for SecondaryTable<K, V, IdGen> {
+impl<K, V, IdGen: Default, W: Default> Default for SecondaryTable<K, V, IdGen, W> {
     fn default() -> Self {
         Self::with_capacity(0)
     }
 }
 
-impl<K, V, IdGen: Default> SecondaryTable<K, V, IdGen> {
+impl<K, V, IdGen: Default, W: Default> SecondaryTable<K, V, IdGen, W> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -221,11 +230,16 @@ impl<K, V, IdGen: Default> SecondaryTable<K, V, IdGen> {
             ids: Vec::with_capacity(capacity),
             index: IntMap::default(),
             idgen: IdGen::default(),
+            watcher: W::default(),
         }
+    }
+
+    pub fn watcher(&mut self) -> &mut W {
+        &mut self.watcher
     }
 }
 
-impl<'de, T, IdGen: IdGenerator<'de, T>> SecondaryTable<T, T, IdGen> {
+impl<'de, T, IdGen: IdGenerator<'de, T>, W: Watcher<T, T>> SecondaryTable<T, T, IdGen, W> {
     /// Reserve a valid Id without inserting a value.
     pub fn reserve_id(&mut self) -> Id<T> {
         self.idgen.next_id()
@@ -244,6 +258,61 @@ impl<'de, T, IdGen: IdGenerator<'de, T>> SecondaryTable<T, T, IdGen> {
     pub fn try_insert(&mut self, value: T) -> Result<Id<T>, Error> {
         let id = self.idgen.next_id();
         self.insert_with_id(id, value).map(|_| id)
+    }
+}
+
+impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
+    /// Insert a value with a specific ID. Note: ID absolutely must be generated
+    /// by the table's ID generator, as it must be random due to using a no-hash
+    /// hash map.
+    pub fn insert_with_id(&mut self, id: Id<K>, value: V) -> Result<(), Error> {
+        debug_assert_ne!(id.id(), u32::MAX, "invalid ID");
+        if self.index.contains_key(&id.id()) {
+            return Err(Error::IDCollision(id.id()));
+        }
+        self.rows.push(value);
+        self.ids.push(id);
+        self.index.insert(id.id(), self.rows.len() as u32 - 1);
+        self.watcher.insert(id, self.rows.last().unwrap());
+        Ok(())
+    }
+
+    /// Get a mutable reference to a value by ID.
+    pub fn get_mut(&mut self, id: &Id<K>) -> Option<W::MutGuard<'_>> {
+        debug_assert_eq!(self.index.len(), self.rows.len());
+        let value = self.index.get(&id.id());
+        if let Some(&index) = value {
+            debug_assert!(index < self.rows.len() as u32);
+            // SAFETY: The index is always kept in sync with the rows.
+            return Some(
+                self.watcher
+                    .update_mut(*id, unsafe { self.rows.get_unchecked_mut(index as usize) }),
+            );
+        }
+        None
+    }
+
+    /// Remove a value by ID.
+    pub fn remove(&mut self, id: &Id<K>) -> Option<V> {
+        if let Some(index) = self.index.remove(&id.id()) {
+            let old_id = self.ids.last().copied();
+            let curr_id = self.ids.swap_remove(index as usize);
+            debug_assert_eq!(curr_id.id, id.id);
+
+            let value = self.rows.swap_remove(index as usize);
+            if let Some(old_id) = old_id {
+                if index != self.rows.len() as u32 {
+                    debug_assert!(self.ids[index as usize] == old_id);
+                    debug_assert_ne!(old_id.id, curr_id.id);
+                    let index_val = self.index.get_mut(&old_id.id()).expect("old id not found");
+                    *index_val = index;
+                }
+            }
+            self.watcher.remove(*id, &value);
+            Some(value)
+        } else {
+            None
+        }
     }
 }
 
@@ -275,20 +344,6 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
         self.index.contains_key(&id.id())
     }
 
-    /// Insert a value with a specific ID. Note: ID absolutely must be generated
-    /// by the table's ID generator, as it must be random due to using a no-hash
-    /// hash map.
-    pub fn insert_with_id(&mut self, id: Id<K>, value: V) -> Result<(), Error> {
-        debug_assert_ne!(id.id(), u32::MAX, "invalid ID");
-        if self.index.contains_key(&id.id()) {
-            return Err(Error::IDCollision(id.id()));
-        }
-        self.rows.push(value);
-        self.ids.push(id);
-        self.index.insert(id.id(), self.rows.len() as u32 - 1);
-        Ok(())
-    }
-
     /// Get a reference to a value by ID.
     pub fn get(&self, id: &Id<K>) -> Option<&V> {
         debug_assert_eq!(self.index.len(), self.rows.len());
@@ -297,40 +352,6 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
             debug_assert!(index < self.rows.len() as u32);
             unsafe { self.rows.get_unchecked(index as usize) }
         })
-    }
-
-    /// Get a mutable reference to a value by ID.
-    pub fn get_mut(&mut self, id: &Id<K>) -> Option<&mut V> {
-        debug_assert_eq!(self.index.len(), self.rows.len());
-        let value = self.index.get(&id.id());
-        if let Some(&index) = value {
-            debug_assert!(index < self.rows.len() as u32);
-            // SAFETY: The index is always kept in sync with the rows.
-            return Some(unsafe { self.rows.get_unchecked_mut(index as usize) });
-        }
-        None
-    }
-
-    /// Remove a value by ID.
-    pub fn remove(&mut self, id: &Id<K>) -> Option<V> {
-        if let Some(index) = self.index.remove(&id.id()) {
-            let old_id = self.ids.last().copied();
-            let curr_id = self.ids.swap_remove(index as usize);
-            debug_assert_eq!(curr_id.id, id.id);
-
-            let value = self.rows.swap_remove(index as usize);
-            if let Some(old_id) = old_id {
-                if index != self.rows.len() as u32 {
-                    debug_assert!(self.ids[index as usize] == old_id);
-                    debug_assert_ne!(old_id.id, curr_id.id);
-                    let index_val = self.index.get_mut(&old_id.id()).expect("old id not found");
-                    *index_val = index;
-                }
-            }
-            Some(value)
-        } else {
-            None
-        }
     }
 
     /// Retain only the elements specified by the predicate.
