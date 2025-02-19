@@ -1,9 +1,11 @@
 use std::{str::FromStr, sync::Arc};
 
 use serde::{Deserialize, Serialize};
-use slotmap::{new_key_type, SecondaryMap, SlotMap};
 
-use crate::intern::Intern;
+use crate::{
+    intern::Intern,
+    table::{Id, Recorder, Table},
+};
 
 pub trait ForeignKey<T> {
     fn foreign_key(&self) -> T;
@@ -56,105 +58,81 @@ pub struct Size {
     pub height: u32,
 }
 
-new_key_type! {
-    pub struct PortID;
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Port {
-    pub symbol_kind: SymbolKindID,
+    pub symbol_kind: Id<SymbolKind>,
     pub name: Arc<str>,
     pub direction: Direction,
     pub position: Position,
     pub pin: u32,
 }
 
-new_key_type! {
-    pub struct SymbolKindID;
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymbolKind {
-    pub module: Option<ModuleID>,
-    pub ports: Vec<PortID>,
+    pub module: Option<Id<Module>>,
+    pub ports: Vec<Id<Port>>,
     pub size: Size,
     pub name: Arc<str>,
     pub prefix: Arc<str>,
 }
 
-new_key_type! {
-    pub struct SymbolID;
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Symbol {
-    pub module: ModuleID,
-    pub symbol_kind: SymbolKindID,
-    pub endpoints: Vec<EndpointID>,
+    pub module: Id<Module>,
+    pub symbol_kind: Id<SymbolKind>,
+    pub endpoints: Vec<Id<Endpoint>>,
     pub position: Position,
     pub number: u32,
 }
 
-impl ForeignKey<SymbolKindID> for Symbol {
-    fn foreign_key(&self) -> SymbolKindID {
+impl ForeignKey<Id<SymbolKind>> for Symbol {
+    fn foreign_key(&self) -> Id<SymbolKind> {
         self.symbol_kind
     }
 }
 
-impl ForeignKey<ModuleID> for Symbol {
-    fn foreign_key(&self) -> ModuleID {
+impl ForeignKey<Id<Module>> for Symbol {
+    fn foreign_key(&self) -> Id<Module> {
         self.module
     }
-}
-
-new_key_type! {
-    pub struct EndpointID;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Endpoint {
     Attached {
-        net: NetID,
-        symbol: SymbolID,
-        port: PortID,
+        net: Id<Net>,
+        symbol: Id<Symbol>,
+        port: Id<Port>,
     },
     Free {
-        net: NetID,
+        net: Id<Net>,
         position: Position,
     },
-}
-
-new_key_type! {
-    pub struct NetID;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Net {
     pub name: Arc<str>,
     pub width: u32,
-    pub endpoints: Vec<EndpointID>,
-}
-
-new_key_type! {
-    pub struct ModuleID;
+    pub endpoints: Vec<Id<Endpoint>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Module {
     pub name: Arc<str>,
-    pub symbol_kind: SymbolKindID,
-    pub symbols: Vec<SymbolID>,
-    pub nets: Vec<NetID>,
+    pub symbol_kind: Id<SymbolKind>,
+    pub symbols: Vec<Id<Symbol>>,
+    pub nets: Vec<Id<Net>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Project {
-    pub modules: SlotMap<ModuleID, Module>,
-    pub nets: SlotMap<NetID, Net>,
-    pub endpoints: SlotMap<EndpointID, Endpoint>,
-    pub symbols: SlotMap<SymbolID, Symbol>,
-    pub symbol_kinds: SlotMap<SymbolKindID, SymbolKind>,
-    pub ports: SlotMap<PortID, Port>,
+    pub modules: Table<Module, Recorder<Module, Module>>,
+    pub nets: Table<Net, Recorder<Net, Net>>,
+    pub endpoints: Table<Endpoint, Recorder<Endpoint, Endpoint>>,
+    pub symbols: Table<Symbol, Recorder<Symbol, Symbol>>,
+    pub symbol_kinds: Table<SymbolKind, Recorder<SymbolKind, SymbolKind>>,
+    pub ports: Table<Port, Recorder<Port, Port>>,
 
     #[serde(skip)]
     pub intern: Intern,
@@ -163,12 +141,12 @@ pub struct Project {
 impl Default for Project {
     fn default() -> Self {
         Self {
-            modules: SlotMap::with_key(),
-            nets: SlotMap::with_key(),
-            endpoints: SlotMap::with_key(),
-            symbols: SlotMap::with_key(),
-            symbol_kinds: SlotMap::with_key(),
-            ports: SlotMap::with_key(),
+            modules: Table::default(),
+            nets: Table::default(),
+            endpoints: Table::default(),
+            symbols: Table::default(),
+            symbol_kinds: Table::default(),
+            ports: Table::default(),
             intern: Intern::default(),
         }
     }

@@ -36,7 +36,7 @@ impl<K, V> Watcher<K, V> for NoWatcher {
 
 /// An entry in a change log. Each entry is a tuple of (index, key, value) where
 /// the index is the number of changes that have occurred so far starting from 0.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Change<K, V> {
     /// An entry was inserted.
     Insert(u32, Id<K>, V),
@@ -50,7 +50,7 @@ pub enum Change<K, V> {
 }
 
 /// A log of changes to a table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChangeLog<K, V> {
     changes: Vec<Change<K, V>>,
     index: u32,
@@ -137,7 +137,7 @@ impl<K, V: Clone> Drop for RecorderGuard<'_, K, V> {
 ///  - This watcher clones the values when logging changes (may be expensive).
 ///  - This watcher does not check if the value has actually changed, just if it
 ///    was mutably borrowed.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Recorder<K, V> {
     log: ChangeLog<K, V>,
     _phantom: PhantomData<fn(Id<K>, &V) -> &V>,

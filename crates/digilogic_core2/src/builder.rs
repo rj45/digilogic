@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use crate::{
-    intern::Intern, Direction, Module, ModuleID, Port, PortID, Position, Project, Size, Symbol,
-    SymbolID, SymbolKind, SymbolKindID,
-};
+use crate::table::Id;
+use crate::{intern::Intern, Direction, Module, Port, Position, Project, Size, Symbol, SymbolKind};
 
 #[derive(Debug, Default)]
 pub struct ProjectBuilder {
@@ -27,29 +25,30 @@ impl ProjectBuilder {
         self.project.intern.merge(other);
     }
 
-    pub fn add_module(&mut self, name: &str) -> (ModuleID, SymbolKindID) {
+    pub fn add_module(&mut self, name: &str) -> (Id<Module>, Id<SymbolKind>) {
         let name = self.intern(name);
-        let module_id = self.project.modules.insert(Module {
-            name: name.clone(),
-            symbol_kind: SymbolKindID::default(),
-            symbols: Vec::new(),
-            nets: Vec::new(),
-        });
 
         let kind_id = self.project.symbol_kinds.insert(SymbolKind {
-            name,
-            module: Some(module_id),
+            name: name.clone(),
+            module: None,
             ports: Vec::new(),
             size: Size::default(),
             prefix: "U".into(),
         });
 
-        self.project.modules[module_id].symbol_kind = kind_id;
+        let module_id = self.project.modules.insert(Module {
+            name,
+            symbol_kind: kind_id,
+            symbols: Vec::new(),
+            nets: Vec::new(),
+        });
+
+        self.project.symbol_kinds.get_mut(&kind_id).unwrap().module = Some(module_id);
 
         (module_id, kind_id)
     }
 
-    pub fn add_port(&mut self, module: ModuleID, name: &str, direction: Direction) -> PortID {
+    pub fn add_port(&mut self, module: Id<Module>, name: &str, direction: Direction) -> Id<Port> {
         let name = self.intern(name);
         let symbol_kind = self.project.modules[module].symbol_kind;
         let port_id = self.project.ports.insert(Port {
@@ -59,11 +58,16 @@ impl ProjectBuilder {
             position: Position::default(),
             pin: self.project.symbol_kinds[symbol_kind].ports.len() as u32,
         });
-        self.project.symbol_kinds[symbol_kind].ports.push(port_id);
+        self.project
+            .symbol_kinds
+            .get_mut(&symbol_kind)
+            .unwrap()
+            .ports
+            .push(port_id);
         port_id
     }
 
-    pub fn add_builtin_symbol_kind(&mut self, name: &str) -> SymbolKindID {
+    pub fn add_builtin_symbol_kind(&mut self, name: &str) -> Id<SymbolKind> {
         let name = self.intern(name);
         self.project.symbol_kinds.insert(SymbolKind {
             name,
@@ -76,10 +80,10 @@ impl ProjectBuilder {
 
     pub fn add_builtin_symbol_kind_port(
         &mut self,
-        symbol_kind: SymbolKindID,
+        symbol_kind: Id<SymbolKind>,
         name: &str,
         direction: Direction,
-    ) -> PortID {
+    ) -> Id<Port> {
         let name = self.intern(name);
         let port_id = self.project.ports.insert(Port {
             name: name.clone(),
@@ -88,11 +92,16 @@ impl ProjectBuilder {
             position: Position::default(),
             pin: self.project.symbol_kinds[symbol_kind].ports.len() as u32,
         });
-        self.project.symbol_kinds[symbol_kind].ports.push(port_id);
+        self.project
+            .symbol_kinds
+            .get_mut(&symbol_kind)
+            .unwrap()
+            .ports
+            .push(port_id);
         port_id
     }
 
-    pub fn add_symbol(&mut self, module: ModuleID, symbol_kind: SymbolKindID) -> SymbolID {
+    pub fn add_symbol(&mut self, module: Id<Module>, symbol_kind: Id<SymbolKind>) -> Id<Symbol> {
         let max_number = self.project.modules[module]
             .symbols
             .iter()
@@ -106,7 +115,12 @@ impl ProjectBuilder {
             position: Position::default(),
             number: max_number + 1,
         });
-        self.project.modules[module].symbols.push(symbol_id);
+        self.project
+            .modules
+            .get_mut(&module)
+            .unwrap()
+            .symbols
+            .push(symbol_id);
         symbol_id
     }
 }

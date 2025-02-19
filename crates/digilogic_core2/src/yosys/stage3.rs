@@ -1,15 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{ModuleID, PortID, SymbolID, SymbolKindID};
+use crate::{table::Id, Module, Port, Symbol, SymbolKind};
 
 use super::{stage1, stage2};
 
 pub struct Importer {
     project: stage2::Project,
-    modules: HashMap<Arc<str>, ModuleID>,
-    ports: HashMap<Arc<str>, PortID>,
-    symbols: HashMap<Arc<str>, SymbolID>,
-    cell_symbol_kinds: HashMap<stage1::CellType, SymbolKindID>,
+    modules: HashMap<Arc<str>, Id<Module>>,
+    ports: HashMap<Arc<str>, Id<Port>>,
+    symbols: HashMap<Arc<str>, Id<Symbol>>,
+    cell_symbol_kinds: HashMap<stage1::CellType, Id<SymbolKind>>,
     builder: crate::ProjectBuilder,
 }
 
@@ -168,11 +168,11 @@ mod test {
         //                 version: 1,
         //                 value: Module {
         //                     name: "test",
-        //                     symbol_kind: SymbolKindID(
+        //                     symbol_kind: Id<SymbolKind>(
         //                         1v1,
         //                     ),
         //                     symbols: [
-        //                         SymbolID(
+        //                         Id<Symbol>(
         //                             1v1,
         //                         ),
         //                     ],
@@ -182,7 +182,7 @@ mod test {
         //         ],
         //         free_head: 2,
         //         num_elems: 1,
-        //         _k: PhantomData<fn(digilogic_core2::structs::ModuleID) -> digilogic_core2::structs::ModuleID>,
+        //         _k: PhantomData<fn(digilogic_core2::structs::Id<Module>) -> digilogic_core2::structs::Id<Module>>,
         //     },
         //     nets: SlotMap {
         //         slots: [
@@ -226,7 +226,7 @@ mod test {
         //             Slot {
         //                 version: 1,
         //                 value: Symbol {
-        //                     symbol_kind: SymbolKindID(
+        //                     symbol_kind: Id<SymbolKind>(
         //                         2v1,
         //                     ),
         //                     endpoints: [],
@@ -240,7 +240,7 @@ mod test {
         //         ],
         //         free_head: 2,
         //         num_elems: 1,
-        //         _k: PhantomData<fn(digilogic_core2::structs::SymbolID) -> digilogic_core2::structs::SymbolID>,
+        //         _k: PhantomData<fn(digilogic_core2::structs::Id<Symbol>) -> digilogic_core2::structs::Id<Symbol>>,
         //     },
         //     symbol_kinds: SlotMap {
         //         slots: [
@@ -252,15 +252,15 @@ mod test {
         //                 version: 1,
         //                 value: SymbolKind {
         //                     module: Some(
-        //                         ModuleID(
+        //                         Id<Module>(
         //                             1v1,
         //                         ),
         //                     ),
         //                     ports: [
-        //                         PortID(
+        //                         Id<Port>(
         //                             1v1,
         //                         ),
-        //                         PortID(
+        //                         Id<Port>(
         //                             2v1,
         //                         ),
         //                     ],
@@ -288,7 +288,7 @@ mod test {
         //         ],
         //         free_head: 3,
         //         num_elems: 2,
-        //         _k: PhantomData<fn(digilogic_core2::structs::SymbolKindID) -> digilogic_core2::structs::SymbolKindID>,
+        //         _k: PhantomData<fn(digilogic_core2::structs::Id<SymbolKind>) -> digilogic_core2::structs::Id<SymbolKind>>,
         //     },
         //     ports: SlotMap {
         //         slots: [
@@ -299,7 +299,7 @@ mod test {
         //             Slot {
         //                 version: 1,
         //                 value: Port {
-        //                     symbol_kind: SymbolKindID(
+        //                     symbol_kind: Id<SymbolKind>(
         //                         1v1,
         //                     ),
         //                     name: "x",
@@ -314,7 +314,7 @@ mod test {
         //             Slot {
         //                 version: 1,
         //                 value: Port {
-        //                     symbol_kind: SymbolKindID(
+        //                     symbol_kind: Id<SymbolKind>(
         //                         1v1,
         //                     ),
         //                     name: "y",
@@ -329,7 +329,7 @@ mod test {
         //         ],
         //         free_head: 3,
         //         num_elems: 2,
-        //         _k: PhantomData<fn(digilogic_core2::structs::PortID) -> digilogic_core2::structs::PortID>,
+        //         _k: PhantomData<fn(digilogic_core2::structs::Id<Port>) -> digilogic_core2::structs::Id<Port>>,
         //     },
         //     intern: Intern(
         //         {

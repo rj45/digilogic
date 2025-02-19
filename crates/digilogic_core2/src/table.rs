@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::num::NonZeroU32;
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 use std::str::FromStr;
 
 use nohash_hasher::IntMap;
@@ -64,7 +64,9 @@ impl<T> std::hash::Hash for Id<T> {
 
 impl<T> std::fmt::Debug for Id<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Id({})", self.id.get())
+        write!(f, "Id(")?;
+        std::fmt::Display::fmt(self, f)?;
+        write!(f, ")")
     }
 }
 
@@ -141,7 +143,7 @@ pub trait IdGenerator<'de, T>: Default + Serialize + Deserialize<'de> {
 /// A simple linear congruential generator (LCG) that generates random IDs.
 /// This is the default ID generator for the table. It generates IDs that are
 /// "random enough", but not perfectly random, and not cryptographically secure.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LCG {
     state: u32,
 }
@@ -203,7 +205,7 @@ pub type Table<T, W = NoWatcher> = SecondaryTable<T, T, DefaultIdGenerator, W>;
 /// iteration. A no-hash hash map is used only for random access from ID to value.
 ///
 /// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecondaryTable<K, V, IdGen = (), W = NoWatcher> {
     rows: Vec<V>,
     ids: Vec<Id<K>>,
@@ -316,7 +318,7 @@ impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
     }
 }
 
-impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
+impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
     /// Returns the number of elements in the table.
     pub fn len(&self) -> usize {
         self.rows.len()
@@ -373,9 +375,7 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
 
     /// Clears the table, removing all values.
     pub fn clear(&mut self) {
-        self.rows.clear();
-        self.ids.clear();
-        self.index.clear();
+        self.drain();
     }
 
     /// Get a mutable reference to multiple values by ID. If any of the keys are
@@ -477,29 +477,23 @@ impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
     }
 
     /// Get an iterator over keys.
-    pub fn keys(&self) -> impl Iterator<Item = Id<K>> + use<'_, K, V, IdGen> {
+    pub fn keys(&self) -> impl Iterator<Item = Id<K>> + use<'_, K, V, IdGen, W> {
         self.ids.iter().copied()
     }
 
     /// Removes all values from the table and returns an iterator over the removed values.
     /// Iterates from the end of the table to the start, as that is the most efficient.
-    pub fn drain(&mut self) -> Drain<K, V, IdGen> {
+    pub fn drain(&mut self) -> Drain<K, V, IdGen, W> {
         let cur = self.rows.len();
         Drain { table: self, cur }
     }
 }
 
-impl<K, V, IdGen> Index<Id<K>> for SecondaryTable<K, V, IdGen> {
+impl<K, V, IdGen, W: Watcher<K, V>> Index<Id<K>> for SecondaryTable<K, V, IdGen, W> {
     type Output = V;
 
     fn index(&self, index: Id<K>) -> &Self::Output {
         self.get(&index).expect("no entry found for key")
-    }
-}
-
-impl<K, V, IdGen> IndexMut<Id<K>> for SecondaryTable<K, V, IdGen> {
-    fn index_mut(&mut self, index: Id<K>) -> &mut Self::Output {
-        self.get_mut(&index).expect("no entry found for key")
     }
 }
 
@@ -541,12 +535,12 @@ impl<K, V, IdGen> IntoIterator for SecondaryTable<K, V, IdGen> {
 }
 
 #[derive(Debug)]
-pub struct Drain<'a, K, V, IdGen> {
-    table: &'a mut SecondaryTable<K, V, IdGen>,
+pub struct Drain<'a, K, V, IdGen, W: Watcher<K, V>> {
+    table: &'a mut SecondaryTable<K, V, IdGen, W>,
     cur: usize,
 }
 
-impl<K, V, IdGen> Iterator for Drain<'_, K, V, IdGen> {
+impl<K, V, IdGen, W: Watcher<K, V>> Iterator for Drain<'_, K, V, IdGen, W> {
     type Item = (Id<K>, V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -563,7 +557,7 @@ impl<K, V, IdGen> Iterator for Drain<'_, K, V, IdGen> {
     }
 }
 
-impl<K, V, IdGen> Drop for Drain<'_, K, V, IdGen> {
+impl<K, V, IdGen, W: Watcher<K, V>> Drop for Drain<'_, K, V, IdGen, W> {
     fn drop(&mut self) {
         self.for_each(|_drop| {});
     }
@@ -684,7 +678,7 @@ mod test {
 
     #[test]
     fn test_table() {
-        let mut table = Table::default();
+        let mut table: Table<i32> = Table::default();
         let id1 = table.insert(1);
         let id2 = table.insert(2);
         let id3 = table.insert(3);
