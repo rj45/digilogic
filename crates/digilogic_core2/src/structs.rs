@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     intern::Intern,
-    table::{Id, Recorder, Table},
+    table::{Id, Table},
 };
 
 pub trait ForeignKey<T> {
@@ -125,29 +125,15 @@ pub struct Module {
     pub nets: Vec<Id<Net>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Project {
-    pub modules: Table<Module, Recorder<Module, Module>>,
-    pub nets: Table<Net, Recorder<Net, Net>>,
-    pub endpoints: Table<Endpoint, Recorder<Endpoint, Endpoint>>,
-    pub symbols: Table<Symbol, Recorder<Symbol, Symbol>>,
-    pub symbol_kinds: Table<SymbolKind, Recorder<SymbolKind, SymbolKind>>,
-    pub ports: Table<Port, Recorder<Port, Port>>,
+    pub modules: Table<Module>,
+    pub nets: Table<Net>,
+    pub endpoints: Table<Endpoint>,
+    pub symbols: Table<Symbol>,
+    pub symbol_kinds: Table<SymbolKind>,
+    pub ports: Table<Port>,
 
     #[serde(skip)]
     pub intern: Intern,
-}
-
-impl Default for Project {
-    fn default() -> Self {
-        Self {
-            modules: Table::default(),
-            nets: Table::default(),
-            endpoints: Table::default(),
-            symbols: Table::default(),
-            symbol_kinds: Table::default(),
-            ports: Table::default(),
-            intern: Intern::default(),
-        }
-    }
 }

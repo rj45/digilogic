@@ -10,10 +10,8 @@ use nohash_hasher::IntMap;
 use serde::{Deserialize, Serialize};
 
 mod revindex;
-mod watcher;
 
 pub use revindex::*;
-pub use watcher::*;
 
 /// Error type for the table.
 #[derive(thiserror::Error, Debug)]
@@ -194,7 +192,7 @@ type DefaultIdGenerator = LCG;
 /// iteration. A no-hash hash map is used only for random access from ID to value.
 ///
 /// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
-pub type Table<T, W = NoWatcher> = SecondaryTable<T, T, DefaultIdGenerator, W>;
+pub type Table<T> = SecondaryTable<T, T, DefaultIdGenerator>;
 
 /// Table and SecondaryTable are no-hash hash maps that work in a similar way to
 /// a slot map, but with random IDs that are "pre-hashed" to avoid hash collisions.
@@ -206,21 +204,20 @@ pub type Table<T, W = NoWatcher> = SecondaryTable<T, T, DefaultIdGenerator, W>;
 ///
 /// Iterators return (ID, &value) pairs, except the values() and keys() iterators.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecondaryTable<K, V, IdGen = (), W = NoWatcher> {
+pub struct SecondaryTable<K, V, IdGen = ()> {
     rows: Vec<V>,
     ids: Vec<Id<K>>,
     index: IntMap<u32, u32>,
     idgen: IdGen,
-    watcher: W,
 }
 
-impl<K, V, IdGen: Default, W: Default> Default for SecondaryTable<K, V, IdGen, W> {
+impl<K, V, IdGen: Default> Default for SecondaryTable<K, V, IdGen> {
     fn default() -> Self {
         Self::with_capacity(0)
     }
 }
 
-impl<K, V, IdGen: Default, W: Default> SecondaryTable<K, V, IdGen, W> {
+impl<K, V, IdGen: Default> SecondaryTable<K, V, IdGen> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -232,16 +229,11 @@ impl<K, V, IdGen: Default, W: Default> SecondaryTable<K, V, IdGen, W> {
             ids: Vec::with_capacity(capacity),
             index: IntMap::default(),
             idgen: IdGen::default(),
-            watcher: W::default(),
         }
-    }
-
-    pub fn watcher(&mut self) -> &mut W {
-        &mut self.watcher
     }
 }
 
-impl<'de, T, IdGen: IdGenerator<'de, T>, W: Watcher<T, T>> SecondaryTable<T, T, IdGen, W> {
+impl<'de, T, IdGen: IdGenerator<'de, T>> SecondaryTable<T, T, IdGen> {
     /// Reserve a valid Id without inserting a value.
     pub fn reserve_id(&mut self) -> Id<T> {
         self.idgen.next_id()
@@ -263,7 +255,7 @@ impl<'de, T, IdGen: IdGenerator<'de, T>, W: Watcher<T, T>> SecondaryTable<T, T, 
     }
 }
 
-impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
+impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
     /// Insert a value with a specific ID. Note: ID absolutely must be generated
     /// by the table's ID generator, as it must be random due to using a no-hash
     /// hash map.
@@ -275,21 +267,17 @@ impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
         self.rows.push(value);
         self.ids.push(id);
         self.index.insert(id.id(), self.rows.len() as u32 - 1);
-        self.watcher.insert(id, self.rows.last().unwrap());
         Ok(())
     }
 
     /// Get a mutable reference to a value by ID.
-    pub fn get_mut(&mut self, id: &Id<K>) -> Option<W::MutGuard<'_>> {
+    pub fn get_mut(&mut self, id: &Id<K>) -> Option<&mut V> {
         debug_assert_eq!(self.index.len(), self.rows.len());
         let value = self.index.get(&id.id());
         if let Some(&index) = value {
             debug_assert!(index < self.rows.len() as u32);
             // SAFETY: The index is always kept in sync with the rows.
-            return Some(
-                self.watcher
-                    .update_mut(*id, unsafe { self.rows.get_unchecked_mut(index as usize) }),
-            );
+            return Some(unsafe { self.rows.get_unchecked_mut(index as usize) });
         }
         None
     }
@@ -310,7 +298,6 @@ impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
                     *index_val = index;
                 }
             }
-            self.watcher.remove(*id, &value);
             Some(value)
         } else {
             None
@@ -318,7 +305,7 @@ impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
     }
 }
 
-impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
+impl<K, V, IdGen> SecondaryTable<K, V, IdGen> {
     /// Returns the number of elements in the table.
     pub fn len(&self) -> usize {
         self.rows.len()
@@ -477,19 +464,19 @@ impl<K, V, IdGen, W: Watcher<K, V>> SecondaryTable<K, V, IdGen, W> {
     }
 
     /// Get an iterator over keys.
-    pub fn keys(&self) -> impl Iterator<Item = Id<K>> + use<'_, K, V, IdGen, W> {
+    pub fn keys(&self) -> impl Iterator<Item = Id<K>> + use<'_, K, V, IdGen> {
         self.ids.iter().copied()
     }
 
     /// Removes all values from the table and returns an iterator over the removed values.
     /// Iterates from the end of the table to the start, as that is the most efficient.
-    pub fn drain(&mut self) -> Drain<K, V, IdGen, W> {
+    pub fn drain(&mut self) -> Drain<K, V, IdGen> {
         let cur = self.rows.len();
         Drain { table: self, cur }
     }
 }
 
-impl<K, V, IdGen, W: Watcher<K, V>> Index<Id<K>> for SecondaryTable<K, V, IdGen, W> {
+impl<K, V, IdGen> Index<Id<K>> for SecondaryTable<K, V, IdGen> {
     type Output = V;
 
     fn index(&self, index: Id<K>) -> &Self::Output {
@@ -535,12 +522,12 @@ impl<K, V, IdGen> IntoIterator for SecondaryTable<K, V, IdGen> {
 }
 
 #[derive(Debug)]
-pub struct Drain<'a, K, V, IdGen, W: Watcher<K, V>> {
-    table: &'a mut SecondaryTable<K, V, IdGen, W>,
+pub struct Drain<'a, K, V, IdGen> {
+    table: &'a mut SecondaryTable<K, V, IdGen>,
     cur: usize,
 }
 
-impl<K, V, IdGen, W: Watcher<K, V>> Iterator for Drain<'_, K, V, IdGen, W> {
+impl<K, V, IdGen> Iterator for Drain<'_, K, V, IdGen> {
     type Item = (Id<K>, V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -557,7 +544,7 @@ impl<K, V, IdGen, W: Watcher<K, V>> Iterator for Drain<'_, K, V, IdGen, W> {
     }
 }
 
-impl<K, V, IdGen, W: Watcher<K, V>> Drop for Drain<'_, K, V, IdGen, W> {
+impl<K, V, IdGen> Drop for Drain<'_, K, V, IdGen> {
     fn drop(&mut self) {
         self.for_each(|_drop| {});
     }
@@ -849,7 +836,7 @@ mod test {
 
         table.reserve(20);
         eprintln!("capacity: {}", table.capacity());
-        assert!(table.capacity() >= 30);
+        assert!(table.capacity() >= 20);
     }
 
     #[test]

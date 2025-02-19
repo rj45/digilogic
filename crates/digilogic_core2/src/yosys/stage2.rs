@@ -308,10 +308,10 @@ mod test {
         {
             let two = importer.intern("foo");
             assert_eq!(one, two);
-            assert_eq!(Arc::strong_count(&one), 3);
-            assert_eq!(Arc::strong_count(&two), 3);
+            assert_eq!(Arc::strong_count(&one), 2);
+            assert_eq!(Arc::strong_count(&two), 2);
         }
-        assert_eq!(Arc::strong_count(&one), 2);
+        assert_eq!(Arc::strong_count(&one), 1);
     }
 
     #[test]
