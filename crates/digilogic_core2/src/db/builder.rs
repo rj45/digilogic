@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use super::*;
+use crate::intern::Intern;
 use crate::table::Id;
-use crate::{intern::Intern, Direction, Module, Port, Position, Project, Size, Symbol, SymbolKind};
 
 #[derive(Debug, Default)]
 pub struct ProjectBuilder {
@@ -21,7 +22,7 @@ impl ProjectBuilder {
         self.project.intern.intern(s)
     }
 
-    fn merge_intern(&mut self, other: &Intern) {
+    pub fn merge_intern(&mut self, other: &Intern) {
         self.project.intern.merge(other);
     }
 

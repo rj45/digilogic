@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{table::Id, Module, Port, Symbol, SymbolKind};
+use crate::{
+    db::{Module, Port, Symbol, SymbolKind},
+    table::Id,
+};
 
 use super::{stage1, stage2};
 
@@ -10,16 +13,16 @@ pub struct Importer {
     ports: HashMap<Arc<str>, Id<Port>>,
     symbols: HashMap<Arc<str>, Id<Symbol>>,
     cell_symbol_kinds: HashMap<stage1::CellType, Id<SymbolKind>>,
-    builder: crate::ProjectBuilder,
+    builder: crate::db::ProjectBuilder,
 }
 
 impl Importer {
     pub fn import_into(
         reader: impl std::io::Read,
-        project: crate::Project,
-    ) -> anyhow::Result<crate::Project> {
+        project: crate::db::Project,
+    ) -> anyhow::Result<crate::db::Project> {
         let stage2 = stage2::Importer::import(reader)?;
-        let builder = crate::ProjectBuilder::from(project);
+        let builder = crate::db::ProjectBuilder::from(project);
         let mut importer = Importer {
             project: stage2,
             modules: HashMap::new(),
@@ -88,7 +91,7 @@ mod test {
     use serde_json::json;
 
     use super::*;
-    use crate::Direction;
+    use crate::db::Direction;
 
     #[test]
     fn test_importer() {
@@ -153,7 +156,7 @@ mod test {
         let text = serde_json::to_string(&input).unwrap();
         let reader = std::io::BufReader::new(text.as_bytes());
 
-        let project = Importer::import_into(reader, crate::Project::default()).unwrap();
+        let project = Importer::import_into(reader, crate::db::Project::default()).unwrap();
 
         println!("{:#?}", project);
 

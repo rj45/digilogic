@@ -1,4 +1,4 @@
-use crate::Project;
+use crate::db::Project;
 
 mod stage1;
 mod stage2;

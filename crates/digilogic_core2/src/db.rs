@@ -7,6 +7,9 @@ use crate::{
     table::{Id, Table},
 };
 
+mod builder;
+pub use builder::*;
+
 pub trait ForeignKey<T> {
     fn foreign_key(&self) -> T;
 }
