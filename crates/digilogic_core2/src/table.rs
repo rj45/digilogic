@@ -9,9 +9,9 @@ use std::str::FromStr;
 use nohash_hasher::IntMap;
 use serde::{Deserialize, Serialize};
 
-mod revindex;
+mod childindex;
 
-pub use revindex::*;
+pub use childindex::*;
 
 /// Error type for the table.
 #[derive(thiserror::Error, Debug)]

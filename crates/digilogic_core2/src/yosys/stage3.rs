@@ -8,12 +8,12 @@ use crate::{
 use super::{stage1, stage2};
 
 pub struct Importer {
-    project: stage2::Project,
+    stage2_project: stage2::Project,
     modules: HashMap<Arc<str>, Id<Module>>,
     ports: HashMap<Arc<str>, Id<Port>>,
     symbols: HashMap<Arc<str>, Id<Symbol>>,
     cell_symbol_kinds: HashMap<stage1::CellType, Id<SymbolKind>>,
-    builder: crate::db::ProjectBuilder,
+    stage3_project: crate::db::Project,
 }
 
 impl Importer {
@@ -22,17 +22,17 @@ impl Importer {
         project: crate::db::Project,
     ) -> anyhow::Result<crate::db::Project> {
         let stage2 = stage2::Importer::import(reader)?;
-        let builder = crate::db::ProjectBuilder::from(project);
-        let mut importer = Importer {
-            project: stage2,
+        let builder = project;
+        let mut importer = Self {
+            stage2_project: stage2,
             modules: HashMap::new(),
             ports: HashMap::new(),
             symbols: HashMap::new(),
             cell_symbol_kinds: HashMap::new(),
-            builder,
+            stage3_project: builder,
         };
         importer.translate()?;
-        Ok(importer.builder.build())
+        Ok(importer.stage3_project)
     }
 
     fn translate(&mut self) -> anyhow::Result<()> {
@@ -43,14 +43,16 @@ impl Importer {
     }
 
     fn translate_modules(&mut self) -> anyhow::Result<()> {
-        for module in self.project.modules.iter() {
-            let (module_id, kind_id) = self.builder.add_module(&module.name);
+        for module in self.stage2_project.modules.iter() {
+            let (module_id, kind_id) = self.stage3_project.add_module(&module.name);
             self.modules.insert(module.name.clone(), module_id);
             self.cell_symbol_kinds
                 .insert(stage1::CellType::Unknown(module.name.clone()), kind_id);
 
             for port in module.ports.iter() {
-                let port_id = self.builder.add_port(module_id, &port.name, port.direction);
+                let port_id = self
+                    .stage3_project
+                    .add_port(module_id, &port.name, port.direction);
                 self.ports.insert(port.name.clone(), port_id);
             }
         }
@@ -58,18 +60,18 @@ impl Importer {
     }
 
     fn translate_symbols(&mut self) -> anyhow::Result<()> {
-        for module in self.project.modules.iter() {
+        for module in self.stage2_project.modules.iter() {
             let module_id = self.modules[&module.name];
             for cell in module.cells.iter() {
                 let symbol_kind = if let Some(kind) = self.cell_symbol_kinds.get(&cell.cell_type) {
                     *kind
                 } else {
                     let name = &cell.cell_type.to_string();
-                    let kind_id = self.builder.add_builtin_symbol_kind(name);
+                    let kind_id = self.stage3_project.add_builtin_symbol_kind(name);
                     self.cell_symbol_kinds
                         .insert(cell.cell_type.clone(), kind_id);
                     for port in cell.ports.iter() {
-                        self.builder.add_builtin_symbol_kind_port(
+                        self.stage3_project.add_builtin_symbol_kind_port(
                             kind_id,
                             &port.name,
                             port.direction,
@@ -78,7 +80,7 @@ impl Importer {
                     kind_id
                 };
 
-                let cell_id = self.builder.add_symbol(module_id, symbol_kind);
+                let cell_id = self.stage3_project.add_symbol(module_id, symbol_kind);
                 self.symbols.insert(cell.name.clone(), cell_id);
             }
         }
