@@ -1,14 +1,14 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::db;
 use crate::intern::Intern;
+use crate::model;
 
 use super::stage1;
 
 #[derive(Debug)]
 pub struct Port {
     pub name: Arc<str>,
-    pub direction: db::Direction,
+    pub direction: model::Direction,
     pub signed: bool,
     pub width: usize,
 }
@@ -67,7 +67,7 @@ pub struct BitAssignment {
     pub name: Arc<str>,
     pub port: Arc<str>,
     pub bit: usize,
-    pub value: Option<db::WireState>,
+    pub value: Option<model::Bit>,
 
     pub net: Option<NetAssignment>,
 
@@ -182,11 +182,11 @@ impl Importer {
             .collect()
     }
 
-    fn translate_direction(direction: stage1::PortDirection) -> db::Direction {
+    fn translate_direction(direction: stage1::PortDirection) -> model::Direction {
         match direction {
-            stage1::PortDirection::Input => db::Direction::In,
-            stage1::PortDirection::Output => db::Direction::Out,
-            stage1::PortDirection::InOut => db::Direction::InOut,
+            stage1::PortDirection::Input => model::Direction::In,
+            stage1::PortDirection::Output => model::Direction::Out,
+            stage1::PortDirection::InOut => model::Direction::InOut,
         }
     }
 

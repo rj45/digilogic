@@ -1,6 +1,7 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 
 use crate::{
     intern::Intern,
@@ -8,37 +9,13 @@ use crate::{
 };
 
 mod builder;
+mod value;
+
 pub use builder::*;
+pub use value::*;
 
-pub trait ForeignKey<T> {
-    fn foreign_key(&self) -> T;
-}
-
-#[derive(Default, Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
-pub enum WireState {
-    #[default]
-    #[serde(rename = "0")]
-    L,
-    #[serde(rename = "1")]
-    H,
-    #[serde(rename = "x")]
-    X,
-    #[serde(rename = "z")]
-    Z,
-}
-
-impl FromStr for WireState {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "0" | "l" | "L" => Ok(Self::L),
-            "1" | "h" | "H" => Ok(Self::H),
-            "x" | "X" => Ok(Self::X),
-            "z" | "Z" => Ok(Self::Z),
-            _ => Err(anyhow::anyhow!("invalid wire state: {}", s)),
-        }
-    }
+pub trait Parent<T> {
+    fn parent(&self) -> T;
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -61,6 +38,54 @@ pub struct Size {
     pub height: u32,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub enum ParamValue {
+    #[default]
+    None,
+    String(Arc<str>),
+    Integer(i64),
+    Float(f64),
+    Boolean(bool),
+    Value(Value),
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub enum Param {
+    #[default]
+    None,
+    // Data / General bit width
+    BitWidth(u32),
+    NumInputs(u32),
+    NumOutputs(u32),
+    // Address / Selector width
+    AddressWidth(u32),
+    Named(Arc<str>, ParamValue),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct SymbolParam {
+    pub symbol: Id<Symbol>,
+    pub param: Param,
+}
+
+impl Parent<Id<Symbol>> for SymbolParam {
+    fn parent(&self) -> Id<Symbol> {
+        self.symbol
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct SymbolKindParam {
+    pub symbol_kind: Id<SymbolKind>,
+    pub param: Param,
+}
+
+impl Parent<Id<SymbolKind>> for SymbolKindParam {
+    fn parent(&self) -> Id<SymbolKind> {
+        self.symbol_kind
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Port {
     pub symbol_kind: Id<SymbolKind>,
@@ -73,29 +98,31 @@ pub struct Port {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymbolKind {
     pub module: Option<Id<Module>>,
-    pub ports: Vec<Id<Port>>,
+    pub ports: SmallVec<[Id<Port>; 4]>,
     pub size: Size,
     pub name: Arc<str>,
     pub prefix: Arc<str>,
+    pub params: SmallVec<[Id<SymbolKindParam>; 4]>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Symbol {
     pub module: Id<Module>,
     pub symbol_kind: Id<SymbolKind>,
-    pub endpoints: Vec<Id<Endpoint>>,
+    pub endpoints: SmallVec<[Id<Endpoint>; 4]>,
     pub position: Position,
     pub number: u32,
+    pub params: SmallVec<[Id<SymbolParam>; 4]>,
 }
 
-impl ForeignKey<Id<SymbolKind>> for Symbol {
-    fn foreign_key(&self) -> Id<SymbolKind> {
+impl Parent<Id<SymbolKind>> for Symbol {
+    fn parent(&self) -> Id<SymbolKind> {
         self.symbol_kind
     }
 }
 
-impl ForeignKey<Id<Module>> for Symbol {
-    fn foreign_key(&self) -> Id<Module> {
+impl Parent<Id<Module>> for Symbol {
+    fn parent(&self) -> Id<Module> {
         self.module
     }
 }
@@ -117,15 +144,15 @@ pub enum Endpoint {
 pub struct Net {
     pub name: Arc<str>,
     pub width: u32,
-    pub endpoints: Vec<Id<Endpoint>>,
+    pub endpoints: SmallVec<[Id<Endpoint>; 4]>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Module {
     pub name: Arc<str>,
     pub symbol_kind: Id<SymbolKind>,
-    pub symbols: Vec<Id<Symbol>>,
-    pub nets: Vec<Id<Net>>,
+    pub symbols: SmallVec<[Id<Symbol>; 4]>,
+    pub nets: SmallVec<[Id<Net>; 4]>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -136,6 +163,8 @@ pub struct Project {
     symbols: Table<Symbol>,
     symbol_kinds: Table<SymbolKind>,
     ports: Table<Port>,
+    symbol_params: Table<SymbolParam>,
+    symbol_kind_params: Table<SymbolKindParam>,
 
     #[serde(skip)]
     intern: Intern,
@@ -188,16 +217,17 @@ impl Project {
         let kind_id = self.symbol_kinds.insert(SymbolKind {
             name: name.clone(),
             module: None,
-            ports: Vec::new(),
+            ports: SmallVec::new(),
             size: Size::default(),
             prefix: "U".into(),
+            params: SmallVec::new(),
         });
 
         let module_id = self.modules.insert(Module {
             name,
             symbol_kind: kind_id,
-            symbols: Vec::new(),
-            nets: Vec::new(),
+            symbols: SmallVec::new(),
+            nets: SmallVec::new(),
         });
 
         self.symbol_kinds.get_mut(&kind_id).unwrap().module = Some(module_id);
@@ -223,15 +253,45 @@ impl Project {
         port_id
     }
 
+    pub fn add_module_param(&mut self, module: Id<Module>, param: Param) -> Id<SymbolKindParam> {
+        let symbol_kind = self.modules[module].symbol_kind;
+        let param_id = self
+            .symbol_kind_params
+            .insert(SymbolKindParam { symbol_kind, param });
+        self.symbol_kinds
+            .get_mut(&symbol_kind)
+            .unwrap()
+            .params
+            .push(param_id);
+        param_id
+    }
+
     pub fn add_builtin_symbol_kind(&mut self, name: &str) -> Id<SymbolKind> {
         let name = self.intern(name);
         self.symbol_kinds.insert(SymbolKind {
             name,
             module: None,
-            ports: Vec::new(),
+            ports: SmallVec::new(),
             size: Size::default(),
             prefix: "U".into(),
+            params: SmallVec::new(),
         })
+    }
+
+    pub fn add_builtin_symbol_kind_param(
+        &mut self,
+        symbol_kind: Id<SymbolKind>,
+        param: Param,
+    ) -> Id<SymbolKindParam> {
+        let param_id = self
+            .symbol_kind_params
+            .insert(SymbolKindParam { symbol_kind, param });
+        self.symbol_kinds
+            .get_mut(&symbol_kind)
+            .unwrap()
+            .params
+            .push(param_id);
+        param_id
     }
 
     pub fn add_builtin_symbol_kind_port(
@@ -266,10 +326,22 @@ impl Project {
         let symbol_id = self.symbols.insert(Symbol {
             module,
             symbol_kind,
-            endpoints: Vec::new(),
+            endpoints: SmallVec::new(),
             position: Position::default(),
             number: max_number + 1,
+            params: SmallVec::new(),
         });
+        self.symbol_kinds
+            .get(&symbol_kind)
+            .unwrap()
+            .params
+            .iter()
+            .for_each(|&param_id| {
+                self.symbol_params.insert(SymbolParam {
+                    symbol: symbol_id,
+                    param: self.symbol_kind_params[param_id].param.clone(),
+                });
+            });
         self.modules
             .get_mut(&module)
             .unwrap()

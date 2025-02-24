@@ -1,5 +1,5 @@
-pub mod db;
+pub mod core;
 pub mod intern;
-pub mod rtlil;
+pub mod model;
 pub mod table;
 pub mod yosys;

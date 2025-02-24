@@ -1,0 +1,29 @@
+[package]
+name = "digilogic_dioxus"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+
+console_error_panic_hook = "0.1.7"
+dioxus = { version = "0.6.3", features = [] }
+dioxus-logger = "0.6.2"
+futures-util = "0.3.31"
+tracing = "0.1.41"
+
+digilogic_core2 = { path = "../digilogic_core2" }
+
+[features]
+default = ["desktop"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+# mobile = ["dioxus/mobile"]
