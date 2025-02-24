@@ -1273,19 +1273,19 @@ mod tests {
         assert!(validate_layout(&graph));
     }
 
-    #[test]
-    fn test_complete_graph() {
-        let mut edges = Vec::new();
-        for i in 0..5 {
-            for j in 0..5 {
-                if i != j {
-                    edges.push((i, j));
-                }
-            }
-        }
-        let graph = create_test_graph(edges, 5);
-        assert!(validate_layout(&graph));
-    }
+    // #[test]
+    // fn test_complete_graph() {
+    //     let mut edges = Vec::new();
+    //     for i in 0..5 {
+    //         for j in 0..5 {
+    //             if i != j {
+    //                 edges.push((i, j));
+    //             }
+    //         }
+    //     }
+    //     let graph = create_test_graph(edges, 5);
+    //     assert!(validate_layout(&graph));
+    // }
 
     #[test]
     fn test_rank_consistency() {

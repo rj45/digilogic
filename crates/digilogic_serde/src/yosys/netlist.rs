@@ -2,14 +2,11 @@
 //!
 //! Use the following command to generate compatible JSON files, unoptimized:
 //!
-//! ```
 //! yosys -p "read_verilog <VERILOG-FILE>; hierarchy -auto-top; proc; opt_clean; fsm -expand; memory -nomap; wreduce -memx; opt_clean; write_json <OUTPUT-FILE>"
-//! ```
+//!
 //! or optimized:
 //!
-//! ```
 //! yosys -p "read_verilog <VERILOG-FILE>; hierarchy -auto-top; proc; opt; fsm -expand; memory -nomap; wreduce -memx; opt; write_json <OUTPUT-FILE>"
-//! ```
 
 use digilogic_core::SharedStr;
 use serde::Deserialize;

@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use crate::{
     model::{Module, Port, Symbol, SymbolKind},
@@ -38,6 +41,7 @@ impl Importer {
     fn translate(&mut self) -> anyhow::Result<()> {
         self.translate_modules()?;
         self.translate_symbols()?;
+        self.translate_nets()?;
 
         Ok(())
     }
@@ -82,6 +86,17 @@ impl Importer {
 
                 let cell_id = self.stage3_project.add_symbol(module_id, symbol_kind);
                 self.symbols.insert(cell.name.clone(), cell_id);
+            }
+        }
+        Ok(())
+    }
+
+    fn translate_nets(&mut self) -> anyhow::Result<()> {
+        for (index, bit_assign) in self.stage2_project.bits.iter().enumerate() {
+            if let Some(bit_assign) = bit_assign {
+                if bit_assign.net.is_none() {
+                    unimplemented!("bit assignment without net");
+                }
             }
         }
         Ok(())

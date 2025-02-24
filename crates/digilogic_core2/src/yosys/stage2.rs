@@ -55,8 +55,12 @@ impl Project {
 
 #[derive(Debug, Clone, Default)]
 pub struct NetAssignment {
+    pub module_name: Arc<str>,
+
+    pub net_name: Arc<str>,
+
     /// Index into `Module::nets` for the net
-    pub index: usize,
+    pub net_index: usize,
 
     /// Which bit of the net this assignment is for
     pub bit: usize,
@@ -96,7 +100,7 @@ impl Importer {
             let name = self.intern(name);
             let ports = self.translate_ports(name.clone(), &module.ports);
             let cells = self.translate_cells(&module.cells);
-            let nets = self.translate_nets(&module.net_names);
+            let nets = self.translate_nets(name.clone(), &module.net_names);
             self.project.modules.push(Module {
                 name,
                 ports,
@@ -252,7 +256,11 @@ impl Importer {
             .collect()
     }
 
-    fn translate_nets(&mut self, net_names: &BTreeMap<String, stage1::NetNameOpts>) -> Vec<Net> {
+    fn translate_nets(
+        &mut self,
+        module_name: Arc<str>,
+        net_names: &BTreeMap<String, stage1::NetNameOpts>,
+    ) -> Vec<Net> {
         net_names
             .iter()
             .enumerate()
@@ -267,7 +275,9 @@ impl Importer {
                                 bit: bit_index,
                                 value: Some(value.parse().unwrap_or_default()),
                                 net: Some(NetAssignment {
-                                    index,
+                                    net_name: name.clone(),
+                                    module_name: module_name.clone(),
+                                    net_index: index,
                                     bit: bit_index,
                                 }),
                                 next: None,
@@ -276,7 +286,9 @@ impl Importer {
                         stage1::Signal::Net(net) => {
                             if let Some(bit_assign) = &mut self.project.bits[*net] {
                                 bit_assign.net = Some(NetAssignment {
-                                    index,
+                                    net_name: name.clone(),
+                                    module_name: module_name.clone(),
+                                    net_index: index,
                                     bit: bit_index,
                                 });
                             }
